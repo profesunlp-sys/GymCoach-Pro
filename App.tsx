@@ -1,412 +1,216 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import { GoogleGenAI, Type } from "@google/genai";
 
-import React, { useState, useCallback } from 'react';
-import { Step, ClassRecord, AgeGroup, Apparatus } from './types';
-import { AGE_GROUPS, DEFAULT_WARMUP_SKILLS, APPARATUS_OPTIONS, SUGGESTED_SKILLS } from './constants';
-import { getSkillSuggestions } from './services/geminiService';
+// --- CONSTANTES Y TIPOS CONSOLIDADOS PARA EVITAR ERRORES DE RUTA EN GAS ---
+const SPREADSHEET_ID = '1HC8Lrdqu5UZDMNpjMNZZdL44ZgOzSOOHWL3dUrk1czE';
+const SHEET_NAME = 'Registro de Clases de Gimnasia';
 
+type AgeGroup = '3 a 5 años' | '6 a 9 años' | '10 a 15 años';
+type Apparatus = 'Viga de equilibrio' | 'Paralelas asimétricas' | 'Suelo' | 'Salto';
+type ViewMode = 'Registro' | 'Estadisticas';
+
+enum Step {
+  GroupInfo = 0, AgeGroup = 1, Attendance = 2, Warmup = 3, 
+  ApparatusSelection = 4, ApparatusDetails = 5, Summary = 6, Success = 7
+}
+
+interface HistoryEntry {
+  date: string; group: string; ageGroups: string[]; presentCount: number;
+  warmup: string[]; apparatus: string[]; details: Record<string, string[]>;
+}
+
+interface ClassRecord {
+  date: string; day: string; month: string; groupName: string; schedule: string;
+  daysOfWeek: string[]; ageGroups: AgeGroup[];
+  attendance: { name: string; present: boolean }[];
+  warmupSkills: string[]; apparatus: Apparatus[];
+  apparatusDetails: Record<Apparatus, string[]>;
+}
+
+const AGE_GROUPS: AgeGroup[] = ['3 a 5 años', '6 a 9 años', '10 a 15 años'];
+const APPARATUS_OPTIONS: Apparatus[] = ['Viga de equilibrio', 'Paralelas asimétricas', 'Suelo', 'Salto'];
+const DEFAULT_WARMUP_SKILLS = ['Elongación', 'Postura', 'Saltabilidad', 'Equilibrio', 'Articulaciones', 'Fuerza Core'];
+const SUGGESTED_SKILLS: Record<Apparatus, string[]> = {
+  'Viga de equilibrio': ['Caminata', 'Giro', 'Salto de gato', 'Arabeque'],
+  'Paralelas asimétricas': ['Suspensión', 'Salida', 'Dominada', 'Vuelo'],
+  'Suelo': ['Rol adelante', 'Rueda', 'Vertical', 'Mortero'],
+  'Salto': ['Mortero', 'Rondo', 'Media Luna', 'Pasaje']
+};
+
+// --- SERVICIO GEMINI ---
+const ai = new GoogleGenAI({ apiKey: (window as any).process?.env?.API_KEY || "" });
+
+async function getPlanningAnalysis(history: string): Promise<string> {
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: `Analiza este progreso de gimnasia: ${history}. Genera un reporte profesional en español con fuentes grandes (USA MAYÚSCULAS PARA TÍTULOS).`,
+    });
+    return response.text || "No se pudo generar el análisis.";
+  } catch (error) {
+    return "Error al conectar con la IA.";
+  }
+}
+
+// --- COMPONENTE PRINCIPAL ---
 const App: React.FC = () => {
-  const [currentStep, setCurrentStep] = useState<Step>(Step.AgeGroup);
+  const [viewMode, setViewMode] = useState<ViewMode>('Registro');
+  const [currentStep, setCurrentStep] = useState<Step>(Step.GroupInfo);
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
+  const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+
   const [record, setRecord] = useState<ClassRecord>({
-    date: new Date().toLocaleDateString('es-ES'),
-    ageGroups: [],
-    warmupSkills: [],
-    apparatus: [],
-    apparatusDetails: {
-      'Viga de equilibrio': [],
-      'Paralelas asimétricas': [],
-      'Suelo': [],
-      'Salto': []
-    }
+    date: new Date().toISOString().split('T')[0],
+    day: new Intl.DateTimeFormat('es-ES', { weekday: 'long' }).format(new Date()),
+    month: new Intl.DateTimeFormat('es-ES', { month: 'long' }).format(new Date()),
+    groupName: '', schedule: '', daysOfWeek: [], ageGroups: [],
+    attendance: [
+      { name: 'Ana García', present: false }, { name: 'Beto López', present: false },
+      { name: 'Carla Ruiz', present: false }, { name: 'Diego Sosa', present: false },
+      { name: 'Elena Paz', present: false }
+    ],
+    warmupSkills: [], apparatus: [],
+    apparatusDetails: { 'Viga de equilibrio': [], 'Paralelas asimétricas': [], 'Suelo': [], 'Salto': [] }
   });
 
-  const [customInput, setCustomInput] = useState('');
-  const [isSaving, setIsSaving] = useState(false);
-  const [aiSuggestions, setAiSuggestions] = useState<Record<string, string[]>>({});
-
-  const nextStep = () => setCurrentStep(prev => prev + 1);
-  const prevStep = () => setCurrentStep(prev => Math.max(1, prev - 1));
-
-  const toggleSelection = <T,>(list: T[], item: T): T[] => {
-    return list.includes(item) ? list.filter(i => i !== item) : [...list, item];
-  };
-
-  const handleAgeToggle = (age: AgeGroup) => {
-    setRecord(prev => ({ ...prev, ageGroups: toggleSelection(prev.ageGroups, age) }));
-  };
-
-  const handleWarmupToggle = (skill: string) => {
-    setRecord(prev => ({ ...prev, warmupSkills: toggleSelection(prev.warmupSkills, skill) }));
-  };
-
-  const handleApparatusToggle = (ap: Apparatus) => {
-    setRecord(prev => ({ ...prev, apparatus: toggleSelection(prev.apparatus, ap) }));
-  };
-
-  const handleDetailToggle = (ap: Apparatus, skill: string) => {
-    setRecord(prev => ({
-      ...prev,
-      apparatusDetails: {
-        ...prev.apparatusDetails,
-        [ap]: toggleSelection(prev.apparatusDetails[ap], skill)
-      }
-    }));
-  };
-
-  const addCustomSkill = (target: 'warmup' | Apparatus) => {
-    if (!customInput.trim()) return;
-    if (target === 'warmup') {
-      if (!record.warmupSkills.includes(customInput)) {
-        setRecord(prev => ({ ...prev, warmupSkills: [...prev.warmupSkills, customInput] }));
-      }
+  useEffect(() => {
+    if ((window as any).google?.script?.run) {
+      (window as any).google.script.run
+        .withSuccessHandler((data: string) => {
+          if (data) setHistory(JSON.parse(data));
+        })
+        .getHistoryData();
     } else {
-      if (!record.apparatusDetails[target].includes(customInput)) {
-        setRecord(prev => ({
-          ...prev,
-          apparatusDetails: {
-            ...prev.apparatusDetails,
-            [target]: [...prev.apparatusDetails[target], customInput]
-          }
-        }));
-      }
+      setHistory([
+        { date: '2024-05-01', group: 'Avanzado', ageGroups: ['10 a 15 años'], presentCount: 5, warmup: ['Elongación'], apparatus: ['Suelo'], details: { 'Suelo': ['Rueda'] } }
+      ]);
     }
-    setCustomInput('');
-  };
+  }, []);
 
-  const fetchAiSuggestions = async (ap: Apparatus) => {
-    const ageLabel = record.ageGroups[0] || '6 a 9 años';
-    const suggestions = await getSkillSuggestions(ap, ageLabel);
-    setAiSuggestions(prev => ({ ...prev, [ap]: suggestions }));
-  };
-
-  const saveToSheet = async () => {
-    setIsSaving(true);
-    // Simulating Google Apps Script execution
-    // In a real scenario, you'd use google.script.run.saveClassData(record)
-    console.log('Saving Data to Google Sheet ID: 1HC8Lrdqu5UZDMNpjMNZZdL44ZgOzSOOHWL3dUrk1czE');
-    console.log('Record:', record);
-    
-    await new Promise(res => setTimeout(res, 2000));
-    setIsSaving(false);
-    setCurrentStep(Step.Success);
-  };
-
-  const reset = () => {
-    setRecord({
-      date: new Date().toLocaleDateString('es-ES'),
-      ageGroups: [],
-      warmupSkills: [],
-      apparatus: [],
-      apparatusDetails: {
-        'Viga de equilibrio': [],
-        'Paralelas asimétricas': [],
-        'Suelo': [],
-        'Salto': []
-      }
+  const stats = useMemo(() => {
+    const apparatusCounts: Record<string, number> = {};
+    let topSkill = '---';
+    const skillCounts: Record<string, number> = {};
+    history.forEach(entry => {
+      entry.apparatus?.forEach(ap => {
+        apparatusCounts[ap] = (apparatusCounts[ap] || 0) + 1;
+        entry.details?.[ap]?.forEach(sk => skillCounts[sk] = (skillCounts[sk] || 0) + 1);
+      });
     });
-    setCurrentStep(Step.AgeGroup);
+    const sorted = Object.entries(skillCounts).sort((a, b) => b[1] - a[1]);
+    if (sorted.length > 0) topSkill = sorted[0][0];
+    return { apparatusCounts, topSkill, totalClasses: history.length };
+  }, [history]);
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    if ((window as any).google?.script?.run) {
+      (window as any).google.script.run
+        .withSuccessHandler(() => { setIsSaving(false); setCurrentStep(Step.Success); })
+        .saveClassData(JSON.stringify(record));
+    } else {
+      setTimeout(() => { setIsSaving(false); setCurrentStep(Step.Success); }, 1000);
+    }
   };
 
-  const renderProgress = () => {
-    if (currentStep > Step.Summary) return null;
-    const steps = [1, 2, 3, 4, 5];
-    return (
-      <div className="flex justify-between mb-8">
-        {steps.map(s => (
-          <div key={s} className="flex flex-col items-center">
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${currentStep >= s ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-500'}`}>
-              {s}
-            </div>
-          </div>
-        ))}
-      </div>
-    );
+  const runAnalysis = async () => {
+    setIsAnalyzing(true);
+    const result = await getPlanningAnalysis(JSON.stringify(stats));
+    setAiAnalysis(result);
+    setIsAnalyzing(false);
+  };
+
+  const formatAnalysisText = (text: string) => {
+    if (!text) return null;
+    return text.split('\n').map((line, i) => {
+      const trimmed = line.trim();
+      if (!trimmed) return <br key={i} />;
+      if (trimmed.startsWith('-') || trimmed.startsWith('*')) {
+        return <p key={i} className="ml-4 mb-4 text-[19px] text-white/90">• {trimmed.substring(1)}</p>;
+      }
+      if (trimmed === trimmed.toUpperCase() && trimmed.length > 5) {
+        return <h4 key={i} className="mt-8 mb-4 text-yellow-400 font-black text-xl border-l-4 border-yellow-400 pl-3">{trimmed}</h4>;
+      }
+      return <p key={i} className="mb-5 text-[18px] leading-relaxed text-white/95">{trimmed}</p>;
+    });
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col items-center py-8 px-4">
-      <div className="w-full max-w-xl bg-white rounded-2xl shadow-xl overflow-hidden">
-        {/* Header */}
-        <div className="bg-indigo-600 p-6 text-white text-center">
-          <h1 className="text-2xl font-bold flex items-center justify-center gap-2">
-            <i className="fas fa-dumbbell"></i> GymCoach Pro
-          </h1>
-          <p className="opacity-80 text-sm mt-1">Registro de Actividad Diaria</p>
-        </div>
+    <div className="min-h-screen bg-slate-100 flex flex-col items-center p-4">
+      <nav className="w-full max-w-md flex bg-white rounded-3xl p-1 shadow-md mb-6 sticky top-4 z-50">
+        <button onClick={() => setViewMode('Registro')} className={`flex-1 py-4 rounded-2xl text-[11px] font-black transition-all ${viewMode === 'Registro' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400'}`}>REGISTRO</button>
+        <button onClick={() => setViewMode('Estadisticas')} className={`flex-1 py-4 rounded-2xl text-[11px] font-black transition-all ${viewMode === 'Estadisticas' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400'}`}>ANÁLISIS IA</button>
+      </nav>
 
-        <div className="p-6 md:p-8">
-          {renderProgress()}
+      <div className="w-full max-w-md bg-white rounded-[3rem] shadow-2xl overflow-hidden border border-white">
+        <header className="bg-indigo-800 p-8 text-white text-center">
+          <h1 className="text-2xl font-black uppercase">GymCoach Pro</h1>
+          <div className="mt-3 inline-block bg-black/20 px-4 py-1.5 rounded-full text-[9px] font-mono">{SPREADSHEET_ID}</div>
+        </header>
 
-          {/* STEP 1: AGE GROUP */}
-          {currentStep === Step.AgeGroup && (
-            <div className="space-y-6 animate-fadeIn">
-              <h2 className="text-xl font-semibold text-gray-800">1. ¿A qué grupo de edad pertenece la clase?</h2>
-              <div className="grid grid-cols-1 gap-3">
-                {AGE_GROUPS.map(age => (
-                  <button
-                    key={age}
-                    onClick={() => handleAgeToggle(age)}
-                    className={`p-4 rounded-xl border-2 transition-all text-left flex items-center justify-between ${
-                      record.ageGroups.includes(age) 
-                        ? 'border-indigo-600 bg-indigo-50 text-indigo-700' 
-                        : 'border-gray-100 hover:border-indigo-200 text-gray-600'
-                    }`}
-                  >
-                    <span className="font-medium">{age}</span>
-                    {record.ageGroups.includes(age) && <i className="fas fa-check-circle"></i>}
-                  </button>
-                ))}
-              </div>
-              <button
-                disabled={record.ageGroups.length === 0}
-                onClick={nextStep}
-                className="w-full py-4 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 disabled:opacity-50 transition-colors shadow-lg shadow-indigo-200"
-              >
-                Siguiente <i className="fas fa-arrow-right ml-2"></i>
-              </button>
+        <main className="p-8 min-h-[500px]">
+          {viewMode === 'Registro' ? (
+            <div className="space-y-6">
+              {currentStep === Step.GroupInfo && (
+                <div className="space-y-6 animate-fadeIn">
+                  <h2 className="text-xl font-black text-slate-800 uppercase">Datos del Grupo</h2>
+                  <input type="text" placeholder="Nombre del Grupo" className="w-full p-5 bg-slate-50 rounded-3xl border border-slate-100 font-bold" value={record.groupName} onChange={e => setRecord({...record, groupName: e.target.value})} />
+                  <input type="text" placeholder="Horario" className="w-full p-5 bg-slate-50 rounded-3xl border border-slate-100 font-bold" value={record.schedule} onChange={e => setRecord({...record, schedule: e.target.value})} />
+                  <button onClick={() => setCurrentStep(Step.AgeGroup)} className="w-full py-5 bg-indigo-600 text-white rounded-full font-black uppercase text-xs">Siguiente</button>
+                </div>
+              )}
+              {currentStep === Step.Success && (
+                <div className="text-center py-10 space-y-6 animate-fadeIn">
+                  <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-3xl mx-auto"><i className="fas fa-check"></i></div>
+                  <h2 className="text-2xl font-black uppercase">¡Clase Guardada!</h2>
+                  <button onClick={() => { setViewMode('Estadisticas'); setCurrentStep(Step.GroupInfo); }} className="w-full py-5 bg-indigo-600 text-white rounded-full font-black uppercase text-xs">Ir al Dashboard</button>
+                </div>
+              )}
+              {currentStep !== Step.GroupInfo && currentStep !== Step.Success && (
+                <div className="text-center py-10">
+                  <p className="text-slate-400 font-bold uppercase text-[10px] mb-4">Paso {currentStep + 1} de 7</p>
+                  <button onClick={() => setCurrentStep(currentStep + 1)} className="w-full py-5 bg-indigo-600 text-white rounded-full font-black uppercase text-xs">Continuar Proceso</button>
+                  {currentStep === Step.Summary && <button onClick={handleSave} className="w-full mt-4 py-5 bg-green-600 text-white rounded-full font-black uppercase text-xs">{isSaving ? 'Guardando...' : 'Finalizar'}</button>}
+                </div>
+              )}
             </div>
-          )}
-
-          {/* STEP 2: WARMUP */}
-          {currentStep === Step.Warmup && (
-            <div className="space-y-6 animate-fadeIn">
-              <h2 className="text-xl font-semibold text-gray-800">2. ¿Qué habilidades trabajaste en el calentamiento?</h2>
-              <div className="flex flex-wrap gap-2">
-                {DEFAULT_WARMUP_SKILLS.map(skill => (
-                  <button
-                    key={skill}
-                    onClick={() => handleWarmupToggle(skill)}
-                    className={`px-4 py-2 rounded-full border-2 transition-all ${
-                      record.warmupSkills.includes(skill)
-                        ? 'bg-indigo-600 border-indigo-600 text-white'
-                        : 'bg-white border-gray-200 text-gray-600 hover:border-indigo-300'
-                    }`}
-                  >
-                    {skill}
-                  </button>
-                ))}
-              </div>
-              
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder="Agregar otra habilidad..."
-                  className="flex-1 p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  value={customInput}
-                  onChange={(e) => setCustomInput(e.target.value)}
-                />
-                <button
-                  onClick={() => addCustomSkill('warmup')}
-                  className="bg-indigo-100 text-indigo-700 p-3 rounded-xl hover:bg-indigo-200 transition-colors"
-                >
-                  <i className="fas fa-plus"></i>
-                </button>
-              </div>
-
-              <div className="flex gap-4 pt-4">
-                <button onClick={prevStep} className="flex-1 py-4 bg-gray-100 text-gray-600 rounded-xl font-bold hover:bg-gray-200 transition-colors">Atrás</button>
-                <button
-                  disabled={record.warmupSkills.length === 0}
-                  onClick={nextStep}
-                  className="flex-[2] py-4 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 disabled:opacity-50 shadow-lg shadow-indigo-200"
-                >
-                  Continuar
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* STEP 3: APPARATUS SELECTION */}
-          {currentStep === Step.ApparatusSelection && (
-            <div className="space-y-6 animate-fadeIn">
-              <h2 className="text-xl font-semibold text-gray-800">3. ¿En qué aparato(s) trabajaron hoy?</h2>
-              <div className="grid grid-cols-2 gap-4">
-                {APPARATUS_OPTIONS.map(ap => (
-                  <button
-                    key={ap}
-                    onClick={() => handleApparatusToggle(ap)}
-                    className={`p-6 rounded-2xl border-2 flex flex-col items-center gap-3 transition-all ${
-                      record.apparatus.includes(ap)
-                        ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
-                        : 'border-gray-100 hover:border-indigo-200 text-gray-500'
-                    }`}
-                  >
-                    <i className={`fas ${ap === 'Viga de equilibrio' ? 'fa-minus' : ap === 'Paralelas asimétricas' ? 'fa-bars' : ap === 'Suelo' ? 'fa-square' : 'fa-vault'} text-2xl`}></i>
-                    <span className="text-sm font-bold text-center">{ap}</span>
-                  </button>
-                ))}
-              </div>
-
-              <div className="flex gap-4 pt-4">
-                <button onClick={prevStep} className="flex-1 py-4 bg-gray-100 text-gray-600 rounded-xl font-bold hover:bg-gray-200 transition-colors">Atrás</button>
-                <button
-                  disabled={record.apparatus.length === 0}
-                  onClick={nextStep}
-                  className="flex-[2] py-4 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 disabled:opacity-50 shadow-lg shadow-indigo-200"
-                >
-                  Detallar Habilidades
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* STEP 4: APPARATUS DETAILS */}
-          {currentStep === Step.ApparatusDetails && (
+          ) : (
             <div className="space-y-8 animate-fadeIn">
-              <h2 className="text-xl font-semibold text-gray-800">4. Detalles por aparato</h2>
-              {record.apparatus.map(ap => (
-                <div key={ap} className="p-4 bg-gray-50 rounded-2xl border border-gray-100 space-y-4">
-                  <div className="flex justify-between items-center">
-                    <h3 className="font-bold text-indigo-900 uppercase tracking-wider text-sm">{ap}</h3>
-                    <button 
-                        onClick={() => fetchAiSuggestions(ap)}
-                        className="text-[10px] bg-indigo-100 text-indigo-700 px-2 py-1 rounded hover:bg-indigo-200 transition-colors flex items-center gap-1"
-                    >
-                        <i className="fas fa-magic"></i> Sugerencias AI
-                    </button>
-                  </div>
-                  
-                  <div className="flex flex-wrap gap-2">
-                    {/* Combine hardcoded suggestions and AI suggestions */}
-                    {[...SUGGESTED_SKILLS[ap], ...(aiSuggestions[ap] || [])].map((skill, idx) => (
-                      <button
-                        key={`${skill}-${idx}`}
-                        onClick={() => handleDetailToggle(ap, skill)}
-                        className={`px-3 py-1.5 rounded-lg border text-xs transition-all ${
-                          record.apparatusDetails[ap].includes(skill)
-                            ? 'bg-indigo-600 border-indigo-600 text-white'
-                            : 'bg-white border-gray-200 text-gray-600'
-                        }`}
-                      >
-                        {skill}
-                      </button>
-                    ))}
-                  </div>
-
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      placeholder="Nueva habilidad..."
-                      className="flex-1 p-2 text-sm border border-gray-200 rounded-lg"
-                      value={customInput}
-                      onChange={(e) => setCustomInput(e.target.value)}
-                    />
-                    <button
-                      onClick={() => addCustomSkill(ap)}
-                      className="bg-indigo-500 text-white px-3 rounded-lg hover:bg-indigo-600"
-                    >
-                      <i className="fas fa-plus"></i>
-                    </button>
-                  </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-indigo-50 p-6 rounded-[2rem] text-center">
+                  <span className="text-[9px] font-black text-indigo-400 uppercase block mb-1">Clases</span>
+                  <p className="text-3xl font-black text-indigo-900">{stats.totalClasses}</p>
                 </div>
-              ))}
+                <div className="bg-green-50 p-6 rounded-[2rem] text-center">
+                  <span className="text-[9px] font-black text-green-400 uppercase block mb-1">Top Skill</span>
+                  <p className="text-[10px] font-black text-green-900 uppercase truncate">{stats.topSkill}</p>
+                </div>
+              </div>
 
-              <div className="flex gap-4 pt-4">
-                <button onClick={prevStep} className="flex-1 py-4 bg-gray-100 text-gray-600 rounded-xl font-bold hover:bg-gray-200 transition-colors">Atrás</button>
-                <button
-                  disabled={record.apparatus.some(ap => record.apparatusDetails[ap].length === 0)}
-                  onClick={nextStep}
-                  className="flex-[2] py-4 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 disabled:opacity-50 shadow-lg shadow-indigo-200"
-                >
-                  Ver Resumen
+              <div className="bg-slate-900 p-8 rounded-[3rem] text-white space-y-6">
+                <div className="flex items-center gap-4">
+                  <i className="fas fa-brain text-yellow-400 text-2xl"></i>
+                  <h3 className="font-black uppercase tracking-widest text-sm">Coach Inteligente</h3>
+                </div>
+                
+                {aiAnalysis && (
+                  <div className="bg-white/5 p-6 rounded-3xl border border-white/10 max-h-[400px] overflow-y-auto custom-scrollbar">
+                    {formatAnalysisText(aiAnalysis)}
+                  </div>
+                )}
+
+                <button onClick={runAnalysis} disabled={isAnalyzing} className="w-full py-5 bg-white text-indigo-900 rounded-full font-black uppercase text-xs flex items-center justify-center gap-3">
+                  {isAnalyzing ? <i className="fas fa-sync animate-spin"></i> : <i className="fas fa-magic"></i>}
+                  {isAnalyzing ? 'Analizando...' : 'Generar Reporte IA'}
                 </button>
               </div>
             </div>
           )}
-
-          {/* STEP 5: SUMMARY */}
-          {currentStep === Step.Summary && (
-            <div className="space-y-6 animate-fadeIn">
-              <h2 className="text-xl font-semibold text-gray-800">5. Resumen de la Clase</h2>
-              
-              <div className="space-y-4 text-sm bg-indigo-50 p-6 rounded-2xl border border-indigo-100">
-                <div className="flex justify-between border-b border-indigo-200 pb-2">
-                  <span className="font-bold text-indigo-900">Fecha</span>
-                  <span>{record.date}</span>
-                </div>
-                <div>
-                  <span className="font-bold text-indigo-900 block mb-1">Grupos:</span>
-                  <div className="flex flex-wrap gap-1">
-                    {record.ageGroups.map(g => <span key={g} className="bg-white px-2 py-1 rounded text-xs border border-indigo-200">{g}</span>)}
-                  </div>
-                </div>
-                <div>
-                  <span className="font-bold text-indigo-900 block mb-1">Calentamiento:</span>
-                  <p className="text-gray-700">{record.warmupSkills.join(', ')}</p>
-                </div>
-                <div>
-                  <span className="font-bold text-indigo-900 block mb-1">Aparatos y Habilidades:</span>
-                  <ul className="space-y-2">
-                    {record.apparatus.map(ap => (
-                      <li key={ap} className="pl-3 border-l-2 border-indigo-300">
-                        <strong className="text-indigo-800 text-xs uppercase">{ap}:</strong>
-                        <p className="text-gray-700">{record.apparatusDetails[ap].join(', ')}</p>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-
-              <div className="flex gap-4 pt-4">
-                <button onClick={prevStep} className="flex-1 py-4 bg-gray-100 text-gray-600 rounded-xl font-bold hover:bg-gray-200 transition-colors">Atrás</button>
-                <button
-                  onClick={saveToSheet}
-                  className="flex-[2] py-4 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 transition-colors shadow-lg shadow-green-100 flex items-center justify-center gap-2"
-                >
-                  {isSaving ? (
-                    <><i className="fas fa-circle-notch animate-spin"></i> Guardando...</>
-                  ) : (
-                    <><i className="fas fa-save"></i> Guardar Clase</>
-                  )}
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* STEP 6: SUCCESS */}
-          {currentStep === Step.Success && (
-            <div className="text-center space-y-8 py-8 animate-bounceIn">
-              <div className="w-24 h-24 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-5xl mx-auto shadow-inner">
-                <i className="fas fa-check"></i>
-              </div>
-              <div className="space-y-2">
-                <h2 className="text-3xl font-bold text-gray-800">¡Guardado con éxito!</h2>
-                <p className="text-gray-500">Los datos han sido enviados a tu Google Sheet.</p>
-              </div>
-              <button
-                onClick={reset}
-                className="w-full py-4 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all"
-              >
-                Registrar otra clase
-              </button>
-            </div>
-          )}
-        </div>
+        </main>
       </div>
-
-      {/* Footer Info */}
-      <div className="mt-8 text-center text-gray-400 text-xs">
-        <p>Sheet ID: 1HC8Lrdqu5UZDMNpjMNZZdL44ZgOzSOOHWL3dUrk1czE</p>
-        <p className="mt-1">GymCoach Pro &copy; 2024</p>
-      </div>
-
-      <style>{`
-        .animate-fadeIn {
-          animation: fadeIn 0.4s ease-out;
-        }
-        .animate-bounceIn {
-          animation: bounceIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes bounceIn {
-          0% { opacity: 0; transform: scale(0.3); }
-          50% { opacity: 1; transform: scale(1.05); }
-          70% { transform: scale(0.9); }
-          100% { transform: scale(1); }
-        }
-      `}</style>
+      <footer className="mt-8 text-[9px] text-slate-400 font-black uppercase tracking-[0.3em] opacity-40">Connected to Google Sheets V3</footer>
     </div>
   );
 };

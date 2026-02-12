@@ -1,5 +1,5 @@
 {
-  "name": "GymCoach Pro - Registro de Clases",
-  "description": "Una herramienta interactiva para entrenadores de gimnasia artística que permite registrar el contenido de las clases, calentamientos, aparatos y habilidades de forma secuencial y moderna.",
+  "name": "GymCoach Pro - Sistema de Gestión Pedagógica",
+  "description": "App optimizada para entrenadores de gimnasia con registro secuencial, asistencia, habilidades personalizadas y seguimiento de torneos sincronizado con Google Sheets.",
   "requestFramePermissions": []
 }

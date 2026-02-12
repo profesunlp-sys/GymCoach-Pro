@@ -5,17 +5,37 @@ export type Apparatus = 'Viga de equilibrio' | 'Paralelas asimétricas' | 'Suelo
 
 export interface ClassRecord {
   date: string;
+  day: string;
+  month: string;
+  groupName: string;
+  schedule: string;
+  daysOfWeek: string[];
   ageGroups: AgeGroup[];
+  attendance: { name: string; present: boolean }[];
   warmupSkills: string[];
   apparatus: Apparatus[];
   apparatusDetails: Record<Apparatus, string[]>;
 }
 
 export enum Step {
+  GroupInfo = 0,
   AgeGroup = 1,
-  Warmup = 2,
-  ApparatusSelection = 3,
-  ApparatusDetails = 4,
-  Summary = 5,
-  Success = 6
+  Attendance = 2,
+  Warmup = 3,
+  ApparatusSelection = 4,
+  ApparatusDetails = 5,
+  Summary = 6,
+  Success = 7
+}
+
+export type ViewMode = 'Registro' | 'Estadisticas';
+
+export interface HistoryEntry {
+  date: string;
+  group: string;
+  ageGroups: string[];
+  presentCount: number;
+  warmup: string[];
+  apparatus: string[];
+  details: Record<string, string[]>;
 }
