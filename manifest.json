@@ -1,0 +1,17 @@
+{
+    "name": "GymCoach Pro",
+    "short_name": "GymCoach",
+    "description": "Gestión profesional para entrenadores de gimnasia artística.",
+    "start_url": "./index.html",
+    "display": "standalone",
+    "background_color": "#0f172a",
+    "theme_color": "#3b82f6",
+    "icons": [
+        {
+            "src": "https://cdn-icons-png.flaticon.com/512/2964/2964514.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ]
+}

@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+
+<html lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#277bf1",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#101722",
+                    },
+                    fontFamily: {
+                        "display": ["Lexend"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Lexend', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<title>GymCoach Pro - Alumnos</title>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 antialiased font-display">
+<!-- Mobile Container (Phone Form Factor Simulator) -->
+<div class="max-w-md mx-auto min-h-screen bg-white dark:bg-slate-900 shadow-2xl flex flex-col relative overflow-hidden">
+<!-- Header (iOS Style) -->
+<header class="sticky top-0 z-30 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md px-4 pt-12 pb-4 flex items-center justify-between border-b border-slate-100 dark:border-slate-800">
+<button class="p-2 -ml-2 text-primary hover:bg-primary/10 rounded-full transition-colors">
+<span class="material-icons-round text-2xl">chevron_left</span>
+</button>
+<h1 class="text-lg font-semibold text-slate-800 dark:text-white">Alumnos</h1>
+<button class="p-2 -mr-2 text-primary hover:bg-primary/10 rounded-full transition-colors">
+<span class="material-icons-round text-2xl">person_add_alt</span>
+</button>
+</header>
+<!-- Search Bar Section -->
+<div class="px-4 py-4 bg-white dark:bg-slate-900">
+<div class="relative group">
+<span class="absolute inset-y-0 left-3 flex items-center text-slate-400 group-focus-within:text-primary transition-colors">
+<span class="material-icons-round text-xl">search</span>
+</span>
+<input class="w-full bg-slate-100 dark:bg-slate-800 border-none rounded-xl py-3 pl-10 pr-4 text-sm focus:ring-2 focus:ring-primary/50 placeholder-slate-400 dark:placeholder-slate-500 transition-all" placeholder="Buscar alumno..." type="text"/>
+</div>
+</div>
+<!-- Scrollable Student List -->
+<main class="flex-1 overflow-y-auto px-4 pb-32 hide-scrollbar">
+<div class="space-y-3 pt-2">
+<!-- Student Card 1 -->
+<div class="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 flex items-center gap-4 group active:scale-[0.98] transition-all">
+<div class="w-12 h-12 rounded-full overflow-hidden bg-primary/10 flex-shrink-0">
+<img alt="Student Profile" class="w-full h-full object-cover" data-alt="Portrait of a smiling young gymnast girl" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDoTtuIQY2weQ_xDA-JnHNbdV-s94lcTQCaLB4BRC8Wf2Akc-eluNsfpCK_FrzrM7roCB_FTDRpe-ky8a--mGMz7b8xupnO2_o5KNYA7N3cHdqh9R7Q0g2S9i4DDD_hkYpJsPYeLTwDTYnzCgqmumALbR7Fj4T88_yMrGEOWtbKMYTW2nXNQ85-9gJdWY2VK-cGI-FtIVvZplbRkMdR8hC5Z5EKah_8KQSgbnXlGFqUb_JiBJekW2fIFmYNSUNu0IDDoTNy3nbeFFlo"/>
+</div>
+<div class="flex-1">
+<h3 class="font-semibold text-slate-800 dark:text-slate-100">Sofía García</h3>
+<div class="flex items-center text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+<span>8 años</span>
+<span class="mx-1.5 opacity-30">•</span>
+<span class="px-2 py-0.5 bg-primary/10 text-primary rounded-full font-medium">Infantil</span>
+</div>
+</div>
+<button class="p-2 text-slate-400 hover:text-primary hover:bg-primary/5 rounded-lg transition-colors">
+<span class="material-icons-round text-lg">edit</span>
+</button>
+</div>
+<!-- Student Card 2 -->
+<div class="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 flex items-center gap-4 group active:scale-[0.98] transition-all">
+<div class="w-12 h-12 rounded-full overflow-hidden bg-primary/10 flex-shrink-0">
+<img alt="Student Profile" class="w-full h-full object-cover" data-alt="Young boy in athletic clothes smiling" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAJLP9Q21nOjguOENIP9F_2xVNMFQB5E3IbtctWsOz2EI0EtoUAC21G6w-mVdY1_mOdW-fc6Nq9LRddRaqrs4WsiyogvwSPnWcZj8nzAUwBBv_kEwSfvUMcPwwGP0077r8yxwXyZ_aPaB95wjdFg0CxiwOMEGib59yy5Svq5bGRmbEyYV_g8nOmS2El9V0FucoZIyQ8WoLRroI5pi9uwpGD8eTXl8Pb0IOl70AiVVH5Des7QJiLRT1aTmLgylnkY9K6Hg4flVBBZeU7"/>
+</div>
+<div class="flex-1">
+<h3 class="font-semibold text-slate-800 dark:text-slate-100">Mateo Rodríguez</h3>
+<div class="flex items-center text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+<span>10 años</span>
+<span class="mx-1.5 opacity-30">•</span>
+<span class="px-2 py-0.5 bg-primary/10 text-primary rounded-full font-medium">Juvenil A</span>
+</div>
+</div>
+<button class="p-2 text-slate-400 hover:text-primary hover:bg-primary/5 rounded-lg transition-colors">
+<span class="material-icons-round text-lg">edit</span>
+</button>
+</div>
+<!-- Student Card 3 -->
+<div class="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 flex items-center gap-4 group active:scale-[0.98] transition-all">
+<div class="w-12 h-12 rounded-full overflow-hidden bg-primary/10 flex-shrink-0">
+<img alt="Student Profile" class="w-full h-full object-cover" data-alt="Portrait of a young student with glasses" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAk-jALC-Dy68uJ7yf4-OcTtCdmLFDZ_KGiYOhQXgI3SHFHQjZ6mGGdB_TZ2-fPgdtzx6FLyF3NI4da4_jMx5q3HTQ4zm3bYjRZPqVgKb2b-qVv8cvAo2rPXIFtxF02pjQbhLXpOAK3L0e1Z5A4kGK2USnLzir5f0ab-inXM1rxeKuLoWPhP2xk28USecDP59f0mi_pAgkizU8XSUPKFCA_UHDhyJ39bZ5Z8JcdzqlFK_wKmH4JU07T2vw-gnEMQP45WmWuEtuKeCb7"/>
+</div>
+<div class="flex-1">
+<h3 class="font-semibold text-slate-800 dark:text-slate-100">Lucía Martínez</h3>
+<div class="flex items-center text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+<span>7 años</span>
+<span class="mx-1.5 opacity-30">•</span>
+<span class="px-2 py-0.5 bg-primary/10 text-primary rounded-full font-medium">Pre-Infantil</span>
+</div>
+</div>
+<button class="p-2 text-slate-400 hover:text-primary hover:bg-primary/5 rounded-lg transition-colors">
+<span class="material-icons-round text-lg">edit</span>
+</button>
+</div>
+<!-- Student Card 4 -->
+<div class="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 flex items-center gap-4 group active:scale-[0.98] transition-all">
+<div class="w-12 h-12 rounded-full overflow-hidden bg-primary/10 flex-shrink-0">
+<img alt="Student Profile" class="w-full h-full object-cover" data-alt="Happy young girl gymnast profile picture" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCAKyez7oyUBg62gCW-_hD3N7o7YUAktxmV6U2jxuYYwMEnbghGlBlSJN8S10d8dBf8X74wpVnMYCSPSlYhaPe2dWbxs0Wy7iGBhd7WYnH9lmCjYFyuVxyzgzgQaN40hXkGf0SlHyjXBljPB_MkyhY_d3Fe0lfzgeFDBzqcMZXQ6ATJ7GN-yGFU-7c-mS4JR5xsnyUrW30wzZx6h_-nSrF_t6Fa_1XmywWxCkv2ayTzz61GBz58hvfTBflt_OAtRMuLNJBiy9BbgyxV"/>
+</div>
+<div class="flex-1">
+<h3 class="font-semibold text-slate-800 dark:text-slate-100">Elena Sánchez</h3>
+<div class="flex items-center text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+<span>9 años</span>
+<span class="mx-1.5 opacity-30">•</span>
+<span class="px-2 py-0.5 bg-primary/10 text-primary rounded-full font-medium">Infantil</span>
+</div>
+</div>
+<button class="p-2 text-slate-400 hover:text-primary hover:bg-primary/5 rounded-lg transition-colors">
+<span class="material-icons-round text-lg">edit</span>
+</button>
+</div>
+<!-- Student Card 5 -->
+<div class="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 flex items-center gap-4 group active:scale-[0.98] transition-all">
+<div class="w-12 h-12 rounded-full overflow-hidden bg-primary/10 flex-shrink-0">
+<img alt="Student Profile" class="w-full h-full object-cover" data-alt="Active young boy smiling at camera" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAWtzu31t0u_Y9cShwdrZ1978D5yGLWtZav-cHD83CrkRIa-3DTHOccNv5Zk9erCLAhzkEy2RVITItwOfrj5jTF9PIzFUf-5IOYunnycg1jB3NKmxmjYi4Cke5N0tPPlDOLpSAyw05oLSYDYxdQVhGicAM_hKWuLw2QViENaN04sF20F3vux39_oL8rArctzUSl5ibPVkTq5b-j3fcOV-mD5rEkSeTCbNCWJvDUhdnYU3e4RxmijlfhNDqiGI-L9XrUTakUH6LOoQDZ"/>
+</div>
+<div class="flex-1">
+<h3 class="font-semibold text-slate-800 dark:text-slate-100">Javier López</h3>
+<div class="flex items-center text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+<span>11 años</span>
+<span class="mx-1.5 opacity-30">•</span>
+<span class="px-2 py-0.5 bg-primary/10 text-primary rounded-full font-medium">Juvenil B</span>
+</div>
+</div>
+<button class="p-2 text-slate-400 hover:text-primary hover:bg-primary/5 rounded-lg transition-colors">
+<span class="material-icons-round text-lg">edit</span>
+</button>
+</div>
+<!-- Student Card 6 -->
+<div class="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 flex items-center gap-4 group active:scale-[0.98] transition-all">
+<div class="w-12 h-12 rounded-full overflow-hidden bg-primary/10 flex-shrink-0">
+<img alt="Student Profile" class="w-full h-full object-cover" data-alt="Portrait of a focused young student" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDVYbmBuB3x23eY7KYH4nSBrH0fvDkc7hHlzMNhvkL2O5modte03w-O7ZAG7d72vU9LJFRwnXc6OieBkl2jjm0fHCioQHyGbMll3IpSpZSiW1UHodNLhDpAlQQSlKeNLyMV8sZaECXbcHnne5fP5bMeb_sKy8QNbH5dXm4OJ3CzJ9EXfEPXvnD6MC0z4XcJrP6yEBNATRJerPTWj73Qalb9dKECZ7j8cKPVvsF57ueAvNyEDdVMVAQc9ScGmhTA5nWbC3_iJY-Fpqrx"/>
+</div>
+<div class="flex-1">
+<h3 class="font-semibold text-slate-800 dark:text-slate-100">Daniel Ruiz</h3>
+<div class="flex items-center text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+<span>12 años</span>
+<span class="mx-1.5 opacity-30">•</span>
+<span class="px-2 py-0.5 bg-primary/10 text-primary rounded-full font-medium">Elite</span>
+</div>
+</div>
+<button class="p-2 text-slate-400 hover:text-primary hover:bg-primary/5 rounded-lg transition-colors">
+<span class="material-icons-round text-lg">edit</span>
+</button>
+</div>
+<!-- End of list padding -->
+<div class="h-20 flex items-center justify-center">
+<span class="text-xs text-slate-400 uppercase tracking-widest font-medium">Fin de la lista</span>
+</div>
+</div>
+</main>
+<!-- Floating Action Button -->
+<button class="absolute bottom-24 right-6 w-14 h-14 bg-primary text-white rounded-full shadow-lg shadow-primary/40 flex items-center justify-center hover:scale-105 active:scale-95 transition-all z-40">
+<span class="material-icons-round text-3xl">add</span>
+</button>
+<!-- Navigation Bar (iOS Tab Bar) -->
+<nav class="absolute bottom-0 inset-x-0 h-20 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-100 dark:border-slate-800 flex items-start justify-around px-2 pt-2 z-50">
+<a class="flex flex-col items-center gap-1 w-1/4 pt-1 text-slate-400 dark:text-slate-500" href="#">
+<span class="material-icons-round text-[24px]">home</span>
+<span class="text-[10px] font-medium">Inicio</span>
+</a>
+<a class="flex flex-col items-center gap-1 w-1/4 pt-1 text-primary" href="#">
+<span class="material-icons-round text-[24px]">groups</span>
+<span class="text-[10px] font-medium">Alumnos</span>
+</a>
+<a class="flex flex-col items-center gap-1 w-1/4 pt-1 text-slate-400 dark:text-slate-500" href="#">
+<span class="material-icons-round text-[24px]">event_note</span>
+<span class="text-[10px] font-medium">Clases</span>
+</a>
+<a class="flex flex-col items-center gap-1 w-1/4 pt-1 text-slate-400 dark:text-slate-500" href="#">
+<span class="material-icons-round text-[24px]">person</span>
+<span class="text-[10px] font-medium">Perfil</span>
+</a>
+</nav>
+<!-- Bottom Safe Area Indicator (Visual only) -->
+<div class="absolute bottom-1.5 left-1/2 -translate-x-1/2 w-32 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full z-[60]"></div>
+</div>
+</body></html>
