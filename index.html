@@ -31,15 +31,13 @@
     <div id="root"></div>
 
     <script type="text/babel" data-type="module">
-        // Importación de módulos de Firebase
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- Configuración Global ---
-        // Si no hay configuración real, usamos un objeto vacío para evitar errores de carga
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
-            apiKey: "AIzaSyDummyKey", // Valor temporal para evitar errores de inicio
+            apiKey: "AIzaSyDummyKey", 
             authDomain: "gymcoach-pro.firebaseapp.com",
             projectId: "gymcoach-pro",
             storageBucket: "gymcoach-pro.appspot.com",
@@ -55,13 +53,13 @@
             auth = getAuth(app);
             db = getFirestore(app);
         } catch (e) {
-            console.error("Firebase no pudo inicializarse:", e);
+            console.error("Error de inicialización de Firebase:", e);
         }
 
         const { useState, useEffect } = React;
         const { 
-            Trophy, DollarSign, ChevronLeft, LayoutDashboard, 
-            Search, Activity, Users, LogOut, Trash2, Plus, Bell, Save 
+            Trophy, ChevronLeft, LayoutDashboard, 
+            Activity, Users, LogOut, Trash2, Plus, Bell, Save, AlertCircle, RefreshCw
         } = lucide;
 
         // --- Componente de Autenticación ---
@@ -76,15 +74,48 @@
                 e.preventDefault();
                 setError('');
                 setLoading(true);
+
+                if (!auth) {
+                    setError("Error de configuración: Firebase no detectado.");
+                    setLoading(false);
+                    return;
+                }
+
                 try {
+                    // Limpieza previa por seguridad
+                    await signOut(auth).catch(() => {});
+                    
+                    const cleanEmail = email.trim().toLowerCase();
+
                     if (isLogin) {
-                        await signInWithEmailAndPassword(auth, email, password);
+                        await signInWithEmailAndPassword(auth, cleanEmail, password);
                     } else {
-                        await createUserWithEmailAndPassword(auth, email, password);
+                        if (password.length < 6) throw { code: 'auth/weak-password' };
+                        await createUserWithEmailAndPassword(auth, cleanEmail, password);
                     }
                 } catch (err) {
-                    setError("Error: Verifica tus credenciales o conexión.");
-                    console.error(err);
+                    console.error("Firebase Auth Error:", err.code, err.message);
+                    switch (err.code) {
+                        case 'auth/invalid-credential':
+                        case 'auth/user-not-found':
+                        case 'auth/wrong-password':
+                            setError("Email o clave incorrectos.");
+                            break;
+                        case 'auth/email-already-in-use':
+                            setError("Este email ya está en uso. Intenta iniciar sesión.");
+                            break;
+                        case 'auth/weak-password':
+                            setError("Clave muy corta (mínimo 6 caracteres).");
+                            break;
+                        case 'auth/too-many-requests':
+                            setError("Demasiados intentos. Espera unos minutos.");
+                            break;
+                        case 'auth/network-request-failed':
+                            setError("Error de red. Revisa tu conexión.");
+                            break;
+                        default:
+                            setError("Error: " + (err.code || "Desconocido"));
+                    }
                 } finally {
                     setLoading(false);
                 }
@@ -92,42 +123,63 @@
 
             return (
                 <div className="min-h-screen flex items-center justify-center p-6 animate-in">
-                    <div className="bg-slate-900 w-full max-w-sm rounded-[2.5rem] p-10 border border-slate-800 text-center shadow-2xl">
+                    <div className="bg-slate-900 w-full max-w-sm rounded-[2.5rem] p-10 border border-slate-800 text-center shadow-2xl relative">
                         <h1 className="text-3xl font-black italic mb-2 tracking-tighter">GYMCOACH <span className="text-blue-500">PRO</span></h1>
                         <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-8">Management System v2.1</p>
                         
-                        <form onSubmit={handleAuth} className="space-y-4">
-                            <input 
-                                type="email" 
-                                placeholder="Email" 
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                className="w-full p-4 bg-slate-800 rounded-2xl border-none outline-none focus:ring-2 focus:ring-blue-600 transition-all text-white" 
-                                required
-                            />
-                            <input 
-                                type="password" 
-                                placeholder="Contraseña" 
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                className="w-full p-4 bg-slate-800 rounded-2xl border-none outline-none focus:ring-2 focus:ring-blue-600 transition-all text-white" 
-                                required
-                            />
-                            {error && <p className="text-red-500 text-[10px] font-bold uppercase">{error}</p>}
+                        <form onSubmit={handleAuth} className="space-y-4 text-left">
+                            <div className="space-y-1">
+                                <label className="text-[9px] font-black text-slate-500 uppercase ml-2">Email</label>
+                                <input 
+                                    type="email" 
+                                    placeholder="ejemplo@gym.com" 
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    className="w-full p-4 bg-slate-800 rounded-2xl border-none outline-none focus:ring-2 focus:ring-blue-600 transition-all text-white placeholder:text-slate-600" 
+                                    required
+                                />
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-[9px] font-black text-slate-500 uppercase ml-2">Contraseña</label>
+                                <input 
+                                    type="password" 
+                                    placeholder="••••••••" 
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    className="w-full p-4 bg-slate-800 rounded-2xl border-none outline-none focus:ring-2 focus:ring-blue-600 transition-all text-white placeholder:text-slate-600" 
+                                    required
+                                />
+                            </div>
+
+                            {error && (
+                                <div className="flex items-center gap-2 bg-red-500/10 p-3 rounded-xl border border-red-500/20 animate-in">
+                                    <AlertCircle size={14} className="text-red-500 shrink-0" />
+                                    <p className="text-red-500 text-[10px] font-bold uppercase leading-tight">{error}</p>
+                                </div>
+                            )}
+
                             <button 
                                 type="submit" 
                                 disabled={loading}
-                                className="w-full py-5 bg-blue-600 rounded-2xl font-black text-white shadow-xl active:scale-95 transition-transform disabled:opacity-50"
+                                className="w-full py-5 bg-blue-600 rounded-2xl font-black text-white shadow-xl active:scale-95 transition-transform disabled:opacity-50 mt-4 flex justify-center items-center gap-2"
                             >
-                                {loading ? 'PROCESANDO...' : (isLogin ? 'INICIAR SESIÓN' : 'REGISTRARSE')}
+                                {loading && <RefreshCw size={16} className="animate-spin"/>}
+                                {loading ? 'CONECTANDO...' : (isLogin ? 'INICIAR SESIÓN' : 'CREAR CUENTA')}
                             </button>
                         </form>
 
                         <button 
-                            onClick={() => setIsLogin(!isLogin)}
+                            onClick={() => { setIsLogin(!isLogin); setError(''); }}
                             className="mt-6 text-[10px] font-bold text-slate-500 uppercase tracking-widest hover:text-white transition-colors"
                         >
                             {isLogin ? '¿No tienes cuenta? Regístrate' : '¿Ya tienes cuenta? Entra'}
+                        </button>
+
+                        <button 
+                            onClick={() => window.location.reload()}
+                            className="absolute -bottom-12 left-1/2 -translate-x-1/2 text-[8px] text-slate-700 font-bold uppercase tracking-[0.3em]"
+                        >
+                            Refrescar Aplicación
                         </button>
                     </div>
                 </div>
@@ -151,7 +203,7 @@
                 try {
                     const unsub = onSnapshot(doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'premiacion'), (snap) => {
                         if (snap.exists()) setData(snap.data());
-                    }, (err) => console.log("Modo offline o error de permisos:", err));
+                    }, (err) => console.log("Sync info:", err.message));
                     return () => unsub();
                 } catch(e) { console.error(e); }
             }, [user]);
@@ -162,7 +214,7 @@
                 try {
                     await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'premiacion'), data);
                 } catch (e) {
-                    console.error(e);
+                    console.error("Save error:", e);
                 } finally {
                     setTimeout(() => setSaving(false), 800);
                 }
@@ -226,7 +278,6 @@
             );
         };
 
-        // --- Componente Principal ---
         const App = () => {
             const [user, setUser] = useState(null);
             const [view, setView] = useState('home');
@@ -249,8 +300,11 @@
             }, [user, view, loading]);
 
             if (loading) return (
-                <div className="min-h-screen flex items-center justify-center bg-slate-950">
-                    <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                <div className="min-h-screen flex items-center justify-center bg-slate-950 text-white">
+                    <div className="text-center">
+                        <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Iniciando v2.1</p>
+                    </div>
                 </div>
             );
 
