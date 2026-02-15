@@ -1,7 +1,5 @@
+import { GoogleGenAI, Type } from "@google/genai";
 
-import { GoogleGenAI } from "@google/genai";
-
-// Función auxiliar para obtener la instancia de IA de forma segura
 const getAI = () => {
   return new GoogleGenAI({ apiKey: process.env.API_KEY });
 };
@@ -19,6 +17,68 @@ export async function getDraftMessage(type: 'bienvenida' | 'alerta' | 'felicitac
   } catch (error) {
     console.error("Error en getDraftMessage:", error);
     return "Error al generar mensaje.";
+  }
+}
+
+export async function processClassAudio(audioBase64: string, mimeType: string): Promise<any> {
+  try {
+    const ai = getAI();
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: [
+        {
+          inlineData: {
+            data: audioBase64,
+            mimeType: mimeType,
+          },
+        },
+        {
+          text: `Analiza este audio de un entrenador de gimnasia reportando su clase. 
+          Extrae la información y devuélvela estrictamente en formato JSON.
+          Si hay términos técnicos que no entiendes o falta información crucial (como qué aparato se usó específicamente), marca 'clarificationNeeded' como true y escribe la pregunta en 'question'.
+          
+          Formato esperado:
+          {
+            "warmup": ["item1", "item2"],
+            "apparatusUsed": ["Suelo", "Viga", etc],
+            "skillsCovered": ["habilidad1", "habilidad2"],
+            "entrenador": "nombre detectado o null",
+            "grupo": "nivel detectado o null",
+            "clarificationNeeded": boolean,
+            "question": "texto de la pregunta si es necesario"
+          }
+          
+          Los aparatos válidos son: Suelo, Viga, Paralelas, Salto, Anillas, Arzones, Barra Fija.`,
+        },
+      ],
+      config: {
+        responseMimeType: "application/json",
+      },
+    });
+    
+    return JSON.parse(response.text || "{}");
+  } catch (error) {
+    console.error("Error procesando audio:", error);
+    throw error;
+  }
+}
+
+export async function refineClassAnalysis(previousData: any, userClarification: string): Promise<any> {
+  try {
+    const ai = getAI();
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: `El entrenador proporcionó esta información previa de la clase: ${JSON.stringify(previousData)}.
+      Ante la duda de la IA, el entrenador aclara: "${userClarification}".
+      Actualiza los datos y devuelve el JSON final sin necesidad de más aclaraciones.`,
+      config: {
+        responseMimeType: "application/json",
+      },
+    });
+    return JSON.parse(response.text || "{}");
+  } catch (error) {
+    console.error("Error refinando análisis:", error);
+    throw error;
   }
 }
 
