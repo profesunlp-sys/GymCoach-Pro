@@ -22,6 +22,7 @@
             -webkit-font-smoothing: antialiased;
         }
 
+        /* Indicador de carga inicial para evitar pantalla en blanco */
         #root:empty::before {
             content: "";
             position: fixed;
@@ -62,13 +63,10 @@
             backdrop-filter: blur(8px);
             z-index: 100;
         }
-
-        input:focus, select:focus {
-            box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1);
-        }
     </style>
 
     <script>
+        // Shim para evitar errores de librerías que dependen de process
         window.process = {
             env: { API_KEY: "" },
             browser: true,
