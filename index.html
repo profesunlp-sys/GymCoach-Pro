@@ -22,7 +22,6 @@
             -webkit-font-smoothing: antialiased;
         }
 
-        /* Indicador de carga inicial para evitar pantalla en blanco */
         #root:empty::before {
             content: "";
             position: fixed;
@@ -66,7 +65,6 @@
     </style>
 
     <script>
-        // Shim para evitar errores de librerías que dependen de process
         window.process = {
             env: { API_KEY: "" },
             browser: true,
