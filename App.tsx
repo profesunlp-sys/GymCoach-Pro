@@ -1,346 +1,349 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
+import Dexie, { type EntityTable } from 'dexie';
+import { Alumno, Clase, ViewMode, Apparatus, SkillStatus, StaffMember, Evento, Biometrics } from './types';
+import { SKILL_TREE, DISCIPLINAS, NIVELES } from './constants';
+import * as gemini from './services/geminiService';
 
-// --- DEFINICIÓN DE TIPOS ---
-type ViewMode = 'Registro' | 'Students' | 'Classes' | 'Profile';
-
-interface Student {
-  name: string;
-  dni: string;
-  level: string;
-  squad: string;
-  status: 'Active' | 'Inactive';
-  type: 'Competitive' | 'Junior' | 'Elite';
-  birthDate: string; // YYYY-MM-DD
-}
-
-// --- UTILIDADES ---
-const getDetailedAge = (birthDate: string) => {
-  if (!birthDate) return { current: 0, dec31: 0, category: 'N/A' };
-  
-  const birth = new Date(birthDate);
-  const today = new Date();
-  const currentYear = today.getFullYear();
-  
-  // Edad hoy
-  let age = today.getFullYear() - birth.getFullYear();
-  const m = today.getMonth() - birth.getMonth();
-  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
-
-  // Edad al finalizar el año (Criterio competencia)
-  const dec31Age = currentYear - birth.getFullYear();
-
-  // Categorías de Gimnasia
-  let category = 'Sin Categoría';
-  if (dec31Age >= 3 && dec31Age <= 5) category = 'Baby (3-5)';
-  else if (dec31Age >= 6 && dec31Age <= 9) category = 'Pre-Infantil (6-9)';
-  else if (dec31Age >= 10 && dec31Age <= 12) category = 'Infantil (10-12)';
-  else if (dec31Age >= 13 && dec31Age <= 15) category = 'Juvenil (13-15)';
-  else if (dec31Age >= 16) category = 'Mayor (16+)';
-
-  return { current: age, dec31: dec31Age, category };
+// --- DATABASE ---
+const db = new Dexie('GymCoachMasterDB') as Dexie & {
+  alumnos: EntityTable<Alumno, 'id'>;
+  clases: EntityTable<Clase, 'id'>;
+  staff: EntityTable<StaffMember, 'id'>;
 };
 
-// --- COMPONENTES UI ---
-
-const AttendanceRing = ({ percentage }: { percentage: number }) => {
-  const radius = 45;
-  const circumference = 2 * Math.PI * radius;
-  const offset = circumference - (percentage / 100) * circumference;
-
-  return (
-    <div className="relative flex items-center justify-center">
-      <svg width="100" height="100" className="drop-shadow-sm">
-        <circle stroke="#f1f5f9" strokeWidth="8" fill="transparent" r={radius} cx="50" cy="50" />
-        <circle
-          className="progress-ring__circle"
-          stroke="#3b82f6"
-          strokeWidth="8"
-          strokeDasharray={`${circumference} ${circumference}`}
-          style={{ strokeDashoffset: offset }}
-          strokeLinecap="round"
-          fill="transparent"
-          r={radius}
-          cx="50"
-          cy="50"
-        />
-      </svg>
-      <span className="absolute text-lg font-black text-slate-800">{percentage}%</span>
-    </div>
-  );
-};
-
-const StudentModal = ({ 
-  student, 
-  onClose, 
-  onSave,
-  isNew = false
-}: { 
-  student: Student; 
-  onClose: () => void; 
-  onSave: (updated: Student) => void;
-  isNew?: boolean;
-}) => {
-  const [formData, setFormData] = useState<Student>({ ...student });
-  const ages = useMemo(() => getDetailedAge(formData.birthDate), [formData.birthDate]);
-
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
-      <div className="bg-white w-full max-w-lg rounded-[2.5rem] p-8 card-shadow space-y-6 max-h-[90vh] overflow-y-auto custom-scrollbar">
-        <div className="flex justify-between items-center">
-          <h3 className="text-xl font-black text-slate-800 uppercase italic tracking-tighter">
-            {isNew ? 'Nuevo Alumno' : 'Ficha del Alumno'}
-          </h3>
-          <button onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-full bg-slate-50 text-slate-400 hover:text-red-500 transition-colors">
-            <i className="fas fa-times"></i>
-          </button>
-        </div>
-        
-        <div className="space-y-6">
-          {/* Nombre y DNI */}
-          <div className="grid gap-4">
-            <div>
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4 mb-1 block">Nombre Completo</label>
-              <input 
-                value={formData.name} 
-                onChange={e => setFormData({...formData, name: e.target.value})}
-                className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none font-bold text-slate-700" 
-                placeholder="Nombre del atleta"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4 mb-1 block">DNI / ID</label>
-                <input 
-                  value={formData.dni} 
-                  onChange={e => setFormData({...formData, dni: e.target.value})}
-                  className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none font-bold text-slate-700" 
-                />
-              </div>
-              <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4 mb-1 block">Nivel</label>
-                <input 
-                  value={formData.level} 
-                  onChange={e => setFormData({...formData, level: e.target.value})}
-                  className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none font-bold text-slate-700" 
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Fecha y Categoría */}
-          <div className="bg-blue-50/50 p-6 rounded-3xl border border-blue-100 space-y-4">
-            <div>
-              <label className="text-[10px] font-black text-blue-600 uppercase tracking-widest ml-2 mb-1 block">Fecha de Nacimiento</label>
-              <input 
-                type="date" 
-                value={formData.birthDate} 
-                onChange={e => setFormData({...formData, birthDate: e.target.value})}
-                className="w-full px-6 py-4 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none font-bold" 
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-white p-4 rounded-2xl border border-blue-50 text-center">
-                <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Edad Hoy</p>
-                <p className="text-2xl font-black text-slate-800">{ages.current}</p>
-              </div>
-              <div className="bg-white p-4 rounded-2xl border border-blue-50 text-center">
-                <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Edad 31/Dic</p>
-                <p className="text-2xl font-black text-blue-600">{ages.dec31}</p>
-              </div>
-            </div>
-            <div className="bg-indigo-600 p-4 rounded-2xl text-center shadow-lg shadow-indigo-100">
-               <p className="text-[9px] font-black text-indigo-200 uppercase mb-1 tracking-widest">Categoría Automática</p>
-               <p className="text-lg font-black text-white italic">{ages.category}</p>
-            </div>
-          </div>
-
-          {/* Grupo y Perfil */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4 mb-1 block">Estado</label>
-              <select 
-                value={formData.status} 
-                onChange={e => setFormData({...formData, status: e.target.value as any})}
-                className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold outline-none"
-              >
-                <option value="Active">Activo</option>
-                <option value="Inactive">Inactivo</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4 mb-1 block">Perfil</label>
-              <select 
-                value={formData.type} 
-                onChange={e => setFormData({...formData, type: e.target.value as any})}
-                className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold outline-none"
-              >
-                <option value="Competitive">Competitivo</option>
-                <option value="Junior">Junior</option>
-                <option value="Elite">Elite</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex gap-4 pt-4">
-          <button onClick={onClose} className="flex-1 py-4 text-slate-400 font-black uppercase text-xs tracking-widest">Cancelar</button>
-          <button 
-            onClick={() => onSave(formData)} 
-            disabled={!formData.name || !formData.dni || !formData.birthDate}
-            className="flex-[2] py-4 bg-blue-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-lg shadow-blue-100 disabled:opacity-50"
-          >
-            {isNew ? 'Crear Atleta' : 'Guardar Cambios'}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// --- APP COMPONENT ---
+db.version(3).stores({
+  alumnos: '++id, dni, nombre, estadoPago, disciplina',
+  clases: '++id, fecha, grupo',
+  staff: '++id, nombre, isClockedIn'
+});
 
 const App: React.FC = () => {
-  const [viewMode, setViewMode] = useState<ViewMode>('Students');
-  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
-  const [editingStudent, setEditingStudent] = useState<{data: Student, isNew: boolean} | null>(null);
-  
-  const [masterList, setMasterList] = useState<Student[]>(() => {
-    try {
-      const saved = localStorage.getItem('gymcoach_v17_db');
-      return saved ? JSON.parse(saved) : [
-        { name: 'Mia Anderson', dni: '88241', level: 'Level 4', squad: 'Junior Squad', status: 'Active', type: 'Competitive', birthDate: '2014-05-14' },
-        { name: 'Ana García', dni: '88242', level: 'Level 5', squad: 'Senior Squad', status: 'Active', type: 'Elite', birthDate: '2012-03-22' }
-      ];
-    } catch (e) { return []; }
-  });
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [vista, setVista] = useState<ViewMode>('Hub');
+  const [alumnos, setAlumnos] = useState<Alumno[]>([]);
+  const [clases, setClases] = useState<Clase[]>([]);
+  const [staff, setStaff] = useState<StaffMember[]>([]);
+  const [selectedAlumno, setSelectedAlumno] = useState<Alumno | null>(null);
+  const [cargando, setCargando] = useState(false);
+  const [aiAnalysis, setAiAnalysis] = useState("");
 
-  useEffect(() => { 
-    localStorage.setItem('gymcoach_v17_db', JSON.stringify(masterList)); 
-  }, [masterList]);
+  // --- INIT ---
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    const load = async () => {
+      const a = await db.alumnos.toArray();
+      const c = await db.clases.orderBy('id').reverse().toArray();
+      const s = await db.staff.toArray();
+      setAlumnos(a);
+      setClases(c);
+      setStaff(s);
 
-  const handleSave = (updated: Student) => {
-    if (editingStudent?.isNew) setMasterList(prev => [...prev, updated]);
-    else setMasterList(prev => prev.map(s => s.dni === editingStudent?.data.dni ? updated : s));
-    setEditingStudent(null);
-    if (selectedStudent?.dni === updated.dni) setSelectedStudent(updated);
+      if (a.length === 0) {
+        await db.alumnos.add({
+          nombre: 'Elena Rodríguez', dni: '4455', disciplina: 'GAF', nivel: 'Nivel 4',
+          fechaIngreso: '2024-01-01', estadoPago: 'Al día', asistenciasHistoricas: 24,
+          qrCode: 'STUDENT_4455', alertas: [], habilidades: [],
+          biometria: { fuerza: 80, flexibilidad: 90, tecnica: 70, resistencia: 60, coordinacion: 85 }
+        });
+        setAlumnos(await db.alumnos.toArray());
+      }
+      if (s.length === 0) {
+        await db.staff.add({ nombre: 'Coach Javier', rol: 'Head Coach', isClockedIn: false });
+        setStaff(await db.staff.toArray());
+      }
+    };
+    load();
+  }, [isLoggedIn, vista]);
+
+  // --- RADAR CHART COMPONENT ---
+  const RadarChart = ({ data }: { data: Biometrics }) => {
+    const size = 160;
+    const center = size / 2;
+    const radius = size * 0.4;
+    const points = [
+      { label: 'Fuerza', val: data.fuerza },
+      { label: 'Flex', val: data.flexibilidad },
+      { label: 'Tec', val: data.tecnica },
+      { label: 'Res', val: data.resistencia },
+      { label: 'Coor', val: data.coordinacion },
+    ];
+    
+    const coordinates = points.map((p, i) => {
+      const angle = (Math.PI * 2 * i) / points.length - Math.PI / 2;
+      const x = center + radius * (p.val / 100) * Math.cos(angle);
+      const y = center + radius * (p.val / 100) * Math.sin(angle);
+      return `${x},${y}`;
+    }).join(' ');
+
+    return (
+      <div className="flex flex-col items-center">
+        <svg width={size} height={size} className="overflow-visible">
+          <polygon points={coordinates} fill="rgba(79, 70, 229, 0.2)" stroke="#4f46e5" strokeWidth="2" />
+          {points.map((p, i) => {
+            const angle = (Math.PI * 2 * i) / points.length - Math.PI / 2;
+            const tx = center + (radius + 15) * Math.cos(angle);
+            const ty = center + (radius + 15) * Math.sin(angle);
+            return <text key={i} x={tx} y={ty} fontSize="8" fontWeight="bold" textAnchor="middle" fill="#64748b" className="uppercase">{p.label}</text>;
+          })}
+        </svg>
+      </div>
+    );
   };
 
-  if (selectedStudent) {
-    const studentAges = getDetailedAge(selectedStudent.birthDate);
+  // --- NAVIGATION ---
+  const Nav = () => (
+    <nav className="fixed bottom-8 left-1/2 -translate-x-1/2 w-[92%] max-w-lg glass rounded-[3rem] p-4 flex items-center justify-between shadow-2xl z-50 border border-white/40">
+      {[
+        { v: 'Hub', i: 'fa-grid-2' },
+        { v: 'Atletas', i: 'fa-user-group' },
+        { v: 'Progreso', i: 'fa-chart-radar' },
+        { v: 'Finanzas', i: 'fa-wallet' },
+        { v: 'Staff', i: 'fa-id-badge' }
+      ].map(item => (
+        <button key={item.v} onClick={() => { setVista(item.v as ViewMode); setSelectedAlumno(null); }} className={`flex flex-col items-center gap-1 transition-all px-4 ${vista === item.v ? 'text-indigo-600 scale-110' : 'text-slate-300'}`}>
+          <i className={`fas ${item.i} text-xl`}></i>
+          <span className="text-[7px] font-black uppercase tracking-tighter">{item.v}</span>
+        </button>
+      ))}
+    </nav>
+  );
+
+  if (!isLoggedIn) {
     return (
-      <div className="min-h-screen bg-white pb-32 animate-fadeIn">
-        <div className="flex items-center justify-between p-6 bg-white sticky top-0 z-50">
-          <button onClick={() => setSelectedStudent(null)} className="w-10 h-10 flex items-center justify-center rounded-full bg-slate-50 text-slate-400 text-xl"><i className="fas fa-chevron-left"></i></button>
-          <h2 className="text-lg font-bold text-slate-800">Student Insights</h2>
-          <button onClick={() => setEditingStudent({data: selectedStudent, isNew: false})} className="text-blue-500 text-xl w-10 h-10 flex items-center justify-center rounded-full bg-blue-50"><i className="fas fa-pen"></i></button>
-        </div>
-
-        <div className="px-6 space-y-6">
-          <div className="bg-white rounded-[3rem] border border-slate-100 p-8 flex flex-col items-center card-shadow">
-            <div className="w-24 h-24 rounded-full border-4 border-blue-50 bg-slate-50 flex items-center justify-center text-3xl text-indigo-900 font-black mb-4">
-              {selectedStudent.name.charAt(0)}
-            </div>
-            <h3 className="text-2xl font-black text-slate-800">{selectedStudent.name}</h3>
-            <p className="text-slate-400 font-bold text-xs mt-1 uppercase tracking-widest">{selectedStudent.level} • #{selectedStudent.dni}</p>
-            <div className="bg-indigo-600 text-white px-5 py-2 rounded-full text-[10px] font-black uppercase mt-5 shadow-md italic tracking-widest">
-              {studentAges.category}
-            </div>
+      <div className="min-h-screen auth-bg flex flex-col items-center justify-center p-10 text-white">
+        <div className="w-full max-w-sm text-center">
+          <div className="w-24 h-24 bg-white/10 rounded-[2.5rem] flex items-center justify-center mx-auto mb-10 backdrop-blur-3xl border border-white/20 shadow-2xl animate-bounce">
+            <i className="fas fa-medal text-4xl text-yellow-400"></i>
           </div>
-
-          <div className="bg-white rounded-[3rem] border border-slate-100 p-8 card-shadow">
-            <h4 className="font-bold text-slate-800 mb-6 flex justify-between items-center text-sm uppercase tracking-tight">Asistencia Mensual</h4>
-            <div className="flex items-center gap-8">
-              <AttendanceRing percentage={85} />
-              <div className="flex-1 space-y-3">
-                <div className="flex justify-between text-sm border-b border-slate-50 pb-2"><span className="text-slate-400">Presente</span><span className="font-black text-slate-800">17 Clases</span></div>
-                <div className="flex justify-between text-sm"><span className="text-slate-400">Ausente</span><span className="font-black text-red-500">3 Clases</span></div>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-blue-50/50 rounded-[3rem] border border-blue-100 p-8 relative overflow-hidden">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-blue-500 shadow-sm"><i className="fas fa-sparkles"></i></div>
-              <h4 className="text-blue-600 font-black text-[10px] uppercase tracking-widest">Insight Pedagógico</h4>
-            </div>
-            <p className="text-slate-600 text-sm leading-relaxed italic">
-              Con <b>{studentAges.current} años</b>, {selectedStudent.name.split(' ')[0]} muestra un desarrollo físico acorde a la categoría <b>{studentAges.category.split(' ')[0]}</b>. Su enfoque este mes debe ser la verticalidad en paralelas.
-            </p>
-          </div>
-        </div>
-
-        <div className="fixed bottom-0 left-0 right-0 bg-white bottom-nav px-10 py-5 flex items-center justify-between z-[60] border-t border-slate-50">
-          <button onClick={() => {setSelectedStudent(null); setViewMode('Registro');}} className="text-slate-300 flex flex-col items-center gap-1"><i className="fas fa-home text-lg"></i><span className="text-[8px] font-black uppercase">Home</span></button>
-          <button onClick={() => {setSelectedStudent(null); setViewMode('Students');}} className="text-blue-600 flex flex-col items-center gap-1"><i className="fas fa-users text-lg"></i><span className="text-[8px] font-black uppercase">Alumnos</span></button>
-          <div className="relative -top-10"><button className="w-16 h-16 bg-blue-500 text-white rounded-full shadow-2xl flex items-center justify-center text-2xl active:scale-90 transition-all border-4 border-white"><i className="fas fa-plus"></i></button></div>
-          <button className="text-slate-300 flex flex-col items-center gap-1"><i className="fas fa-calendar-alt text-lg"></i><span className="text-[8px] font-black uppercase">Clases</span></button>
-          <button className="text-slate-300 flex flex-col items-center gap-1"><i className="fas fa-user text-lg"></i><span className="text-[8px] font-black uppercase">Perfil</span></button>
+          <h1 className="text-6xl font-black italic uppercase tracking-tighter mb-4">GYMCOACH<br/><span className="text-indigo-500">PRO ELITE</span></h1>
+          <p className="text-indigo-200 text-[10px] font-black uppercase tracking-[0.5em] mb-16 opacity-60">High Performance Management</p>
+          <button onClick={() => setIsLoggedIn(true)} className="w-full py-6 bg-white text-indigo-950 rounded-full font-black uppercase text-xs tracking-[0.2em] shadow-2xl active:scale-95 transition-all">Iniciar Sistema</button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col items-center p-6 pb-40">
-      {editingStudent && <StudentModal student={editingStudent.data} isNew={editingStudent.isNew} onClose={() => setEditingStudent(null)} onSave={handleSave} />}
-
-      <header className="py-10 text-center">
-        <h1 className="text-4xl font-black italic text-indigo-900 uppercase tracking-tighter">GymCoach Pro</h1>
-        <p className="text-slate-400 font-bold text-[10px] uppercase tracking-[0.4em] mt-2 italic">Elite Pedagogy Platform v17</p>
+    <div className="min-h-screen bg-[#F1F5F9] pb-40">
+      {/* HEADER */}
+      <header className="pt-16 px-10 pb-10 bg-white rounded-b-[4rem] shadow-sm flex justify-between items-end border-b border-slate-100">
+        <div>
+          <p className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.3em] mb-2">Operational Hub</p>
+          <h2 className="text-4xl font-black italic text-indigo-950 uppercase tracking-tighter leading-none">{vista}</h2>
+        </div>
+        <div className="flex gap-3">
+          <button onClick={() => setVista('Config')} className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-300"><i className="fas fa-cog"></i></button>
+          <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600 shadow-inner"><i className="fas fa-bell"></i></div>
+        </div>
       </header>
 
-      <main className="w-full max-w-md space-y-6">
-        <div className="flex bg-white rounded-3xl p-1 shadow-sm border border-slate-100">
-          <button onClick={() => setViewMode('Registro')} className={`flex-1 py-4 rounded-2xl text-[11px] font-black transition-all ${viewMode === 'Registro' ? 'bg-indigo-900 text-white shadow-lg' : 'text-slate-400'}`}>REGISTRO</button>
-          <button onClick={() => setViewMode('Students')} className={`flex-1 py-4 rounded-2xl text-[11px] font-black transition-all ${viewMode === 'Students' ? 'bg-indigo-900 text-white shadow-lg' : 'text-slate-400'}`}>ALUMNOS</button>
-        </div>
+      <main className="p-8 page-transition">
+        {vista === 'Hub' && (
+          <div className="space-y-8">
+            <div className="bg-indigo-950 p-10 rounded-[3.5rem] text-white shadow-2xl relative overflow-hidden group">
+              <h3 className="text-2xl font-black italic uppercase mb-2">Entrenamiento Hoy</h3>
+              <p className="text-indigo-300 text-[10px] font-black uppercase tracking-widest mb-10 opacity-70">3 Clases programadas • 42 Atletas</p>
+              <div className="flex gap-4">
+                <button onClick={() => setVista('NuevaClase')} className="bg-white text-indigo-950 px-8 py-4 rounded-full font-black text-[10px] uppercase shadow-xl active:scale-95 transition-all">Pasar Lista</button>
+                <button className="bg-indigo-800 text-white px-8 py-4 rounded-full font-black text-[10px] uppercase border border-indigo-700">Ver Agenda</button>
+              </div>
+              <i className="fas fa-dumbbell absolute -bottom-10 -right-10 text-[14rem] text-white/5 -rotate-12 group-hover:rotate-0 transition-transform duration-1000"></i>
+            </div>
 
-        {viewMode === 'Students' && (
-          <div className="space-y-4 animate-fadeIn">
-            <h3 className="font-black text-xl italic uppercase text-slate-800 px-4">Directorio Maestro</h3>
-            <div className="grid gap-4">
-              {masterList.map(s => (
-                <div key={s.dni} onClick={() => setSelectedStudent(s)} onDoubleClick={(e) => { e.stopPropagation(); setEditingStudent({data: s, isNew: false}); }} className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm flex items-center justify-between group cursor-pointer hover:border-blue-500 hover:translate-x-1 transition-all">
+            <div className="grid grid-cols-2 gap-6">
+              <div className="bg-white p-8 rounded-[3rem] shadow-sm border border-slate-50">
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Churn Rate</p>
+                <p className="text-3xl font-black text-rose-500 italic">2.1%</p>
+                <span className="text-[8px] font-bold text-emerald-500">↓ 0.4% vs mes ant.</span>
+              </div>
+              <div className="bg-white p-8 rounded-[3rem] shadow-sm border border-slate-50">
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Retention</p>
+                <p className="text-3xl font-black text-indigo-950 italic">97.9%</p>
+                <span className="text-[8px] font-bold text-slate-300">Elite Standards</span>
+              </div>
+            </div>
+
+            <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-widest px-4">Alertas de Absentismo</h4>
+            <div className="space-y-4">
+               {alumnos.slice(0, 2).map(a => (
+                 <div key={a.id} className="bg-rose-50 border border-rose-100 p-6 rounded-[2.5rem] flex justify-between items-center">
+                   <div className="flex items-center gap-4">
+                     <div className="w-12 h-12 bg-rose-500 text-white rounded-2xl flex items-center justify-center shadow-lg"><i className="fas fa-exclamation-triangle"></i></div>
+                     <div>
+                       <p className="font-black text-rose-900 text-xs uppercase">{a.nombre}</p>
+                       <p className="text-[8px] text-rose-400 font-bold uppercase">3 Inasistencias consecutivas</p>
+                     </div>
+                   </div>
+                   <button className="text-[9px] font-black text-rose-600 bg-white px-4 py-2 rounded-full shadow-sm">Contactar</button>
+                 </div>
+               ))}
+            </div>
+          </div>
+        )}
+
+        {vista === 'Atletas' && !selectedAlumno && (
+          <div className="space-y-6">
+            <div className="bg-white p-4 rounded-full shadow-sm flex items-center px-8 border border-slate-100">
+              <i className="fas fa-search text-slate-300 mr-4"></i>
+              <input type="text" placeholder="FILTRAR POR NOMBRE O NIVEL..." className="w-full bg-transparent py-4 text-[10px] font-black text-slate-800 outline-none uppercase tracking-widest" />
+            </div>
+            <div className="grid grid-cols-1 gap-4">
+              {alumnos.map(a => (
+                <div key={a.id} onClick={() => setSelectedAlumno(a)} className="bg-white p-6 rounded-[3rem] shadow-sm border border-slate-50 flex items-center justify-between active:scale-[0.98] transition-all cursor-pointer group">
                   <div className="flex items-center gap-5">
-                    <div className="w-14 h-14 bg-slate-50 rounded-full flex items-center justify-center font-black text-indigo-900 group-hover:bg-indigo-900 group-hover:text-white transition-colors">{s.name.charAt(0)}</div>
+                    <div className={`w-16 h-16 rounded-[2rem] flex items-center justify-center font-black text-2xl italic shadow-inner ${a.estadoPago === 'Al día' ? 'bg-indigo-50 text-indigo-600' : 'bg-rose-50 text-rose-600'}`}>
+                      {a.nombre.charAt(0)}
+                    </div>
                     <div>
-                      <h4 className="font-black text-lg text-slate-800 leading-none">{s.name}</h4>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase mt-2 tracking-widest">
-                        {getDetailedAge(s.birthDate).category.split(' ')[0]} • #{s.dni}
-                      </p>
+                      <p className="font-black text-indigo-950 text-sm uppercase group-hover:text-indigo-600 transition-colors">{a.nombre}</p>
+                      <div className="flex gap-2 mt-1">
+                        <span className="text-[8px] font-black px-2 py-1 bg-slate-100 rounded-full text-slate-500 uppercase">{a.disciplina}</span>
+                        <span className={`text-[8px] font-black px-2 py-1 rounded-full uppercase ${a.estadoPago === 'Al día' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>{a.estadoPago}</span>
+                      </div>
                     </div>
                   </div>
-                  <i className="fas fa-chevron-right text-slate-200 group-hover:text-indigo-900 transition-colors"></i>
+                  <i className="fas fa-chevron-right text-slate-200 group-hover:translate-x-1 transition-transform"></i>
                 </div>
               ))}
             </div>
           </div>
         )}
 
-        {viewMode === 'Registro' && (
-          <div className="bg-white p-12 rounded-[3.5rem] text-center border border-slate-100 card-shadow animate-fadeIn">
-            <div className="w-20 h-20 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center text-3xl mx-auto mb-6"><i className="fas fa-clipboard-list"></i></div>
-            <h3 className="font-black text-xl text-slate-800 uppercase italic">Control de Sesión</h3>
-            <p className="text-slate-400 text-sm mt-4 font-medium leading-relaxed">Inicia el flujo secuencial para registrar el progreso pedagógico de hoy.</p>
-            <button className="w-full mt-10 py-5 bg-indigo-900 text-white rounded-full font-black uppercase text-xs shadow-xl shadow-indigo-100 active:scale-95 transition-all">Nueva Clase</button>
+        {selectedAlumno && (
+          <div className="space-y-8 animate-fadeIn">
+            <button onClick={() => setSelectedAlumno(null)} className="text-[10px] font-black text-indigo-600 uppercase mb-4 flex items-center gap-2">
+              <i className="fas fa-arrow-left"></i> Volver a Atletas
+            </button>
+            <div className="bg-white p-10 rounded-[4rem] shadow-xl text-center border border-slate-50">
+               <div className="w-24 h-24 bg-indigo-50 text-indigo-600 rounded-[2.5rem] flex items-center justify-center mx-auto mb-6 text-4xl font-black italic border-2 border-indigo-100">
+                 {selectedAlumno.nombre.charAt(0)}
+               </div>
+               <h3 className="text-2xl font-black italic text-indigo-950 uppercase">{selectedAlumno.nombre}</h3>
+               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2">DNI: {selectedAlumno.dni} • {selectedAlumno.nivel}</p>
+               
+               <div className="mt-10 grid grid-cols-2 gap-8">
+                  <RadarChart data={selectedAlumno.biometria} />
+                  <div className="flex flex-col justify-center text-left space-y-4">
+                     <div className="bg-slate-50 p-4 rounded-2xl">
+                        <p className="text-[8px] font-black text-slate-400 uppercase">Progreso Nivel</p>
+                        <p className="text-xl font-black text-indigo-950 italic">74%</p>
+                     </div>
+                     <div className="bg-slate-50 p-4 rounded-2xl">
+                        <p className="text-[8px] font-black text-slate-400 uppercase">Asistencias</p>
+                        <p className="text-xl font-black text-indigo-950 italic">{selectedAlumno.asistenciasHistoricas}</p>
+                     </div>
+                  </div>
+               </div>
+               
+               <div className="mt-10 pt-10 border-t border-slate-50 grid grid-cols-2 gap-4">
+                  <button className="py-5 bg-indigo-950 text-white rounded-[2rem] font-black uppercase text-[9px] tracking-widest shadow-lg">Registrar Skill</button>
+                  <button className="py-5 bg-white text-indigo-950 rounded-[2rem] border-2 border-indigo-950 font-black uppercase text-[9px] tracking-widest">Ver Card QR</button>
+               </div>
+            </div>
+          </div>
+        )}
+
+        {vista === 'Progreso' && (
+          <div className="space-y-8">
+            <div className="bg-white p-10 rounded-[3.5rem] shadow-sm border border-slate-50">
+               <h3 className="text-xl font-black italic text-indigo-950 uppercase mb-4">Análisis Biomecánico IA</h3>
+               <div className="aspect-video bg-slate-950 rounded-[2.5rem] relative overflow-hidden flex items-center justify-center mb-6">
+                  <i className="fas fa-play text-white/20 text-4xl"></i>
+                  <div className="absolute inset-0 border-2 border-indigo-500/30 pointer-events-none"></div>
+                  <div className="absolute top-4 left-4 bg-indigo-600 text-[8px] font-black text-white px-3 py-1 rounded-full uppercase">Análisis en Vivo</div>
+               </div>
+               <button className="w-full py-5 bg-indigo-50 text-indigo-600 rounded-full font-black uppercase text-[10px] tracking-widest border border-indigo-100">Cargar Intento (Video)</button>
+            </div>
+
+            <div className="bg-indigo-950 p-10 rounded-[3.5rem] text-white">
+               <h4 className="text-[10px] font-black uppercase tracking-widest opacity-50 mb-6">Staff Performance AI</h4>
+               <button onClick={async () => { setCargando(true); const r = await gemini.analyzeChurnRisk(alumnos); setAiAnalysis(r); setCargando(false); }} className="w-full py-4 bg-white/10 rounded-full font-black uppercase text-[9px] tracking-widest border border-white/10 mb-6">
+                 {cargando ? 'Analizando...' : 'Generar Reporte de Retención'}
+               </button>
+               {aiAnalysis && <div className="text-[10px] leading-relaxed opacity-80 animate-fadeIn">{aiAnalysis}</div>}
+            </div>
+          </div>
+        )}
+
+        {vista === 'Finanzas' && (
+          <div className="space-y-6">
+            <div className="bg-emerald-500 p-10 rounded-[3.5rem] text-white shadow-xl relative overflow-hidden">
+               <p className="text-[10px] font-black uppercase opacity-60 mb-2">Ingresos Mes Actual</p>
+               <p className="text-5xl font-black italic tracking-tighter">$8,420</p>
+               <p className="text-[9px] mt-4 font-black uppercase tracking-widest">↑ 12% vs mes anterior</p>
+               <i className="fas fa-coins absolute -bottom-10 -right-10 text-[12rem] text-white/10 rotate-12"></i>
+            </div>
+            
+            <div className="bg-white p-8 rounded-[3.5rem] shadow-sm border border-slate-50">
+               <h4 className="text-[10px] font-black text-indigo-950 uppercase tracking-widest mb-6">Deudores Críticos</h4>
+               <div className="space-y-4">
+                  {alumnos.filter(a => a.estadoPago === 'Vencido').map(a => (
+                    <div key={a.id} className="flex justify-between items-center py-4 border-b border-slate-50 last:border-0">
+                      <div>
+                        <p className="font-black text-xs uppercase text-slate-800">{a.nombre}</p>
+                        <p className="text-[8px] font-bold text-rose-500 uppercase">Vencido hace 12 días</p>
+                      </div>
+                      <button className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center shadow-sm"><i className="fas fa-paper-plane text-[10px]"></i></button>
+                    </div>
+                  ))}
+               </div>
+            </div>
+          </div>
+        )}
+
+        {vista === 'Staff' && (
+          <div className="space-y-8">
+            <div className="bg-white p-10 rounded-[4rem] shadow-sm border border-slate-50">
+               <h3 className="text-xl font-black italic text-indigo-950 uppercase mb-8">Gestión de Staff</h3>
+               {staff.map(s => (
+                 <div key={s.id} className="bg-slate-50 p-8 rounded-[3rem] border border-slate-100 mb-6">
+                    <div className="flex justify-between items-center mb-8">
+                       <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-sm"><i className="fas fa-user-tie text-indigo-400"></i></div>
+                          <div>
+                             <p className="font-black text-indigo-950 text-sm uppercase">{s.nombre}</p>
+                             <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">{s.rol}</p>
+                          </div>
+                       </div>
+                       <span className={`w-3 h-3 rounded-full ${s.isClockedIn ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'}`}></span>
+                    </div>
+                    <button 
+                      onClick={async () => {
+                        const newStatus = !s.isClockedIn;
+                        await db.staff.update(s.id!, { isClockedIn: newStatus });
+                        setStaff(await db.staff.toArray());
+                      }}
+                      className={`w-full py-5 rounded-full font-black uppercase text-[10px] tracking-widest transition-all ${s.isClockedIn ? 'bg-rose-50 text-rose-600 border border-rose-100' : 'bg-emerald-500 text-white shadow-lg'}`}
+                    >
+                      {s.isClockedIn ? 'Marcar Salida (Clock Out)' : 'Marcar Entrada (Clock In)'}
+                    </button>
+                 </div>
+               ))}
+            </div>
+          </div>
+        )}
+
+        {vista === 'NuevaClase' && (
+          <div className="bg-white p-12 rounded-[4rem] shadow-2xl border border-slate-100 text-center animate-fadeIn">
+            <div className="w-24 h-24 bg-indigo-50 text-indigo-600 rounded-[2.5rem] flex items-center justify-center mx-auto mb-10 shadow-inner">
+              <i className="fas fa-clipboard-user text-4xl"></i>
+            </div>
+            <h3 className="text-3xl font-black italic text-indigo-950 uppercase tracking-tighter">Pasar Lista</h3>
+            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-4 mb-12">Selecciona grupo e inicia el escaneo.</p>
+            
+            <div className="grid grid-cols-1 gap-4 mb-10">
+               {['Grupo Elite A', 'Iniciación Tarde'].map(g => (
+                 <button key={g} className="py-6 bg-slate-50 rounded-[2rem] border border-slate-100 font-black uppercase text-[9px] text-slate-600 tracking-widest hover:border-indigo-300 transition-colors">{g}</button>
+               ))}
+            </div>
+
+            <button onClick={() => setVista('Hub')} className="w-full py-6 bg-indigo-950 text-white rounded-full font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all">Confirmar Sesión</button>
           </div>
         )}
       </main>
 
-      <nav className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-md px-10 py-6 flex items-center justify-between z-[60] border-t border-slate-50 bottom-nav">
-          <button onClick={() => setViewMode('Registro')} className={`${viewMode === 'Registro' ? 'text-indigo-900' : 'text-slate-300'} flex flex-col items-center gap-1 transition-colors`}><i className="fas fa-home text-xl"></i><span className="text-[8px] font-black uppercase tracking-widest">Home</span></button>
-          <button onClick={() => setViewMode('Students')} className={`${viewMode === 'Students' ? 'text-indigo-900' : 'text-slate-300'} flex flex-col items-center gap-1 transition-colors`}><i className="fas fa-users text-xl"></i><span className="text-[8px] font-black uppercase tracking-widest">Alumnos</span></button>
-          <div className="relative -top-12">
-            <button 
-              onClick={() => setEditingStudent({isNew: true, data: {name: '', dni: '', level: 'Nivel 1', squad: 'General', status: 'Active', type: 'Junior', birthDate: '2015-01-01'}})} 
-              className="w-16 h-16 bg-blue-500 text-white rounded-full shadow-2xl flex items-center justify-center text-2xl hover:scale-110 active:scale-90 transition-all border-4 border-white"
-            >
-              <i className="fas fa-plus"></i>
-            </button>
-          </div>
-          <button className="text-slate-300 flex flex-col items-center gap-1"><i className="fas fa-calendar-alt text-xl"></i><span className="text-[8px] font-black uppercase tracking-widest">Clases</span></button>
-          <button className="text-slate-300 flex flex-col items-center gap-1"><i className="fas fa-user text-xl"></i><span className="text-[8px] font-black uppercase tracking-widest">Perfil</span></button>
-      </nav>
+      <Nav />
     </div>
   );
 };

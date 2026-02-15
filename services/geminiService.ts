@@ -1,31 +1,32 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
 
-// Inicialización segura. El API_KEY es inyectado por el entorno.
-const ai = new GoogleGenAI({ 
-  apiKey: (typeof process !== 'undefined' && process.env?.API_KEY) ? process.env.API_KEY : "" 
-});
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-export async function getSkillSuggestions(apparatus: string, ageGroup: string): Promise<string[]> {
+export async function getDraftMessage(type: 'bienvenida' | 'alerta' | 'felicitacion', studentName: string): Promise<string> {
   try {
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
-      contents: `Sugiere 5 habilidades de gimnasia artística para el aparato "${apparatus}" dirigidas a un grupo de edad de "${ageGroup}".`,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.ARRAY,
-          items: { type: Type.STRING }
-        }
-      }
+      contents: `Escribe un mensaje de WhatsApp corto y profesional para un padre de familia. 
+      Tipo: ${type}. Alumno: ${studentName}. Gimnasio: GymCoach Pro.
+      Tono: Empático, motivador y profesional. Máximo 60 palabras.`,
     });
-
-    if (response.text) {
-        return JSON.parse(response.text.trim());
-    }
-    return [];
+    return response.text || "";
   } catch (error) {
-    console.error("Error en Gemini getSkillSuggestions:", error);
-    return [];
+    return "Error al generar mensaje.";
+  }
+}
+
+export async function analyzeChurnRisk(data: any): Promise<string> {
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: `Analiza estos datos de asistencia y pagos: ${JSON.stringify(data)}. 
+      Identifica alumnos en riesgo de abandonar el gimnasio y sugiere acciones de retención.`,
+    });
+    return response.text || "Análisis no disponible.";
+  } catch (error) {
+    return "Error en el análisis de retención.";
   }
 }
 
@@ -33,23 +34,12 @@ export async function getPlanningAnalysis(history: string): Promise<string> {
   try {
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
-      contents: `Eres un experto entrenador de gimnasia artística. Analiza los siguientes datos de progreso mensual: ${history}. 
-      
-      TU TAREA:
-      1. Evalúa qué aparatos están siendo descuidados.
-      2. Identifica inconsistencias en las habilidades practicadas.
-      3. Sugiere 3 enfoques clave para el próximo mes.
-      
-      FORMATO DE SALIDA (OBLIGATORIO):
-      - Usa Títulos en MAYÚSCULAS seguidos de dos puntos (ej: ANÁLISIS DE APARATOS:).
-      - Usa viñetas claras (-) para los puntos específicos.
-      - Escribe párrafos cortos y directos.
-      - Evita el lenguaje genérico; sé pedagógicamente específico.
-      - Responde en español con un tono profesional de élite.`,
+      contents: `Eres un experto entrenador de gimnasia. Analiza: ${history}. 
+      Proporciona: 1. Análisis de aparatos, 2. Debilidades detectadas, 3. Plan próximo mes. 
+      Formato: Directo, técnico, profesional.`,
     });
-    return response.text || "No se pudo generar el análisis.";
+    return response.text || "";
   } catch (error) {
-    console.error("Error en Gemini getPlanningAnalysis:", error);
-    return "Error al conectar con la IA de análisis pedagógico. Por favor revisa la consola.";
+    return "Error en IA.";
   }
 }

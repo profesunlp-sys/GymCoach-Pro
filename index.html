@@ -1,179 +1,73 @@
 <!DOCTYPE html>
-<html lang="es" class="dark">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GymCoach Pro v2.1</title>
+    <title>GymCoach Pro - Sistema de Élite</title>
     
+    <!-- Estética Premium -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'] }, colors: { slate: { 850: '#151e2e', 950: '#020617' } } } }
-        }
-    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
     <style>
-        body { background-color: #020617; color: white; -webkit-tap-highlight-color: transparent; overflow-x: hidden; font-family: 'Inter', sans-serif; }
-        .animate-in { animation: fadeIn 0.4s ease-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-        .glass { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap');
+        
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: #f8fafc; 
+            margin: 0; 
+            color: #1e293b;
+            -webkit-tap-highlight-color: transparent;
+            overflow-x: hidden;
+        }
+
+        .page-transition { 
+            animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1); 
+        }
+        @keyframes slideUp { 
+            from { opacity: 0; transform: translateY(20px); } 
+            to { opacity: 1; transform: translateY(0); } 
+        }
+
+        .auth-bg {
+            background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%);
+        }
+
+        .glass {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        /* Animación suave para el botón de entrada */
+        .btn-pulse {
+            box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.4);
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.4); }
+            70% { transform: scale(1.02); box-shadow: 0 0 0 10px rgba(255, 255, 255, 0); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); }
+        }
     </style>
+
+    <script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@19.0.0",
+    "react-dom": "https://esm.sh/react-dom@19.0.0",
+    "react-dom/client": "https://esm.sh/react-dom@19.0.0/client",
+    "@google/genai": "https://esm.sh/@google/genai@0.21.0",
+    "dexie": "https://esm.sh/dexie@4.0.11",
+    "realm-web": "https://esm.sh/realm-web@2.0.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
+    "react/": "https://esm.sh/react@^19.2.4/"
+  }
+}
+</script>
 </head>
 <body>
     <div id="root"></div>
-
-    <script type="text/babel" data-type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // --- Configuración Global ---
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
-            apiKey: "", // Se llenará en tiempo de ejecución
-            authDomain: "gym-coach-pro.firebaseapp.com",
-            projectId: "gym-coach-pro",
-            storageBucket: "gym-coach-pro.appspot.com",
-            messagingSenderId: "00000000",
-            appId: "1:00000000:web:00000000"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'gym-coach-pro-v2';
-
-        const { useState, useEffect } = React;
-        const { Trophy, ChevronLeft, LayoutDashboard, Activity, Users, LogOut, Trash2, Plus, Bell, Save, AlertCircle, RefreshCw } = lucide;
-
-        // --- Módulo de Autenticación ---
-        const AuthScreen = ({ onAuthSuccess }) => {
-            const [isLogin, setIsLogin] = useState(true);
-            const [email, setEmail] = useState('');
-            const [password, setPassword] = useState('');
-            const [error, setError] = useState('');
-            const [loading, setLoading] = useState(false);
-
-            const handleSubmit = async (e) => {
-                e.preventDefault();
-                setError('');
-                setLoading(true);
-                try {
-                    if (isLogin) {
-                        await signInWithEmailAndPassword(auth, email, password);
-                    } else {
-                        await createUserWithEmailAndPassword(auth, email, password);
-                    }
-                } catch (err) {
-                    setError("Error: Verifica tus credenciales o conexión.");
-                    console.error(err);
-                } finally {
-                    setLoading(false);
-                }
-            };
-
-            return (
-                <div className="min-h-screen flex items-center justify-center p-6 animate-in">
-                    <div className="bg-slate-900 w-full max-w-sm rounded-[2.5rem] p-8 border border-slate-800 shadow-2xl">
-                        <h1 className="text-3xl font-black italic mb-2 text-center">GYMCOACH <span className="text-blue-500">PRO</span></h1>
-                        <p className="text-[10px] font-bold text-slate-500 text-center uppercase tracking-widest mb-8">Acceso v2.1</p>
-                        
-                        <form onSubmit={handleSubmit} className="space-y-4">
-                            <input 
-                                type="email" placeholder="Email" value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                className="w-full p-4 bg-slate-800 rounded-2xl border-none text-white" required
-                            />
-                            <input 
-                                type="password" placeholder="Contraseña" value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                className="w-full p-4 bg-slate-800 rounded-2xl border-none text-white" required
-                            />
-                            {error && <p className="text-red-500 text-[10px] font-bold text-center">{error}</p>}
-                            <button className="w-full py-4 bg-blue-600 rounded-2xl font-black text-white active:scale-95 transition-all">
-                                {loading ? 'Cargando...' : (isLogin ? 'ENTRAR' : 'REGISTRARSE')}
-                            </button>
-                        </form>
-                        <button onClick={() => setIsLogin(!isLogin)} className="w-full mt-4 text-[10px] text-slate-500 font-bold uppercase">
-                            {isLogin ? '¿No tienes cuenta? Regístrate' : '¿Ya tienes cuenta? Entra'}
-                        </button>
-                    </div>
-                </div>
-            );
-        };
-
-        const PremiacionScreen = ({ user, onBack }) => {
-            const [data, setData] = useState({ inscripcion: 2500, medallas: [] });
-
-            useEffect(() => {
-                if (!user) return;
-                const unsub = onSnapshot(doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'premiacion'), (doc) => {
-                    if (doc.exists()) setData(doc.data());
-                });
-                return () => unsub();
-            }, [user]);
-
-            const save = async () => {
-                await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'premiacion'), data);
-            };
-
-            return (
-                <div className="animate-in pb-20">
-                    <button onClick={onBack} className="mb-6 p-3 bg-slate-900 rounded-xl"><ChevronLeft/></button>
-                    <h2 className="text-2xl font-black mb-6">PREMIACIÓN <span className="text-blue-500">INDIVIDUAL</span></h2>
-                    <div className="bg-slate-900 p-6 rounded-[2rem] border border-slate-800 mb-6">
-                        <label className="text-[10px] font-black text-slate-500 uppercase">Inscripción</label>
-                        <input type="number" value={data.inscripcion} onChange={e => setData({...data, inscripcion: e.target.value})} className="bg-transparent text-3xl font-black w-full outline-none mt-2" />
-                    </div>
-                    <button onClick={save} className="w-full py-5 bg-blue-600 rounded-2xl font-black"><Save className="inline mr-2"/> GUARDAR CAMBIOS</button>
-                </div>
-            );
-        };
-
-        const App = () => {
-            const [user, setUser] = useState(null);
-            const [view, setView] = useState('home');
-
-            useEffect(() => {
-                const initAuth = async () => {
-                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                        await signInWithCustomToken(auth, __initial_auth_token);
-                    }
-                };
-                initAuth();
-                return onAuthStateChanged(auth, setUser);
-            }, []);
-
-            if (!user) return <AuthScreen />;
-
-            return (
-                <div className="max-w-md mx-auto p-6 min-h-screen text-white">
-                    {view === 'home' ? (
-                        <div className="animate-in">
-                            <header className="flex justify-between items-center mb-10">
-                                <h1 className="text-2xl font-black italic">GYMCOACH <span className="text-blue-500">PRO</span></h1>
-                                <button onClick={() => signOut(auth)} className="p-2 text-red-500"><LogOut/></button>
-                            </header>
-                            <div onClick={() => setView('premiacion')} className="bg-blue-600 p-8 rounded-[3rem] cursor-pointer active:scale-95 transition-all">
-                                <Trophy size={40} className="mb-4"/>
-                                <h2 className="text-2xl font-black">PREMIACIÓN</h2>
-                                <p className="text-blue-100 text-xs opacity-70">Configura medallas y costos.</p>
-                            </div>
-                        </div>
-                    ) : (
-                        <PremiacionScreen user={user} onBack={() => setView('home')} />
-                    )}
-                </div>
-            );
-        };
-
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
-    </script>
+    <script type="module" src="./index.tsx"></script>
 </body>
 </html>

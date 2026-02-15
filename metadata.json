@@ -1,5 +1,8 @@
 {
-  "name": "GymCoach Pro - Sistema de Gestión Pedagógica",
-  "description": "App optimizada para entrenadores de gimnasia con registro secuencial, asistencia, habilidades personalizadas y seguimiento de torneos sincronizado con Google Sheets.",
-  "requestFramePermissions": []
+  "name": "GymCoach Pro Elite - High Performance Suite",
+  "description": "App de gestión integral para gimnasia artística: Árbol de habilidades FIG, Control Financiero (Churn Rate), Biometría Radar y IA Staff Management.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
 }

@@ -1,41 +1,61 @@
 
-export type AgeGroup = '3 a 5 años' | '6 a 9 años' | '10 a 15 años';
+export type Discipline = 'GAF' | 'GAM' | 'Trampolín' | 'Rítmica';
+export type Apparatus = 'Suelo' | 'Viga' | 'Paralelas' | 'Salto' | 'Anillas' | 'Arzones' | 'Barra Fija';
+export type SkillStatus = 'No Iniciado' | 'En Proceso' | 'Dominado' | 'Elite';
+export type PaymentStatus = 'Al día' | 'Pendiente' | 'Vencido' | 'Exento';
 
-export type Apparatus = 'Viga de equilibrio' | 'Paralelas asimétricas' | 'Suelo' | 'Salto';
-
-export interface ClassRecord {
-  date: string;
-  day: string;
-  month: string;
-  groupName: string;
-  schedule: string;
-  daysOfWeek: string[];
-  ageGroups: AgeGroup[];
-  attendance: { name: string; present: boolean }[];
-  warmupSkills: string[];
-  apparatus: Apparatus[];
-  apparatusDetails: Record<Apparatus, string[]>;
+export interface Biometrics {
+  fuerza: number;
+  flexibilidad: number;
+  tecnica: number;
+  resistencia: number;
+  coordinacion: number;
 }
 
-export enum Step {
-  GroupInfo = 0,
-  AgeGroup = 1,
-  Attendance = 2,
-  Warmup = 3,
-  ApparatusSelection = 4,
-  ApparatusDetails = 5,
-  Summary = 6,
-  Success = 7
+export interface Skill {
+  id: string;
+  name: string;
+  status: SkillStatus;
+  apparatus: Apparatus;
+  level: number;
 }
 
-export type ViewMode = 'Registro' | 'Estadisticas';
-
-export interface HistoryEntry {
-  date: string;
-  group: string;
-  ageGroups: string[];
-  presentCount: number;
-  warmup: string[];
-  apparatus: string[];
-  details: Record<string, string[]>;
+export interface Alumno {
+  id?: number;
+  nombre: string;
+  dni: string;
+  disciplina: Discipline;
+  nivel: string;
+  fechaIngreso: string;
+  estadoPago: PaymentStatus;
+  habilidades: Skill[];
+  biometria: Biometrics;
+  qrCode: string;
+  asistenciasHistoricas: number;
+  alertas: string[];
 }
+
+// Added missing Clase interface referenced in App.tsx
+export interface Clase {
+  id?: number;
+  fecha: string;
+  grupo: string;
+}
+
+export interface StaffMember {
+  id: number;
+  nombre: string;
+  rol: 'Coach' | 'Admin' | 'Head Coach';
+  clockIn?: string;
+  isClockedIn: boolean;
+}
+
+export interface Evento {
+  id: number;
+  nombre: string;
+  fecha: string;
+  tipo: 'Competencia' | 'Gala' | 'Examen';
+  inscritos: number;
+}
+
+export type ViewMode = 'Hub' | 'Atletas' | 'Progreso' | 'Finanzas' | 'Eventos' | 'Staff' | 'NuevaClase' | 'Config';
