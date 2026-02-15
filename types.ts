@@ -26,6 +26,7 @@ export interface Alumno {
   dni: string;
   disciplina: Discipline;
   nivel: string;
+  fechaNacimiento: string;
   fechaIngreso: string;
   estadoPago: PaymentStatus;
   habilidades: Skill[];
@@ -39,6 +40,11 @@ export interface Clase {
   id?: number;
   fecha: string;
   grupo: string;
+  horario?: string;
+  entrenador?: string;
+  warmup?: string[];
+  apparatusUsed?: Apparatus[];
+  skillsCovered?: string[];
 }
 
 export interface StaffMember {
@@ -57,4 +63,4 @@ export interface Evento {
   inscritos: number;
 }
 
-export type ViewMode = 'Hub' | 'Alumnos' | 'Progreso' | 'Finanzas' | 'Eventos' | 'Staff' | 'NuevaClase' | 'Config';
+export type ViewMode = 'Hub' | 'Alumnos' | 'Progreso' | 'Finanzas' | 'Eventos' | 'Staff' | 'NuevaClase' | 'Config' | 'Calendario';
