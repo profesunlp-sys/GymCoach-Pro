@@ -23,34 +23,37 @@ export async function getDraftMessage(type: 'bienvenida' | 'alerta' | 'felicitac
 export async function processClassAudio(audioBase64: string, mimeType: string): Promise<any> {
   try {
     const ai = getAI();
+    // Correctly structured contents with parts for multimodal input (audio + text)
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
-      contents: [
-        {
-          inlineData: {
-            data: audioBase64,
-            mimeType: mimeType,
-          },
-        },
-        {
-          text: `Analiza este audio de un entrenador de gimnasia reportando su clase. 
-          Extrae la información y devuélvela estrictamente en formato JSON.
-          Si hay términos técnicos que no entiendes o falta información crucial (como qué aparato se usó específicamente), marca 'clarificationNeeded' como true y escribe la pregunta en 'question'.
-          
-          Formato esperado:
+      contents: {
+        parts: [
           {
-            "warmup": ["item1", "item2"],
-            "apparatusUsed": ["Suelo", "Viga", etc],
-            "skillsCovered": ["habilidad1", "habilidad2"],
-            "entrenador": "nombre detectado o null",
-            "grupo": "nivel detectado o null",
-            "clarificationNeeded": boolean,
-            "question": "texto de la pregunta si es necesario"
-          }
-          
-          Los aparatos válidos son: Suelo, Viga, Paralelas, Salto, Anillas, Arzones, Barra Fija.`,
-        },
-      ],
+            inlineData: {
+              data: audioBase64,
+              mimeType: mimeType,
+            },
+          },
+          {
+            text: `Analiza este audio de un entrenador de gimnasia reportando su clase. 
+            Extrae la información y devuélvela estrictamente en formato JSON.
+            Si hay términos técnicos que no entiendes o falta información crucial (como qué aparato se usó específicamente), marca 'clarificationNeeded' como true y escribe la pregunta en 'question'.
+            
+            Formato esperado:
+            {
+              "warmup": ["item1", "item2"],
+              "apparatusUsed": ["Suelo", "Viga", etc],
+              "skillsCovered": ["habilidad1", "habilidad2"],
+              "entrenador": "nombre detectado o null",
+              "grupo": "nivel detectado o null",
+              "clarificationNeeded": boolean,
+              "question": "texto de la pregunta si es necesario"
+            }
+            
+            Los aparatos válidos son: Suelo, Viga, Paralelas, Salto, Anillas, Arzones, Barra Fija.`,
+          },
+        ]
+      },
       config: {
         responseMimeType: "application/json",
       },

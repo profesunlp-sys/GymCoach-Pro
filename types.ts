@@ -20,6 +20,17 @@ export interface Skill {
   level: number;
 }
 
+export interface ContactoFamilia {
+  padreNombre?: string;
+  padreTelefono?: string;
+  madreNombre?: string;
+  madreTelefono?: string;
+  familiarNombre?: string;
+  familiarTelefono?: string;
+  emergenciaNombre?: string;
+  emergenciaTelefono?: string;
+}
+
 export interface Alumno {
   id?: number;
   nombre: string;
@@ -28,12 +39,14 @@ export interface Alumno {
   nivel: string;
   fechaNacimiento: string;
   fechaIngreso: string;
+  fechaPrimeraClase: string;
   estadoPago: PaymentStatus;
   habilidades: Skill[];
   biometria: Biometrics;
   qrCode: string;
   asistenciasHistoricas: number;
   alertas: string[];
+  contacto?: ContactoFamilia;
 }
 
 export interface Clase {
