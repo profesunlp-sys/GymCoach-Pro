@@ -209,16 +209,24 @@ const App: React.FC = () => {
 
     return (
       <div className="space-y-6 animate-in fade-in duration-500">
+        {/* Card del Calendario */}
         <div className="bg-white rounded-[2.5rem] shadow-xl p-6 border border-slate-100">
           <div className="flex justify-between items-center mb-6 px-2">
             <h3 className="text-sm font-black uppercase italic text-slate-900 tracking-tighter">
               {currentMonth.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' }).toUpperCase()}
             </h3>
             <div className="flex gap-2">
-              <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))} className="w-10 h-10 bg-slate-50 text-slate-400 rounded-xl flex items-center justify-center hover:bg-indigo-50 hover:text-indigo-600 transition-all"><i className="fas fa-chevron-left text-xs"></i></button>
-              <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))} className="w-10 h-10 bg-slate-50 text-slate-400 rounded-xl flex items-center justify-center hover:bg-indigo-50 hover:text-indigo-600 transition-all"><i className="fas fa-chevron-right text-xs"></i></button>
+              <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))} 
+                className="w-10 h-10 bg-slate-50 text-slate-400 rounded-xl flex items-center justify-center hover:bg-indigo-50 hover:text-indigo-600 transition-all">
+                <i className="fas fa-chevron-left text-xs"></i>
+              </button>
+              <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))} 
+                className="w-10 h-10 bg-slate-50 text-slate-400 rounded-xl flex items-center justify-center hover:bg-indigo-50 hover:text-indigo-600 transition-all">
+                <i className="fas fa-chevron-right text-xs"></i>
+              </button>
             </div>
           </div>
+
           <div className="grid grid-cols-7 gap-1 mb-4">
             {dayNames.map(name => <div key={name} className="text-center text-[8px] font-black text-slate-400 uppercase tracking-widest py-2">{name}</div>)}
             {calendarDays.map((d, i) => {
@@ -226,7 +234,11 @@ const App: React.FC = () => {
               const isSelected = isSameDay(d.date, selectedCalendarDate);
               const isToday = isSameDay(d.date, new Date());
               return (
-                <button key={i} onClick={() => setSelectedCalendarDate(d.date)} className={`relative aspect-square rounded-2xl flex flex-col items-center justify-center transition-all ${!d.currentMonth ? 'opacity-20' : 'opacity-100'} ${isSelected ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'bg-transparent text-slate-700'} ${!isSelected && isToday ? 'border-2 border-indigo-100' : ''}`}>
+                <button 
+                  key={i} 
+                  onClick={() => setSelectedCalendarDate(d.date)} 
+                  className={`relative aspect-square rounded-2xl flex flex-col items-center justify-center transition-all ${!d.currentMonth ? 'opacity-20' : 'opacity-100'} ${isSelected ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'bg-transparent text-slate-700'} ${!isSelected && isToday ? 'border-2 border-indigo-100' : ''}`}
+                >
                   <span className={`text-[10px] font-bold ${isSelected ? 'font-black' : ''}`}>{d.day}</span>
                   {hasClasses && !isSelected && <div className="absolute bottom-1.5 w-1 h-1 bg-indigo-500 rounded-full"></div>}
                   {hasClasses && isSelected && <div className="absolute bottom-1.5 w-1 h-1 bg-white rounded-full"></div>}
@@ -235,27 +247,42 @@ const App: React.FC = () => {
             })}
           </div>
         </div>
+
+        {/* Agenda del día seleccionado */}
         <div className="space-y-4">
           <div className="flex justify-between items-end px-2">
             <div>
               <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">Agenda del día</p>
-              <h4 className="text-xl font-black italic text-slate-900 uppercase tracking-tighter">{selectedCalendarDate.toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })}</h4>
+              <h4 className="text-xl font-black italic text-slate-900 uppercase tracking-tighter">
+                {selectedCalendarDate.toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })}
+              </h4>
             </div>
-            <button className="px-4 py-2 bg-slate-900 text-white rounded-full text-[8px] font-black uppercase tracking-widest shadow-xl">Agendar Clase</button>
+            <button className="px-4 py-2 bg-slate-900 text-white rounded-full text-[8px] font-black uppercase tracking-widest shadow-xl">
+              <i className="fas fa-plus mr-1"></i> Agendar Clase
+            </button>
           </div>
+
           <div className="space-y-3">
             {classesForSelectedDay.map((c, idx) => (
               <div key={idx} className="bg-white p-5 rounded-[2rem] border border-slate-100 flex items-center gap-4 shadow-sm hover:border-indigo-100 transition-all cursor-pointer">
-                <div className="w-14 h-14 bg-indigo-50 text-indigo-600 rounded-2xl flex flex-col items-center justify-center"><i className="fas fa-clock text-xs mb-1"></i><span className="text-[7px] font-black text-center leading-none">{c.horario?.split(' - ')[0]}</span></div>
+                <div className="w-14 h-14 bg-indigo-50 text-indigo-600 rounded-2xl flex flex-col items-center justify-center">
+                  <i className="fas fa-clock text-xs mb-1"></i>
+                  <span className="text-[7px] font-black text-center leading-none">{c.horario?.split(' - ')[0]}</span>
+                </div>
                 <div className="flex-1">
                   <p className="text-xs font-black text-slate-900 uppercase tracking-tight">{c.grupo}</p>
-                  <p className="text-[9px] font-bold text-slate-400 uppercase mt-1"><i className="fas fa-user-tie mr-1 text-indigo-300"></i> {c.entrenador || 'Por asignar'}</p>
+                  <p className="text-[9px] font-bold text-slate-400 uppercase mt-1">
+                    <i className="fas fa-user-tie mr-1 text-indigo-300"></i> {c.entrenador || 'Coach Principal'}
+                  </p>
                 </div>
                 <i className="fas fa-chevron-right text-slate-200 text-xs"></i>
               </div>
             ))}
             {classesForSelectedDay.length === 0 && (
-              <div className="py-12 bg-slate-50/50 rounded-[2.5rem] border border-dashed border-slate-200 text-center"><i className="fas fa-mug-hot text-slate-200 text-3xl mb-3"></i><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Sin actividades programadas</p></div>
+              <div className="py-12 bg-slate-50/50 rounded-[2.5rem] border border-dashed border-slate-200 text-center">
+                <i className="fas fa-mug-hot text-slate-200 text-3xl mb-3"></i>
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Sin actividades programadas</p>
+              </div>
             )}
           </div>
         </div>
@@ -404,7 +431,9 @@ const App: React.FC = () => {
       <header className="pt-14 px-8 pb-8 bg-white/80 backdrop-blur-xl rounded-b-[3rem] shadow-sm flex justify-between items-end border-b border-slate-100 sticky top-0 z-40">
         <div>
           <p className="text-[10px] font-bold text-indigo-500 uppercase tracking-[0.2em] mb-1">Elite System</p>
-          <h2 className="text-3xl font-black italic text-slate-900 uppercase tracking-tighter leading-none">{vista === 'Calendario' ? 'Agenda' : vista}</h2>
+          <h2 className="text-3xl font-black italic text-slate-900 uppercase tracking-tighter leading-none">
+            {vista === 'Calendario' ? 'Agenda' : vista}
+          </h2>
         </div>
         <button className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center"><i className="fas fa-bell text-sm"></i></button>
       </header>
