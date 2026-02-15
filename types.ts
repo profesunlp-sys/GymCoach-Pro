@@ -35,7 +35,6 @@ export interface Alumno {
   alertas: string[];
 }
 
-// Added missing Clase interface referenced in App.tsx
 export interface Clase {
   id?: number;
   fecha: string;
@@ -58,4 +57,4 @@ export interface Evento {
   inscritos: number;
 }
 
-export type ViewMode = 'Hub' | 'Atletas' | 'Progreso' | 'Finanzas' | 'Eventos' | 'Staff' | 'NuevaClase' | 'Config';
+export type ViewMode = 'Hub' | 'Alumnos' | 'Progreso' | 'Finanzas' | 'Eventos' | 'Staff' | 'NuevaClase' | 'Config';
