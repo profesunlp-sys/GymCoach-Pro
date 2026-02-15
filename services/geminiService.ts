@@ -1,10 +1,14 @@
 
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Función auxiliar para obtener la instancia de IA de forma segura
+const getAI = () => {
+  return new GoogleGenAI({ apiKey: process.env.API_KEY });
+};
 
 export async function getDraftMessage(type: 'bienvenida' | 'alerta' | 'felicitacion', studentName: string): Promise<string> {
   try {
+    const ai = getAI();
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: `Escribe un mensaje de WhatsApp corto y profesional para un padre de familia. 
@@ -13,12 +17,14 @@ export async function getDraftMessage(type: 'bienvenida' | 'alerta' | 'felicitac
     });
     return response.text || "";
   } catch (error) {
+    console.error("Error en getDraftMessage:", error);
     return "Error al generar mensaje.";
   }
 }
 
 export async function analyzeChurnRisk(data: any): Promise<string> {
   try {
+    const ai = getAI();
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: `Analiza estos datos de asistencia y pagos: ${JSON.stringify(data)}. 
@@ -26,12 +32,14 @@ export async function analyzeChurnRisk(data: any): Promise<string> {
     });
     return response.text || "Análisis no disponible.";
   } catch (error) {
+    console.error("Error en analyzeChurnRisk:", error);
     return "Error en el análisis de retención.";
   }
 }
 
 export async function getPlanningAnalysis(history: string): Promise<string> {
   try {
+    const ai = getAI();
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: `Eres un experto entrenador de gimnasia. Analiza: ${history}. 
@@ -40,6 +48,7 @@ export async function getPlanningAnalysis(history: string): Promise<string> {
     });
     return response.text || "";
   } catch (error) {
+    console.error("Error en getPlanningAnalysis:", error);
     return "Error en IA.";
   }
 }
