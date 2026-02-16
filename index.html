@@ -3,31 +3,33 @@
 <head>
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
-    <title>GymCoach Pro - Antigravity Dashboard</title>
+    <title>GymCoach Pro - Antigravity Suite</title>
     <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
     <script>
       tailwind.config = {
         darkMode: "class",
         theme: {
           extend: {
             colors: {
-              primary: "#00f2ff", // Neon Cyan
-              "background-light": "#f8fafc",
-              "background-dark": "#0a0e14",
-              "card-dark": "#161b22",
-              "accent-purple": "#6366f1",
+              primary: "#00F5FF", // Neon Cyan
+              secondary: "#7C3AED", // Lilac / Purple
+              "antigravity-black": "#0A0A0B",
+              "antigravity-charcoal": "#121214",
+              "neon-cyan": "#00F5FF",
+              "neon-blue": "#2E5BFF",
+              "accent-purple": "#8B5CF6",
+              "background-dark": "#0A0A0B",
             },
             fontFamily: {
-              display: ["Inter", "sans-serif"],
-            },
-            borderRadius: {
-              DEFAULT: "16px",
+              display: ["Lexend", "sans-serif"],
             },
             boxShadow: {
-              'neon-cyan': '0 0 10px rgba(0, 242, 255, 0.4)',
-              'neon-cyan-strong': '0 0 15px rgba(0, 242, 255, 0.8)',
+              'neon-cyan': '0 0 15px rgba(0, 245, 255, 0.3)',
+              'neon-purple': '0 0 15px rgba(139, 92, 246, 0.4)',
+              'neon-fab-blue': '0 0 20px rgba(46, 91, 255, 0.6)',
             }
           },
         },
@@ -37,24 +39,39 @@
         @layer utilities {
             .glass-card {
                 background: rgba(255, 255, 255, 0.03);
-                backdrop-filter: blur(10px);
-                border: 1px solid rgba(255, 255, 255, 0.05);
+                backdrop-filter: blur(12px);
+                border: 1px solid rgba(255, 255, 255, 0.08);
+            }
+            .auth-bg {
+                background: radial-gradient(circle at center, #312e81 0%, #1e1b4b 40%, #0a0a0b 100%);
             }
             .gradient-header {
-                background: linear-gradient(135deg, #1e3a8a 0%, #6366f1 100%);
+                background: linear-gradient(135deg, #4338ca 0%, #6d28d9 100%);
             }
             .neon-border {
-                border: 1px solid #00f2ff;
-                box-shadow: 0 0 8px rgba(0, 242, 255, 0.3);
+                border: 1px solid #00F5FF;
+                box-shadow: 0 0 8px rgba(0, 245, 255, 0.3);
             }
             .active-glow {
-                filter: drop-shadow(0 0 5px #00f2ff);
+                filter: drop-shadow(0 0 5px #00F5FF);
+            }
+            .neon-glow-cyan {
+                text-shadow: 0 0 10px rgba(0, 245, 255, 0.5);
+            }
+            .ios-toggle:checked + .ios-toggle-label {
+                background-color: #00F5FF;
+                box-shadow: 0 0 8px rgba(0, 245, 255, 0.6);
+            }
+            .ios-toggle:checked + .ios-toggle-label::after {
+                transform: translateX(20px);
+                background-color: #0A0A0B;
             }
         }
         body {
-            font-family: 'Inter', sans-serif;
+            font-family: 'Lexend', sans-serif;
             -webkit-tap-highlight-color: transparent;
-            min-height: 100vh;
+            background-color: #0A0A0B;
+            color: #f1f5f9;
         }
         .page-transition { 
             animation: slideUp 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); 
@@ -62,10 +79,6 @@
         @keyframes slideUp { 
             from { opacity: 0; transform: translateY(10px); } 
             to { opacity: 1; transform: translateY(0); } 
-        }
-        .auth-bg {
-            background: radial-gradient(circle at top right, #1e3a8a, #6366f1, #0a0e14);
-            min-height: 100vh;
         }
     </style>
     <script>
@@ -89,7 +102,7 @@
     }
     </script>
 </head>
-<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 font-display">
+<body class="bg-antigravity-black">
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
 </body>

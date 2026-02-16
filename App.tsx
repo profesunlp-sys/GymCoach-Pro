@@ -4,14 +4,14 @@ import { Alumno, Clase, ViewMode, GrupoConfig, AsistenciaRecord } from './types.
 import { processClassAudio } from './services/geminiService.ts';
 
 // --- DATABASE CONFIGURATION ---
-const db = new Dexie('GymCoachEliteDB_AntigravityV6') as Dexie & {
+const db = new Dexie('GymCoachEliteDB_AntigravityV8') as Dexie & {
   alumnos: EntityTable<Alumno, 'id'>;
   clases: EntityTable<Clase, 'id'>;
   grupos: EntityTable<GrupoConfig, 'id'>;
   asistencias: EntityTable<AsistenciaRecord, 'id'>;
 };
 
-db.version(3).stores({
+db.version(1).stores({
   alumnos: '++id, dni, nombre, estadoPago, disciplina, grupo',
   clases: '++id, fecha, grupo',
   grupos: '++id, nombre',
@@ -66,7 +66,6 @@ const App: React.FC = () => {
     setClases(c);
     setGrupos(g);
 
-    // Load today's attendance if in AsistenciaLista
     if (activeGroup) {
       const today = new Date().toISOString().split('T')[0];
       const todayAttendance = await db.asistencias
@@ -124,6 +123,11 @@ const App: React.FC = () => {
     loadData();
     setNotificacion({ t: "Atleta Registrado", d: `${newStudent.nombre} añadido.` });
     setVista('AsistenciaLista');
+    setStudentForm({
+      nombre: '', dni: '', disciplina: 'GAF', nivel: 'Escuela',
+      fechaNacimiento: '', fechaPrimeraClase: new Date().toISOString().split('T')[0],
+      alertas: [], contacto: { padreNombre: '', padreTelefono: '', madreNombre: '', madreTelefono: '', emergenciaNombre: '', emergenciaTelefono: '' }
+    });
     setTimeout(() => setNotificacion(null), 3000);
   };
 
@@ -201,22 +205,22 @@ const App: React.FC = () => {
     };
   };
 
+  const timeIntervals = ["17:00", "17:30", "18:00", "18:30", "19:00", "19:30", "20:00"];
   const filteredAlumnos = alumnos.filter(a => 
     a.grupo === activeGroup?.nombre && 
     (a.nombre.toLowerCase().includes(searchQuery.toLowerCase()) || a.dni.includes(searchQuery))
   );
-
   const presentCount = Object.values(asistenciasHoy).filter(v => v).length;
 
   if (!isLoggedIn) return (
-    <div className="auth-bg flex flex-col items-center justify-center p-8 text-white min-h-screen">
+    <div className="auth-bg flex flex-col items-center justify-center p-8 text-white min-h-screen relative">
       <div className="z-10 w-full max-w-sm text-center page-transition">
-        <div className="w-20 h-20 bg-accent-purple rounded-[2rem] flex items-center justify-center mx-auto mb-8 shadow-2xl border border-white/10">
+        <div className="w-20 h-20 bg-white/10 backdrop-blur-xl rounded-[2rem] flex items-center justify-center mx-auto mb-8 shadow-2xl border border-white/10">
           <span className="material-icons-outlined text-white text-4xl">fitness_center</span>
         </div>
-        <h1 className="text-4xl font-extrabold tracking-tighter mb-2">GymCoach <span className="text-primary">Pro</span></h1>
-        <p className="text-white/50 text-sm mb-12 italic uppercase tracking-widest">Elite Gymnastics Management</p>
-        <button onClick={() => setIsLoggedIn(true)} className="w-full py-5 bg-white text-indigo-900 rounded-[2rem] font-bold uppercase text-xs tracking-widest shadow-2xl active:scale-95 transition-all">
+        <h1 className="text-4xl font-extrabold tracking-tighter mb-1 text-white">GymCoach <span className="text-primary">Pro</span></h1>
+        <p className="text-white/40 text-[10px] font-black uppercase tracking-[0.4em] mb-12 italic">Elite Gymnastics Management</p>
+        <button onClick={() => setIsLoggedIn(true)} className="w-full py-5 bg-white text-indigo-900 rounded-full font-black uppercase text-xs tracking-[0.2em] shadow-2xl active:scale-95 transition-all">
           Iniciar Panel de Control
         </button>
       </div>
@@ -224,15 +228,15 @@ const App: React.FC = () => {
   );
 
   return (
-    <div className="max-w-[430px] mx-auto min-h-screen bg-background-light dark:bg-background-dark shadow-2xl relative overflow-hidden flex flex-col font-display pb-32">
+    <div className="max-w-[430px] mx-auto min-h-screen bg-antigravity-black shadow-2xl relative overflow-hidden flex flex-col font-display pb-32">
       
-      {/* Header Fijo */}
-      <div className="h-11 w-full flex items-center justify-between px-8 pt-4 bg-transparent sticky top-0 z-[60]">
-        <span className="text-sm font-semibold dark:text-white">9:41</span>
-        <div className="flex gap-2 items-center dark:text-white">
-          <span className="material-icons-outlined text-[18px]">signal_cellular_alt</span>
-          <span className="material-icons-outlined text-[18px]">wifi</span>
-          <span className="material-icons-outlined text-[18px]">battery_full</span>
+      {/* iOS Status Bar */}
+      <div className="h-12 flex justify-between items-center px-8 pt-4 pb-2 w-full bg-antigravity-black sticky top-0 z-50">
+        <span className="text-sm font-medium text-white">9:41</span>
+        <div className="flex items-center gap-1.5 text-white">
+          <span className="material-symbols-outlined text-[18px]">signal_cellular_alt</span>
+          <span className="material-symbols-outlined text-[18px]">wifi</span>
+          <span className="material-symbols-outlined text-[18px]">battery_very_low</span>
         </div>
       </div>
 
@@ -242,21 +246,21 @@ const App: React.FC = () => {
           <div className="px-6 space-y-8 page-transition pt-4">
             <header className="flex justify-between items-center">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-accent-purple rounded-xl flex items-center justify-center shadow-lg">
-                  <span className="material-icons-outlined text-white">fitness_center</span>
+                <div className="w-10 h-10 bg-accent-purple/20 rounded-xl flex items-center justify-center border border-accent-purple/30 shadow-neon-purple">
+                  <span className="material-icons-outlined text-accent-purple">fitness_center</span>
                 </div>
-                <h1 className="text-xl font-bold dark:text-white">GymCoach <span className="text-primary">Pro</span></h1>
+                <h1 className="text-xl font-bold text-white leading-none">GymCoach <span className="text-primary">Pro</span></h1>
               </div>
               <button className="w-10 h-10 rounded-full glass-card flex items-center justify-center">
                 <span className="material-icons-outlined text-slate-400">notifications</span>
               </button>
             </header>
 
-            <section className="gradient-header rounded-[2.5rem] p-7 relative overflow-hidden shadow-2xl">
+            <section className="gradient-header rounded-[2.5rem] p-7 relative overflow-hidden shadow-2xl border border-white/10">
               <div className="relative z-10">
-                <h2 className="text-2xl font-bold text-white mb-1 tracking-tight">¡Hola José María!</h2>
-                <p className="text-indigo-100 text-sm mb-7">Configura tu semana para empezar.</p>
-                <button onClick={() => setVista('NuevaClase')} className="bg-white text-indigo-700 font-bold px-7 py-3.5 rounded-[1.25rem] flex items-center gap-2 shadow-xl text-sm">
+                <h2 className="text-2xl font-bold text-white mb-1 tracking-tight leading-tight">¡Hola José María!</h2>
+                <p className="text-indigo-100 text-sm mb-7 font-medium">Configura tu semana para empezar.</p>
+                <button onClick={() => setVista('NuevaClase')} className="bg-white text-indigo-800 font-black px-7 py-3.5 rounded-[1.25rem] flex items-center gap-2 shadow-xl text-[11px] uppercase tracking-widest active:scale-95 transition-all">
                   <span className="material-icons-outlined text-sm">add_circle</span> Registrar Clase
                 </button>
               </div>
@@ -264,7 +268,7 @@ const App: React.FC = () => {
             </section>
 
             <section className="space-y-4">
-              <h3 className="text-primary font-bold text-lg active-glow">Configuración de Horario</h3>
+              <h3 className="text-accent-purple font-bold text-lg active-glow">Configuración de Horario</h3>
               <div className="glass-card rounded-[2.5rem] p-6 space-y-6">
                 <div className="flex justify-between items-center px-1">
                   {['L', 'M', 'M', 'J', 'V', 'S'].map((day, idx) => {
@@ -272,71 +276,88 @@ const App: React.FC = () => {
                     const isSelected = selectedDays.includes(id);
                     return (
                       <button key={id} onClick={() => setSelectedDays(prev => prev.includes(id) ? prev.filter(d => d !== id) : [...prev, id])}
-                        className={`w-11 h-11 rounded-full flex items-center justify-center font-bold text-sm transition-all ${isSelected ? 'border-2 border-primary shadow-neon-cyan text-primary' : 'bg-slate-800/50 text-slate-500'}`}>
+                        className={`w-11 h-11 rounded-full flex items-center justify-center font-bold text-sm transition-all ${isSelected ? 'border-2 border-primary shadow-neon-cyan text-primary bg-primary/5' : 'bg-antigravity-charcoal text-slate-500'}`}>
                         {day}
                       </button>
                     );
                   })}
                 </div>
-                <input className="w-full bg-slate-900/40 border-none rounded-2xl px-5 py-4 text-sm dark:text-white placeholder:text-slate-600 focus:ring-1 ring-primary/30"
-                  placeholder="Nombre del Grupo (Ej. Avanzados)" value={newGroupName} onChange={(e) => setNewGroupName(e.target.value)} />
-                <button onClick={handleSaveGroup} className="w-full py-4.5 rounded-2xl border border-primary text-primary font-bold bg-primary/5 shadow-neon-cyan">
+
+                <div className="space-y-4">
+                  <input className="w-full bg-antigravity-charcoal border border-white/5 rounded-2xl px-5 py-4 text-sm text-white placeholder:text-slate-600 focus:ring-1 ring-primary/30"
+                    placeholder="Nombre del Grupo (Ej. Avanzados)" value={newGroupName} onChange={(e) => setNewGroupName(e.target.value)} />
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-[10px] uppercase font-bold text-slate-500 ml-1">Desde</label>
+                      <select value={startTime} onChange={(e) => setStartTime(e.target.value)} className="w-full bg-antigravity-charcoal border-none rounded-2xl px-4 py-3 text-sm text-white appearance-none">
+                        {timeIntervals.map(t => <option key={t} value={t} className="bg-antigravity-charcoal">{t}</option>)}
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] uppercase font-bold text-slate-500 ml-1">Hasta</label>
+                      <select value={endTime} onChange={(e) => setEndTime(e.target.value)} className="w-full bg-antigravity-charcoal border-none rounded-2xl px-4 py-3 text-sm text-white appearance-none">
+                        {timeIntervals.map(t => <option key={t} value={t} className="bg-antigravity-charcoal">{t}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <button onClick={handleSaveGroup} className="w-full py-4.5 rounded-2xl border border-accent-purple text-accent-purple font-black bg-accent-purple/5 shadow-neon-purple active:scale-[0.98] transition-all uppercase text-[10px] tracking-[0.2em]">
                   <span>Guardar Configuración</span>
                 </button>
               </div>
             </section>
 
-            {/* Listado de Grupos */}
             <section className="space-y-4">
-              <div className="flex justify-between px-1"><h3 className="text-white font-bold text-lg">Mis Grupos Configurados</h3><span className="text-primary text-xs font-semibold">Ver todos</span></div>
+              <div className="flex justify-between px-1"><h3 className="text-white font-bold text-lg">Mis Grupos</h3><span className="text-primary text-xs font-semibold">Ver todos</span></div>
               {grupos.length > 0 ? grupos.map((g, idx) => (
-                <div key={idx} className="glass-card rounded-[1.5rem] p-6 space-y-5">
-                  <div className="flex justify-between">
-                    <div><h4 className="font-bold text-white text-lg">{g.nombre}</h4><p className="text-xs text-slate-400 mt-1 italic">{g.horario}</p></div>
-                    <div className="bg-[#0f2a30] text-primary text-[10px] font-bold px-3 py-1.5 rounded-lg border border-primary/20 tracking-wider h-fit">ACTIVE</div>
+                <div key={idx} className="glass-card rounded-[1.5rem] p-6 space-y-5 border border-white/5">
+                  <div className="flex justify-between items-start">
+                    <div><h4 className="font-bold text-white text-lg tracking-tight leading-none">{g.nombre}</h4><p className="text-xs text-slate-400 mt-2 font-medium italic">{g.horario}</p></div>
+                    <div className="bg-primary/10 text-primary text-[10px] font-black px-3 py-1.5 rounded-lg border border-primary/20 tracking-wider shadow-neon-cyan uppercase">Active</div>
                   </div>
-                  <button onClick={() => { setActiveGroup(g); setVista('AsistenciaLista'); }} className="w-full py-3.5 rounded-2xl neon-border text-primary font-bold text-sm shadow-neon-cyan flex items-center justify-center gap-2 bg-primary/5">
-                    <span className="material-icons-outlined text-[20px]">fact_check</span> Listas de Asistencia
+                  <button onClick={() => { setActiveGroup(g); setVista('AsistenciaLista'); }} className="w-full py-3.5 rounded-2xl border border-primary text-primary font-bold text-[11px] uppercase tracking-widest shadow-neon-cyan flex items-center justify-center gap-2.5 bg-primary/5 active:scale-95 transition-all">
+                    <span className="material-icons-outlined text-[18px]">fact_check</span> Listas de Asistencia
                   </button>
                 </div>
               )) : (
-                <div className="p-10 text-center glass-card rounded-[2rem] border-dashed border-slate-700/50 italic text-slate-500 text-xs">Configura un grupo para ver asistencia.</div>
+                <div className="p-10 text-center glass-card rounded-[2rem] border-dashed border-slate-700/50 italic text-slate-500 text-xs font-medium">No hay grupos configurados aún.</div>
               )}
             </section>
           </div>
         )}
 
-        {/* VISTA: LISTA DE ASISTENCIA (Pantalla de la silueta + toggle) */}
         {vista === 'AsistenciaLista' && activeGroup && (
           <div className="page-transition flex flex-col min-h-screen relative pb-32">
-            <header className="px-6 py-6 bg-background-dark sticky top-11 z-40 border-b border-white/5 space-y-4">
+            <header className="px-6 py-4 flex flex-col gap-4 bg-antigravity-black sticky top-12 z-40 border-b border-white/5">
               <div className="flex items-center justify-between">
-                <button onClick={() => setVista('Dashboard')} className="w-10 h-10 flex items-center justify-center rounded-full glass-card text-white">
-                  <span className="material-icons-outlined">arrow_back_ios_new</span>
+                <button onClick={() => setVista('Dashboard')} className="w-10 h-10 flex items-center justify-center rounded-full bg-antigravity-charcoal border border-white/10 text-white active:scale-90 transition-all">
+                  <span className="material-symbols-outlined text-[20px]">arrow_back_ios_new</span>
                 </button>
                 <h1 className="text-[10px] font-black tracking-[0.3em] uppercase text-white/40">Control de Asistencia</h1>
-                <button onClick={() => setVista('ReportePDF')} className="text-primary text-xs font-bold border border-primary/30 px-3 py-1.5 rounded-lg">PDF</button>
+                <button onClick={() => setVista('ReportePDF')} className="text-primary text-[10px] font-black tracking-widest border border-primary/30 px-3 py-1.5 rounded-lg uppercase bg-primary/5">Reporte PDF</button>
               </div>
               <div className="flex justify-between items-end">
                 <div>
-                  <h2 className="text-3xl font-black text-white tracking-tighter">{activeGroup.nombre}</h2>
-                  <p className="text-primary text-xs font-bold flex items-center gap-2 mt-1 active-glow">
-                    <span className="material-icons-outlined text-[16px]">schedule</span> {activeGroup.horario}
+                  <h2 className="text-3xl font-bold text-white tracking-tighter leading-none">{activeGroup.nombre}</h2>
+                  <p className="text-primary font-medium flex items-center gap-2 mt-2 opacity-90 text-sm active-glow">
+                    <span className="material-symbols-outlined text-[18px]">schedule</span> {activeGroup.horario}
                   </p>
                 </div>
                 <div className="text-right">
-                  <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest block">Presentes</span>
-                  <div className="text-2xl font-black text-primary active-glow">{presentCount}<span className="text-white/20 mx-1 font-light italic">/</span>{filteredAlumnos.length}</div>
+                  <span className="text-[10px] font-bold text-white/40 uppercase tracking-[0.2em]">Presentes</span>
+                  <div className="text-2xl font-bold text-primary neon-glow-cyan">{presentCount}<span className="text-white/20 mx-1">/</span>{filteredAlumnos.length}</div>
                 </div>
               </div>
             </header>
 
-            <div className="px-6 py-4 sticky top-[160px] z-40 bg-background-dark/80 backdrop-blur-md">
-              <div className="relative">
-                <span className="material-icons-outlined absolute left-4 top-1/2 -translate-y-1/2 text-white/30 text-xl">search</span>
+            <div className="px-6 py-4 sticky top-[156px] z-40 bg-antigravity-black">
+              <div className="relative group">
+                <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-white/30 text-xl group-focus-within:text-primary transition-colors">search</span>
                 <input 
-                  className="w-full bg-slate-900 border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-sm focus:ring-1 focus:ring-primary/50 text-white placeholder:text-slate-600" 
-                  placeholder="Buscar atleta por nombre o DNI..." 
+                  className="w-full bg-antigravity-charcoal border border-white/10 rounded-2xl py-3.5 pl-12 pr-4 text-sm focus:ring-1 focus:ring-primary/50 focus:border-primary/50 placeholder:text-white/20 text-white transition-all shadow-inner" 
+                  placeholder="Buscar alumno..." 
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
@@ -345,145 +366,130 @@ const App: React.FC = () => {
 
             <main className="px-6 space-y-4">
               {filteredAlumnos.length > 0 ? filteredAlumnos.map(alumno => (
-                <div key={alumno.id} className="flex items-center justify-between p-4 rounded-3xl glass-card animate-in fade-in slide-in-from-right-4">
+                <div key={alumno.id} className={`flex items-center justify-between p-4 rounded-2xl glass-card transition-all duration-300 ${!asistenciasHoy[alumno.id!] ? 'opacity-60' : 'border-primary/20 shadow-neon-cyan'}`}>
                   <div className="flex items-center gap-4">
                     <div className="relative">
-                      <div className="w-12 h-12 rounded-2xl bg-slate-800 flex items-center justify-center overflow-hidden border border-white/5">
-                        <span className="material-icons-outlined text-slate-600 text-3xl">account_circle</span>
+                      <div className="w-12 h-12 rounded-xl bg-antigravity-charcoal flex items-center justify-center overflow-hidden border border-white/10">
+                        <span className="material-icons-outlined text-slate-600 text-3xl font-light">account_circle</span>
                       </div>
-                      {asistenciasHoy[alumno.id!] && <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-primary rounded-full border-2 border-background-dark active-glow"></div>}
+                      {asistenciasHoy[alumno.id!] && <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-primary rounded-full border-2 border-antigravity-black"></div>}
                     </div>
                     <div>
-                      <h4 className="text-sm font-bold text-white leading-none">{alumno.nombre}</h4>
-                      <p className="text-[10px] text-white/30 font-black uppercase tracking-widest mt-1.5">{alumno.nivel}</p>
+                      <h4 className="text-sm font-semibold text-white tracking-tight leading-none">{alumno.nombre}</h4>
+                      <p className="text-[10px] text-white/40 font-black uppercase tracking-wider mt-2">{alumno.nivel}</p>
                     </div>
                   </div>
                   
-                  {/* iOS Style Toggle */}
-                  <label className="relative inline-flex items-center cursor-pointer group">
-                    <input 
-                      type="checkbox" 
-                      className="sr-only peer" 
-                      checked={asistenciasHoy[alumno.id!] || false}
-                      onChange={() => toggleAttendance(alumno.id!)}
-                    />
-                    <div className="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white/60 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary/80 shadow-inner"></div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" className="sr-only ios-toggle" checked={asistenciasHoy[alumno.id!] || false} onChange={() => toggleAttendance(alumno.id!)} />
+                    <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full ios-toggle-label after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white/60 after:rounded-full after:h-5 after:w-5 after:transition-all shadow-sm"></div>
                   </label>
                 </div>
               )) : (
-                <div className="py-20 text-center flex flex-col items-center space-y-6 opacity-30">
-                  <span className="material-icons-outlined text-[80px]">person_off</span>
-                  <p className="text-sm font-medium italic">No hay atletas en este grupo.<br/>Usa el botón inferior para añadir uno.</p>
+                <div className="py-24 text-center flex flex-col items-center space-y-6 opacity-30">
+                  <span className="material-symbols-outlined text-[80px] font-light">person_off</span>
+                  <p className="text-sm font-medium italic tracking-wide">No hay alumnos aún.<br/>Pulsa el botón flotante para añadir uno.</p>
                 </div>
               )}
             </main>
 
             <button 
               onClick={() => setVista('RegistroAlumno')}
-              className="fixed bottom-28 right-6 w-16 h-16 bg-primary text-background-dark rounded-3xl flex items-center justify-center shadow-neon-cyan active:scale-90 transition-all z-[100]"
+              className="fixed bottom-28 right-6 w-16 h-16 bg-neon-blue text-white rounded-2xl flex items-center justify-center shadow-neon-fab-blue active:scale-95 transition-all z-[100]"
             >
-              <span className="material-symbols-outlined text-4xl">person_add</span>
+              <span className="material-symbols-outlined text-[32px] font-light">person_add</span>
             </button>
           </div>
         )}
 
-        {/* VISTA: REGISTRO ALUMNO (Formulario detallado) */}
         {vista === 'RegistroAlumno' && activeGroup && (
           <div className="space-y-8 page-transition pb-12 px-6 pt-4">
             <header className="flex items-center gap-4">
-              <button onClick={() => setVista('AsistenciaLista')} className="w-10 h-10 rounded-full glass-card flex items-center justify-center text-primary">
+              <button onClick={() => setVista('AsistenciaLista')} className="w-10 h-10 rounded-full bg-antigravity-charcoal flex items-center justify-center text-primary border border-white/5 active:scale-90 transition-all">
                 <span className="material-icons-outlined">arrow_back</span>
               </button>
-              <div><h2 className="text-white font-bold text-xl uppercase tracking-tighter">Ficha de Inscripción</h2><p className="text-primary text-[10px] font-black uppercase tracking-widest">Grupo: {activeGroup.nombre}</p></div>
+              <div><h2 className="text-white font-bold text-xl tracking-tighter uppercase leading-none">Nueva Inscripción</h2><p className="text-primary text-[10px] font-black uppercase tracking-widest mt-1">Grupo: {activeGroup.nombre}</p></div>
             </header>
 
-            <div className="glass-card rounded-[2.5rem] p-7 space-y-8">
+            <div className="glass-card rounded-[2.5rem] p-7 space-y-8 border border-white/5">
               <div className="space-y-4">
-                <h4 className="text-white font-black text-xs border-b border-white/5 pb-2 uppercase tracking-widest opacity-40">Identificación</h4>
+                <h4 className="text-white font-black text-[10px] border-b border-white/5 pb-2 uppercase tracking-[0.3em] opacity-30 italic">Identificación</h4>
                 <div className="space-y-4">
-                  <input className="w-full bg-slate-900/60 border-none rounded-2xl px-5 py-4 text-sm dark:text-white" placeholder="Nombre y Apellido" value={studentForm.nombre} onChange={(e) => setStudentForm({...studentForm, nombre: e.target.value})}/>
+                  <input className="w-full bg-antigravity-charcoal border border-white/10 rounded-2xl px-5 py-4 text-sm text-white" placeholder="Nombre completo del atleta" value={studentForm.nombre} onChange={(e) => setStudentForm({...studentForm, nombre: e.target.value})}/>
                   <div className="grid grid-cols-2 gap-4">
-                    <input className="w-full bg-slate-900/60 border-none rounded-2xl px-5 py-4 text-sm dark:text-white" placeholder="DNI" value={studentForm.dni} onChange={(e) => setStudentForm({...studentForm, dni: e.target.value})}/>
-                    <input type="date" className="w-full bg-slate-900/60 border-none rounded-2xl px-4 py-4 text-sm dark:text-white" value={studentForm.fechaNacimiento} onChange={(e) => setStudentForm({...studentForm, fechaNacimiento: e.target.value})}/>
+                    <input className="w-full bg-antigravity-charcoal border border-white/10 rounded-2xl px-5 py-4 text-sm text-white" placeholder="DNI" value={studentForm.dni} onChange={(e) => setStudentForm({...studentForm, dni: e.target.value})}/>
+                    <input type="date" className="w-full bg-antigravity-charcoal border border-white/10 rounded-2xl px-4 py-4 text-sm text-white" value={studentForm.fechaNacimiento} onChange={(e) => setStudentForm({...studentForm, fechaNacimiento: e.target.value})}/>
                   </div>
                 </div>
               </div>
 
               <div className="space-y-4">
-                <h4 className="text-white font-black text-xs border-b border-white/5 pb-2 uppercase tracking-widest opacity-40">Salud y Seguimiento</h4>
-                <textarea className="w-full bg-slate-900/60 border-none rounded-2xl px-5 py-4 text-sm dark:text-white h-24" placeholder="Observaciones de salud, alergias o impedimentos..." onChange={(e) => setStudentForm({...studentForm, alertas: [e.target.value]})}/>
-                <input className="w-full bg-slate-900/60 border-none rounded-2xl px-5 py-4 text-sm dark:text-white" placeholder="Datos Federativos (Nº Licencia / Club)" onChange={(e) => setStudentForm({...studentForm, datosFederativos: e.target.value})}/>
-                <div className="space-y-1"><label className="text-[10px] uppercase font-bold text-slate-500 ml-1">Fecha Prueba/Inicio</label><input type="date" className="w-full bg-slate-900/60 border-none rounded-2xl px-5 py-4 text-sm dark:text-white" value={studentForm.fechaPrimeraClase} onChange={(e) => setStudentForm({...studentForm, fechaPrimeraClase: e.target.value})}/></div>
+                <h4 className="text-white font-black text-[10px] border-b border-white/5 pb-2 uppercase tracking-[0.3em] opacity-30 italic">Seguimiento Médico</h4>
+                <textarea className="w-full bg-antigravity-charcoal border border-white/10 rounded-2xl px-5 py-4 text-sm text-white h-24" placeholder="Afecciones, alergias o impedimentos médicos..." onChange={(e) => setStudentForm({...studentForm, alertas: [e.target.value]})}/>
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase font-bold text-slate-500 ml-1">Fecha de Inicio de Actividades</label>
+                  <input type="date" className="w-full bg-antigravity-charcoal border border-white/10 rounded-2xl px-5 py-4 text-sm text-white" value={studentForm.fechaPrimeraClase} onChange={(e) => setStudentForm({...studentForm, fechaPrimeraClase: e.target.value})}/>
+                </div>
               </div>
 
               <div className="space-y-4">
-                <h4 className="text-white font-black text-xs border-b border-white/5 pb-2 uppercase tracking-widest opacity-40">Contactos Familiares</h4>
+                <h4 className="text-white font-black text-[10px] border-b border-white/5 pb-2 uppercase tracking-[0.3em] opacity-30 italic">Contactos Familiares</h4>
                 <div className="grid grid-cols-2 gap-4">
-                  <input className="w-full bg-slate-900/60 border-none rounded-2xl px-4 py-4 text-xs dark:text-white" placeholder="Papá (Nombre)" onChange={(e) => setStudentForm({...studentForm, contacto: {...studentForm.contacto!, padreNombre: e.target.value}})}/>
-                  <input className="w-full bg-slate-900/60 border-none rounded-2xl px-4 py-4 text-xs dark:text-white" placeholder="Papá (Tel)" onChange={(e) => setStudentForm({...studentForm, contacto: {...studentForm.contacto!, padreTelefono: e.target.value}})}/>
+                  <input className="w-full bg-antigravity-charcoal border border-white/10 rounded-2xl px-4 py-4 text-xs text-white" placeholder="Nombre (Papá)" onChange={(e) => setStudentForm({...studentForm, contacto: {...studentForm.contacto!, padreNombre: e.target.value}})}/>
+                  <input className="w-full bg-antigravity-charcoal border border-white/10 rounded-2xl px-4 py-4 text-xs text-white" placeholder="Teléfono" onChange={(e) => setStudentForm({...studentForm, contacto: {...studentForm.contacto!, padreTelefono: e.target.value}})}/>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <input className="w-full bg-slate-900/60 border-none rounded-2xl px-4 py-4 text-xs dark:text-white" placeholder="Mamá (Nombre)" onChange={(e) => setStudentForm({...studentForm, contacto: {...studentForm.contacto!, madreNombre: e.target.value}})}/>
-                  <input className="w-full bg-slate-900/60 border-none rounded-2xl px-4 py-4 text-xs dark:text-white" placeholder="Mamá (Tel)" onChange={(e) => setStudentForm({...studentForm, contacto: {...studentForm.contacto!, madreTelefono: e.target.value}})}/>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <input className="w-full bg-slate-900/60 border-none rounded-2xl px-4 py-4 text-xs dark:text-white font-bold" placeholder="Emergencia (Vínculo)" onChange={(e) => setStudentForm({...studentForm, contacto: {...studentForm.contacto!, emergenciaNombre: e.target.value}})}/>
-                  <input className="w-full bg-slate-900/60 border-none rounded-2xl px-4 py-4 text-xs dark:text-white font-bold text-primary" placeholder="Emergencia (Tel)" onChange={(e) => setStudentForm({...studentForm, contacto: {...studentForm.contacto!, emergenciaTelefono: e.target.value}})}/>
+                  <input className="w-full bg-antigravity-charcoal border border-white/10 rounded-2xl px-4 py-4 text-xs text-white" placeholder="Nombre (Mamá)" onChange={(e) => setStudentForm({...studentForm, contacto: {...studentForm.contacto!, madreNombre: e.target.value}})}/>
+                  <input className="w-full bg-antigravity-charcoal border border-white/10 rounded-2xl px-4 py-4 text-xs text-white" placeholder="Teléfono" onChange={(e) => setStudentForm({...studentForm, contacto: {...studentForm.contacto!, madreTelefono: e.target.value}})}/>
                 </div>
               </div>
 
-              <button onClick={handleSaveStudent} className="w-full py-5 rounded-3xl bg-primary text-background-dark font-black uppercase tracking-[0.2em] text-xs shadow-neon-cyan">
-                Finalizar Registro Atleta
+              <button onClick={handleSaveStudent} className="w-full py-5 rounded-3xl bg-accent-purple text-white font-black uppercase tracking-[0.3em] text-[10px] shadow-neon-purple active:scale-95 transition-all">
+                Finalizar Alta de Atleta
               </button>
             </div>
           </div>
         )}
 
-        {/* VISTA: REPORTE PDF */}
         {vista === 'ReportePDF' && activeGroup && (
           <div className="page-transition p-8 bg-white text-black min-h-screen">
-            <button onClick={() => setVista('AsistenciaLista')} className="mb-8 text-blue-600 font-bold print:hidden">← Volver al Sistema</button>
-            <div className="border-4 border-black p-8 max-w-4xl mx-auto space-y-12">
-              <header className="flex justify-between items-start border-b-2 border-slate-200 pb-8">
-                <div>
-                  <h1 className="text-4xl font-black uppercase tracking-tighter">GymCoach Pro</h1>
-                  <p className="text-lg font-bold text-slate-500">Reporte de Asistencia Mensual</p>
+            <button onClick={() => setVista('AsistenciaLista')} className="mb-8 text-blue-600 font-bold print:hidden flex items-center gap-2">
+              <span className="material-icons-outlined">arrow_back</span> Volver a la Lista
+            </button>
+            <div className="border-[6px] border-black p-10 max-w-5xl mx-auto space-y-12">
+              <header className="flex justify-between items-start border-b-4 border-black pb-8">
+                <div className="space-y-2">
+                  <h1 className="text-6xl font-black uppercase tracking-tighter leading-none">GymCoach Pro</h1>
+                  <h2 className="text-2xl font-black text-slate-500 uppercase tracking-widest">Planilla Mensual</h2>
                 </div>
-                <div className="text-right">
-                  <p className="font-bold uppercase text-xs">Grupo: <span className="text-blue-600">{activeGroup.nombre}</span></p>
-                  <p className="font-bold uppercase text-xs">Mes: <span className="text-blue-600">Septiembre 2024</span></p>
+                <div className="text-right space-y-1 font-black uppercase text-sm">
+                  <p>Grupo: <span className="bg-black text-white px-2 py-0.5">{activeGroup.nombre}</span></p>
+                  <p>Mes: <span className="bg-black text-white px-2 py-0.5">SEPTIEMBRE 2024</span></p>
                 </div>
               </header>
-
-              <table className="w-full border-collapse">
+              <table className="w-full border-collapse border-4 border-black">
                 <thead>
-                  <tr className="bg-slate-100 uppercase text-[10px] font-black tracking-widest border-y border-slate-300">
-                    <th className="p-4 text-left">Atleta</th>
-                    <th className="p-4 text-center">DNI</th>
-                    <th className="p-4 text-center">Asistencias</th>
-                    <th className="p-4 text-center">% Mensual</th>
-                    <th className="p-4 text-right">Firma Tutor</th>
+                  <tr className="bg-slate-100 uppercase text-[12px] font-black border-b-4 border-black">
+                    <th className="p-5 text-left border-r-4 border-black">Atleta</th>
+                    <th className="p-5 text-center border-r-4 border-black">DNI</th>
+                    <th className="p-5 text-center border-r-4 border-black">Asistencias</th>
+                    <th className="p-5 text-right">Firma Tutor</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredAlumnos.map(a => (
-                    <tr key={a.id} className="border-b border-slate-100 text-sm">
-                      <td className="p-4 font-bold uppercase">{a.nombre}</td>
-                      <td className="p-4 text-center font-mono text-slate-500">{a.dni}</td>
-                      <td className="p-4 text-center font-black">12/12</td>
-                      <td className="p-4 text-center"><span className="bg-green-100 text-green-700 px-2 py-0.5 rounded-full text-[10px] font-black">100%</span></td>
-                      <td className="p-4 text-right border-b-2 border-slate-200 w-32"></td>
+                    <tr key={a.id} className="border-b-4 border-black font-bold">
+                      <td className="p-5 border-r-4 border-black uppercase">{a.nombre}</td>
+                      <td className="p-5 text-center border-r-4 border-black font-mono">{a.dni}</td>
+                      <td className="p-5 text-center border-r-4 border-black font-black">12/12</td>
+                      <td className="p-5 text-right w-48"></td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-
-              <footer className="pt-20 flex justify-between">
-                <div className="text-center w-64 border-t-2 border-slate-300 pt-4"><p className="text-[10px] font-black uppercase">Sello Institucional</p></div>
-                <div className="text-center w-64 border-t-2 border-slate-300 pt-4"><p className="text-[10px] font-black uppercase">Firma del Entrenador</p></div>
-              </footer>
-
-              <button onClick={() => window.print()} className="w-full py-4 mt-8 bg-black text-white font-bold uppercase tracking-widest rounded-xl print:hidden">Descargar / Imprimir PDF</button>
+              <button onClick={() => window.print()} className="w-full py-6 mt-12 bg-black text-white font-black uppercase tracking-[0.4em] rounded-2xl print:hidden shadow-2xl">
+                Imprimir Documento
+              </button>
             </div>
           </div>
         )}
@@ -491,16 +497,25 @@ const App: React.FC = () => {
         {/* Grabación IA */}
         {vista === 'NuevaClase' && (
           <div className="space-y-8 page-transition pt-8 px-6">
-            <div className="glass-card rounded-[3rem] p-10 text-center shadow-2xl relative overflow-hidden">
-              <div className="w-24 h-24 bg-primary/10 rounded-[2.5rem] flex items-center justify-center mx-auto mb-8 shadow-neon-cyan border border-primary/20">
+            <header className="flex items-center gap-4 mb-8">
+              <button onClick={() => setVista('Dashboard')} className="w-10 h-10 rounded-full bg-antigravity-charcoal flex items-center justify-center text-primary border border-white/5 active:scale-90 transition-all">
+                <span className="material-icons-outlined">arrow_back</span>
+              </button>
+              <h2 className="text-white font-black text-2xl uppercase tracking-tighter">Reporte por Voz</h2>
+            </header>
+            <div className="glass-card rounded-[3rem] p-10 text-center shadow-neon-cyan-strong border border-primary/20 relative overflow-hidden">
+              <div className="w-24 h-24 bg-primary/10 rounded-[2.5rem] flex items-center justify-center mx-auto mb-10 shadow-neon-cyan border border-primary/20">
                 <span className="material-icons-outlined text-primary text-5xl">mic</span>
               </div>
-              <h2 className="text-2xl font-black dark:text-white mb-2 italic tracking-tighter uppercase">Reporte IA</h2>
-              <div className="relative flex flex-col items-center mt-12">
+              <h3 className="text-2xl font-black text-white mb-4 italic tracking-tighter uppercase leading-none">Asistente IA</h3>
+              <p className="text-sm text-slate-500 mb-14 font-medium px-4">Describe los avances y aparatos trabajados hoy.</p>
+              
+              <div className="relative flex flex-col items-center">
                 <button onMouseDown={startRecording} onMouseUp={stopRecording} onTouchStart={startRecording} onTouchEnd={stopRecording}
-                  className={`w-36 h-36 rounded-full flex items-center justify-center transition-all duration-500 ${isRecording ? 'bg-rose-500 shadow-[0_0_40px_rgba(244,63,94,0.5)] scale-110' : 'bg-primary shadow-neon-cyan-strong hover:scale-105 active:scale-95'}`}>
-                  {isRecording ? <div className="flex gap-2 items-end h-10">{[1,2,3,4,5,6].map(i => (<div key={i} className="w-2 bg-white rounded-full animate-bounce" style={{animationDelay: `${i*0.1}s`, height: `${40 + Math.random()*60}%`}}></div>))}</div> : <span className="material-icons-outlined text-white text-5xl">mic</span>}
+                  className={`w-36 h-36 rounded-full flex items-center justify-center transition-all duration-500 ${isRecording ? 'bg-rose-500 scale-110 shadow-lg' : 'bg-primary shadow-neon-cyan-strong'}`}>
+                  {isRecording ? <div className="flex gap-2 items-end h-10">{[1,2,3,4,5,6].map(i => (<div key={i} className="w-2 bg-white rounded-full animate-bounce" style={{animationDelay: `${i*0.1}s`, height: `${40+Math.random()*60}%`}}></div>))}</div> : <span className="material-icons-outlined text-background-dark text-6xl">mic</span>}
                 </button>
+                <p className="mt-12 text-[10px] font-black uppercase text-primary tracking-[0.4em] active-glow">{isRecording ? "Grabando Voz..." : "Mantén para Hablar"}</p>
               </div>
             </div>
           </div>
@@ -509,32 +524,30 @@ const App: React.FC = () => {
 
       {/* Navegación Inferior */}
       {vista !== 'ReportePDF' && (
-        <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-background-dark/80 backdrop-blur-xl border-t border-white/5 px-8 pt-4 pb-10 flex justify-between items-center z-50">
+        <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-antigravity-charcoal/80 backdrop-blur-xl border-t border-white/5 px-8 pt-4 pb-12 flex justify-between items-center z-50">
           {[
             { v: 'Dashboard', i: 'grid_view' },
-            { v: 'Alumnos', i: 'people' },
+            { v: 'Alumnos', i: 'group' },
             { v: 'Horario', i: 'calendar_today' },
-            { v: 'Ajustes', i: 'settings' }
+            { v: 'Ajustes', i: 'app_settings_alt' }
           ].map(item => (
-            <button 
-              key={item.v} 
-              onClick={() => setVista(item.v as ViewMode)}
-              className={`flex flex-col items-center gap-1.5 transition-all ${vista === item.v || (vista === 'AsistenciaLista' && item.v === 'Dashboard') ? 'text-primary active-glow' : 'text-slate-500'}`}
-            >
-              <span className="material-icons-outlined text-[26px]">{item.i}</span>
-              <span className="text-[10px] font-bold uppercase tracking-tighter">{item.v}</span>
+            <button key={item.v} onClick={() => setVista(item.v as ViewMode)} className={`flex flex-col items-center gap-1.5 transition-all flex-1 ${vista === item.v || (vista === 'AsistenciaLista' && item.v === 'Dashboard') ? 'text-primary active-glow' : 'text-white/30 hover:text-white'}`}>
+              <span className="material-symbols-outlined text-[28px] font-light">{item.i}</span>
+              <span className="text-[9px] font-bold uppercase tracking-widest">{item.v}</span>
             </button>
           ))}
         </nav>
       )}
 
-      {vista !== 'ReportePDF' && <div className="fixed bottom-2 left-1/2 -translate-x-1/2 w-32 h-1.5 bg-slate-800 rounded-full z-[60]"></div>}
+      {vista !== 'ReportePDF' && <div className="fixed bottom-3 left-1/2 -translate-x-1/2 w-32 h-1.5 bg-white/10 rounded-full z-[60] pointer-events-none"></div>}
 
       {/* Notificaciones */}
       {notificacion && (
-        <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[100] w-[90%] max-w-[380px] bg-[#0A1A2F]/90 backdrop-blur-xl text-white p-5 rounded-3xl shadow-neon-cyan border border-white/10 flex items-center gap-4 animate-in slide-in-from-top-12 duration-500">
-          <div className="w-12 h-12 bg-primary/20 rounded-2xl flex items-center justify-center border border-primary/30"><span className="material-icons-outlined text-primary">check_circle</span></div>
-          <div><p className="text-[10px] font-black uppercase tracking-widest text-primary">{notificacion.t}</p><p className="text-[11px] text-slate-300 font-medium mt-1">{notificacion.d}</p></div>
+        <div className="fixed top-14 left-1/2 -translate-x-1/2 z-[100] w-[90%] max-w-[380px] bg-antigravity-charcoal/90 backdrop-blur-2xl text-white p-6 rounded-[2rem] shadow-neon-cyan-strong border border-white/10 flex items-center gap-5 animate-in slide-in-from-top-12 duration-500">
+          <div className="w-14 h-14 bg-primary/20 rounded-2xl flex items-center justify-center border border-primary/30 active-glow">
+            <span className="material-icons-outlined text-primary text-3xl">verified</span>
+          </div>
+          <div><p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">{notificacion.t}</p><p className="text-xs text-slate-300 font-medium mt-1 leading-relaxed italic">"{notificacion.d}"</p></div>
         </div>
       )}
     </div>
