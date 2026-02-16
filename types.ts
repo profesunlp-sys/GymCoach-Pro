@@ -1,4 +1,3 @@
-
 export type Discipline = 'GAF' | 'GAM' | 'Trampolín' | 'Rítmica';
 export type Apparatus = 'Suelo' | 'Viga' | 'Paralelas' | 'Salto' | 'Anillas' | 'Arzones' | 'Barra Fija';
 export type SkillStatus = 'No Iniciado' | 'En Proceso' | 'Dominado' | 'Elite';
@@ -37,6 +36,7 @@ export interface Alumno {
   dni: string;
   disciplina: Discipline;
   nivel: string;
+  grupo?: string; // Vinculación con el grupo configurado
   fechaNacimiento: string;
   fechaIngreso: string;
   fechaPrimeraClase: string;
@@ -45,7 +45,8 @@ export interface Alumno {
   biometria: Biometrics;
   qrCode: string;
   asistenciasHistoricas: number;
-  alertas: string[];
+  alertas: string[]; // Usado para datos de salud/observaciones
+  datosFederativos?: string;
   contacto?: ContactoFamilia;
 }
 
@@ -75,4 +76,4 @@ export interface StaffMember {
   isClockedIn: boolean;
 }
 
-export type ViewMode = 'Dashboard' | 'Horario' | 'Alumnos' | 'Ajustes' | 'NuevaClase' | 'Calendario';
+export type ViewMode = 'Dashboard' | 'Horario' | 'Alumnos' | 'Ajustes' | 'NuevaClase' | 'Calendario' | 'RegistroAlumno';

@@ -1,17 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Dexie, { type EntityTable } from 'dexie';
-import { Alumno, Clase, ViewMode, GrupoConfig } from './types.ts';
+import { Alumno, Clase, ViewMode, GrupoConfig, ContactoFamilia } from './types.ts';
 import { processClassAudio } from './services/geminiService.ts';
 
 // --- DATABASE CONFIGURATION ---
-const db = new Dexie('GymCoachEliteDB_AntigravityV4') as Dexie & {
+const db = new Dexie('GymCoachEliteDB_AntigravityV5') as Dexie & {
   alumnos: EntityTable<Alumno, 'id'>;
   clases: EntityTable<Clase, 'id'>;
   grupos: EntityTable<GrupoConfig, 'id'>;
 };
 
-db.version(1).stores({
-  alumnos: '++id, dni, nombre, estadoPago, disciplina',
+db.version(2).stores({
+  alumnos: '++id, dni, nombre, estadoPago, disciplina, grupo',
   clases: '++id, fecha, grupo',
   grupos: '++id, nombre'
 });
@@ -28,6 +28,25 @@ const App: React.FC = () => {
   const [selectedDays, setSelectedDays] = useState<string[]>([]);
   const [startTime, setStartTime] = useState("17:00");
   const [endTime, setEndTime] = useState("19:00");
+
+  // Selected Group Context
+  const [activeGroup, setActiveGroup] = useState<GrupoConfig | null>(null);
+
+  // Student Form State
+  const [studentForm, setStudentForm] = useState<Partial<Alumno>>({
+    nombre: '',
+    dni: '',
+    disciplina: 'GAF',
+    nivel: 'Iniciación',
+    fechaNacimiento: '',
+    fechaPrimeraClase: new Date().toISOString().split('T')[0],
+    alertas: [],
+    contacto: {
+      padreNombre: '', padreTelefono: '',
+      madreNombre: '', madreTelefono: '',
+      emergenciaNombre: '', emergenciaTelefono: ''
+    }
+  });
   
   // IA Recording State
   const [isRecording, setIsRecording] = useState(false);
@@ -45,18 +64,6 @@ const App: React.FC = () => {
     setAlumnos(a);
     setClases(c);
     setGrupos(g);
-
-    if (a.length === 0 && g.length === 0) {
-      await db.alumnos.add({
-        nombre: 'Atleta Pro', dni: '001', disciplina: 'GAF', nivel: 'Promocional',
-        fechaNacimiento: '2015-01-01', fechaIngreso: new Date().toISOString(),
-        fechaPrimeraClase: new Date().toISOString(), estadoPago: 'Al día', 
-        asistenciasHistoricas: 15, alertas: [], habilidades: [],
-        biometria: { fuerza: 70, flexibilidad: 80, tecnica: 60, resistencia: 65, coordinacion: 75 },
-        qrCode: 'QR_001'
-      });
-      loadData();
-    }
   };
 
   useEffect(() => { if (isLoggedIn) loadData(); }, [isLoggedIn]);
@@ -77,6 +84,37 @@ const App: React.FC = () => {
     setSelectedDays([]);
     loadData();
     setNotificacion({ t: "Éxito", d: `Grupo ${newGroupName} configurado.` });
+    setTimeout(() => setNotificacion(null), 3000);
+  };
+
+  const handleSaveStudent = async () => {
+    if (!studentForm.nombre || !studentForm.dni) {
+      setNotificacion({ t: "Error", d: "Nombre y DNI son obligatorios." });
+      setTimeout(() => setNotificacion(null), 3000);
+      return;
+    }
+
+    const newStudent: Alumno = {
+      ...studentForm as Alumno,
+      grupo: activeGroup?.nombre || 'Sin Grupo',
+      fechaIngreso: new Date().toISOString(),
+      estadoPago: 'Al día',
+      habilidades: [],
+      biometria: { fuerza: 50, flexibilidad: 50, tecnica: 50, resistencia: 50, coordinacion: 50 },
+      qrCode: `QR_${studentForm.dni}`,
+      asistenciasHistoricas: 0
+    };
+
+    await db.alumnos.add(newStudent);
+    loadData();
+    setNotificacion({ t: "Atleta Registrado", d: `${newStudent.nombre} ha sido añadido al grupo.` });
+    setVista('Dashboard');
+    // Reset form
+    setStudentForm({
+      nombre: '', dni: '', disciplina: 'GAF', nivel: 'Iniciación',
+      fechaNacimiento: '', fechaPrimeraClase: new Date().toISOString().split('T')[0],
+      alertas: [], contacto: { padreNombre: '', padreTelefono: '', madreNombre: '', madreTelefono: '', emergenciaNombre: '', emergenciaTelefono: '' }
+    });
     setTimeout(() => setNotificacion(null), 3000);
   };
 
@@ -156,7 +194,7 @@ const App: React.FC = () => {
   return (
     <div className="max-w-[430px] mx-auto min-h-screen bg-background-light dark:bg-background-dark shadow-2xl relative overflow-hidden flex flex-col font-display pb-32">
       
-      {/* iOS Status Bar */}
+      {/* Status Bar */}
       <div className="h-11 w-full flex items-center justify-between px-8 pt-4 bg-transparent sticky top-0 z-[60]">
         <span className="text-sm font-semibold dark:text-white">9:41</span>
         <div className="flex gap-2 items-center dark:text-white">
@@ -271,7 +309,7 @@ const App: React.FC = () => {
               </div>
             </section>
 
-            {/* MIS GRUPOS CONFIGURADOS - LISTADO DINÁMICO */}
+            {/* Listado de Grupos Configurados */}
             {grupos.length > 0 && (
               <section className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div className="flex items-center justify-between px-1">
@@ -295,7 +333,13 @@ const App: React.FC = () => {
                           ACTIVE
                         </div>
                       </div>
-                      <button onClick={() => setVista('Alumnos')} className="w-full py-3.5 rounded-2xl neon-border text-primary font-bold text-sm shadow-neon-cyan flex items-center justify-center gap-2.5 active:scale-[0.98] transition-all bg-primary/5">
+                      <button 
+                        onClick={() => {
+                          setActiveGroup(g);
+                          setVista('RegistroAlumno');
+                        }} 
+                        className="w-full py-3.5 rounded-2xl neon-border text-primary font-bold text-sm shadow-neon-cyan flex items-center justify-center gap-2.5 active:scale-[0.98] transition-all bg-primary/5"
+                      >
                         <span className="material-icons-outlined text-[20px]">fact_check</span>
                         <span>Listas de Asistencia</span>
                       </button>
@@ -305,30 +349,7 @@ const App: React.FC = () => {
               </section>
             )}
 
-            {/* Quick Stats Grid */}
-            <section className="grid grid-cols-2 gap-4">
-              <div className="glass-card rounded-[2rem] p-5">
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="material-icons-outlined text-indigo-400 text-sm">calendar_month</span>
-                  <span className="text-[10px] uppercase font-bold tracking-widest text-slate-400">Total Clases</span>
-                </div>
-                <div className="text-3xl font-bold mb-1 dark:text-white">{clases.length}</div>
-                <p className="text-[10px] text-slate-500">Sesiones registradas</p>
-              </div>
-              <div className="glass-card rounded-[2rem] p-5">
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="material-icons-outlined text-blue-400 text-sm">groups</span>
-                  <span className="text-[10px] uppercase font-bold tracking-widest text-slate-400">Alumnos</span>
-                </div>
-                <div className="text-3xl font-bold mb-1 dark:text-white">{alumnos.length}</div>
-                <button onClick={() => setVista('Alumnos')} className="text-[10px] text-primary font-bold flex items-center gap-1">
-                  <span className="material-icons-outlined text-[12px]">person_add</span>
-                  Añadir Atleta
-                </button>
-              </div>
-            </section>
-
-            {/* Info Card - Estética de la imagen */}
+            {/* Info Card */}
             <section className="bg-gradient-to-br from-[#0f172a] to-black rounded-[2.5rem] p-7 border border-slate-800/50 shadow-2xl space-y-4">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 bg-slate-800/80 rounded-2xl flex items-center justify-center border border-slate-700/50 shadow-inner">
@@ -343,6 +364,142 @@ const App: React.FC = () => {
           </div>
         )}
 
+        {/* VISTA DE REGISTRO DE ALUMNO (Listas de Asistencia) */}
+        {vista === 'RegistroAlumno' && activeGroup && (
+          <div className="space-y-8 page-transition pb-12">
+            <div className="flex items-center gap-4 px-1">
+              <button onClick={() => setVista('Dashboard')} className="w-10 h-10 rounded-full glass-card flex items-center justify-center text-primary">
+                <span className="material-icons-outlined">arrow_back</span>
+              </button>
+              <div>
+                <h2 className="text-white font-bold text-xl">{activeGroup.nombre}</h2>
+                <p className="text-primary text-[10px] font-bold uppercase tracking-widest">Añadir Atletas a la Lista</p>
+              </div>
+            </div>
+
+            <div className="glass-card rounded-[2.5rem] p-6 space-y-8">
+              {/* Sección 1: Datos Personales */}
+              <div className="space-y-4">
+                <h4 className="text-white font-bold text-sm border-b border-white/10 pb-2">Datos Personales</h4>
+                <div className="space-y-4">
+                  <div className="space-y-1">
+                    <label className="text-[10px] uppercase font-bold text-slate-500">Nombre y Apellido</label>
+                    <input 
+                      className="w-full bg-slate-900/40 border-none rounded-2xl px-5 py-3.5 text-sm dark:text-white"
+                      value={studentForm.nombre}
+                      onChange={(e) => setStudentForm({...studentForm, nombre: e.target.value})}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-[10px] uppercase font-bold text-slate-500">DNI</label>
+                      <input 
+                        className="w-full bg-slate-900/40 border-none rounded-2xl px-5 py-3.5 text-sm dark:text-white"
+                        value={studentForm.dni}
+                        onChange={(e) => setStudentForm({...studentForm, dni: e.target.value})}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] uppercase font-bold text-slate-500">F. Nacimiento</label>
+                      <input 
+                        type="date"
+                        className="w-full bg-slate-900/40 border-none rounded-2xl px-4 py-3 text-sm dark:text-white"
+                        value={studentForm.fechaNacimiento}
+                        onChange={(e) => setStudentForm({...studentForm, fechaNacimiento: e.target.value})}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Sección 2: Datos Federativos y Salud */}
+              <div className="space-y-4">
+                <h4 className="text-white font-bold text-sm border-b border-white/10 pb-2">Información Médica y Federativa</h4>
+                <div className="space-y-4">
+                  <div className="space-y-1">
+                    <label className="text-[10px] uppercase font-bold text-slate-500">Datos de Salud / Alergias</label>
+                    <textarea 
+                      className="w-full bg-slate-900/40 border-none rounded-2xl px-5 py-3.5 text-sm dark:text-white h-24"
+                      placeholder="Indique afecciones, alergias o cuidados especiales..."
+                      onChange={(e) => setStudentForm({...studentForm, alertas: [e.target.value]})}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] uppercase font-bold text-slate-500">Datos Federativos</label>
+                    <input 
+                      className="w-full bg-slate-900/40 border-none rounded-2xl px-5 py-3.5 text-sm dark:text-white"
+                      placeholder="Nº Licencia, Club Anterior..."
+                      onChange={(e) => setStudentForm({...studentForm, datosFederativos: e.target.value})}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] uppercase font-bold text-slate-500">Día Inicio Clases (Trial)</label>
+                    <input 
+                      type="date"
+                      className="w-full bg-slate-900/40 border-none rounded-2xl px-5 py-3.5 text-sm dark:text-white"
+                      value={studentForm.fechaPrimeraClase}
+                      onChange={(e) => setStudentForm({...studentForm, fechaPrimeraClase: e.target.value})}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Sección 3: Contactos Familiares */}
+              <div className="space-y-4">
+                <h4 className="text-white font-bold text-sm border-b border-white/10 pb-2">Contactos de Familia</h4>
+                <div className="space-y-6">
+                  {/* Padre */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-[10px] uppercase font-bold text-slate-500">Nombre Padre</label>
+                      <input className="w-full bg-slate-900/40 border-none rounded-2xl px-4 py-3 text-xs dark:text-white" 
+                             onChange={(e) => setStudentForm({...studentForm, contacto: {...studentForm.contacto!, padreNombre: e.target.value}})}/>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] uppercase font-bold text-slate-500">Tel. Padre</label>
+                      <input className="w-full bg-slate-900/40 border-none rounded-2xl px-4 py-3 text-xs dark:text-white" 
+                             onChange={(e) => setStudentForm({...studentForm, contacto: {...studentForm.contacto!, padreTelefono: e.target.value}})}/>
+                    </div>
+                  </div>
+                  {/* Madre */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-[10px] uppercase font-bold text-slate-500">Nombre Madre</label>
+                      <input className="w-full bg-slate-900/40 border-none rounded-2xl px-4 py-3 text-xs dark:text-white" 
+                             onChange={(e) => setStudentForm({...studentForm, contacto: {...studentForm.contacto!, madreNombre: e.target.value}})}/>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] uppercase font-bold text-slate-500">Tel. Madre</label>
+                      <input className="w-full bg-slate-900/40 border-none rounded-2xl px-4 py-3 text-xs dark:text-white" 
+                             onChange={(e) => setStudentForm({...studentForm, contacto: {...studentForm.contacto!, madreTelefono: e.target.value}})}/>
+                    </div>
+                  </div>
+                  {/* Emergencia */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-[10px] uppercase font-bold text-slate-500">Contacto Emergencia</label>
+                      <input className="w-full bg-slate-900/40 border-none rounded-2xl px-4 py-3 text-xs dark:text-white" 
+                             onChange={(e) => setStudentForm({...studentForm, contacto: {...studentForm.contacto!, emergenciaNombre: e.target.value}})}/>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] uppercase font-bold text-slate-500">Tel. Emergencia</label>
+                      <input className="w-full bg-slate-900/40 border-none rounded-2xl px-4 py-3 text-xs dark:text-white" 
+                             onChange={(e) => setStudentForm({...studentForm, contacto: {...studentForm.contacto!, emergenciaTelefono: e.target.value}})}/>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <button 
+                onClick={handleSaveStudent}
+                className="w-full py-5 rounded-2xl bg-primary text-background-dark font-black uppercase tracking-widest text-xs shadow-neon-cyan active:scale-95 transition-all"
+              >
+                Registrar Atleta en {activeGroup.nombre}
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Grabación IA */}
         {vista === 'NuevaClase' && (
           <div className="space-y-8 page-transition pt-8">
@@ -351,40 +508,16 @@ const App: React.FC = () => {
                 <span className="material-icons-outlined text-primary text-5xl">mic</span>
               </div>
               <h2 className="text-2xl font-black dark:text-white mb-2 italic tracking-tighter uppercase">Reporte IA</h2>
-              <p className="text-sm text-slate-500 mb-12 max-w-[240px] mx-auto font-medium">Habla sobre el entrenamiento de hoy: Entrada en calor, aparatos y logros.</p>
-              
+              <p className="text-sm text-slate-500 mb-12 max-w-[240px] mx-auto font-medium">Habla sobre el entrenamiento de hoy.</p>
               <div className="relative flex flex-col items-center">
-                <button 
-                  onMouseDown={startRecording} onMouseUp={stopRecording}
-                  onTouchStart={startRecording} onTouchEnd={stopRecording}
-                  className={`w-36 h-36 rounded-full flex items-center justify-center transition-all duration-500 ${
-                    isRecording 
-                      ? 'bg-rose-500 shadow-[0_0_40px_rgba(244,63,94,0.5)] scale-110' 
-                      : 'bg-primary shadow-neon-cyan-strong hover:scale-105 active:scale-95'
-                  }`}
-                >
-                  {isRecording ? (
-                    <div className="flex gap-2 items-end h-10">
-                      {[1,2,3,4,5,6].map(i => (
-                        <div key={i} className="w-2 bg-white rounded-full animate-bounce" style={{animationDelay: `${i*0.1}s`, height: `${40 + Math.random()*60}%`}}></div>
-                      ))}
-                    </div>
-                  ) : <span className="material-icons-outlined text-white text-5xl">mic</span>}
+                <button onMouseDown={startRecording} onMouseUp={stopRecording} onTouchStart={startRecording} onTouchEnd={stopRecording}
+                  className={`w-36 h-36 rounded-full flex items-center justify-center transition-all duration-500 ${isRecording ? 'bg-rose-500 shadow-[0_0_40px_rgba(244,63,94,0.5)] scale-110' : 'bg-primary shadow-neon-cyan-strong hover:scale-105 active:scale-95'}`}>
+                  {isRecording ? <div className="flex gap-2 items-end h-10">{[1,2,3,4,5,6].map(i => (<div key={i} className="w-2 bg-white rounded-full animate-bounce" style={{animationDelay: `${i*0.1}s`, height: `${40 + Math.random()*60}%`}}></div>))}</div> : <span className="material-icons-outlined text-white text-5xl">mic</span>}
                 </button>
-                <div className="mt-12">
-                  <p className="text-[11px] font-black uppercase text-primary tracking-[0.3em] active-glow">
-                    {isRecording ? "Grabando... Suelta para procesar" : "Mantén para hablar"}
-                  </p>
-                </div>
+                <div className="mt-12"><p className="text-[11px] font-black uppercase text-primary tracking-[0.3em] active-glow">{isRecording ? "Grabando..." : "Mantén para hablar"}</p></div>
               </div>
             </div>
-
-            {isAnalyzing && (
-              <div className="glass-card p-12 rounded-[2.5rem] text-center animate-pulse flex flex-col items-center">
-                <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin mb-6"></div>
-                <p className="text-xs font-black uppercase text-primary tracking-widest">Interpretando reporte...</p>
-              </div>
-            )}
+            {isAnalyzing && <div className="glass-card p-12 rounded-[2.5rem] text-center animate-pulse flex flex-col items-center"><div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin mb-6"></div><p className="text-xs font-black uppercase text-primary tracking-widest">Analizando...</p></div>}
           </div>
         )}
 
