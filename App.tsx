@@ -4,7 +4,7 @@ import { Alumno, Clase, ViewMode, GrupoConfig, AsistenciaRecord } from './types.
 import { processClassAudio } from './services/geminiService.ts';
 
 // --- DATABASE CONFIGURATION ---
-const db = new Dexie('GymCoachEliteDB_AntigravityV10') as Dexie & {
+const db = new Dexie('GymCoachEliteDB_AntigravityV11') as Dexie & {
   alumnos: EntityTable<Alumno, 'id'>;
   clases: EntityTable<Clase, 'id'>;
   grupos: EntityTable<GrupoConfig, 'id'>;
@@ -215,26 +215,16 @@ const App: React.FC = () => {
   if (!isLoggedIn) return (
     <div className="auth-bg flex flex-col items-center justify-center p-8 text-white min-h-screen relative">
       <div className="z-10 w-full max-w-sm text-center page-transition flex flex-col items-center">
-        {/* Logo Container - Exact visual from reference */}
         <div className="w-24 h-24 bg-white/10 backdrop-blur-3xl rounded-[2.2rem] flex items-center justify-center mb-12 shadow-[0_10px_40px_rgba(0,0,0,0.4)] border border-white/20">
           <span className="material-icons-outlined text-white text-4xl transform -rotate-45">fitness_center</span>
         </div>
-
-        {/* Brand Text - Exact wording and spans */}
         <h1 className="text-[42px] font-extrabold tracking-tighter mb-1 text-white leading-none">
           GymCoach <span className="text-primary">Pro</span>
         </h1>
-        
-        {/* Slogan - Exact styling */}
         <p className="text-white/40 text-[10px] font-bold italic uppercase tracking-[0.4em] mb-20 whitespace-nowrap">
           ELITE GYMNASTICS MANAGEMENT
         </p>
-
-        {/* Action Button - Exact pill shape and styling */}
-        <button 
-          onClick={() => setIsLoggedIn(true)} 
-          className="w-full max-w-[280px] py-4.5 bg-white text-[#1e1b4b] rounded-full font-bold uppercase text-[10px] tracking-[0.18em] shadow-[0_20px_40px_rgba(0,0,0,0.3)] active:scale-95 transition-all hover:bg-slate-50"
-        >
+        <button onClick={() => setIsLoggedIn(true)} className="w-full max-w-[280px] py-4.5 bg-white text-[#1e1b4b] rounded-full font-bold uppercase text-[10px] tracking-[0.18em] shadow-[0_20px_40px_rgba(0,0,0,0.3)] active:scale-95 transition-all hover:bg-slate-50">
           INICIAR PANEL DE CONTROL
         </button>
       </div>
@@ -342,80 +332,95 @@ const App: React.FC = () => {
           </div>
         )}
 
+        {/* VISTA: ASISTENCIA LISTA (EXACT MATCH) */}
         {vista === 'AsistenciaLista' && activeGroup && (
-          <div className="page-transition flex flex-col min-h-screen relative pb-32">
-            <header className="px-6 py-4 flex flex-col gap-4 bg-antigravity-black sticky top-12 z-40 border-b border-white/5">
+          <div className="page-transition flex flex-col min-h-screen relative bg-antigravity-black">
+            <header className="px-6 py-4 flex flex-col gap-4 bg-antigravity-black sticky top-12 z-40">
               <div className="flex items-center justify-between">
-                <button onClick={() => setVista('Dashboard')} className="w-10 h-10 flex items-center justify-center rounded-full bg-antigravity-charcoal border border-white/10 text-white active:scale-90 transition-all">
+                <button onClick={() => setVista('Dashboard')} className="w-10 h-10 flex items-center justify-center rounded-full bg-antigravity-charcoal border border-white/10 text-white">
                   <span className="material-symbols-outlined text-[20px]">arrow_back_ios_new</span>
                 </button>
-                <h1 className="text-[10px] font-black tracking-[0.3em] uppercase text-white/40">Control de Asistencia</h1>
-                <button onClick={() => setVista('ReportePDF')} className="text-primary text-[10px] font-black tracking-widest border border-primary/30 px-3 py-1.5 rounded-lg uppercase bg-primary/5">Reporte PDF</button>
+                <h1 className="text-sm font-bold tracking-widest uppercase text-white/60">Asistencia</h1>
+                <div className="w-10"></div>
               </div>
               <div className="flex justify-between items-end">
                 <div>
-                  <h2 className="text-3xl font-bold text-white tracking-tighter leading-none">{activeGroup.nombre}</h2>
-                  <p className="text-primary font-medium flex items-center gap-2 mt-2 opacity-90 text-sm active-glow">
+                  <h2 className="text-3xl font-bold text-white tracking-tight leading-none">{activeGroup.nombre}</h2>
+                  <p className="text-neon-cyan font-medium flex items-center gap-2 mt-2 opacity-90 text-sm">
                     <span className="material-symbols-outlined text-[18px]">schedule</span> {activeGroup.horario}
                   </p>
                 </div>
                 <div className="text-right">
                   <span className="text-[10px] font-bold text-white/40 uppercase tracking-[0.2em]">Presentes</span>
-                  <div className="text-2xl font-bold text-primary neon-glow-cyan">{presentCount}<span className="text-white/20 mx-1">/</span>{filteredAlumnos.length}</div>
+                  <div className="text-2xl font-bold text-neon-cyan neon-glow-cyan">
+                    {presentCount}<span className="text-white/20 mx-1">/</span>{filteredAlumnos.length}
+                  </div>
                 </div>
               </div>
             </header>
 
-            <div className="px-6 py-4 sticky top-[156px] z-40 bg-antigravity-black">
+            <div className="px-6 pt-2 pb-4">
               <div className="relative group">
-                <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-white/30 text-xl group-focus-within:text-primary transition-colors">search</span>
+                <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-white/30 text-xl group-focus-within:text-neon-cyan transition-colors">search</span>
                 <input 
-                  className="w-full bg-antigravity-charcoal border border-white/10 rounded-2xl py-3.5 pl-12 pr-4 text-sm focus:ring-1 focus:ring-primary/50 focus:border-primary/50 placeholder:text-white/20 text-white transition-all shadow-inner" 
+                  className="w-full bg-antigravity-charcoal border border-white/10 rounded-2xl py-3.5 pl-12 pr-4 text-sm focus:ring-1 focus:ring-neon-cyan/50 focus:border-neon-cyan/50 placeholder:text-white/20 text-white neon-border-cyan transition-all" 
                   placeholder="Buscar alumno..." 
+                  type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
             </div>
 
-            <main className="px-6 space-y-4">
+            <main className="flex-1 overflow-y-auto px-6 py-2 space-y-4">
               {filteredAlumnos.length > 0 ? filteredAlumnos.map(alumno => (
-                <div key={alumno.id} className={`flex items-center justify-between p-4 rounded-2xl glass-card transition-all duration-300 ${!asistenciasHoy[alumno.id!] ? 'opacity-60' : 'border-primary/20 shadow-neon-cyan'}`}>
+                <div key={alumno.id} className={`flex items-center justify-between p-4 rounded-2xl glass-card transition-all duration-300 ${!asistenciasHoy[alumno.id!] ? 'opacity-60' : 'border-neon-cyan/20'}`}>
                   <div className="flex items-center gap-4">
                     <div className="relative">
                       <div className="w-12 h-12 rounded-xl bg-antigravity-charcoal flex items-center justify-center overflow-hidden border border-white/10">
-                        <span className="material-icons-outlined text-slate-600 text-3xl font-light">account_circle</span>
+                        <img 
+                          alt="Avatar" 
+                          className={`w-full h-full object-cover ${!asistenciasHoy[alumno.id!] ? 'grayscale' : 'grayscale-[0.3]'}`} 
+                          src={`https://ui-avatars.com/api/?name=${encodeURIComponent(alumno.nombre)}&background=121214&color=fff&size=128`}
+                        />
                       </div>
-                      {asistenciasHoy[alumno.id!] && <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-primary rounded-full border-2 border-antigravity-black"></div>}
+                      {asistenciasHoy[alumno.id!] && <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-neon-cyan rounded-full border-2 border-antigravity-black"></div>}
                     </div>
                     <div>
-                      <h4 className="text-sm font-semibold text-white tracking-tight leading-none">{alumno.nombre}</h4>
-                      <p className="text-[10px] text-white/40 font-black uppercase tracking-wider mt-2">{alumno.nivel}</p>
+                      <h4 className={`text-sm font-semibold ${asistenciasHoy[alumno.id!] ? 'text-white' : 'text-white/70'} leading-none`}>{alumno.nombre}</h4>
+                      <p className={`text-[10px] font-bold uppercase tracking-wider mt-2 ${asistenciasHoy[alumno.id!] ? 'text-white/40' : 'text-white/30'}`}>{alumno.nivel}</p>
                     </div>
                   </div>
                   
                   <label className="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" className="sr-only ios-toggle" checked={asistenciasHoy[alumno.id!] || false} onChange={() => toggleAttendance(alumno.id!)} />
+                    <input 
+                      type="checkbox" 
+                      className="sr-only ios-toggle peer" 
+                      checked={asistenciasHoy[alumno.id!] || false}
+                      onChange={() => toggleAttendance(alumno.id!)}
+                    />
                     <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full ios-toggle-label after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white/60 after:rounded-full after:h-5 after:w-5 after:transition-all shadow-sm"></div>
                   </label>
                 </div>
               )) : (
                 <div className="py-24 text-center flex flex-col items-center space-y-6 opacity-30">
                   <span className="material-symbols-outlined text-[80px] font-light">person_off</span>
-                  <p className="text-sm font-medium italic tracking-wide">No hay alumnos aún.<br/>Pulsa el botón flotante para añadir uno.</p>
+                  <p className="text-sm font-medium italic tracking-wide">Inicia agregando tu primer alumno<br/>usando el botón azul inferior.</p>
                 </div>
               )}
             </main>
 
+            {/* FAB button matches user snippet */}
             <button 
               onClick={() => setVista('RegistroAlumno')}
-              className="fixed bottom-28 right-6 w-16 h-16 bg-neon-blue text-white rounded-2xl flex items-center justify-center shadow-neon-fab-blue active:scale-95 transition-all z-[100]"
+              className="absolute bottom-28 right-6 w-16 h-16 bg-neon-blue text-white rounded-2xl flex items-center justify-center neon-fab-blue active:scale-95 transition-all z-30"
             >
               <span className="material-symbols-outlined text-[32px] font-light">person_add</span>
             </button>
           </div>
         )}
 
+        {/* ... views logic ... */}
         {vista === 'RegistroAlumno' && activeGroup && (
           <div className="space-y-8 page-transition pb-12 px-6 pt-4">
             <header className="flex items-center gap-4">
@@ -424,7 +429,6 @@ const App: React.FC = () => {
               </button>
               <div><h2 className="text-white font-bold text-xl tracking-tighter uppercase leading-none">Nueva Inscripción</h2><p className="text-primary text-[10px] font-black uppercase tracking-widest mt-1">Grupo: {activeGroup.nombre}</p></div>
             </header>
-
             <div className="glass-card rounded-[2.5rem] p-7 space-y-8 border border-white/5">
               <div className="space-y-4">
                 <h4 className="text-white font-black text-[10px] border-b border-white/5 pb-2 uppercase tracking-[0.3em] opacity-30 italic">Identificación</h4>
@@ -436,7 +440,6 @@ const App: React.FC = () => {
                   </div>
                 </div>
               </div>
-
               <div className="space-y-4">
                 <h4 className="text-white font-black text-[10px] border-b border-white/5 pb-2 uppercase tracking-[0.3em] opacity-30 italic">Seguimiento Médico</h4>
                 <textarea className="w-full bg-antigravity-charcoal border border-white/10 rounded-2xl px-5 py-4 text-sm text-white h-24" placeholder="Afecciones, alergias o impedimentos médicos..." onChange={(e) => setStudentForm({...studentForm, alertas: [e.target.value]})}/>
@@ -445,19 +448,6 @@ const App: React.FC = () => {
                   <input type="date" className="w-full bg-antigravity-charcoal border border-white/10 rounded-2xl px-5 py-4 text-sm text-white" value={studentForm.fechaPrimeraClase} onChange={(e) => setStudentForm({...studentForm, fechaPrimeraClase: e.target.value})}/>
                 </div>
               </div>
-
-              <div className="space-y-4">
-                <h4 className="text-white font-black text-[10px] border-b border-white/5 pb-2 uppercase tracking-[0.3em] opacity-30 italic">Contactos Familiares</h4>
-                <div className="grid grid-cols-2 gap-4">
-                  <input className="w-full bg-antigravity-charcoal border border-white/10 rounded-2xl px-4 py-4 text-xs text-white" placeholder="Nombre (Papá)" onChange={(e) => setStudentForm({...studentForm, contacto: {...studentForm.contacto!, padreNombre: e.target.value}})}/>
-                  <input className="w-full bg-antigravity-charcoal border border-white/10 rounded-2xl px-4 py-4 text-xs text-white" placeholder="Teléfono" onChange={(e) => setStudentForm({...studentForm, contacto: {...studentForm.contacto!, padreTelefono: e.target.value}})}/>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <input className="w-full bg-antigravity-charcoal border border-white/10 rounded-2xl px-4 py-4 text-xs text-white" placeholder="Nombre (Mamá)" onChange={(e) => setStudentForm({...studentForm, contacto: {...studentForm.contacto!, madreNombre: e.target.value}})}/>
-                  <input className="w-full bg-antigravity-charcoal border border-white/10 rounded-2xl px-4 py-4 text-xs text-white" placeholder="Teléfono" onChange={(e) => setStudentForm({...studentForm, contacto: {...studentForm.contacto!, madreTelefono: e.target.value}})}/>
-                </div>
-              </div>
-
               <button onClick={handleSaveStudent} className="w-full py-5 rounded-3xl bg-accent-purple text-white font-black uppercase tracking-[0.3em] text-[10px] shadow-neon-purple active:scale-95 transition-all">
                 Finalizar Alta de Atleta
               </button>
@@ -535,24 +525,33 @@ const App: React.FC = () => {
         )}
       </main>
 
-      {/* Navegación Inferior */}
+      {/* Navegación Inferior (Refined for Antigravity) */}
       {vista !== 'ReportePDF' && (
-        <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-antigravity-charcoal/80 backdrop-blur-xl border-t border-white/5 px-8 pt-4 pb-12 flex justify-between items-center z-50">
+        <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-antigravity-charcoal/80 backdrop-blur-md border-t border-white/5 px-6 pt-4 pb-2 flex justify-between items-center z-50">
           {[
             { v: 'Dashboard', i: 'grid_view' },
             { v: 'Alumnos', i: 'group' },
             { v: 'Horario', i: 'calendar_today' },
             { v: 'Ajustes', i: 'app_settings_alt' }
           ].map(item => (
-            <button key={item.v} onClick={() => setVista(item.v as ViewMode)} className={`flex flex-col items-center gap-1.5 transition-all flex-1 ${vista === item.v || (vista === 'AsistenciaLista' && item.v === 'Dashboard') ? 'text-primary active-glow' : 'text-white/30 hover:text-white'}`}>
-              <span className="material-symbols-outlined text-[28px] font-light">{item.i}</span>
-              <span className="text-[9px] font-bold uppercase tracking-widest">{item.v}</span>
+            <button 
+              key={item.v} 
+              onClick={() => setVista(item.v as ViewMode)} 
+              className={`flex flex-col items-center gap-1.5 transition-all flex-1 ${vista === item.v || (vista === 'AsistenciaLista' && item.v === 'Horario') ? 'text-neon-cyan active-glow' : 'text-white/30 hover:text-white'}`}
+            >
+              <span className={`material-symbols-outlined text-[26px] font-light ${vista === item.v || (vista === 'AsistenciaLista' && item.v === 'Horario') ? 'neon-glow-cyan' : ''}`}>{item.i}</span>
+              <span className={`text-[9px] uppercase tracking-wide ${vista === item.v || (vista === 'AsistenciaLista' && item.v === 'Horario') ? 'font-bold' : 'font-medium'}`}>{item.v === 'Horario' ? (activeGroup ? 'Horario' : 'Horario') : item.v}</span>
             </button>
           ))}
         </nav>
       )}
 
-      {vista !== 'ReportePDF' && <div className="fixed bottom-3 left-1/2 -translate-x-1/2 w-32 h-1.5 bg-white/10 rounded-full z-[60] pointer-events-none"></div>}
+      {/* Safe Area Indicator */}
+      {vista !== 'ReportePDF' && (
+        <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-antigravity-charcoal pb-3 pt-1 z-[60]">
+          <div className="h-1.5 w-32 bg-white/10 rounded-full mx-auto shrink-0"></div>
+        </div>
+      )}
 
       {/* Notificaciones */}
       {notificacion && (
