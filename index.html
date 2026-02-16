@@ -1,42 +1,64 @@
 <!DOCTYPE html>
-<html lang="es">
+<html class="dark" lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GymCoach Pro Elite</title>
-    
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    
-    <style>
-        body { 
-            font-family: 'Lexend', sans-serif; 
-            background-color: #f6f7f8; 
-            margin: 0; 
-            color: #1e293b;
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+    <title>GymCoach Pro - Antigravity</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet"/>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        primary: "#00F2FF", // Neon Cyan
+                        "background-light": "#F8FAFC",
+                        "background-dark": "#0B0E14", // Deep Charcoal Black
+                        "card-dark": "#161B22",
+                        "accent-purple": "#7000FF",
+                        "accent-blue": "#0066FF"
+                    },
+                    fontFamily: {
+                        display: ["Plus Jakarta Sans", "sans-serif"],
+                    },
+                    borderRadius: {
+                        DEFAULT: "16px",
+                    },
+                    boxShadow: {
+                        'neon': '0 0 15px rgba(0, 242, 255, 0.4)',
+                        'glow-purple': '0 0 25px rgba(112, 0, 255, 0.3)',
+                    }
+                },
+            },
+        };
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .antigravity-gradient {
+                background: linear-gradient(135deg, #0066FF 0%, #7000FF 100%);
+            }
+            .neon-border {
+                border: 1px solid rgba(0, 242, 255, 0.5);
+                box-shadow: 0 0 10px rgba(0, 242, 255, 0.2);
+            }
+            .glass-effect {
+                backdrop-filter: blur(10px);
+                background: rgba(255, 255, 255, 0.05);
+            }
+            .active-glow {
+                filter: drop-shadow(0 0 5px #00F2FF);
+            }
+            .ios-input-shadow {
+                box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+            }
+        }
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
             -webkit-tap-highlight-color: transparent;
-            overflow-x: hidden;
-            -webkit-font-smoothing: antialiased;
+            min-height: 100vh;
         }
-
-        #root:empty::before {
-            content: "";
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            width: 40px;
-            height: 40px;
-            margin: -20px 0 0 -20px;
-            border: 3px solid #e2e8f0;
-            border-top: 3px solid #277bf1;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
         .page-transition { 
             animation: slideUp 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); 
         }
@@ -44,32 +66,11 @@
             from { opacity: 0; transform: translateY(10px); } 
             to { opacity: 1; transform: translateY(0); } 
         }
-
-        .ios-shadow {
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-        }
-        
-        .ios-input-shadow {
-            box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.02);
-        }
-
         .auth-bg {
-            background: radial-gradient(circle at top right, #1e3a8a, #1e1b4b, #020617);
+            background: radial-gradient(circle at top right, #0066FF, #7000FF, #0B0E14);
             min-height: 100vh;
         }
-
-        ::-webkit-scrollbar {
-            width: 4px;
-        }
-        ::-webkit-scrollbar-track {
-            background: transparent;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 10px;
-        }
     </style>
-
     <script>
         window.process = {
             env: { API_KEY: "" },
@@ -77,21 +78,21 @@
             version: ''
         };
     </script>
-<script type="importmap">
-{
-  "imports": {
-    "react": "https://esm.sh/react@^19.2.4",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
-    "react/": "https://esm.sh/react@^19.2.4/",
-    "@google/genai": "https://esm.sh/@google/genai@^1.41.0",
-    "dexie": "https://esm.sh/dexie@^4.3.0",
-    "vite": "https://esm.sh/vite@^7.3.1",
-    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.4"
-  }
-}
-</script>
+    <script type="importmap">
+    {
+      "imports": {
+        "react": "https://esm.sh/react@^19.2.4",
+        "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
+        "react/": "https://esm.sh/react@^19.2.4/",
+        "@google/genai": "https://esm.sh/@google/genai@^1.41.0",
+        "dexie": "https://esm.sh/dexie@^4.3.0",
+        "vite": "https://esm.sh/vite@^7.3.1",
+        "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.4"
+      }
+    }
+    </script>
 </head>
-<body>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 font-display">
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
 </body>
