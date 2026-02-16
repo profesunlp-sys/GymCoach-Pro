@@ -4,7 +4,7 @@ import { Alumno, Clase, ViewMode, GrupoConfig } from './types.ts';
 import { processClassAudio } from './services/geminiService.ts';
 
 // --- DATABASE CONFIGURATION ---
-const db = new Dexie('GymCoachEliteDB_AntigravityV2') as Dexie & {
+const db = new Dexie('GymCoachEliteDB_AntigravityV4') as Dexie & {
   alumnos: EntityTable<Alumno, 'id'>;
   clases: EntityTable<Clase, 'id'>;
   grupos: EntityTable<GrupoConfig, 'id'>;
@@ -26,6 +26,8 @@ const App: React.FC = () => {
   // Group Form State
   const [newGroupName, setNewGroupName] = useState("");
   const [selectedDays, setSelectedDays] = useState<string[]>([]);
+  const [startTime, setStartTime] = useState("17:00");
+  const [endTime, setEndTime] = useState("19:00");
   
   // IA Recording State
   const [isRecording, setIsRecording] = useState(false);
@@ -45,7 +47,6 @@ const App: React.FC = () => {
     setGrupos(g);
 
     if (a.length === 0 && g.length === 0) {
-      // Seed with sample data if empty
       await db.alumnos.add({
         nombre: 'Atleta Pro', dni: '001', disciplina: 'GAF', nivel: 'Promocional',
         fechaNacimiento: '2015-01-01', fechaIngreso: new Date().toISOString(),
@@ -70,12 +71,12 @@ const App: React.FC = () => {
     await db.grupos.add({
       nombre: newGroupName,
       dias: selectedDays,
-      horario: "18:00 - 20:00"
+      horario: `${startTime} - ${endTime}`
     });
     setNewGroupName("");
     setSelectedDays([]);
     loadData();
-    setNotificacion({ t: "Grupo Guardado", d: `El grupo ${newGroupName} está activo.` });
+    setNotificacion({ t: "Éxito", d: `Grupo ${newGroupName} configurado.` });
     setTimeout(() => setNotificacion(null), 3000);
   };
 
@@ -124,7 +125,7 @@ const App: React.FC = () => {
         };
         await db.clases.add(newClase);
         loadData();
-        setNotificacion({ t: "Reporte IA", d: `Sesión de ${newClase.grupo} registrada.` });
+        setNotificacion({ t: "IA Assistant", d: `Clase registrada correctamente.` });
         setIsAnalyzing(false);
         setVista('Dashboard');
       } catch (e) {
@@ -135,6 +136,8 @@ const App: React.FC = () => {
     };
   };
 
+  const timeIntervals = ["17:00", "17:30", "18:00", "18:30", "19:00", "19:30", "20:00"];
+
   if (!isLoggedIn) return (
     <div className="auth-bg flex flex-col items-center justify-center p-8 text-white min-h-screen">
       <div className="z-10 w-full max-w-sm text-center page-transition">
@@ -144,7 +147,7 @@ const App: React.FC = () => {
         <h1 className="text-4xl font-extrabold tracking-tighter mb-2">GymCoach <span className="text-primary">Pro</span></h1>
         <p className="text-white/50 text-sm mb-12">High Performance Gymnastics Management</p>
         <button onClick={() => setIsLoggedIn(true)} className="w-full py-5 bg-white text-indigo-900 rounded-[2rem] font-bold uppercase text-xs tracking-widest shadow-2xl active:scale-95 transition-all">
-          Iniciar Panel de Control
+          Acceder al Sistema
         </button>
       </div>
     </div>
@@ -178,11 +181,11 @@ const App: React.FC = () => {
         </button>
       </header>
 
-      <main className="flex-1 px-6 mt-4 space-y-6 overflow-y-auto">
+      <main className="flex-1 px-6 mt-4 space-y-8 overflow-y-auto">
         
         {vista === 'Dashboard' && (
           <div className="space-y-8 page-transition">
-            {/* Gradient Banner */}
+            {/* Banner Principal */}
             <section className="gradient-header rounded-[2.5rem] p-7 relative overflow-hidden shadow-2xl">
               <div className="relative z-10">
                 <h2 className="text-2xl font-bold text-white mb-1">¡Hola José María!</h2>
@@ -193,10 +196,9 @@ const App: React.FC = () => {
                 </button>
               </div>
               <div className="absolute -top-12 -right-12 w-48 h-48 bg-white/10 rounded-full blur-3xl"></div>
-              <div className="absolute -left-10 -bottom-10 w-32 h-32 bg-indigo-400/20 rounded-full blur-2xl"></div>
             </section>
 
-            {/* Schedule Config */}
+            {/* Configuración Formulario */}
             <section className="space-y-4">
               <div className="flex flex-col gap-1">
                 <h3 className="text-primary font-bold text-lg active-glow">Configuración de Horario</h3>
@@ -205,7 +207,7 @@ const App: React.FC = () => {
               
               <div className="glass-card rounded-[2.5rem] p-6 space-y-6">
                 <div className="flex justify-between items-center px-1">
-                  {['L', 'M', 'M', 'J', 'V'].map((day, idx) => {
+                  {['L', 'M', 'M', 'J', 'V', 'S'].map((day, idx) => {
                     const id = `${day}-${idx}`;
                     const isSelected = selectedDays.includes(id);
                     return (
@@ -224,23 +226,44 @@ const App: React.FC = () => {
                   })}
                 </div>
 
-                <div className="space-y-2">
-                  <input 
-                    className="w-full bg-slate-900/40 border-none rounded-2xl px-5 py-4 text-sm dark:text-white placeholder:text-slate-600 focus:ring-1 ring-primary/30"
-                    placeholder="Nombre del Grupo (Ej. Avanzados)"
-                    value={newGroupName}
-                    onChange={(e) => setNewGroupName(e.target.value)}
-                  />
-                </div>
+                <div className="space-y-4">
+                  <div className="space-y-1">
+                    <label className="text-[10px] uppercase font-bold text-slate-500 ml-1">Nombre del Grupo</label>
+                    <input 
+                      className="w-full bg-slate-900/40 border-none rounded-2xl px-5 py-4 text-sm dark:text-white placeholder:text-slate-600 focus:ring-1 ring-primary/30"
+                      placeholder="Ej. Avanzados"
+                      value={newGroupName}
+                      onChange={(e) => setNewGroupName(e.target.value)}
+                    />
+                  </div>
 
-                <div className="border-2 border-dashed border-slate-700/50 rounded-2xl p-4 flex items-center gap-3">
-                  <span className="material-icons-outlined text-primary">more_time</span>
-                  <span className="text-slate-400 text-sm italic">Añade horarios para los días seleccionados...</span>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-[10px] uppercase font-bold text-slate-500 ml-1">Desde</label>
+                      <select 
+                        value={startTime}
+                        onChange={(e) => setStartTime(e.target.value)}
+                        className="w-full bg-slate-900/40 border-none rounded-2xl px-4 py-3 text-sm dark:text-white focus:ring-1 ring-primary/30 appearance-none"
+                      >
+                        {timeIntervals.map(t => <option key={t} value={t} className="bg-background-dark">{t}</option>)}
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] uppercase font-bold text-slate-500 ml-1">Hasta</label>
+                      <select 
+                        value={endTime}
+                        onChange={(e) => setEndTime(e.target.value)}
+                        className="w-full bg-slate-900/40 border-none rounded-2xl px-4 py-3 text-sm dark:text-white focus:ring-1 ring-primary/30 appearance-none"
+                      >
+                        {timeIntervals.map(t => <option key={t} value={t} className="bg-background-dark">{t}</option>)}
+                      </select>
+                    </div>
+                  </div>
                 </div>
 
                 <button 
                   onClick={handleSaveGroup}
-                  className="w-full py-4.5 rounded-2xl border border-primary text-primary font-bold flex items-center justify-center gap-2 bg-primary/5 active:bg-primary/10 transition-colors"
+                  className="w-full py-4.5 rounded-2xl border border-primary text-primary font-bold flex items-center justify-center gap-2 bg-primary/5 active:bg-primary/10 transition-colors shadow-neon-cyan"
                 >
                   <span className="material-icons-outlined text-sm">save</span>
                   <span>Guardar Configuración</span>
@@ -248,78 +271,79 @@ const App: React.FC = () => {
               </div>
             </section>
 
+            {/* MIS GRUPOS CONFIGURADOS - LISTADO DINÁMICO */}
+            {grupos.length > 0 && (
+              <section className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div className="flex items-center justify-between px-1">
+                  <h3 className="text-white font-bold text-lg tracking-tight">Mis Grupos Configurados</h3>
+                  <button className="text-primary text-xs font-semibold hover:underline">Ver todos</button>
+                </div>
+                <div className="space-y-4">
+                  {grupos.map((g, idx) => (
+                    <div key={idx} className="glass-card rounded-[1.5rem] p-6 flex flex-col gap-5 border border-white/5">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h4 className="font-bold text-white text-lg tracking-tight">{g.nombre}</h4>
+                          <p className="text-xs text-slate-400 mt-1 font-medium italic">
+                            {g.dias.map(d => {
+                              const map: any = {L:'Lun', M:'Mar', Mi:'Mié', J:'Jue', V:'Vie', S:'Sáb'};
+                              return map[d.split('-')[0]] || d.split('-')[0];
+                            }).join(', ')} • {g.horario}
+                          </p>
+                        </div>
+                        <div className="bg-[#0f2a30] text-primary text-[10px] font-bold px-3 py-1 rounded-lg border border-primary/20 tracking-widest shadow-neon-cyan">
+                          ACTIVE
+                        </div>
+                      </div>
+                      <button onClick={() => setVista('Alumnos')} className="w-full py-3.5 rounded-2xl neon-border text-primary font-bold text-sm shadow-neon-cyan flex items-center justify-center gap-2.5 active:scale-[0.98] transition-all bg-primary/5">
+                        <span className="material-icons-outlined text-[20px]">fact_check</span>
+                        <span>Listas de Asistencia</span>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
             {/* Quick Stats Grid */}
             <section className="grid grid-cols-2 gap-4">
               <div className="glass-card rounded-[2rem] p-5">
                 <div className="flex items-center gap-2 mb-3">
                   <span className="material-icons-outlined text-indigo-400 text-sm">calendar_month</span>
-                  <span className="text-[10px] uppercase font-bold tracking-widest text-slate-500">Total Clases</span>
+                  <span className="text-[10px] uppercase font-bold tracking-widest text-slate-400">Total Clases</span>
                 </div>
                 <div className="text-3xl font-bold mb-1 dark:text-white">{clases.length}</div>
-                <p className="text-[10px] text-slate-500">Sin actividad hoy</p>
+                <p className="text-[10px] text-slate-500">Sesiones registradas</p>
               </div>
               <div className="glass-card rounded-[2rem] p-5">
                 <div className="flex items-center gap-2 mb-3">
                   <span className="material-icons-outlined text-blue-400 text-sm">groups</span>
-                  <span className="text-[10px] uppercase font-bold tracking-widest text-slate-500">Alumnos</span>
+                  <span className="text-[10px] uppercase font-bold tracking-widest text-slate-400">Alumnos</span>
                 </div>
                 <div className="text-3xl font-bold mb-1 dark:text-white">{alumnos.length}</div>
                 <button onClick={() => setVista('Alumnos')} className="text-[10px] text-primary font-bold flex items-center gap-1">
                   <span className="material-icons-outlined text-[12px]">person_add</span>
-                  Invitar primero
+                  Añadir Atleta
                 </button>
               </div>
             </section>
 
-            {/* Configured Groups */}
-            <section className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-slate-100 font-bold text-lg">Mis Grupos Configurados</h3>
-                <button className="text-primary text-xs font-semibold">Ver todos</button>
-              </div>
-              <div className="space-y-4">
-                {grupos.length > 0 ? grupos.map((g, idx) => (
-                  <div key={idx} className="glass-card rounded-[2rem] p-5 flex flex-col gap-5">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h4 className="font-bold text-slate-100 text-base">{g.nombre}</h4>
-                        <p className="text-xs text-slate-400 mt-1">
-                          {g.dias.map(d => d.split('-')[0]).join(', ')} • {g.horario}
-                        </p>
-                      </div>
-                      <div className="bg-primary/10 text-primary text-[10px] font-bold px-2.5 py-1 rounded-lg border border-primary/20">
-                        ACTIVE
-                      </div>
-                    </div>
-                    <button onClick={() => setVista('Alumnos')} className="w-full py-3.5 rounded-xl neon-border text-primary font-bold text-sm shadow-neon-cyan flex items-center justify-center gap-2 active:scale-[0.98] transition-all">
-                      <span className="material-icons-outlined text-sm">fact_check</span>
-                      <span>Listas de Asistencia</span>
-                    </button>
-                  </div>
-                )) : (
-                  <div className="p-8 text-center glass-card rounded-[2rem] border-dashed border-slate-700/50">
-                    <p className="text-slate-500 text-xs font-medium italic">Aún no has configurado grupos.</p>
-                  </div>
-                )}
-              </div>
-            </section>
-
-            {/* Help Card */}
-            <section className="bg-gradient-to-br from-[#0f172a] to-black rounded-[2.5rem] p-7 border border-slate-800/50 shadow-2xl">
-              <div className="flex items-center gap-4 mb-4">
-                <div className="w-11 h-11 bg-slate-800/80 rounded-2xl flex items-center justify-center border border-slate-700/50">
-                  <span className="material-icons-outlined text-primary">info</span>
+            {/* Info Card - Estética de la imagen */}
+            <section className="bg-gradient-to-br from-[#0f172a] to-black rounded-[2.5rem] p-7 border border-slate-800/50 shadow-2xl space-y-4">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-slate-800/80 rounded-2xl flex items-center justify-center border border-slate-700/50 shadow-inner">
+                  <span className="material-icons-outlined text-primary text-2xl">info</span>
                 </div>
-                <h3 className="font-bold text-slate-100 text-lg">Primeros Pasos</h3>
+                <h3 className="font-bold text-slate-100 text-xl tracking-tight leading-none">Primeros Pasos</h3>
               </div>
-              <p className="text-slate-400 text-sm leading-relaxed">
+              <p className="text-slate-400 text-sm leading-relaxed font-medium">
                 Bienvenido a tu panel personalizado. Completa la configuración de tu horario para que podamos ayudarte a organizar tus grupos y asistencias de manera automática.
               </p>
             </section>
           </div>
         )}
 
-        {/* Recording View */}
+        {/* Grabación IA */}
         {vista === 'NuevaClase' && (
           <div className="space-y-8 page-transition pt-8">
             <div className="glass-card rounded-[3rem] p-10 text-center shadow-2xl relative overflow-hidden">
@@ -327,7 +351,7 @@ const App: React.FC = () => {
                 <span className="material-icons-outlined text-primary text-5xl">mic</span>
               </div>
               <h2 className="text-2xl font-black dark:text-white mb-2 italic tracking-tighter uppercase">Reporte IA</h2>
-              <p className="text-sm text-slate-500 mb-12 max-w-[240px] mx-auto font-medium">Describe la sesión de hoy: Calentamiento, Aparatos y Logros.</p>
+              <p className="text-sm text-slate-500 mb-12 max-w-[240px] mx-auto font-medium">Habla sobre el entrenamiento de hoy: Entrada en calor, aparatos y logros.</p>
               
               <div className="relative flex flex-col items-center">
                 <button 
@@ -345,22 +369,20 @@ const App: React.FC = () => {
                         <div key={i} className="w-2 bg-white rounded-full animate-bounce" style={{animationDelay: `${i*0.1}s`, height: `${40 + Math.random()*60}%`}}></div>
                       ))}
                     </div>
-                  ) : (
-                    <span className="material-icons-outlined text-white text-5xl">mic</span>
-                  )}
+                  ) : <span className="material-icons-outlined text-white text-5xl">mic</span>}
                 </button>
                 <div className="mt-12">
                   <p className="text-[11px] font-black uppercase text-primary tracking-[0.3em] active-glow">
-                    {isRecording ? "Grabando... Suelta para procesar" : "Mantén presionado para hablar"}
+                    {isRecording ? "Grabando... Suelta para procesar" : "Mantén para hablar"}
                   </p>
                 </div>
               </div>
             </div>
 
             {isAnalyzing && (
-              <div className="glass-card p-12 rounded-[2.5rem] text-center animate-pulse flex flex-col items-center border-primary/20">
+              <div className="glass-card p-12 rounded-[2.5rem] text-center animate-pulse flex flex-col items-center">
                 <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin mb-6"></div>
-                <p className="text-xs font-black uppercase text-primary tracking-widest">IA Procesando Audio...</p>
+                <p className="text-xs font-black uppercase text-primary tracking-widest">Interpretando reporte...</p>
               </div>
             )}
           </div>
@@ -373,14 +395,14 @@ const App: React.FC = () => {
                <span className="material-icons-outlined text-5xl">construction</span>
             </div>
             <p className="text-slate-400 font-bold uppercase tracking-widest text-[11px]">Módulo: {vista}</p>
-            <button onClick={() => setVista('Dashboard')} className="text-primary font-bold text-xs bg-primary/10 px-8 py-4 rounded-full border border-primary/20 hover:bg-primary/20 transition-all">
-              Volver al Dashboard
+            <button onClick={() => setVista('Dashboard')} className="text-primary font-bold text-xs bg-primary/10 px-8 py-4 rounded-full border border-primary/20">
+              Regresar
             </button>
           </div>
         )}
       </main>
 
-      {/* Navigation */}
+      {/* Navegación Inferior */}
       <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-background-dark/80 backdrop-blur-xl border-t border-slate-800/50 px-8 pt-4 pb-10 flex justify-between items-center z-50">
         {[
           { v: 'Dashboard', i: 'grid_view' },
@@ -401,11 +423,11 @@ const App: React.FC = () => {
 
       <div className="fixed bottom-2 left-1/2 -translate-x-1/2 w-32 h-1.5 bg-slate-800 rounded-full z-[60]"></div>
 
-      {/* Notifications */}
+      {/* Notificaciones */}
       {notificacion && (
         <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[100] w-[90%] max-w-[380px] bg-[#0A1A2F]/90 backdrop-blur-xl text-white p-5 rounded-3xl shadow-neon-cyan border border-white/10 flex items-center gap-4 animate-in slide-in-from-top-12 duration-500">
           <div className="w-12 h-12 bg-primary/20 rounded-2xl flex items-center justify-center border border-primary/30">
-            <span className="material-icons-outlined text-primary">auto_awesome</span>
+            <span className="material-icons-outlined text-primary">check_circle</span>
           </div>
           <div>
             <p className="text-[10px] font-black uppercase tracking-widest text-primary">{notificacion.t}</p>
