@@ -4,7 +4,7 @@ import { Alumno, Clase, ViewMode, GrupoConfig, AsistenciaRecord } from './types.
 import { processClassAudio } from './services/geminiService.ts';
 
 // --- DATABASE CONFIGURATION ---
-const db = new Dexie('GymCoachEliteDB_AntigravityV8') as Dexie & {
+const db = new Dexie('GymCoachEliteDB_AntigravityV10') as Dexie & {
   alumnos: EntityTable<Alumno, 'id'>;
   clases: EntityTable<Clase, 'id'>;
   grupos: EntityTable<GrupoConfig, 'id'>;
@@ -214,14 +214,28 @@ const App: React.FC = () => {
 
   if (!isLoggedIn) return (
     <div className="auth-bg flex flex-col items-center justify-center p-8 text-white min-h-screen relative">
-      <div className="z-10 w-full max-w-sm text-center page-transition">
-        <div className="w-20 h-20 bg-white/10 backdrop-blur-xl rounded-[2rem] flex items-center justify-center mx-auto mb-8 shadow-2xl border border-white/10">
-          <span className="material-icons-outlined text-white text-4xl">fitness_center</span>
+      <div className="z-10 w-full max-w-sm text-center page-transition flex flex-col items-center">
+        {/* Logo Container - Exact visual from reference */}
+        <div className="w-24 h-24 bg-white/10 backdrop-blur-3xl rounded-[2.2rem] flex items-center justify-center mb-12 shadow-[0_10px_40px_rgba(0,0,0,0.4)] border border-white/20">
+          <span className="material-icons-outlined text-white text-4xl transform -rotate-45">fitness_center</span>
         </div>
-        <h1 className="text-4xl font-extrabold tracking-tighter mb-1 text-white">GymCoach <span className="text-primary">Pro</span></h1>
-        <p className="text-white/40 text-[10px] font-black uppercase tracking-[0.4em] mb-12 italic">Elite Gymnastics Management</p>
-        <button onClick={() => setIsLoggedIn(true)} className="w-full py-5 bg-white text-indigo-900 rounded-full font-black uppercase text-xs tracking-[0.2em] shadow-2xl active:scale-95 transition-all">
-          Iniciar Panel de Control
+
+        {/* Brand Text - Exact wording and spans */}
+        <h1 className="text-[42px] font-extrabold tracking-tighter mb-1 text-white leading-none">
+          GymCoach <span className="text-primary">Pro</span>
+        </h1>
+        
+        {/* Slogan - Exact styling */}
+        <p className="text-white/40 text-[10px] font-bold italic uppercase tracking-[0.4em] mb-20 whitespace-nowrap">
+          ELITE GYMNASTICS MANAGEMENT
+        </p>
+
+        {/* Action Button - Exact pill shape and styling */}
+        <button 
+          onClick={() => setIsLoggedIn(true)} 
+          className="w-full max-w-[280px] py-4.5 bg-white text-[#1e1b4b] rounded-full font-bold uppercase text-[10px] tracking-[0.18em] shadow-[0_20px_40px_rgba(0,0,0,0.3)] active:scale-95 transition-all hover:bg-slate-50"
+        >
+          INICIAR PANEL DE CONTROL
         </button>
       </div>
     </div>
@@ -494,7 +508,6 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {/* Grabación IA */}
         {vista === 'NuevaClase' && (
           <div className="space-y-8 page-transition pt-8 px-6">
             <header className="flex items-center gap-4 mb-8">
