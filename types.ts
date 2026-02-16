@@ -36,7 +36,7 @@ export interface Alumno {
   dni: string;
   disciplina: Discipline;
   nivel: string;
-  grupo?: string; // Vinculación con el grupo configurado
+  grupo?: string; 
   fechaNacimiento: string;
   fechaIngreso: string;
   fechaPrimeraClase: string;
@@ -45,9 +45,17 @@ export interface Alumno {
   biometria: Biometrics;
   qrCode: string;
   asistenciasHistoricas: number;
-  alertas: string[]; // Usado para datos de salud/observaciones
+  alertas: string[]; 
   datosFederativos?: string;
   contacto?: ContactoFamilia;
+}
+
+export interface AsistenciaRecord {
+  id?: number;
+  fecha: string; // ISO string date
+  alumnoId: number;
+  grupo: string;
+  presente: boolean;
 }
 
 export interface Clase {
@@ -68,12 +76,4 @@ export interface GrupoConfig {
   horario: string;
 }
 
-export interface StaffMember {
-  id: number;
-  nombre: string;
-  rol: 'Coach' | 'Admin' | 'Head Coach';
-  clockIn?: string;
-  isClockedIn: boolean;
-}
-
-export type ViewMode = 'Dashboard' | 'Horario' | 'Alumnos' | 'Ajustes' | 'NuevaClase' | 'Calendario' | 'RegistroAlumno';
+export type ViewMode = 'Dashboard' | 'Horario' | 'Alumnos' | 'Ajustes' | 'NuevaClase' | 'RegistroAlumno' | 'AsistenciaLista' | 'ReportePDF';
