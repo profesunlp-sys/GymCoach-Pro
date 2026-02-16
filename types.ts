@@ -60,6 +60,13 @@ export interface Clase {
   skillsCovered?: string[];
 }
 
+export interface GrupoConfig {
+  id?: number;
+  nombre: string;
+  dias: string[];
+  horario: string;
+}
+
 export interface StaffMember {
   id: number;
   nombre: string;
@@ -68,12 +75,4 @@ export interface StaffMember {
   isClockedIn: boolean;
 }
 
-export interface Evento {
-  id: number;
-  nombre: string;
-  fecha: string;
-  tipo: 'Competencia' | 'Gala' | 'Examen';
-  inscritos: number;
-}
-
-export type ViewMode = 'Hub' | 'Alumnos' | 'Progreso' | 'Finanzas' | 'Eventos' | 'Staff' | 'NuevaClase' | 'Config' | 'Calendario';
+export type ViewMode = 'Dashboard' | 'Horario' | 'Alumnos' | 'Ajustes' | 'NuevaClase' | 'Calendario';

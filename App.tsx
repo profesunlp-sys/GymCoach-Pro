@@ -1,636 +1,406 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import Dexie, { type EntityTable } from 'dexie';
-import { Alumno, Clase, ViewMode, StaffMember, Biometrics, Discipline, PaymentStatus, Skill, Apparatus, ContactoFamilia } from './types.ts';
-import { DISCIPLINAS, NIVELES } from './constants.tsx';
-import { getDraftMessage, processClassAudio, refineClassAnalysis } from './services/geminiService.ts';
+import { Alumno, Clase, ViewMode, StaffMember, GrupoConfig } from './types.ts';
+import { processClassAudio } from './services/geminiService.ts';
 
 // --- DATABASE CONFIGURATION ---
-const db = new Dexie('GymCoachEliteDB_v5') as Dexie & {
+const db = new Dexie('GymCoachEliteDB_v7') as Dexie & {
   alumnos: EntityTable<Alumno, 'id'>;
   clases: EntityTable<Clase, 'id'>;
-  staff: EntityTable<StaffMember, 'id'>;
+  grupos: EntityTable<GrupoConfig, 'id'>;
 };
 
 db.version(1).stores({
   alumnos: '++id, dni, nombre, estadoPago, disciplina',
   clases: '++id, fecha, grupo',
-  staff: '++id, nombre, isClockedIn'
+  grupos: '++id, nombre'
 });
-
-// --- HELPER FUNCTIONS ---
-const getAvatarColor = (name: string) => {
-  const colors = [
-    'from-indigo-500 to-blue-600',
-    'from-violet-500 to-purple-600',
-    'from-emerald-500 to-teal-600',
-    'from-rose-500 to-pink-600',
-    'from-amber-500 to-orange-600'
-  ];
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) {
-    hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  return colors[Math.abs(hash) % colors.length];
-};
-
-const ClaseCard: React.FC<{ clase: Clase }> = ({ clase }) => (
-  <div className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-md transition-all group overflow-hidden">
-    <div className="flex justify-between items-start mb-4">
-      <div className="flex-1">
-        <div className="flex items-center gap-2 mb-1">
-          <span className="text-[7px] font-black text-indigo-500 uppercase tracking-widest bg-indigo-50 px-2 py-0.5 rounded-full">{clase.grupo}</span>
-          <span className="text-[7px] font-black text-slate-400 uppercase tracking-widest">{clase.horario || '---'}</span>
-        </div>
-        <p className="text-[11px] font-black text-slate-900 uppercase">
-          {new Date(clase.fecha).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}
-        </p>
-        <p className="text-[8px] font-bold text-slate-400 uppercase mt-0.5 flex items-center gap-1">
-          <i className="fas fa-user-tie text-[6px]"></i> Coach: {clase.entrenador}
-        </p>
-      </div>
-      <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-300 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
-        <i className="fas fa-file-invoice text-xs"></i>
-      </div>
-    </div>
-    
-    <div className="space-y-3 pt-2 border-t border-slate-50">
-      {clase.warmup && clase.warmup.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          <span className="text-[7px] font-black text-slate-400 uppercase mr-1 mt-1.5">Warmup:</span>
-          {clase.warmup.map((w, j) => (
-            <span key={j} className="px-2 py-0.5 bg-slate-50 text-[8px] font-bold text-slate-600 rounded-lg">{w}</span>
-          ))}
-        </div>
-      )}
-      
-      {clase.apparatusUsed && clase.apparatusUsed.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          <span className="text-[7px] font-black text-violet-500 uppercase mr-1 mt-1.5">Aparatos:</span>
-          {clase.apparatusUsed.map((a, j) => (
-            <span key={j} className="px-2 py-0.5 bg-violet-50 text-[8px] font-black text-violet-600 rounded-lg border border-violet-100">{a}</span>
-          ))}
-        </div>
-      )}
-      
-      {clase.skillsCovered && clase.skillsCovered.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          <span className="text-[7px] font-black text-emerald-500 uppercase mr-1 mt-1.5">Habilidades:</span>
-          {clase.skillsCovered.map((s, j) => (
-            <span key={j} className="px-2 py-0.5 bg-emerald-50 text-[8px] font-black text-emerald-600 rounded-lg border border-emerald-100">{s}</span>
-          ))}
-        </div>
-      )}
-    </div>
-  </div>
-);
 
 const App: React.FC = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [vista, setVista] = useState<ViewMode>('Hub');
+  const [vista, setVista] = useState<ViewMode>('Dashboard');
   const [alumnos, setAlumnos] = useState<Alumno[]>([]);
   const [clases, setClases] = useState<Clase[]>([]);
-  const [staff, setStaff] = useState<StaffMember[]>([]);
-  const [selectedAlumno, setSelectedAlumno] = useState<Alumno | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [showFormModal, setShowFormModal] = useState<'add' | 'edit' | null>(null);
-
-  // Coach Settings State
-  const [coachSettings, setCoachSettings] = useState({
-    name: "Coach Elite",
-    selectedDays: [] as string[],
-    selectedSlots: [] as string[]
-  });
-
-  // Audio Recording & IA
+  const [grupos, setGrupos] = useState<GrupoConfig[]>([]);
+  
+  // Group Form State
+  const [newGroupName, setNewGroupName] = useState("");
+  const [selectedDays, setSelectedDays] = useState<string[]>([]);
+  
+  // IA Recording State
   const [isRecording, setIsRecording] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [aiAnalysisResult, setAiAnalysisResult] = useState<any>(null);
-  const [notificacionActiva, setNotificacionActiva] = useState<{titulo: string, desc: string, tipo: string} | null>(null);
 
-  // Student Form State
-  const emptyAlumno: Partial<Alumno> = {
-    nombre: '', dni: '', fechaNacimiento: '', fechaPrimeraClase: new Date().toISOString().split('T')[0],
-    disciplina: 'GAF', nivel: 'Iniciación', estadoPago: 'Al día',
-    contacto: { padreNombre: '', padreTelefono: '', madreNombre: '', madreTelefono: '', familiarNombre: '', familiarTelefono: '', emergenciaNombre: '', emergenciaTelefono: '' }
-  };
-  const [formAlumno, setFormAlumno] = useState<Partial<Alumno>>(emptyAlumno);
+  // UI States
+  const [notificacion, setNotificacion] = useState<{t: string, d: string} | null>(null);
 
   const loadData = async () => {
-    try {
-      const a = await db.alumnos.toArray();
-      const s = await db.staff.toArray();
-      const c = await db.clases.orderBy('fecha').reverse().toArray();
-      setAlumnos(a);
-      setStaff(s);
-      setClases(c);
-      
-      // Load settings
-      const savedSettings = localStorage.getItem('coach_settings');
-      if (savedSettings) setCoachSettings(JSON.parse(savedSettings));
+    const a = await db.alumnos.toArray();
+    const c = await db.clases.toArray();
+    const g = await db.grupos.toArray();
+    setAlumnos(a);
+    setClases(c);
+    setGrupos(g);
 
-      if (a.length === 0) {
-        await db.alumnos.add({
-          nombre: 'Valentina Silva', dni: '12345678', disciplina: 'GAF', nivel: 'Promocional',
-          fechaNacimiento: '2012-05-15', fechaIngreso: new Date('2024-01-15').toISOString(),
-          fechaPrimeraClase: '2024-01-20',
-          estadoPago: 'Al día', asistenciasHistoricas: 156,
-          qrCode: 'VAL_123', alertas: ['Absentismo Crítico'], habilidades: [],
-          biometria: { fuerza: 85, flexibilidad: 92, tecnica: 78, resistencia: 70, coordinacion: 88 },
-          contacto: { madreNombre: 'Mariana Silva', madreTelefono: '+5491122334455', emergenciaNombre: 'Clínica Central', emergenciaTelefono: '911' }
-        });
-        setAlumnos(await db.alumnos.toArray());
-      }
-    } catch (err) { console.error("DB Error:", err); }
+    // Initial seed if empty
+    if (a.length === 0 && g.length === 0) {
+      await db.alumnos.add({
+        nombre: 'Atleta Ejemplo', dni: '001', disciplina: 'GAF', nivel: 'Promocional',
+        fechaNacimiento: '2015-01-01', fechaIngreso: new Date().toISOString(),
+        fechaPrimeraClase: new Date().toISOString(), estadoPago: 'Al día', 
+        asistenciasHistoricas: 10, alertas: [], habilidades: [],
+        biometria: { fuerza: 50, flexibilidad: 50, tecnica: 50, resistencia: 50, coordinacion: 50 },
+        qrCode: 'QR_001'
+      });
+      loadData();
+    }
   };
 
   useEffect(() => { if (isLoggedIn) loadData(); }, [isLoggedIn]);
 
-  const filteredAlumnos = useMemo(() => {
-    return alumnos.filter(a => a.nombre.toLowerCase().includes(searchQuery.toLowerCase()) || a.dni.includes(searchQuery));
-  }, [alumnos, searchQuery]);
-
-  // --- SETTINGS LOGIC ---
-  const handleToggleDay = (day: string) => {
-    setCoachSettings(prev => {
-      const newDays = prev.selectedDays.includes(day) 
-        ? prev.selectedDays.filter(d => d !== day) 
-        : [...prev.selectedDays, day];
-      const next = { ...prev, selectedDays: newDays };
-      localStorage.setItem('coach_settings', JSON.stringify(next));
-      return next;
+  const handleSaveGroup = async () => {
+    if (!newGroupName || selectedDays.length === 0) return;
+    await db.grupos.add({
+      nombre: newGroupName,
+      dias: selectedDays,
+      horario: "16:00 - 18:00" 
     });
+    setNewGroupName("");
+    setSelectedDays([]);
+    loadData();
+    setNotificacion({ t: "Grupo Guardado", d: "Configuración actualizada correctamente." });
+    setTimeout(() => setNotificacion(null), 3000);
   };
 
-  const handleToggleSlot = (slot: string) => {
-    setCoachSettings(prev => {
-      const newSlots = prev.selectedSlots.includes(slot)
-        ? prev.selectedSlots.filter(s => s !== slot)
-        : [...prev.selectedSlots, slot];
-      const next = { ...prev, selectedSlots: newSlots };
-      localStorage.setItem('coach_settings', JSON.stringify(next));
-      return next;
-    });
+  const toggleDay = (day: string) => {
+    setSelectedDays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]);
   };
 
-  const timeSlots = [
-    "17:00", "17:30", "18:00", "18:30", "19:00", "19:30", "20:00"
-  ];
-  const daysOfWeek = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
-
-  // --- AUDIO LOGIC ---
+  // Recording Logic
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       mediaRecorderRef.current = new MediaRecorder(stream);
       chunksRef.current = [];
-      mediaRecorderRef.current.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
-      mediaRecorderRef.current.onstop = () => {
+      mediaRecorderRef.current.ondataavailable = (e) => chunksRef.current.push(e.data);
+      mediaRecorderRef.current.onstop = async () => {
         const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
-        stream.getTracks().forEach(track => track.stop());
-        processRecordedAudio(blob);
+        processAudio(blob);
       };
       mediaRecorderRef.current.start();
       setIsRecording(true);
-    } catch (err) { console.error("Error micrófono:", err); }
+    } catch (e) { console.error(e); }
   };
 
-  const stopRecording = () => { if (mediaRecorderRef.current && isRecording) { mediaRecorderRef.current.stop(); setIsRecording(false); } };
-
-  const processRecordedAudio = async (blob: Blob) => {
-    setIsAnalyzing(true);
-    try {
-      const reader = new FileReader();
-      reader.readAsDataURL(blob);
-      reader.onloadend = async () => {
-        const base64data = (reader.result as string).split(',')[1];
-        const result = await processClassAudio(base64data, 'audio/webm');
-        setAiAnalysisResult(result);
-        setIsAnalyzing(false);
-      };
-    } catch (err) { console.error("Error analizando:", err); setIsAnalyzing(false); }
-  };
-
-  const saveClassFromAi = async () => {
-    if (!aiAnalysisResult) return;
-    try {
-      const newClase: Clase = {
-        fecha: new Date().toISOString(),
-        grupo: aiAnalysisResult.grupo || 'General',
-        horario: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        entrenador: aiAnalysisResult.entrenador || coachSettings.name,
-        warmup: aiAnalysisResult.warmup || [],
-        apparatusUsed: aiAnalysisResult.apparatusUsed || [],
-        skillsCovered: aiAnalysisResult.skillsCovered || []
-      };
-      await db.clases.add(newClase);
-      await loadData();
-      setAiAnalysisResult(null);
-      setVista('Calendario');
-      setNotificacionActiva({ titulo: "Reporte Guardado", desc: "La información de la clase se ha archivado correctamente.", tipo: "success" });
-      setTimeout(() => setNotificacionActiva(null), 4000);
-    } catch (err) { console.error("Error guardando clase:", err); }
-  };
-
-  // --- ALUMNO FORM LOGIC ---
-  const handleSaveAlumno = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formAlumno.nombre || !formAlumno.dni || !formAlumno.fechaNacimiento) return;
-    
-    if (showFormModal === 'edit' && formAlumno.id) {
-      await db.alumnos.update(formAlumno.id, formAlumno);
-      setNotificacionActiva({ titulo: "Actualizado", desc: "Datos del atleta actualizados.", tipo: "success" });
-    } else {
-      const student: Alumno = { 
-        ...(formAlumno as Alumno), 
-        fechaIngreso: new Date().toISOString(), 
-        asistenciasHistoricas: 0, 
-        qrCode: `QR_${formAlumno.dni}`, 
-        alertas: [], 
-        habilidades: [], 
-        biometria: { fuerza: 50, flexibilidad: 50, tecnica: 50, resistencia: 50, coordinacion: 50 } 
-      };
-      await db.alumnos.add(student);
-      setNotificacionActiva({ titulo: "Registrado", desc: "Nuevo atleta añadido al sistema.", tipo: "success" });
+  const stopRecording = () => {
+    if (mediaRecorderRef.current) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
     }
-    
-    await loadData();
-    setShowFormModal(null);
-    setFormAlumno(emptyAlumno);
-    setTimeout(() => setNotificacionActiva(null), 3000);
   };
 
-  const openEdit = (a: Alumno, e?: React.MouseEvent) => {
-    if (e) e.stopPropagation();
-    setFormAlumno(a);
-    setShowFormModal('edit');
+  const processAudio = async (blob: Blob) => {
+    setIsAnalyzing(true);
+    const reader = new FileReader();
+    reader.readAsDataURL(blob);
+    reader.onloadend = async () => {
+      const base64 = (reader.result as string).split(',')[1];
+      try {
+        const result = await processClassAudio(base64, 'audio/webm');
+        const newClase: Clase = {
+          fecha: new Date().toISOString(),
+          grupo: result.grupo || 'General',
+          horario: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          entrenador: result.entrenador || 'Coach Pro',
+          warmup: result.warmup || [],
+          apparatusUsed: result.apparatusUsed || [],
+          skillsCovered: result.skillsCovered || []
+        };
+        await db.clases.add(newClase);
+        loadData();
+        setNotificacion({ t: "Clase Registrada", d: `Se procesó el audio para ${newClase.grupo}` });
+        setIsAnalyzing(false);
+        setVista('Dashboard');
+      } catch (e) {
+        setIsAnalyzing(false);
+        setNotificacion({ t: "Error", d: "No se pudo procesar el audio." });
+      }
+      setTimeout(() => setNotificacion(null), 4000);
+    };
   };
-
-  const Nav = () => (
-    <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[94%] max-w-md glass rounded-[2.5rem] p-3 flex items-center justify-around shadow-2xl z-50 border border-white/50">
-      {[ 
-        { v: 'Hub', i: 'fa-house-user' }, 
-        { v: 'Alumnos', i: 'fa-user-ninja' }, 
-        { v: 'Calendario', i: 'fa-box-archive' }, 
-        { v: 'Staff', i: 'fa-id-badge' } 
-      ].map(item => (
-        <button key={item.v} onClick={() => { setVista(item.v as ViewMode); setSelectedAlumno(null); }} 
-          className={`flex flex-col items-center gap-1.5 transition-all px-4 py-2 rounded-2xl ${vista === item.v ? 'text-indigo-600 bg-indigo-50' : 'text-slate-400'}`}>
-          <i className={`fas ${item.i} text-lg`}></i>
-          <span className="text-[8px] font-bold uppercase tracking-tighter">{item.v === 'Calendario' ? 'Archivo' : item.v}</span>
-        </button>
-      ))}
-    </nav>
-  );
 
   if (!isLoggedIn) return (
     <div className="min-h-screen auth-bg flex flex-col items-center justify-center p-8 text-white">
       <div className="z-10 w-full max-w-sm text-center page-transition">
-        <div className="w-20 h-20 bg-white/5 rounded-[1.5rem] flex items-center justify-center mx-auto mb-8 border border-white/10 shadow-2xl"><i className="fas fa-medal text-3xl text-amber-400"></i></div>
-        <h1 className="text-4xl font-extrabold italic uppercase tracking-tighter mb-2 leading-none">GYMCOACH<br/><span className="text-indigo-400">PRO ELITE</span></h1>
-        <button onClick={() => setIsLoggedIn(true)} className="w-full mt-10 py-5 bg-indigo-600 text-white rounded-full font-extrabold uppercase text-xs tracking-widest shadow-xl">Sincronizar Terminal</button>
+        <div className="w-20 h-20 bg-[#277bf1] rounded-2xl flex items-center justify-center mx-auto mb-8 shadow-2xl border border-white/10">
+          <span className="material-icons text-white text-4xl">fitness_center</span>
+        </div>
+        <h1 className="text-4xl font-extrabold tracking-tighter mb-2">GymCoach <span className="text-[#277bf1]">Pro</span></h1>
+        <p className="text-slate-400 text-sm mb-10">High Performance Management</p>
+        <button onClick={() => setIsLoggedIn(true)} className="w-full py-5 bg-white text-indigo-900 rounded-2xl font-bold uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all">Sincronizar Panel</button>
       </div>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] pb-36 font-sans">
-      {/* Notificaciones */}
-      {notificacionActiva && (
-        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[60] w-[90%] max-w-md bg-white border border-slate-100 p-6 rounded-[2rem] shadow-2xl flex items-center gap-4 animate-in slide-in-from-top-4 duration-300">
-          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-white ${notificacionActiva.tipo === 'success' ? 'bg-emerald-500' : 'bg-rose-500'}`}>
-            <i className={`fas ${notificacionActiva.tipo === 'success' ? 'fa-check' : 'fa-triangle-exclamation'}`}></i>
-          </div>
-          <div className="flex-1">
-            <p className="text-[10px] font-black uppercase text-slate-900">{notificacionActiva.titulo}</p>
-            <p className="text-[8px] font-bold text-slate-500 uppercase">{notificacionActiva.desc}</p>
-          </div>
+    <div className="max-w-[430px] mx-auto min-h-screen bg-white dark:bg-slate-900 shadow-2xl relative overflow-hidden flex flex-col font-display">
+      
+      {/* IOS Status Bar (Visual) */}
+      <div className="h-12 flex justify-between items-center px-8 pt-4 pb-2 w-full bg-white dark:bg-slate-900 sticky top-0 z-50">
+        <span className="text-sm font-semibold">9:41</span>
+        <div className="flex items-center gap-1.5">
+          <span className="material-icons text-[18px]">signal_cellular_alt</span>
+          <span className="material-icons text-[18px]">wifi</span>
+          <span className="material-icons text-[18px]">battery_full</span>
         </div>
-      )}
+      </div>
 
-      <header className="pt-14 px-8 pb-8 bg-white/80 backdrop-blur-xl rounded-b-[3rem] shadow-sm flex justify-between items-end border-b border-slate-100 sticky top-0 z-40">
-        <div className="flex-1">
-          <p className="text-[10px] font-bold text-indigo-500 uppercase tracking-[0.2em] mb-1">Elite System</p>
-          <h2 className="text-3xl font-black italic text-slate-900 uppercase tracking-tighter leading-none">
-            {vista === 'Calendario' ? 'Archivo Clases' : (vista === 'NuevaClase' ? 'Reporte Voz' : (vista === 'Config' ? 'Ajustes' : vista))}
-          </h2>
+      {/* Header */}
+      <header className="px-6 py-4 flex justify-between items-center border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
+        <div className="flex items-center gap-2">
+          <div className="bg-[#277bf1] p-1.5 rounded-lg flex items-center justify-center">
+            <span className="material-icons text-white text-[20px]">fitness_center</span>
+          </div>
+          <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">GymCoach <span className="text-[#277bf1]">Pro</span></h1>
         </div>
-        <button onClick={() => setVista('Config')} className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${vista === 'Config' ? 'bg-indigo-600 text-white shadow-lg' : 'bg-white text-slate-400 border border-slate-100 shadow-sm'}`}>
-          <i className="fas fa-gear"></i>
+        <button className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300">
+          <span className="material-icons text-[20px]">notifications</span>
         </button>
       </header>
 
-      <main className="px-6 py-8 page-transition">
-        {vista === 'Hub' && (
-          <div className="space-y-8">
-            <div className="bg-slate-900 p-8 rounded-[2.5rem] text-white shadow-2xl relative overflow-hidden">
-                <div className="relative z-10">
-                  <h3 className="text-xl font-bold italic uppercase mb-1">Estado del Gimnasio</h3>
-                  <div className="flex gap-4 mt-6">
-                    <div className="bg-white/5 p-4 rounded-2xl flex-1 border border-white/10 text-center">
-                      <p className="text-2xl font-black italic">{alumnos.length}</p>
-                      <p className="text-[7px] font-bold text-slate-500 uppercase">Atletas</p>
-                    </div>
-                    <div className="bg-white/5 p-4 rounded-2xl flex-1 border border-white/10 text-center">
-                      <p className="text-2xl font-black italic">{clases.length}</p>
-                      <p className="text-[7px] font-bold text-slate-500 uppercase">Reportes</p>
-                    </div>
-                  </div>
+      <main className="flex-1 overflow-y-auto px-6 py-6 space-y-8 pb-32">
+        
+        {vista === 'Dashboard' && (
+          <div className="space-y-8 page-transition">
+            {/* Welcome Banner */}
+            <section className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-[#277bf1] to-[#60a5fa] p-7 shadow-lg shadow-blue-100">
+              <div className="relative z-10 flex flex-col items-start gap-5">
+                <div>
+                  <h2 className="text-white text-2xl font-bold">¡Hola José María!</h2>
+                  <p className="text-blue-50/90 text-sm mt-1">Configura tu semana para empezar.</p>
                 </div>
-            </div>
-            
-            <div className="space-y-4">
-              <div className="flex justify-between items-center px-2">
-                <h4 className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Sesiones Recientes</h4>
-                <button onClick={() => setVista('Calendario')} className="text-[8px] font-black text-indigo-500 uppercase hover:underline">Ver Historial</button>
+                <button onClick={() => setVista('NuevaClase')} className="flex items-center gap-2 bg-white text-[#277bf1] px-6 py-3.5 rounded-xl font-bold text-sm shadow-sm active:scale-95 transition-transform">
+                  <span className="material-symbols-outlined text-[20px]">add_circle</span>
+                  <span>Registrar Clase</span>
+                </button>
               </div>
-              <div className="space-y-3">
-                {clases.slice(0, 2).map((c, i) => <ClaseCard key={c.id || i} clase={c} />)}
-                {clases.length === 0 && <div className="p-12 text-center text-[10px] font-bold text-slate-300 border border-dashed rounded-[2rem] uppercase">Sin reportes recientes</div>}
-              </div>
-            </div>
+              <div className="absolute -right-8 -bottom-8 w-36 h-36 bg-white/10 rounded-full blur-2xl"></div>
+              <div className="absolute -right-4 top-2 w-20 h-20 bg-white/10 rounded-full blur-xl"></div>
+            </section>
 
-            <div className="grid grid-cols-2 gap-4 pt-4">
-              <button onClick={() => setVista('Alumnos')} className="aspect-square bg-white border border-slate-100 rounded-[2.5rem] flex flex-col items-center justify-center gap-4 shadow-sm active:scale-95 transition-all">
-                <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center"><i className="fas fa-users text-xl"></i></div>
-                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Alumnos</span>
-              </button>
-              <button onClick={() => setVista('NuevaClase')} className="aspect-square bg-white border border-slate-100 rounded-[2.5rem] flex flex-col items-center justify-center gap-4 shadow-sm active:scale-95 transition-all">
-                <div className="w-12 h-12 bg-violet-50 text-violet-600 rounded-2xl flex items-center justify-center"><i className="fas fa-microphone-lines text-xl"></i></div>
-                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Reporte Voz</span>
-              </button>
-            </div>
-          </div>
-        )}
-
-        {vista === 'Alumnos' && !selectedAlumno && (
-          <div className="space-y-8">
-            <div className="flex gap-4">
-              <div className="flex-1 bg-white p-4 rounded-[1.5rem] shadow-sm flex items-center px-6 border border-slate-100">
-                <i className="fas fa-search text-slate-300 mr-4"></i>
-                <input type="text" placeholder="BUSCAR ATLETA..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-transparent py-2 text-[10px] font-bold text-slate-800 outline-none uppercase tracking-widest" />
+            {/* Schedule Config */}
+            <section className="space-y-4">
+              <div className="flex flex-col gap-1">
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">Configuración de Horario</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Define un nuevo grupo y sus días</p>
               </div>
-              <button onClick={() => { setFormAlumno(emptyAlumno); setShowFormModal('add'); }} className="w-14 h-14 bg-indigo-600 text-white rounded-[1.5rem] flex items-center justify-center shadow-lg active:scale-90 transition-all">
-                <i className="fas fa-plus"></i>
-              </button>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {filteredAlumnos.map(a => (
-                <div key={a.id} onClick={() => setSelectedAlumno(a)} onDoubleClick={() => openEdit(a)} className={`group bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100 hover:border-indigo-200 transition-all cursor-pointer relative overflow-hidden`}>
-                  <div className="flex items-center gap-5 relative z-10">
-                    <div className={`w-16 h-16 rounded-[1.5rem] bg-gradient-to-br ${getAvatarColor(a.nombre)} flex items-center justify-center text-white font-black text-2xl italic shadow-lg`}>{a.nombre.charAt(0)}</div>
-                    <div className="flex-1">
-                      <div className="flex justify-between items-start">
-                        <p className="font-extrabold text-slate-900 text-sm uppercase tracking-tight">{a.nombre}</p>
-                        <button onClick={(e) => openEdit(a, e)} className="p-2 text-slate-300 hover:text-indigo-600 transition-colors">
-                          <i className="fas fa-edit text-xs"></i>
+              <div className="bg-white dark:bg-slate-800 p-7 rounded-[2rem] ios-shadow border border-slate-100 dark:border-slate-700 space-y-6">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest px-1">Nombre del Grupo</label>
+                  <input 
+                    className="w-full bg-slate-50 dark:bg-slate-900 border-none rounded-xl px-5 py-4 text-sm focus:ring-2 ring-blue-100 placeholder:text-slate-400 font-medium" 
+                    placeholder="Ej. Avanzados, Juveniles..." 
+                    type="text"
+                    value={newGroupName}
+                    onChange={(e) => setNewGroupName(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-3">
+                  <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest px-1">Días de Entrenamiento</label>
+                  <div className="flex justify-between w-full">
+                    {['L', 'M', 'M', 'J', 'V', 'S'].map((day, idx) => {
+                      const id = `${day}-${idx}`;
+                      const isSelected = selectedDays.includes(id);
+                      return (
+                        <button 
+                          key={id}
+                          onClick={() => toggleDay(id)}
+                          className={`w-11 h-11 rounded-full border-2 font-bold text-sm transition-all flex items-center justify-center ${isSelected ? 'border-[#277bf1] bg-blue-50 text-[#277bf1]' : 'border-slate-100 text-slate-300'}`}
+                        >
+                          {day}
                         </button>
-                      </div>
-                      <div className="flex flex-wrap gap-1.5 mt-1.5">
-                        <span className="px-2 py-0.5 bg-indigo-50 text-indigo-600 text-[8px] font-black uppercase rounded-lg border border-indigo-100">{a.disciplina}</span>
-                        <span className="px-2 py-0.5 bg-slate-50 text-slate-500 text-[8px] font-black uppercase rounded-lg border border-slate-200">{a.nivel}</span>
-                      </div>
-                    </div>
+                      );
+                    })}
                   </div>
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {vista === 'Calendario' && (
-          <div className="space-y-6 animate-in fade-in duration-500">
-            <div className="flex justify-between items-center px-2">
-              <h4 className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Archivo de Clases (Historial)</h4>
-              <p className="text-[8px] font-bold text-slate-400 uppercase">{clases.length} Sesiones</p>
-            </div>
-            <div className="space-y-4">
-              {clases.map((c, i) => <ClaseCard key={c.id || i} clase={c} />)}
-              {clases.length === 0 && (
-                <div className="p-20 text-center border-2 border-dashed border-slate-100 rounded-[3rem]">
-                  <i className="fas fa-box-open text-slate-200 text-4xl mb-4"></i>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Archivo Vacío</p>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {vista === 'Config' && (
-          <div className="space-y-8 animate-in fade-in duration-500">
-            <section className="bg-white rounded-[3rem] p-8 shadow-sm border border-slate-100">
-              <div className="flex items-center gap-4 mb-8">
-                <div className="w-14 h-14 bg-indigo-50 text-indigo-600 rounded-[1.5rem] flex items-center justify-center">
-                  <i className="fas fa-calendar-check text-xl"></i>
-                </div>
-                <div>
-                  <h3 className="text-lg font-black uppercase italic text-slate-900 tracking-tight">Gestión de Horarios</h3>
-                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Define tu disponibilidad profesional</p>
-                </div>
-              </div>
-
-              <div className="space-y-8">
-                <div>
-                  <p className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em] mb-4">1. Días de la semana</p>
-                  <div className="flex flex-wrap gap-2">
-                    {daysOfWeek.map(day => (
-                      <button 
-                        key={day}
-                        onClick={() => handleToggleDay(day)}
-                        className={`px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${coachSettings.selectedDays.includes(day) ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'bg-slate-50 text-slate-400 border border-slate-100'}`}
-                      >
-                        {day}
-                      </button>
-                    ))}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3 p-4 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-dashed border-slate-200 dark:border-slate-700">
+                    <span className="material-symbols-outlined text-slate-400 text-[20px]">more_time</span>
+                    <span className="text-xs text-slate-500 dark:text-slate-400 font-medium italic">Añade horarios para los días seleccionados...</span>
                   </div>
-                </div>
-
-                <div>
-                  <p className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em] mb-4">2. Rangos Horarios (17:00 - 20:00)</p>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    {timeSlots.map(slot => (
-                      <button 
-                        key={slot}
-                        onClick={() => handleToggleSlot(slot)}
-                        className={`p-4 rounded-[1.5rem] text-[11px] font-bold transition-all flex items-center justify-center gap-2 ${coachSettings.selectedSlots.includes(slot) ? 'bg-gradient-to-br from-indigo-500 to-indigo-700 text-white shadow-lg' : 'bg-white text-slate-500 border border-slate-100 shadow-sm'}`}
-                      >
-                        <i className={`fas fa-clock ${coachSettings.selectedSlots.includes(slot) ? 'text-white' : 'text-slate-300'}`}></i>
-                        {slot}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="pt-4 border-t border-slate-50">
-                   <div className="bg-indigo-50/50 p-6 rounded-[2rem] border border-indigo-100 flex items-start gap-4">
-                      <i className="fas fa-circle-info text-indigo-500 mt-1"></i>
-                      <p className="text-[9px] font-bold text-indigo-900 uppercase leading-relaxed tracking-wider">
-                        Tu configuración se utilizará para autocompletar reportes de clase y organizar el calendario del gimnasio.
-                      </p>
-                   </div>
+                  <button 
+                    onClick={handleSaveGroup}
+                    className="w-full py-4.5 bg-[#277bf1] text-white rounded-2xl text-sm font-bold flex items-center justify-center gap-2 shadow-lg shadow-blue-100 active:scale-[0.98] transition-all"
+                  >
+                    <span className="material-icons text-[18px]">save</span>
+                    Guardar Configuración
+                  </button>
                 </div>
               </div>
             </section>
 
-            <button 
-              onClick={() => setVista('Hub')}
-              className="w-full py-5 bg-slate-900 text-white rounded-[2rem] text-[10px] font-black uppercase tracking-widest shadow-xl hover:bg-slate-800 transition-all"
-            >
-              Confirmar y Volver al Hub
-            </button>
+            {/* Configured Groups */}
+            <section className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">Mis Grupos Configurados</h3>
+                <span className="text-[10px] font-bold text-[#277bf1] bg-blue-50 px-2.5 py-1 rounded-full uppercase">{grupos.length} {grupos.length === 1 ? 'Grupo' : 'Grupos'}</span>
+              </div>
+              <div className="space-y-4">
+                {grupos.map((g, idx) => (
+                  <div key={idx} className="bg-white dark:bg-slate-800 rounded-[2rem] ios-shadow border border-slate-50 dark:border-slate-700 overflow-hidden">
+                    <div className="p-6 flex flex-col gap-4">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h4 className="text-base font-bold text-slate-900 dark:text-white">{g.nombre}</h4>
+                          <div className="flex items-center gap-2 mt-2 text-slate-400">
+                            <span className="material-icons text-[16px]">calendar_today</span>
+                            <span className="text-xs font-semibold">{g.dias.map(d => d.split('-')[0]).join(', ')}</span>
+                          </div>
+                          <div className="flex items-center gap-2 mt-1 text-slate-400">
+                            <span className="material-icons text-[16px]">schedule</span>
+                            <span className="text-xs font-semibold">{g.horario}</span>
+                          </div>
+                        </div>
+                        <button className="w-8 h-8 flex items-center justify-center text-slate-300">
+                          <span className="material-icons text-[20px]">more_vert</span>
+                        </button>
+                      </div>
+                      <div className="pt-3 border-t border-slate-50 dark:border-slate-800">
+                        <button onClick={() => setVista('Alumnos')} className="flex items-center justify-between w-full group">
+                          <span className="text-[#277bf1] font-bold text-sm">Ver Lista de Asistencia</span>
+                          <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-[#277bf1] group-active:translate-x-1 transition-transform">
+                            <span className="material-icons text-[20px]">chevron_right</span>
+                          </div>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {grupos.length === 0 && (
+                  <div className="p-10 text-center border-2 border-dashed border-slate-100 rounded-[2rem]">
+                    <p className="text-xs font-bold text-slate-300 uppercase tracking-widest">Sin grupos configurados</p>
+                  </div>
+                )}
+              </div>
+            </section>
+
+            {/* Quick Stats */}
+            <section className="grid grid-cols-2 gap-4">
+              <div className="bg-white dark:bg-slate-800 p-5 rounded-[1.5rem] ios-shadow border border-slate-50">
+                <div className="flex items-center gap-2 text-slate-400 mb-2">
+                  <span className="material-icons text-[18px]">event_available</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider">Total Clases</span>
+                </div>
+                <div className="text-3xl font-bold text-slate-900 dark:text-white">{clases.length}</div>
+                <div className="text-[10px] text-slate-400 font-medium mt-1">Sin actividad este mes</div>
+              </div>
+              <div className="bg-white dark:bg-slate-800 p-5 rounded-[1.5rem] ios-shadow border border-slate-50">
+                <div className="flex items-center gap-2 text-slate-400 mb-2">
+                  <span className="material-icons text-[18px]">group</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider">Alumnos</span>
+                </div>
+                <div className="text-3xl font-bold text-slate-900 dark:text-white">{alumnos.length}</div>
+                <button onClick={() => setVista('Alumnos')} className="text-[10px] text-[#277bf1] font-bold mt-1 flex items-center gap-1">
+                  <span className="material-icons text-[12px]">person_add</span> Añadir más
+                </button>
+              </div>
+            </section>
+
+            {/* Info Card */}
+            <section className="bg-slate-900 rounded-[2rem] p-7 text-white flex flex-col gap-4">
+              <div className="flex items-center gap-3">
+                <div className="bg-white/10 p-2.5 rounded-xl">
+                  <span className="material-icons text-[20px]">info</span>
+                </div>
+                <span className="font-bold">Primeros Pasos</span>
+              </div>
+              <p className="text-sm leading-relaxed text-slate-400">Bienvenido a tu panel. Una vez configurado el grupo, podrás gestionar las asistencias diarias desde la sección de grupos.</p>
+            </section>
           </div>
         )}
 
+        {/* Voice Report View */}
         {vista === 'NuevaClase' && (
-          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="bg-white rounded-[3rem] p-8 shadow-xl border border-slate-100 text-center">
-              <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-[1.5rem] flex items-center justify-center mx-auto mb-6">
-                <i className="fas fa-microphone-lines text-2xl"></i>
+          <div className="space-y-8 page-transition">
+            <div className="bg-white rounded-[2.5rem] p-8 text-center shadow-xl border border-slate-50">
+              <div className="w-20 h-20 bg-blue-50 text-[#277bf1] rounded-3xl flex items-center justify-center mx-auto mb-6">
+                <span className="material-icons text-3xl">mic</span>
               </div>
-              <h3 className="text-2xl font-black text-slate-900 uppercase italic tracking-tighter mb-2">Nuevo Reporte Voz</h3>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-relaxed">
-                Describe la sesión: warmup, aparatos y los logros técnicos de hoy.
-              </p>
+              <h2 className="text-2xl font-bold text-slate-900 italic">Reporte de Clase IA</h2>
+              <p className="text-sm text-slate-500 mt-2 px-4 leading-relaxed">Habla con naturalidad sobre los ejercicios, aparatos y nivel de hoy.</p>
               
-              <div className="mt-12 mb-8 flex flex-col items-center">
+              <div className="mt-12 mb-6 flex flex-col items-center">
                 <button 
-                  onMouseDown={startRecording} onMouseUp={stopRecording} onTouchStart={startRecording} onTouchEnd={stopRecording}
-                  className={`w-28 h-28 rounded-full flex items-center justify-center transition-all duration-300 shadow-2xl ${isRecording ? 'bg-rose-500 scale-110 shadow-rose-200' : 'bg-indigo-600 shadow-indigo-200 hover:scale-105'}`}>
-                  {isRecording ? <div className="flex gap-1 items-end h-6">{[1,2,3,4,5].map(i => <div key={i} className="w-1.5 bg-white rounded-full animate-bounce" style={{animationDelay: `${i*0.1}s`, height: `${40 + Math.random()*60}%`}}></div>)}</div> : <i className="fas fa-microphone text-white text-3xl"></i>}
+                  onMouseDown={startRecording} onMouseUp={stopRecording}
+                  onTouchStart={startRecording} onTouchEnd={stopRecording}
+                  className={`w-32 h-32 rounded-full flex items-center justify-center transition-all duration-300 shadow-2xl ${isRecording ? 'bg-rose-500 scale-110' : 'bg-[#277bf1] hover:scale-105'}`}>
+                  {isRecording ? (
+                    <div className="flex gap-1.5 items-end h-8">
+                      {[1,2,3,4,5].map(i => <div key={i} className="w-1.5 bg-white rounded-full animate-bounce" style={{animationDelay: `${i*0.1}s`, height: `${50 + Math.random()*50}%`}}></div>)}
+                    </div>
+                  ) : <span className="material-icons text-white text-4xl">mic</span>}
                 </button>
-                <p className="mt-8 text-[9px] font-black uppercase text-indigo-600 tracking-[0.2em]">{isRecording ? "Grabando... Suelta para procesar" : "Mantén presionado para hablar"}</p>
+                <p className="mt-8 text-[11px] font-bold uppercase text-[#277bf1] tracking-[0.2em]">{isRecording ? "Grabando..." : "Mantén presionado para hablar"}</p>
               </div>
             </div>
 
             {isAnalyzing && (
-              <div className="bg-indigo-50 p-10 rounded-[2.5rem] border border-indigo-100 text-center animate-pulse">
-                 <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                 <p className="text-[10px] font-black uppercase text-indigo-600 tracking-widest">IA Transcribiendo y Analizando...</p>
-              </div>
-            )}
-
-            {aiAnalysisResult && !isAnalyzing && (
-              <div className="bg-white rounded-[3rem] p-8 shadow-2xl border border-slate-100 animate-in zoom-in duration-300 overflow-hidden relative">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50 rounded-full -mr-16 -mt-16 opacity-50"></div>
-                <div className="relative z-10 space-y-6">
-                  <div className="flex justify-between items-center mb-2">
-                    <h4 className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Información Procesada</h4>
-                    <span className="px-3 py-1 bg-emerald-50 text-emerald-600 text-[8px] font-black uppercase rounded-full border border-emerald-100">IA Lista</span>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 gap-4">
-                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                      <p className="text-[8px] font-black text-slate-400 uppercase mb-2 flex items-center gap-2"><i className="fas fa-fire text-orange-400"></i> Calentamiento</p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {aiAnalysisResult.warmup?.map((w: string, i: number) => <span key={i} className="px-2 py-1 bg-white text-[9px] font-bold text-slate-600 rounded-lg border border-slate-100">{w}</span>)}
-                      </div>
-                    </div>
-                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                      <p className="text-[8px] font-black text-slate-400 uppercase mb-2 flex items-center gap-2"><i className="fas fa-vault text-violet-400"></i> Aparatos</p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {aiAnalysisResult.apparatusUsed?.map((a: string, i: number) => <span key={i} className="px-2 py-1 bg-indigo-50 text-[9px] font-black text-indigo-600 rounded-lg border border-indigo-100">{a}</span>)}
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="flex gap-3 pt-4">
-                    <button onClick={() => setAiAnalysisResult(null)} className="flex-1 py-5 text-[9px] font-black uppercase text-slate-400 hover:text-rose-500 transition-colors">Descartar</button>
-                    <button onClick={saveClassFromAi} className="flex-1 py-5 bg-indigo-600 text-white rounded-[2rem] font-black uppercase text-[9px] tracking-widest shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all">Confirmar y Guardar</button>
-                  </div>
-                </div>
+              <div className="bg-blue-50 p-10 rounded-[2rem] border border-blue-100 text-center animate-pulse flex flex-col items-center">
+                <div className="w-8 h-8 border-4 border-[#277bf1] border-t-transparent rounded-full animate-spin mb-4"></div>
+                <p className="text-xs font-bold uppercase text-[#277bf1] tracking-widest">Analizando reporte...</p>
               </div>
             )}
           </div>
         )}
 
-        {selectedAlumno && (
-          <div className="space-y-8 page-transition pb-10">
-            <div className="flex justify-between items-center">
-              <button onClick={() => setSelectedAlumno(null)} className="text-[9px] font-extrabold text-indigo-600 uppercase flex items-center gap-2 bg-indigo-50 px-4 py-2 rounded-full w-fit hover:bg-indigo-100 transition-all"><i className="fas fa-arrow-left"></i> Volver</button>
-              <button onClick={() => openEdit(selectedAlumno)} className="text-[9px] font-extrabold text-slate-500 uppercase flex items-center gap-2 bg-white border border-slate-100 px-4 py-2 rounded-full w-fit hover:border-indigo-200 transition-all"><i className="fas fa-edit"></i> Editar</button>
+        {/* Placeholder Views */}
+        {(vista === 'Horario' || vista === 'Alumnos' || vista === 'Ajustes') && (
+          <div className="py-24 text-center space-y-4 page-transition">
+            <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-300">
+               <span className="material-icons text-3xl">construction</span>
             </div>
-            
-            <div className="bg-white rounded-[3.5rem] shadow-xl overflow-hidden border border-slate-100">
-              <div className={`bg-gradient-to-br ${getAvatarColor(selectedAlumno.nombre)} p-12 text-center relative overflow-hidden`}>
-                 <div className="absolute inset-0 bg-black/10"></div>
-                 <div className="w-24 h-24 bg-white/20 text-white rounded-[2.5rem] flex items-center justify-center mx-auto mb-4 text-4xl font-black italic backdrop-blur-xl border border-white/20 shadow-2xl relative z-10">{selectedAlumno.nombre.charAt(0)}</div>
-                 <h3 className="text-2xl font-black text-white uppercase italic tracking-tighter relative z-10">{selectedAlumno.nombre}</h3>
-              </div>
-              
-              <div className="p-8 space-y-12">
-                <div className="space-y-6">
-                  <div className="flex justify-between items-center px-2">
-                    <h4 className="text-[10px] font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
-                      <i className="fas fa-list-check text-emerald-500"></i> Historial Individual
-                    </h4>
-                  </div>
-                  <div className="space-y-4">
-                    {clases.filter(c => c.grupo === selectedAlumno.nivel || c.grupo === 'General').map((c, i) => <ClaseCard key={c.id || i} clase={c} />)}
-                  </div>
-                </div>
-              </div>
-            </div>
+            <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px]">Módulo en desarrollo: {vista}</p>
+            <button onClick={() => setVista('Dashboard')} className="text-[#277bf1] font-bold text-xs bg-blue-50 px-6 py-3 rounded-xl">Regresar al Dashboard</button>
           </div>
         )}
       </main>
 
-      {/* MODAL COMPLETO DE ALUMNO */}
-      {showFormModal && (
-        <div className="fixed inset-0 z-[100] modal-overlay flex items-center justify-center p-6 animate-in fade-in zoom-in duration-300">
-          <div className="bg-white w-full max-w-lg rounded-[3.5rem] p-10 shadow-2xl border border-white/20 overflow-y-auto max-h-[92vh]">
-            <h3 className="text-2xl font-black uppercase italic mb-8 flex items-center gap-4">
-              <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center">
-                <i className={`fas ${showFormModal === 'edit' ? 'fa-user-pen' : 'fa-user-plus'} text-xl`}></i>
-              </div>
-              {showFormModal === 'edit' ? 'Editar Atleta' : 'Nuevo Atleta'}
-            </h3>
-            
-            <form onSubmit={handleSaveAlumno} className="space-y-8">
-              <div className="space-y-4">
-                <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest border-b border-indigo-50 pb-2">1. Información Personal</p>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="col-span-2">
-                    <input type="text" required placeholder="NOMBRE COMPLETO" value={formAlumno.nombre} onChange={e => setFormAlumno({...formAlumno, nombre: e.target.value})} className="w-full bg-slate-50 p-4 rounded-2xl text-[11px] font-bold uppercase outline-none focus:ring-2 ring-indigo-100 transition-all" />
-                  </div>
-                  <input type="text" required placeholder="DNI / ID" value={formAlumno.dni} onChange={e => setFormAlumno({...formAlumno, dni: e.target.value})} className="bg-slate-50 p-4 rounded-2xl text-[11px] font-bold outline-none focus:ring-2 ring-indigo-100" />
-                  <div className="relative">
-                    <label className="absolute -top-2 left-3 bg-white px-1 text-[7px] font-black text-slate-400 uppercase">F. Nacimiento</label>
-                    <input type="date" required value={formAlumno.fechaNacimiento} onChange={e => setFormAlumno({...formAlumno, fechaNacimiento: e.target.value})} className="w-full bg-slate-50 p-4 rounded-2xl text-[11px] font-bold outline-none" />
-                  </div>
-                  <div className="col-span-1">
-                    <select value={formAlumno.disciplina} onChange={e => setFormAlumno({...formAlumno, disciplina: e.target.value as Discipline})} className="w-full bg-slate-50 p-4 rounded-2xl text-[11px] font-bold outline-none">
-                      {DISCIPLINAS.map(d => <option key={d} value={d}>{d}</option>)}
-                    </select>
-                  </div>
-                  <div className="col-span-1">
-                    <select value={formAlumno.nivel} onChange={e => setFormAlumno({...formAlumno, nivel: e.target.value})} className="w-full bg-slate-50 p-4 rounded-2xl text-[11px] font-bold outline-none">
-                      {NIVELES.map(n => <option key={n} value={n}>{n}</option>)}
-                    </select>
-                  </div>
-                </div>
-              </div>
+      {/* Bottom Navigation Bar */}
+      <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-white border-t border-slate-100 px-8 py-5 flex justify-between items-center z-50">
+        {[
+          { v: 'Dashboard', i: 'dashboard', label: 'Dashboard' },
+          { v: 'Horario', i: 'calendar_month', label: 'Horario' },
+          { v: 'Alumnos', i: 'school', label: 'Alumnos' },
+          { v: 'Ajustes', i: 'settings', label: 'Ajustes' }
+        ].map(item => (
+          <button 
+            key={item.v} 
+            onClick={() => setVista(item.v as ViewMode)}
+            className={`flex flex-col items-center gap-1.5 transition-all ${vista === item.v ? 'text-[#277bf1]' : 'text-slate-400'}`}
+          >
+            <span className={`material-icons text-[24px]`}>{item.i}</span>
+            <span className={`text-[10px] font-bold ${vista === item.v ? 'opacity-100' : 'opacity-70'} transition-opacity`}>{item.label}</span>
+          </button>
+        ))}
+      </nav>
 
-              <div className="space-y-4">
-                <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest border-b border-indigo-50 pb-2">2. Contacto Familiar</p>
-                <div className="grid grid-cols-2 gap-4">
-                  <input type="text" placeholder="MADRE / TUTOR" value={formAlumno.contacto?.madreNombre} onChange={e => setFormAlumno({...formAlumno, contacto: {...formAlumno.contacto!, madreNombre: e.target.value}})} className="bg-slate-50 p-4 rounded-2xl text-[11px] font-bold outline-none" />
-                  <input type="text" placeholder="TEL MADRE" value={formAlumno.contacto?.madreTelefono} onChange={e => setFormAlumno({...formAlumno, contacto: {...formAlumno.contacto!, madreTelefono: e.target.value}})} className="bg-slate-50 p-4 rounded-2xl text-[11px] font-bold outline-none" />
-                  <input type="text" placeholder="PADRE / TUTOR" value={formAlumno.contacto?.padreNombre} onChange={e => setFormAlumno({...formAlumno, contacto: {...formAlumno.contacto!, padreNombre: e.target.value}})} className="bg-slate-50 p-4 rounded-2xl text-[11px] font-bold outline-none" />
-                  <input type="text" placeholder="TEL PADRE" value={formAlumno.contacto?.padreTelefono} onChange={e => setFormAlumno({...formAlumno, contacto: {...formAlumno.contacto!, padreTelefono: e.target.value}})} className="bg-slate-50 p-4 rounded-2xl text-[11px] font-bold outline-none" />
-                </div>
-              </div>
-
-              <div className="flex gap-4 pt-6">
-                <button type="button" onClick={() => setShowFormModal(null)} className="flex-1 py-5 text-[10px] font-black uppercase text-slate-400 hover:text-rose-500 transition-colors">Cerrar</button>
-                <button type="submit" className="flex-[2] py-5 bg-indigo-600 text-white rounded-[2rem] text-[10px] font-black uppercase shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all">Guardar Datos</button>
-              </div>
-            </form>
+      {/* Pop Notifications */}
+      {notificacion && (
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] w-[90%] max-w-[380px] bg-slate-900 text-white p-5 rounded-2xl shadow-2xl flex items-center gap-4 animate-in slide-in-from-top-10 duration-500">
+          <div className="w-10 h-10 bg-[#277bf1] rounded-xl flex items-center justify-center">
+            <span className="material-icons">check</span>
+          </div>
+          <div>
+            <p className="text-xs font-bold uppercase tracking-widest">{notificacion.t}</p>
+            <p className="text-[11px] text-slate-400 font-medium mt-0.5">{notificacion.d}</p>
           </div>
         </div>
       )}
 
-      <Nav />
+      {/* Safe Area Indicator */}
+      <div className="h-1.5 w-32 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto mb-2 fixed bottom-2 left-1/2 -translate-x-1/2"></div>
     </div>
   );
 };
