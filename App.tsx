@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Alumno, Clase, ViewMode, GrupoConfig, AsistenciaRecord, UserRole, Feedback } from './types.ts';
 import { processClassAudio } from './services/geminiService.ts';
-import { db as firestore, COLLECTIONS, getCollectionData, addDocument, updateDocument } from './services/firebase.ts';
+import { db as firestore, auth, googleProvider, COLLECTIONS, getCollectionData, addDocument, updateDocument } from './services/firebase.ts';
 import { collection, query, where, getDocs, addDoc, doc, updateDoc, onSnapshot, orderBy } from 'firebase/firestore';
+import { signInWithPopup, signOut, onAuthStateChanged, User } from 'firebase/auth';
 
 const App: React.FC = () => {
+  const [user, setUser] = useState<User | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userRole, setUserRole] = useState<UserRole>('Coach');
   const [vista, setVista] = useState<ViewMode>('Dashboard');
@@ -47,6 +49,78 @@ const App: React.FC = () => {
 
   // UI States
   const [notificacion, setNotificacion] = useState<{t: string, d: string} | null>(null);
+
+  const COORDINATOR_EMAIL = "profesunlp@gmail.com";
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      if (currentUser) {
+        setUser(currentUser);
+        setIsLoggedIn(true);
+        if (currentUser.email === COORDINATOR_EMAIL) {
+          setUserRole('Coordinator');
+        } else {
+          setUserRole('Coach');
+        }
+      } else {
+        setUser(null);
+        setIsLoggedIn(false);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const handleLogin = async () => {
+    try {
+      await signInWithPopup(auth, googleProvider);
+    } catch (error) {
+      console.error("Login error:", error);
+      setNotificacion({ t: "Error", d: "No se pudo iniciar sesión." });
+      setTimeout(() => setNotificacion(null), 3000);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      setVista('Dashboard');
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
+  };
+
+  const [asistenciasGlobales, setAsistenciasGlobales] = useState<Record<string, { presentes: number, total: number }>>({});
+
+  const loadGlobalAttendance = async () => {
+    if (userRole !== 'Coordinator') return;
+    const today = new Date().toISOString().split('T')[0];
+    const q = query(
+      collection(firestore, COLLECTIONS.ASISTENCIAS),
+      where('fecha', '==', today)
+    );
+    const querySnapshot = await getDocs(q);
+    const stats: Record<string, { presentes: number, total: number }> = {};
+    
+    // Initialize stats for all groups
+    grupos.forEach(g => {
+      const totalInGroup = alumnos.filter(a => a.grupo === g.nombre).length;
+      stats[g.nombre] = { presentes: 0, total: totalInGroup };
+    });
+
+    querySnapshot.forEach(doc => {
+      const data = doc.data() as AsistenciaRecord;
+      if (stats[data.grupo] && data.presente) {
+        stats[data.grupo].presentes += 1;
+      }
+    });
+    setAsistenciasGlobales(stats);
+  };
+
+  useEffect(() => {
+    if (isLoggedIn && userRole === 'Coordinator') {
+      loadGlobalAttendance();
+    }
+  }, [isLoggedIn, userRole, grupos, alumnos]);
 
   const loadData = async () => {
     const a = await getCollectionData(COLLECTIONS.ALUMNOS) as Alumno[];
@@ -261,24 +335,13 @@ const App: React.FC = () => {
         </p>
 
         <div className="w-full max-w-[280px] space-y-4">
-          <div className="flex bg-white/5 rounded-2xl p-1 border border-white/10 mb-8">
-            <button 
-              onClick={() => setUserRole('Coach')}
-              className={`flex-1 py-3 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${userRole === 'Coach' ? 'bg-primary text-antigravity-black shadow-neon-cyan' : 'text-white/40'}`}
-            >
-              Entrenador
-            </button>
-            <button 
-              onClick={() => setUserRole('Coordinator')}
-              className={`flex-1 py-3 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${userRole === 'Coordinator' ? 'bg-primary text-antigravity-black shadow-neon-cyan' : 'text-white/40'}`}
-            >
-              Coordinador
-            </button>
-          </div>
-
-          <button onClick={() => setIsLoggedIn(true)} className="w-full py-4.5 bg-white text-[#1e1b4b] rounded-full font-bold uppercase text-[10px] tracking-[0.18em] shadow-[0_20px_40px_rgba(0,0,0,0.3)] active:scale-95 transition-all hover:bg-slate-50">
-            INICIAR PANEL DE CONTROL
+          <button onClick={handleLogin} className="w-full py-4.5 bg-white text-[#1e1b4b] rounded-full font-bold uppercase text-[10px] tracking-[0.18em] shadow-[0_20px_40px_rgba(0,0,0,0.3)] active:scale-95 transition-all hover:bg-slate-50 flex items-center justify-center gap-3">
+            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-4 h-4" alt="Google" />
+            INICIAR CON GOOGLE
           </button>
+          <p className="text-[9px] text-white/30 uppercase tracking-widest mt-4">
+            Acceso restringido para personal autorizado
+          </p>
         </div>
       </div>
     </div>
@@ -330,6 +393,37 @@ const App: React.FC = () => {
               </div>
               <div className="absolute -top-12 -right-12 w-48 h-48 bg-white/10 rounded-full blur-3xl"></div>
             </section>
+
+            {userRole === 'Coordinator' && (
+              <section className="space-y-4">
+                <h3 className="text-primary font-bold text-lg active-glow">Estado de Asistencia Hoy</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  {grupos.map((g) => {
+                    const stats = asistenciasGlobales[g.nombre] || { presentes: 0, total: 0 };
+                    const isTaken = stats.total > 0 && stats.presentes > 0;
+                    return (
+                      <div key={g.id} className="glass-card rounded-3xl p-5 border border-white/5 space-y-3">
+                        <h4 className="text-xs font-bold text-white truncate">{g.nombre}</h4>
+                        <div className="flex items-end justify-between">
+                          <span className={`text-xl font-black ${isTaken ? 'text-primary' : 'text-rose-500'}`}>
+                            {stats.presentes}<span className="text-[10px] text-white/20 mx-1">/</span>{stats.total}
+                          </span>
+                          <span className={`text-[8px] font-black uppercase tracking-widest ${isTaken ? 'text-primary/60' : 'text-rose-500/60'}`}>
+                            {isTaken ? 'Enviada' : 'Pendiente'}
+                          </span>
+                        </div>
+                        <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+                          <div 
+                            className={`h-full transition-all duration-1000 ${isTaken ? 'bg-primary shadow-neon-cyan' : 'bg-rose-500'}`} 
+                            style={{ width: `${stats.total > 0 ? (stats.presentes / stats.total) * 100 : 0}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
 
             {userRole === 'Coach' && (
               <section className="space-y-4">
@@ -528,11 +622,11 @@ const App: React.FC = () => {
 
               <div className="space-y-4 pt-4">
                 <button 
-                  onClick={() => { setIsLoggedIn(false); setVista('Dashboard'); }}
+                  onClick={handleLogout}
                   className="w-full py-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-500 font-black uppercase text-[10px] tracking-[0.2em] flex items-center justify-center gap-3 active:scale-95 transition-all"
                 >
                   <span className="material-icons-outlined text-sm">logout</span>
-                  Cerrar Sesión / Cambiar Rol
+                  Cerrar Sesión
                 </button>
               </div>
             </div>
