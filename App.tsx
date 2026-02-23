@@ -72,17 +72,23 @@ const App: React.FC = () => {
 
   const handleLogin = async () => {
     try {
-      await signInWithPopup(auth, googleProvider);
+      console.log("Iniciando login con Google...");
+      const result = await signInWithPopup(auth, googleProvider);
+      console.log("Login exitoso:", result.user.email);
     } catch (error: any) {
-      console.error("Login error:", error);
-      let msg = "Error al iniciar sesión.";
+      console.error("Error detallado de login:", error);
+      let msg = `Error (${error.code || 'unknown'}): ${error.message || 'Error desconocido'}`;
+      
       if (error.code === 'auth/unauthorized-domain') {
-        msg = "Dominio no autorizado en Firebase.";
-      } else if (error.message) {
-        msg = error.message;
+        msg = "Dominio no autorizado. Verifica la consola de Firebase.";
+      } else if (error.code === 'auth/popup-blocked') {
+        msg = "El navegador bloqueó la ventana emergente.";
+      } else if (error.code === 'auth/popup-closed-by-user') {
+        msg = "Cerraste la ventana antes de terminar.";
       }
-      setNotificacion({ t: "Error", d: msg });
-      setTimeout(() => setNotificacion(null), 5000);
+      
+      setNotificacion({ t: "Error de Autenticación", d: msg });
+      setTimeout(() => setNotificacion(null), 8000);
     }
   };
 
