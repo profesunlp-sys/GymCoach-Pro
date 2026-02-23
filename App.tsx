@@ -134,6 +134,8 @@ const App: React.FC = () => {
     }
   }, [isLoggedIn, userRole, grupos, alumnos]);
 
+  const [alertasGlobales, setAlertasGlobales] = useState<Alumno[]>([]);
+
   const loadData = async () => {
     const a = await getCollectionData(COLLECTIONS.ALUMNOS) as Alumno[];
     const c = await getCollectionData(COLLECTIONS.CLASES) as Clase[];
@@ -141,6 +143,9 @@ const App: React.FC = () => {
     setAlumnos(a);
     setClases(c.sort((x, y) => new Date(y.fecha).getTime() - new Date(x.fecha).getTime()));
     setGrupos(g);
+    
+    // Filter global alerts
+    setAlertasGlobales(a.filter(student => student.alertas && student.alertas.length > 0 && student.alertas[0] !== ""));
 
     if (activeGroup) {
       const today = new Date().toISOString().split('T')[0];
@@ -406,6 +411,24 @@ const App: React.FC = () => {
               <div className="absolute -top-12 -right-12 w-48 h-48 bg-white/10 rounded-full blur-3xl"></div>
             </section>
 
+            {userRole === 'Coordinator' && alertasGlobales.length > 0 && (
+              <section className="space-y-4">
+                <div className="flex items-center gap-2 px-1">
+                  <span className="material-icons-outlined text-rose-500 animate-pulse">warning</span>
+                  <h3 className="text-rose-500 font-bold text-lg">Alertas Médicas Críticas</h3>
+                </div>
+                <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
+                  {alertasGlobales.map(atleta => (
+                    <div key={atleta.id} className="min-w-[200px] bg-rose-500/10 border border-rose-500/20 rounded-2xl p-4 space-y-2">
+                      <p className="text-white font-bold text-xs truncate">{atleta.nombre}</p>
+                      <p className="text-[10px] text-rose-200/60 italic line-clamp-2">"{atleta.alertas[0]}"</p>
+                      <p className="text-[8px] font-black uppercase text-rose-500 tracking-widest">{atleta.grupo}</p>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
             {userRole === 'Coordinator' && (
               <section className="space-y-4">
                 <h3 className="text-primary font-bold text-lg active-glow">Estado de Asistencia Hoy</h3>
@@ -414,7 +437,11 @@ const App: React.FC = () => {
                     const stats = asistenciasGlobales[g.nombre] || { presentes: 0, total: 0 };
                     const isTaken = stats.total > 0 && stats.presentes > 0;
                     return (
-                      <div key={g.id} className="glass-card rounded-3xl p-5 border border-white/5 space-y-3">
+                      <div 
+                        key={g.id} 
+                        onClick={() => { setActiveGroup(g); setVista('AsistenciaLista'); }}
+                        className="glass-card rounded-3xl p-5 border border-white/5 space-y-3 active:scale-95 transition-all cursor-pointer"
+                      >
                         <h4 className="text-xs font-bold text-white truncate">{g.nombre}</h4>
                         <div className="flex items-end justify-between">
                           <span className={`text-xl font-black ${isTaken ? 'text-primary' : 'text-rose-500'}`}>
@@ -609,6 +636,96 @@ const App: React.FC = () => {
             >
               <span className="material-symbols-outlined text-[32px] font-light">person_add</span>
             </button>
+          </div>
+        )}
+
+        {vista === 'Alumnos' && (
+          <div className="px-6 py-8 space-y-8 page-transition">
+            <header className="flex justify-between items-end">
+              <div>
+                <h2 className="text-3xl font-black text-white uppercase tracking-tighter">Atletas</h2>
+                <p className="text-primary text-[10px] font-black uppercase tracking-widest mt-1">Base de Datos {userRole === 'Coordinator' ? 'Global' : 'del Grupo'}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Total</p>
+                <p className="text-2xl font-black text-white">{alumnos.length}</p>
+              </div>
+            </header>
+
+            <div className="relative">
+              <span className="material-icons-outlined absolute left-4 top-1/2 -translate-y-1/2 text-white/20">search</span>
+              <input 
+                className="w-full bg-antigravity-charcoal border border-white/5 rounded-2xl py-4 pl-12 pr-4 text-sm text-white placeholder:text-white/20"
+                placeholder="Buscar por nombre o DNI..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-3">
+              {alumnos
+                .filter(a => a.nombre.toLowerCase().includes(searchQuery.toLowerCase()) || a.dni.includes(searchQuery))
+                .map(alumno => (
+                <div key={alumno.id} className="glass-card rounded-2xl p-4 border border-white/5 flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center border border-white/10 overflow-hidden">
+                      <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(alumno.nombre)}&background=random`} alt="" className="w-full h-full object-cover opacity-80" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-white">{alumno.nombre}</h4>
+                      <p className="text-[10px] text-slate-500 font-medium uppercase tracking-wider">{alumno.grupo} • {alumno.nivel}</p>
+                    </div>
+                  </div>
+                  <button className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/40">
+                    <span className="material-icons-outlined text-sm">more_vert</span>
+                  </button>
+                </div>
+              ))}
+              {alumnos.length === 0 && (
+                <div className="py-20 text-center opacity-20 italic text-sm">No hay atletas registrados.</div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {vista === 'Planes' && (
+          <div className="px-6 py-8 space-y-8 page-transition">
+            <header>
+              <h2 className="text-3xl font-black text-white uppercase tracking-tighter">Planes de Trabajo</h2>
+              <p className="text-primary text-[10px] font-black uppercase tracking-widest mt-1">Historial Técnico de Clases</p>
+            </header>
+
+            <div className="space-y-4">
+              {clases.map((clase) => (
+                <div 
+                  key={clase.id} 
+                  onClick={() => { setSelectedClase(clase); setVista('ClaseDetalle'); }}
+                  className="glass-card rounded-3xl p-6 border border-white/5 space-y-4 active:scale-95 transition-all cursor-pointer"
+                >
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h4 className="text-lg font-bold text-white leading-none">{clase.grupo}</h4>
+                      <p className="text-[10px] text-primary font-bold uppercase tracking-widest mt-2">{new Date(clase.fecha).toLocaleDateString()} • {clase.entrenador}</p>
+                    </div>
+                    <div className="w-10 h-10 bg-white/5 rounded-xl flex items-center justify-center border border-white/10">
+                      <span className="material-icons-outlined text-white/40 text-sm">description</span>
+                    </div>
+                  </div>
+                  
+                  <div className="flex flex-wrap gap-2">
+                    {clase.apparatusUsed?.slice(0, 2).map((ap, i) => (
+                      <span key={i} className="text-[8px] font-black uppercase tracking-widest px-2 py-1 bg-primary/10 text-primary rounded-md border border-primary/20">{ap}</span>
+                    ))}
+                    {clase.skillsCovered && clase.skillsCovered.length > 0 && (
+                      <span className="text-[8px] font-black uppercase tracking-widest px-2 py-1 bg-accent-purple/10 text-accent-purple rounded-md border border-accent-purple/20">+{clase.skillsCovered.length} Habilidades</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+              {clases.length === 0 && (
+                <div className="py-20 text-center opacity-20 italic text-sm">No hay planes registrados.</div>
+              )}
+            </div>
           </div>
         )}
 
@@ -831,7 +948,7 @@ const App: React.FC = () => {
           {[
             { v: 'Dashboard', i: 'grid_view' },
             { v: 'Alumnos', i: 'group' },
-            { v: 'Horario', i: 'calendar_today' },
+            { v: userRole === 'Coordinator' ? 'Planes' : 'Horario', i: userRole === 'Coordinator' ? 'description' : 'calendar_today' },
             { v: 'Ajustes', i: 'app_settings_alt' }
           ].map(item => (
             <button 
@@ -840,7 +957,9 @@ const App: React.FC = () => {
               className={`flex flex-col items-center gap-1.5 transition-all flex-1 ${vista === item.v || (vista === 'AsistenciaLista' && item.v === 'Horario') ? 'text-neon-cyan active-glow' : 'text-white/30 hover:text-white'}`}
             >
               <span className={`material-symbols-outlined text-[26px] font-light ${vista === item.v || (vista === 'AsistenciaLista' && item.v === 'Horario') ? 'neon-glow-cyan' : ''}`}>{item.i}</span>
-              <span className={`text-[9px] uppercase tracking-wide ${vista === item.v || (vista === 'AsistenciaLista' && item.v === 'Horario') ? 'font-bold' : 'font-medium'}`}>{item.v === 'Horario' ? (activeGroup ? 'Horario' : 'Horario') : item.v}</span>
+              <span className={`text-[9px] uppercase tracking-wide ${vista === item.v || (vista === 'AsistenciaLista' && item.v === 'Horario') ? 'font-bold' : 'font-medium'}`}>
+                {item.v === 'Horario' ? (activeGroup ? 'Horario' : 'Horario') : item.v}
+              </span>
             </button>
           ))}
         </nav>
