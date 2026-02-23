@@ -73,10 +73,16 @@ const App: React.FC = () => {
   const handleLogin = async () => {
     try {
       await signInWithPopup(auth, googleProvider);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Login error:", error);
-      setNotificacion({ t: "Error", d: "No se pudo iniciar sesión." });
-      setTimeout(() => setNotificacion(null), 3000);
+      let msg = "Error al iniciar sesión.";
+      if (error.code === 'auth/unauthorized-domain') {
+        msg = "Dominio no autorizado en Firebase.";
+      } else if (error.message) {
+        msg = error.message;
+      }
+      setNotificacion({ t: "Error", d: msg });
+      setTimeout(() => setNotificacion(null), 5000);
     }
   };
 
