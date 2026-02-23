@@ -1,30 +1,20 @@
 import React, { useState, useEffect, useRef } from 'react';
-import Dexie, { type EntityTable } from 'dexie';
-import { Alumno, Clase, ViewMode, GrupoConfig, AsistenciaRecord } from './types.ts';
+import { Alumno, Clase, ViewMode, GrupoConfig, AsistenciaRecord, UserRole, Feedback } from './types.ts';
 import { processClassAudio } from './services/geminiService.ts';
-
-// --- DATABASE CONFIGURATION ---
-const db = new Dexie('GymCoachEliteDB_AntigravityV11') as Dexie & {
-  alumnos: EntityTable<Alumno, 'id'>;
-  clases: EntityTable<Clase, 'id'>;
-  grupos: EntityTable<GrupoConfig, 'id'>;
-  asistencias: EntityTable<AsistenciaRecord, 'id'>;
-};
-
-db.version(1).stores({
-  alumnos: '++id, dni, nombre, estadoPago, disciplina, grupo',
-  clases: '++id, fecha, grupo',
-  grupos: '++id, nombre',
-  asistencias: '++id, fecha, alumnoId, grupo'
-});
+import { db as firestore, COLLECTIONS, getCollectionData, addDocument, updateDocument } from './services/firebase.ts';
+import { collection, query, where, getDocs, addDoc, doc, updateDoc, onSnapshot, orderBy } from 'firebase/firestore';
 
 const App: React.FC = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userRole, setUserRole] = useState<UserRole>('Coach');
   const [vista, setVista] = useState<ViewMode>('Dashboard');
   const [alumnos, setAlumnos] = useState<Alumno[]>([]);
   const [clases, setClases] = useState<Clase[]>([]);
   const [grupos, setGrupos] = useState<GrupoConfig[]>([]);
-  const [asistenciasHoy, setAsistenciasHoy] = useState<Record<number, boolean>>({});
+  const [asistenciasHoy, setAsistenciasHoy] = useState<Record<string, boolean>>({});
+  const [selectedClase, setSelectedClase] = useState<Clase | null>(null);
+  const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
+  const [newFeedback, setNewFeedback] = useState("");
   
   // Search State
   const [searchQuery, setSearchQuery] = useState("");
@@ -59,37 +49,65 @@ const App: React.FC = () => {
   const [notificacion, setNotificacion] = useState<{t: string, d: string} | null>(null);
 
   const loadData = async () => {
-    const a = await db.alumnos.toArray();
-    const c = await db.clases.toArray();
-    const g = await db.grupos.toArray();
+    const a = await getCollectionData(COLLECTIONS.ALUMNOS) as Alumno[];
+    const c = await getCollectionData(COLLECTIONS.CLASES) as Clase[];
+    const g = await getCollectionData(COLLECTIONS.GRUPOS) as GrupoConfig[];
     setAlumnos(a);
-    setClases(c);
+    setClases(c.sort((x, y) => new Date(y.fecha).getTime() - new Date(x.fecha).getTime()));
     setGrupos(g);
 
     if (activeGroup) {
       const today = new Date().toISOString().split('T')[0];
-      const todayAttendance = await db.asistencias
-        .where('fecha')
-        .equals(today)
-        .and(record => record.grupo === activeGroup.nombre)
-        .toArray();
-      
-      const attMap: Record<number, boolean> = {};
-      todayAttendance.forEach(r => attMap[r.alumnoId] = r.presente);
+      const q = query(
+        collection(firestore, COLLECTIONS.ASISTENCIAS),
+        where('fecha', '==', today),
+        where('grupo', '==', activeGroup.nombre)
+      );
+      const querySnapshot = await getDocs(q);
+      const attMap: Record<string, boolean> = {};
+      querySnapshot.forEach(doc => {
+        const data = doc.data() as AsistenciaRecord;
+        attMap[data.alumnoId] = data.presente;
+      });
       setAsistenciasHoy(attMap);
     }
   };
 
-  useEffect(() => { if (isLoggedIn) loadData(); }, [isLoggedIn, activeGroup]);
+  useEffect(() => {
+    if (isLoggedIn) {
+      loadData();
+      // Real-time updates for classes (important for coordinator)
+      const unsub = onSnapshot(collection(firestore, COLLECTIONS.CLASES), (snapshot) => {
+        const c = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Clase[];
+        setClases(c.sort((x, y) => new Date(y.fecha).getTime() - new Date(x.fecha).getTime()));
+      });
+      return () => unsub();
+    }
+  }, [isLoggedIn, activeGroup]);
+
+  useEffect(() => {
+    if (selectedClase?.id) {
+      const q = query(
+        collection(firestore, COLLECTIONS.FEEDBACK),
+        where('claseId', '==', selectedClase.id),
+        orderBy('timestamp', 'asc')
+      );
+      const unsub = onSnapshot(q, (snapshot) => {
+        setFeedbacks(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Feedback[]);
+      });
+      return () => unsub();
+    }
+  }, [selectedClase]);
 
   const handleSaveGroup = async () => {
+    if (userRole === 'Coordinator') return;
     if (!newGroupName || selectedDays.length === 0) {
       setNotificacion({ t: "Error", d: "Nombre y días obligatorios." });
       setTimeout(() => setNotificacion(null), 3000);
       return;
     }
     
-    await db.grupos.add({
+    await addDocument(COLLECTIONS.GRUPOS, {
       nombre: newGroupName,
       dias: selectedDays,
       horario: `${startTime} - ${endTime}`
@@ -102,13 +120,14 @@ const App: React.FC = () => {
   };
 
   const handleSaveStudent = async () => {
+    if (userRole === 'Coordinator') return;
     if (!studentForm.nombre || !studentForm.dni) {
       setNotificacion({ t: "Error", d: "Nombre y DNI son obligatorios." });
       setTimeout(() => setNotificacion(null), 3000);
       return;
     }
 
-    const newStudent: Alumno = {
+    const newStudent: Omit<Alumno, 'id'> = {
       ...studentForm as Alumno,
       grupo: activeGroup?.nombre || 'Sin Grupo',
       fechaIngreso: new Date().toISOString(),
@@ -119,7 +138,7 @@ const App: React.FC = () => {
       asistenciasHistoricas: 0
     };
 
-    await db.alumnos.add(newStudent);
+    await addDocument(COLLECTIONS.ALUMNOS, newStudent);
     loadData();
     setNotificacion({ t: "Atleta Registrado", d: `${newStudent.nombre} añadido.` });
     setVista('AsistenciaLista');
@@ -131,26 +150,42 @@ const App: React.FC = () => {
     setTimeout(() => setNotificacion(null), 3000);
   };
 
-  const toggleAttendance = async (alumnoId: number) => {
+  const toggleAttendance = async (alumnoId: string) => {
+    if (userRole === 'Coordinator') return;
     const today = new Date().toISOString().split('T')[0];
     const isPresent = !asistenciasHoy[alumnoId];
     
     setAsistenciasHoy(prev => ({ ...prev, [alumnoId]: isPresent }));
 
-    const existing = await db.asistencias
-      .where({ fecha: today, alumnoId: alumnoId })
-      .first();
+    const q = query(
+      collection(firestore, COLLECTIONS.ASISTENCIAS),
+      where('fecha', '==', today),
+      where('alumnoId', '==', alumnoId)
+    );
+    const querySnapshot = await getDocs(q);
 
-    if (existing) {
-      await db.asistencias.update(existing.id!, { presente: isPresent });
+    if (!querySnapshot.empty) {
+      const docId = querySnapshot.docs[0].id;
+      await updateDocument(COLLECTIONS.ASISTENCIAS, docId, { presente: isPresent });
     } else {
-      await db.asistencias.add({
+      await addDocument(COLLECTIONS.ASISTENCIAS, {
         fecha: today,
         alumnoId: alumnoId,
         grupo: activeGroup?.nombre || 'General',
         presente: isPresent
       });
     }
+  };
+
+  const handleAddFeedback = async () => {
+    if (!newFeedback.trim() || !selectedClase?.id) return;
+    await addDocument(COLLECTIONS.FEEDBACK, {
+      claseId: selectedClase.id,
+      author: userRole === 'Coordinator' ? 'Coordinador' : 'Profesor',
+      text: newFeedback,
+      timestamp: new Date().toISOString()
+    });
+    setNewFeedback("");
   };
 
   const startRecording = async () => {
@@ -183,7 +218,7 @@ const App: React.FC = () => {
       const base64 = (reader.result as string).split(',')[1];
       try {
         const result = await processClassAudio(base64, 'audio/webm');
-        const newClase: Clase = {
+        const newClase: Omit<Clase, 'id'> = {
           fecha: new Date().toISOString(),
           grupo: result.grupo || 'General',
           horario: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -192,7 +227,7 @@ const App: React.FC = () => {
           apparatusUsed: result.apparatusUsed || [],
           skillsCovered: result.skillsCovered || []
         };
-        await db.clases.add(newClase);
+        await addDocument(COLLECTIONS.CLASES, newClase);
         loadData();
         setNotificacion({ t: "IA Assistant", d: `Clase registrada correctamente.` });
         setIsAnalyzing(false);
@@ -221,12 +256,30 @@ const App: React.FC = () => {
         <h1 className="text-[42px] font-extrabold tracking-tighter mb-1 text-white leading-none">
           GymCoach <span className="text-primary">Pro</span>
         </h1>
-        <p className="text-white/40 text-[10px] font-bold italic uppercase tracking-[0.4em] mb-20 whitespace-nowrap">
+        <p className="text-white/40 text-[10px] font-bold italic uppercase tracking-[0.4em] mb-12 whitespace-nowrap">
           ELITE GYMNASTICS MANAGEMENT
         </p>
-        <button onClick={() => setIsLoggedIn(true)} className="w-full max-w-[280px] py-4.5 bg-white text-[#1e1b4b] rounded-full font-bold uppercase text-[10px] tracking-[0.18em] shadow-[0_20px_40px_rgba(0,0,0,0.3)] active:scale-95 transition-all hover:bg-slate-50">
-          INICIAR PANEL DE CONTROL
-        </button>
+
+        <div className="w-full max-w-[280px] space-y-4">
+          <div className="flex bg-white/5 rounded-2xl p-1 border border-white/10 mb-8">
+            <button 
+              onClick={() => setUserRole('Coach')}
+              className={`flex-1 py-3 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${userRole === 'Coach' ? 'bg-primary text-antigravity-black shadow-neon-cyan' : 'text-white/40'}`}
+            >
+              Entrenador
+            </button>
+            <button 
+              onClick={() => setUserRole('Coordinator')}
+              className={`flex-1 py-3 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${userRole === 'Coordinator' ? 'bg-primary text-antigravity-black shadow-neon-cyan' : 'text-white/40'}`}
+            >
+              Coordinador
+            </button>
+          </div>
+
+          <button onClick={() => setIsLoggedIn(true)} className="w-full py-4.5 bg-white text-[#1e1b4b] rounded-full font-bold uppercase text-[10px] tracking-[0.18em] shadow-[0_20px_40px_rgba(0,0,0,0.3)] active:scale-95 transition-all hover:bg-slate-50">
+            INICIAR PANEL DE CONTROL
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -253,7 +306,10 @@ const App: React.FC = () => {
                 <div className="w-10 h-10 bg-accent-purple/20 rounded-xl flex items-center justify-center border border-accent-purple/30 shadow-neon-purple">
                   <span className="material-icons-outlined text-accent-purple">fitness_center</span>
                 </div>
-                <h1 className="text-xl font-bold text-white leading-none">GymCoach <span className="text-primary">Pro</span></h1>
+                <div>
+                  <h1 className="text-xl font-bold text-white leading-none">GymCoach <span className="text-primary">Pro</span></h1>
+                  <span className="text-[8px] uppercase tracking-[0.2em] text-primary/60 font-bold">{userRole === 'Coordinator' ? 'Modo Coordinación' : 'Modo Entrenador'}</span>
+                </div>
               </div>
               <button className="w-10 h-10 rounded-full glass-card flex items-center justify-center">
                 <span className="material-icons-outlined text-slate-400">notifications</span>
@@ -262,54 +318,84 @@ const App: React.FC = () => {
 
             <section className="gradient-header rounded-[2.5rem] p-7 relative overflow-hidden shadow-2xl border border-white/10">
               <div className="relative z-10">
-                <h2 className="text-2xl font-bold text-white mb-1 tracking-tight leading-tight">¡Hola José María!</h2>
-                <p className="text-indigo-100 text-sm mb-7 font-medium">Configura tu semana para empezar.</p>
-                <button onClick={() => setVista('NuevaClase')} className="bg-white text-indigo-800 font-black px-7 py-3.5 rounded-[1.25rem] flex items-center gap-2 shadow-xl text-[11px] uppercase tracking-widest active:scale-95 transition-all">
-                  <span className="material-icons-outlined text-sm">add_circle</span> Registrar Clase
-                </button>
+                <h2 className="text-2xl font-bold text-white mb-1 tracking-tight leading-tight">¡Hola {userRole === 'Coordinator' ? 'Coordinador' : 'José María'}!</h2>
+                <p className="text-indigo-100 text-sm mb-7 font-medium">
+                  {userRole === 'Coordinator' ? 'Supervisa el progreso de tus colegas.' : 'Configura tu semana para empezar.'}
+                </p>
+                {userRole === 'Coach' && (
+                  <button onClick={() => setVista('NuevaClase')} className="bg-white text-indigo-800 font-black px-7 py-3.5 rounded-[1.25rem] flex items-center gap-2 shadow-xl text-[11px] uppercase tracking-widest active:scale-95 transition-all">
+                    <span className="material-icons-outlined text-sm">add_circle</span> Registrar Clase
+                  </button>
+                )}
               </div>
               <div className="absolute -top-12 -right-12 w-48 h-48 bg-white/10 rounded-full blur-3xl"></div>
             </section>
 
-            <section className="space-y-4">
-              <h3 className="text-accent-purple font-bold text-lg active-glow">Configuración de Horario</h3>
-              <div className="glass-card rounded-[2.5rem] p-6 space-y-6">
-                <div className="flex justify-between items-center px-1">
-                  {['L', 'M', 'M', 'J', 'V', 'S'].map((day, idx) => {
-                    const id = `${day}-${idx}`;
-                    const isSelected = selectedDays.includes(id);
-                    return (
-                      <button key={id} onClick={() => setSelectedDays(prev => prev.includes(id) ? prev.filter(d => d !== id) : [...prev, id])}
-                        className={`w-11 h-11 rounded-full flex items-center justify-center font-bold text-sm transition-all ${isSelected ? 'border-2 border-primary shadow-neon-cyan text-primary bg-primary/5' : 'bg-antigravity-charcoal text-slate-500'}`}>
-                        {day}
-                      </button>
-                    );
-                  })}
-                </div>
+            {userRole === 'Coach' && (
+              <section className="space-y-4">
+                <h3 className="text-accent-purple font-bold text-lg active-glow">Configuración de Horario</h3>
+                <div className="glass-card rounded-[2.5rem] p-6 space-y-6">
+                  <div className="flex justify-between items-center px-1">
+                    {['L', 'M', 'M', 'J', 'V', 'S'].map((day, idx) => {
+                      const id = `${day}-${idx}`;
+                      const isSelected = selectedDays.includes(id);
+                      return (
+                        <button key={id} onClick={() => setSelectedDays(prev => prev.includes(id) ? prev.filter(d => d !== id) : [...prev, id])}
+                          className={`w-11 h-11 rounded-full flex items-center justify-center font-bold text-sm transition-all ${isSelected ? 'border-2 border-primary shadow-neon-cyan text-primary bg-primary/5' : 'bg-antigravity-charcoal text-slate-500'}`}>
+                          {day}
+                        </button>
+                      );
+                    })}
+                  </div>
 
-                <div className="space-y-4">
-                  <input className="w-full bg-antigravity-charcoal border border-white/5 rounded-2xl px-5 py-4 text-sm text-white placeholder:text-slate-600 focus:ring-1 ring-primary/30"
-                    placeholder="Nombre del Grupo (Ej. Avanzados)" value={newGroupName} onChange={(e) => setNewGroupName(e.target.value)} />
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                      <label className="text-[10px] uppercase font-bold text-slate-500 ml-1">Desde</label>
-                      <select value={startTime} onChange={(e) => setStartTime(e.target.value)} className="w-full bg-antigravity-charcoal border-none rounded-2xl px-4 py-3 text-sm text-white appearance-none">
-                        {timeIntervals.map(t => <option key={t} value={t} className="bg-antigravity-charcoal">{t}</option>)}
-                      </select>
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] uppercase font-bold text-slate-500 ml-1">Hasta</label>
-                      <select value={endTime} onChange={(e) => setEndTime(e.target.value)} className="w-full bg-antigravity-charcoal border-none rounded-2xl px-4 py-3 text-sm text-white appearance-none">
-                        {timeIntervals.map(t => <option key={t} value={t} className="bg-antigravity-charcoal">{t}</option>)}
-                      </select>
+                  <div className="space-y-4">
+                    <input className="w-full bg-antigravity-charcoal border border-white/5 rounded-2xl px-5 py-4 text-sm text-white placeholder:text-slate-600 focus:ring-1 ring-primary/30"
+                      placeholder="Nombre del Grupo (Ej. Avanzados)" value={newGroupName} onChange={(e) => setNewGroupName(e.target.value)} />
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <label className="text-[10px] uppercase font-bold text-slate-500 ml-1">Desde</label>
+                        <select value={startTime} onChange={(e) => setStartTime(e.target.value)} className="w-full bg-antigravity-charcoal border-none rounded-2xl px-4 py-3 text-sm text-white appearance-none">
+                          {timeIntervals.map(t => <option key={t} value={t} className="bg-antigravity-charcoal">{t}</option>)}
+                        </select>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] uppercase font-bold text-slate-500 ml-1">Hasta</label>
+                        <select value={endTime} onChange={(e) => setEndTime(e.target.value)} className="w-full bg-antigravity-charcoal border-none rounded-2xl px-4 py-3 text-sm text-white appearance-none">
+                          {timeIntervals.map(t => <option key={t} value={t} className="bg-antigravity-charcoal">{t}</option>)}
+                        </select>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <button onClick={handleSaveGroup} className="w-full py-4.5 rounded-2xl border border-accent-purple text-accent-purple font-black bg-accent-purple/5 shadow-neon-purple active:scale-[0.98] transition-all uppercase text-[10px] tracking-[0.2em]">
-                  <span>Guardar Configuración</span>
-                </button>
+                  <button onClick={handleSaveGroup} className="w-full py-4.5 rounded-2xl border border-accent-purple text-accent-purple font-black bg-accent-purple/5 shadow-neon-purple active:scale-[0.98] transition-all uppercase text-[10px] tracking-[0.2em]">
+                    <span>Guardar Configuración</span>
+                  </button>
+                </div>
+              </section>
+            )}
+
+            <section className="space-y-4">
+              <div className="flex justify-between px-1"><h3 className="text-white font-bold text-lg">Actividad Reciente</h3></div>
+              <div className="space-y-3">
+                {clases.slice(0, 5).map((clase) => (
+                  <div 
+                    key={clase.id} 
+                    onClick={() => { setSelectedClase(clase); setVista('ClaseDetalle'); }}
+                    className="glass-card rounded-2xl p-4 border border-white/5 flex items-center justify-between active:scale-95 transition-all cursor-pointer"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center border border-primary/20">
+                        <span className="material-icons-outlined text-primary text-xl">history_edu</span>
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-bold text-white">{clase.grupo}</h4>
+                        <p className="text-[10px] text-slate-500 font-medium">{new Date(clase.fecha).toLocaleDateString()} • {clase.entrenador}</p>
+                      </div>
+                    </div>
+                    <span className="material-icons-outlined text-slate-600 text-sm">chevron_right</span>
+                  </div>
+                ))}
               </div>
             </section>
 
@@ -420,7 +506,42 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {/* ... views logic ... */}
+        {vista === 'Ajustes' && (
+          <div className="px-6 py-8 space-y-8 page-transition">
+            <header>
+              <h2 className="text-3xl font-black text-white uppercase tracking-tighter">Ajustes</h2>
+              <p className="text-primary text-[10px] font-black uppercase tracking-widest mt-1">Configuración del Sistema</p>
+            </header>
+
+            <div className="glass-card rounded-[2.5rem] p-8 space-y-6">
+              <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/10">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 bg-primary/20 rounded-xl flex items-center justify-center border border-primary/30">
+                    <span className="material-icons-outlined text-primary">person</span>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-white uppercase tracking-wider">{userRole === 'Coordinator' ? 'Coordinador General' : 'Entrenador Pro'}</p>
+                    <p className="text-[10px] text-slate-500">Sesión Activa</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4 pt-4">
+                <button 
+                  onClick={() => { setIsLoggedIn(false); setVista('Dashboard'); }}
+                  className="w-full py-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-500 font-black uppercase text-[10px] tracking-[0.2em] flex items-center justify-center gap-3 active:scale-95 transition-all"
+                >
+                  <span className="material-icons-outlined text-sm">logout</span>
+                  Cerrar Sesión / Cambiar Rol
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 text-center opacity-20">
+              <p className="text-[8px] font-black uppercase tracking-[0.5em] text-white">GymCoach Pro v2.0 Cloud</p>
+            </div>
+          </div>
+        )}
         {vista === 'RegistroAlumno' && activeGroup && (
           <div className="space-y-8 page-transition pb-12 px-6 pt-4">
             <header className="flex items-center gap-4">
@@ -495,6 +616,79 @@ const App: React.FC = () => {
                 Imprimir Documento
               </button>
             </div>
+          </div>
+        )}
+
+        {vista === 'ClaseDetalle' && selectedClase && (
+          <div className="page-transition flex flex-col min-h-screen bg-antigravity-black">
+            <header className="px-6 py-6 flex items-center gap-4 sticky top-12 bg-antigravity-black z-40">
+              <button onClick={() => setVista('Dashboard')} className="w-10 h-10 flex items-center justify-center rounded-full bg-antigravity-charcoal border border-white/10 text-white">
+                <span className="material-symbols-outlined text-[20px]">arrow_back_ios_new</span>
+              </button>
+              <div>
+                <h2 className="text-xl font-bold text-white leading-none">{selectedClase.grupo}</h2>
+                <p className="text-xs text-primary mt-1 font-medium">{new Date(selectedClase.fecha).toLocaleDateString()} • {selectedClase.horario}</p>
+              </div>
+            </header>
+
+            <main className="flex-1 px-6 space-y-8 pb-12">
+              <section className="space-y-4">
+                <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white/30 italic">Contenido de la Clase</h3>
+                <div className="glass-card rounded-3xl p-6 space-y-6">
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-bold text-primary uppercase tracking-widest">Calentamiento</p>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedClase.warmup?.map((item, i) => (
+                        <span key={i} className="bg-white/5 text-white/80 text-[10px] px-3 py-1.5 rounded-lg border border-white/10">{item}</span>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-bold text-primary uppercase tracking-widest">Aparatos</p>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedClase.apparatusUsed?.map((item, i) => (
+                        <span key={i} className="bg-primary/10 text-primary text-[10px] px-3 py-1.5 rounded-lg border border-primary/20">{item}</span>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-bold text-primary uppercase tracking-widest">Habilidades</p>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedClase.skillsCovered?.map((item, i) => (
+                        <span key={i} className="bg-accent-purple/10 text-accent-purple text-[10px] px-3 py-1.5 rounded-lg border border-accent-purple/20">{item}</span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section className="space-y-4">
+                <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white/30 italic">Feedback del Coordinador</h3>
+                <div className="space-y-4">
+                  {feedbacks.map((fb) => (
+                    <div key={fb.id} className={`p-4 rounded-2xl border ${fb.author === 'Coordinador' ? 'bg-primary/5 border-primary/20 ml-4' : 'bg-white/5 border-white/10 mr-4'}`}>
+                      <div className="flex justify-between items-center mb-2">
+                        <span className={`text-[9px] font-black uppercase tracking-widest ${fb.author === 'Coordinador' ? 'text-primary' : 'text-white/40'}`}>{fb.author}</span>
+                        <span className="text-[8px] text-white/20">{new Date(fb.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                      </div>
+                      <p className="text-xs text-white/80 leading-relaxed italic">"{fb.text}"</p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex gap-3 mt-6">
+                  <input 
+                    className="flex-1 bg-antigravity-charcoal border border-white/10 rounded-2xl px-5 py-3.5 text-xs text-white placeholder:text-white/20"
+                    placeholder="Escribir feedback..."
+                    value={newFeedback}
+                    onChange={(e) => setNewFeedback(e.target.value)}
+                  />
+                  <button onClick={handleAddFeedback} className="w-12 h-12 bg-primary rounded-2xl flex items-center justify-center text-antigravity-black shadow-neon-cyan active:scale-95 transition-all">
+                    <span className="material-icons-outlined">send</span>
+                  </button>
+                </div>
+              </section>
+            </main>
           </div>
         )}
 

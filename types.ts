@@ -31,7 +31,7 @@ export interface ContactoFamilia {
 }
 
 export interface Alumno {
-  id?: number;
+  id?: string;
   nombre: string;
   dni: string;
   disciplina: Discipline;
@@ -51,15 +51,15 @@ export interface Alumno {
 }
 
 export interface AsistenciaRecord {
-  id?: number;
+  id?: string;
   fecha: string; // ISO string date
-  alumnoId: number;
+  alumnoId: string;
   grupo: string;
   presente: boolean;
 }
 
 export interface Clase {
-  id?: number;
+  id?: string;
   fecha: string;
   grupo: string;
   horario?: string;
@@ -70,10 +70,20 @@ export interface Clase {
 }
 
 export interface GrupoConfig {
-  id?: number;
+  id?: string;
   nombre: string;
   dias: string[];
   horario: string;
 }
 
-export type ViewMode = 'Dashboard' | 'Horario' | 'Alumnos' | 'Ajustes' | 'NuevaClase' | 'RegistroAlumno' | 'AsistenciaLista' | 'ReportePDF';
+export type UserRole = 'Coach' | 'Coordinator';
+
+export interface Feedback {
+  id?: string;
+  claseId: string;
+  author: string;
+  text: string;
+  timestamp: string;
+}
+
+export type ViewMode = 'Dashboard' | 'Horario' | 'Alumnos' | 'Ajustes' | 'NuevaClase' | 'RegistroAlumno' | 'AsistenciaLista' | 'ReportePDF' | 'ClaseDetalle';
