@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Alumno, Clase, ViewMode, GrupoConfig, AsistenciaRecord, UserRole, Feedback } from './types.ts';
-import { processClassAudio } from './services/geminiService.ts';
+import { processClassAudio, refineClassAnalysis } from './services/geminiService.ts';
 import { db as firestore, auth, googleProvider, COLLECTIONS, getCollectionData, addDocument, updateDocument } from './services/firebase.ts';
 import { collection, query, where, getDocs, addDoc, doc, updateDoc, onSnapshot, orderBy } from 'firebase/firestore';
 import { signInWithPopup, signOut, onAuthStateChanged, User } from 'firebase/auth';
@@ -44,6 +44,8 @@ const App: React.FC = () => {
   // IA Recording State
   const [isRecording, setIsRecording] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [pendingAnalysis, setPendingAnalysis] = useState<any>(null);
+  const [clarificationText, setClarificationText] = useState("");
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
 
@@ -309,26 +311,51 @@ const App: React.FC = () => {
       const base64 = (reader.result as string).split(',')[1];
       try {
         const result = await processClassAudio(base64, 'audio/webm');
-        const newClase: Omit<Clase, 'id'> = {
-          fecha: new Date().toISOString(),
-          grupo: result.grupo || 'General',
-          horario: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          entrenador: result.entrenador || 'Coach Pro',
-          warmup: result.warmup || [],
-          apparatusUsed: result.apparatusUsed || [],
-          skillsCovered: result.skillsCovered || []
-        };
-        await addDocument(COLLECTIONS.CLASES, newClase);
-        loadData();
-        setNotificacion({ t: "IA Assistant", d: `Clase registrada correctamente.` });
-        setIsAnalyzing(false);
-        setVista('Dashboard');
+        
+        if (result.clarificationNeeded) {
+          setPendingAnalysis(result);
+          setIsAnalyzing(false);
+          return;
+        }
+
+        await saveClass(result);
       } catch (e) {
         setIsAnalyzing(false);
         setNotificacion({ t: "Error", d: "No se pudo interpretar." });
       }
       setTimeout(() => setNotificacion(null), 3000);
     };
+  };
+
+  const handleRefine = async () => {
+    if (!clarificationText.trim()) return;
+    setIsAnalyzing(true);
+    try {
+      const refined = await refineClassAnalysis(pendingAnalysis, clarificationText);
+      await saveClass(refined);
+      setPendingAnalysis(null);
+      setClarificationText("");
+    } catch (e) {
+      setNotificacion({ t: "Error", d: "Error al refinar." });
+    }
+    setIsAnalyzing(false);
+    setTimeout(() => setNotificacion(null), 3000);
+  };
+
+  const saveClass = async (result: any) => {
+    const newClase: Omit<Clase, 'id'> = {
+      fecha: new Date().toISOString(),
+      grupo: result.grupo || 'General',
+      horario: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      entrenador: result.entrenador || 'Coach Pro',
+      warmup: result.warmup || [],
+      apparatusUsed: result.apparatusUsed || [],
+      skillsCovered: result.skillsCovered || []
+    };
+    await addDocument(COLLECTIONS.CLASES, newClase);
+    loadData();
+    setNotificacion({ t: "IA Assistant", d: `Clase registrada correctamente.` });
+    setVista('Dashboard');
   };
 
   const timeIntervals = ["17:00", "17:30", "18:00", "18:30", "19:00", "19:30", "20:00"];
@@ -367,6 +394,55 @@ const App: React.FC = () => {
   return (
     <div className="max-w-[430px] mx-auto min-h-screen bg-antigravity-black shadow-2xl relative overflow-hidden flex flex-col font-display pb-32">
       
+      {/* Refinement UI Overlay */}
+      {pendingAnalysis && (
+        <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-xl flex items-center justify-center p-6">
+          <div className="w-full max-w-sm glass-card rounded-[2.5rem] p-8 border border-white/10 space-y-6 page-transition">
+            <div className="w-16 h-16 bg-primary/20 rounded-2xl flex items-center justify-center border border-primary/30 mx-auto">
+              <span className="material-icons-outlined text-primary text-3xl">psychology</span>
+            </div>
+            <div className="text-center space-y-2">
+              <h3 className="text-xl font-bold text-white">IA necesita aclaración</h3>
+              <p className="text-sm text-slate-400 leading-relaxed">
+                {pendingAnalysis.question || "No pude entender bien una parte del reporte. ¿Podrías aclararlo?"}
+              </p>
+              {pendingAnalysis.inconsistencies && pendingAnalysis.inconsistencies.length > 0 && (
+                <div className="mt-4 p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-left">
+                  <p className="text-[10px] font-black uppercase text-rose-500 tracking-widest mb-1">Dudas detectadas:</p>
+                  <ul className="list-disc list-inside text-[10px] text-rose-200/60 space-y-1">
+                    {pendingAnalysis.inconsistencies.map((inc: string, i: number) => <li key={i}>{inc}</li>)}
+                  </ul>
+                </div>
+              )}
+            </div>
+            
+            <div className="space-y-4">
+              <textarea 
+                className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm text-white placeholder:text-white/20 focus:ring-1 focus:ring-primary/50 transition-all min-h-[100px]"
+                placeholder="Escribe tu aclaración aquí..."
+                value={clarificationText}
+                onChange={(e) => setClarificationText(e.target.value)}
+              />
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => setPendingAnalysis(null)}
+                  className="flex-1 py-4 rounded-2xl border border-white/10 text-white font-bold text-[10px] uppercase tracking-widest active:scale-95 transition-all"
+                >
+                  Cancelar
+                </button>
+                <button 
+                  onClick={handleRefine}
+                  disabled={isAnalyzing}
+                  className="flex-[2] py-4 rounded-2xl bg-primary text-antigravity-black font-black text-[10px] uppercase tracking-widest shadow-neon-cyan active:scale-95 transition-all disabled:opacity-50"
+                >
+                  {isAnalyzing ? 'Procesando...' : 'Confirmar'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* iOS Status Bar */}
       <div className="h-12 flex justify-between items-center px-8 pt-4 pb-2 w-full bg-antigravity-black sticky top-0 z-50">
         <span className="text-sm font-medium text-white">9:41</span>

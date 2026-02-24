@@ -23,7 +23,6 @@ export async function getDraftMessage(type: 'bienvenida' | 'alerta' | 'felicitac
 export async function processClassAudio(audioBase64: string, mimeType: string): Promise<any> {
   try {
     const ai = getAI();
-    // Correctly structured contents with parts for multimodal input (audio + text)
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: {
@@ -37,7 +36,11 @@ export async function processClassAudio(audioBase64: string, mimeType: string): 
           {
             text: `Analiza este audio de un entrenador de gimnasia reportando su clase. 
             Extrae la información y devuélvela estrictamente en formato JSON.
-            Si hay términos técnicos que no entiendes o falta información crucial (como qué aparato se usó específicamente), marca 'clarificationNeeded' como true y escribe la pregunta en 'question'.
+            
+            REGLAS DE CONSISTENCIA:
+            1. Si el entrenador menciona una habilidad (ej. "Mortal atrás"), asegúrate de que el aparato coincida (ej. "Suelo"). Si no coincide o es ambiguo, márcalo.
+            2. Si el audio tiene mucho ruido o es ininteligible en partes clave, marca 'clarificationNeeded' como true.
+            3. Si faltan datos obligatorios (entrenador, grupo o al menos un aparato), marca 'clarificationNeeded' como true.
             
             Formato esperado:
             {
@@ -46,11 +49,13 @@ export async function processClassAudio(audioBase64: string, mimeType: string): 
               "skillsCovered": ["habilidad1", "habilidad2"],
               "entrenador": "nombre detectado o null",
               "grupo": "nivel detectado o null",
+              "confidence": number (0-100),
               "clarificationNeeded": boolean,
-              "question": "texto de la pregunta si es necesario"
+              "question": "texto de la pregunta específica para el usuario si algo no está claro",
+              "inconsistencies": ["lista de dudas o contradicciones detectadas"]
             }
             
-            Los aparatos válidos son: Suelo, Viga, Paralelas, Salto, Anillas, Arzones, Barra Fija.`,
+            Aparatos válidos: Suelo, Viga, Paralelas, Salto, Anillas, Arzones, Barra Fija.`,
           },
         ]
       },
