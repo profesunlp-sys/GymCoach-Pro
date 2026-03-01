@@ -37,6 +37,8 @@ const App: React.FC = () => {
   const [faseInicial, setFaseInicial] = useState<string[]>([]);
   const [fasePrincipal, setFasePrincipal] = useState<string[]>([]);
   const [faseFinal, setFaseFinal] = useState<string[]>([]);
+  const [habilidadesPorAparato, setHabilidadesPorAparato] = useState<Record<string, string[]>>({});
+  const [customHabilidad, setCustomHabilidad] = useState<Record<string, string>>({});
   const [customInicial, setCustomInicial] = useState("");
   const [customPrincipal, setCustomPrincipal] = useState("");
   const [customFinal, setCustomFinal] = useState("");
@@ -451,17 +453,20 @@ const App: React.FC = () => {
       entrenador: finalCoachName,
       faseInicial: faseInicial,
       fasePrincipal: fasePrincipal,
-      faseFinal: faseFinal
+      faseFinal: faseFinal,
+      habilidadesPorAparato: habilidadesPorAparato
     };
     await addDocument(COLLECTIONS.CLASES, newClase);
     loadData();
     setNotificacion({ t: "Éxito", d: `Clase registrada correctamente.` });
+    setTimeout(() => setNotificacion(null), 3000);
     setClaseGrupo("");
     setNewClaseGroupName("");
     setNewClaseCoachName("");
     setFaseInicial([]);
     setFasePrincipal([]);
     setFaseFinal([]);
+    setHabilidadesPorAparato({});
     setVista('Dashboard');
   };
 
@@ -1211,6 +1216,23 @@ const App: React.FC = () => {
                           <span key={i} className="bg-primary/10 text-primary text-[10px] px-3 py-1.5 rounded-lg border border-primary/20">{item}</span>
                         ))}
                       </div>
+                      
+                      {selectedClase.habilidadesPorAparato && Object.keys(selectedClase.habilidadesPorAparato).length > 0 && (
+                        <div className="mt-4 space-y-3">
+                          {Object.entries(selectedClase.habilidadesPorAparato).map(([aparato, habilidades]) => (
+                            habilidades.length > 0 && (
+                              <div key={aparato} className="bg-white/5 p-3 rounded-xl border border-white/10">
+                                <p className="text-[10px] font-bold text-white mb-2">{aparato}</p>
+                                <ul className="list-disc list-inside text-xs text-slate-300 space-y-1">
+                                  {habilidades.map((hab, idx) => (
+                                    <li key={idx}>{hab}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )
+                          ))}
+                        </div>
+                      )}
                     </div>
                   ) : null}
 
@@ -1375,6 +1397,48 @@ const App: React.FC = () => {
                     Agregar
                   </button>
                 </div>
+
+                {fasePrincipal.length > 0 && (
+                  <div className="mt-6 space-y-4 border-t border-white/10 pt-4">
+                    <label className="text-[10px] uppercase font-bold text-slate-400 ml-1 tracking-widest">Habilidades por Aparato</label>
+                    {fasePrincipal.map(aparato => (
+                      <div key={aparato} className="space-y-2 bg-antigravity-charcoal/50 p-4 rounded-2xl border border-white/5">
+                        <p className="text-xs font-bold text-white">{aparato}</p>
+                        <div className="flex flex-wrap gap-2">
+                          {(habilidadesPorAparato[aparato] || []).map((hab, idx) => (
+                            <span key={idx} className="bg-primary/10 text-primary text-[10px] px-3 py-1.5 rounded-lg border border-primary/20 flex items-center gap-1">
+                              {hab}
+                              <button onClick={() => setHabilidadesPorAparato(prev => ({...prev, [aparato]: prev[aparato].filter((_, i) => i !== idx)}))}>
+                                <span className="material-icons-outlined text-[12px]">close</span>
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                        <div className="flex gap-2 mt-2">
+                          <input 
+                            type="text" 
+                            value={customHabilidad[aparato] || ""} 
+                            onChange={(e) => setCustomHabilidad(prev => ({...prev, [aparato]: e.target.value}))} 
+                            placeholder={`Ej. Rol adelante en ${aparato}...`} 
+                            className="flex-1 bg-antigravity-charcoal border border-white/10 rounded-xl px-4 py-2 text-xs text-white"
+                          />
+                          <button 
+                            onClick={() => { 
+                              const hab = customHabilidad[aparato];
+                              if(hab) { 
+                                setHabilidadesPorAparato(prev => ({...prev, [aparato]: [...(prev[aparato] || []), hab]})); 
+                                setCustomHabilidad(prev => ({...prev, [aparato]: ""})); 
+                              } 
+                            }}
+                            className="bg-white/10 text-white px-4 py-2 rounded-xl text-xs font-bold"
+                          >
+                            Añadir
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="glass-card rounded-3xl p-6 border border-white/5 space-y-4">
@@ -1510,6 +1574,23 @@ const App: React.FC = () => {
                         <div className="flex flex-wrap gap-1">
                           {clase.fasePrincipal.map((item, i) => <span key={i} className="text-[10px] bg-white/5 text-slate-300 px-2 py-1 rounded-md">{item}</span>)}
                         </div>
+                        
+                        {clase.habilidadesPorAparato && Object.keys(clase.habilidadesPorAparato).length > 0 && (
+                          <div className="mt-3 space-y-2">
+                            {Object.entries(clase.habilidadesPorAparato).map(([aparato, habilidades]) => (
+                              habilidades.length > 0 && (
+                                <div key={aparato} className="bg-white/5 p-2 rounded-lg border border-white/10">
+                                  <p className="text-[9px] font-bold text-white mb-1">{aparato}</p>
+                                  <ul className="list-disc list-inside text-[10px] text-slate-300 space-y-0.5">
+                                    {habilidades.map((hab, idx) => (
+                                      <li key={idx}>{hab}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )
+                            ))}
+                          </div>
+                        )}
                       </div>
                     )}
 

@@ -67,6 +67,7 @@ export interface Clase {
   faseInicial?: string[];
   fasePrincipal?: string[];
   faseFinal?: string[];
+  habilidadesPorAparato?: Record<string, string[]>;
   warmup?: string[]; // Legacy
   apparatusUsed?: string[]; // Legacy
   skillsCovered?: string[]; // Legacy
