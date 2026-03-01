@@ -34,6 +34,7 @@ export interface Alumno {
   id?: string;
   nombre: string;
   dni: string;
+  edad?: number;
   disciplina: Discipline;
   nivel: string;
   grupo?: string; 

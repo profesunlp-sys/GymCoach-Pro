@@ -241,26 +241,33 @@ const App: React.FC = () => {
 
   const handleSaveStudent = async () => {
     if (userRole === 'Coordinator') return;
-    if (!studentForm.nombre || !studentForm.dni) {
-      setNotificacion({ t: "Error", d: "Nombre y DNI son obligatorios." });
+    if (!studentForm.nombre || !studentForm.fechaNacimiento) {
+      setNotificacion({ t: "Error", d: "Nombre y Fecha de Nacimiento son obligatorios." });
       setTimeout(() => setNotificacion(null), 3000);
       return;
     }
 
+    // Calcular edad al 31 de diciembre del año corriente
+    const currentYear = new Date().getFullYear();
+    const birthDate = new Date(studentForm.fechaNacimiento);
+    const ageAtEndOfYear = currentYear - birthDate.getFullYear();
+
     const newStudent: Omit<Alumno, 'id'> = {
       ...studentForm as Alumno,
+      edad: ageAtEndOfYear,
+      dni: studentForm.dni || 'No especificado',
       grupo: activeGroup?.nombre || 'Sin Grupo',
       fechaIngreso: new Date().toISOString(),
       estadoPago: 'Al día',
       habilidades: [],
       biometria: { fuerza: 50, flexibilidad: 50, tecnica: 50, resistencia: 50, coordinacion: 50 },
-      qrCode: `QR_${studentForm.dni}`,
+      qrCode: `QR_${studentForm.dni || new Date().getTime()}`,
       asistenciasHistoricas: 0
     };
 
     await addDocument(COLLECTIONS.ALUMNOS, newStudent);
     loadData();
-    setNotificacion({ t: "Atleta Registrado", d: `${newStudent.nombre} añadido.` });
+    setNotificacion({ t: "Gimnasta Registrado", d: `${newStudent.nombre} añadido.` });
     setVista('AsistenciaLista');
     setStudentForm({
       nombre: '', dni: '', disciplina: 'GAF', nivel: 'Escuela',
@@ -635,11 +642,11 @@ const App: React.FC = () => {
                   <h3 className="text-rose-500 font-bold text-lg">Alertas Médicas Críticas</h3>
                 </div>
                 <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
-                  {alertasGlobales.map(atleta => (
-                    <div key={atleta.id} className="min-w-[200px] bg-rose-500/10 border border-rose-500/20 rounded-2xl p-4 space-y-2">
-                      <p className="text-white font-bold text-xs truncate">{atleta.nombre}</p>
-                      <p className="text-[10px] text-rose-200/60 italic line-clamp-2">"{atleta.alertas[0]}"</p>
-                      <p className="text-[8px] font-black uppercase text-rose-500 tracking-widest">{atleta.grupo}</p>
+                  {alertasGlobales.map(gimnasta => (
+                    <div key={gimnasta.id} className="min-w-[200px] bg-rose-500/10 border border-rose-500/20 rounded-2xl p-4 space-y-2">
+                      <p className="text-white font-bold text-xs truncate">{gimnasta.nombre}</p>
+                      <p className="text-[10px] text-rose-200/60 italic line-clamp-2">"{gimnasta.alertas[0]}"</p>
+                      <p className="text-[8px] font-black uppercase text-rose-500 tracking-widest">{gimnasta.grupo}</p>
                     </div>
                   ))}
                 </div>
@@ -874,7 +881,7 @@ const App: React.FC = () => {
           <div className="px-6 py-8 space-y-8 page-transition">
             <header className="flex justify-between items-end">
               <div>
-                <h2 className="text-3xl font-black text-white uppercase tracking-tighter">Atletas</h2>
+                <h2 className="text-3xl font-black text-white uppercase tracking-tighter">Gimnastas</h2>
                 <p className="text-primary text-[10px] font-black uppercase tracking-widest mt-1">Base de Datos {userRole === 'Coordinator' ? 'Global' : 'del Grupo'}</p>
               </div>
               <div className="text-right">
@@ -917,7 +924,7 @@ const App: React.FC = () => {
                 </div>
               ))}
               {alumnos.length === 0 && (
-                <div className="py-20 text-center opacity-20 italic text-sm">No hay atletas registrados.</div>
+                <div className="py-20 text-center opacity-20 italic text-sm">No hay gimnastas registrados.</div>
               )}
             </div>
           </div>
@@ -1116,23 +1123,26 @@ const App: React.FC = () => {
               <div className="space-y-4">
                 <h4 className="text-white font-black text-[10px] border-b border-white/5 pb-2 uppercase tracking-[0.3em] opacity-30 italic">Identificación</h4>
                 <div className="space-y-4">
-                  <input className="w-full bg-antigravity-charcoal border border-white/10 rounded-2xl px-5 py-4 text-sm text-white" placeholder="Nombre completo del atleta" value={studentForm.nombre} onChange={(e) => setStudentForm({...studentForm, nombre: e.target.value})}/>
+                  <input className="w-full bg-antigravity-charcoal border border-white/10 rounded-2xl px-5 py-4 text-sm text-white" placeholder="Nombre y Apellido *" value={studentForm.nombre} onChange={(e) => setStudentForm({...studentForm, nombre: e.target.value})}/>
                   <div className="grid grid-cols-2 gap-4">
-                    <input className="w-full bg-antigravity-charcoal border border-white/10 rounded-2xl px-5 py-4 text-sm text-white" placeholder="DNI" value={studentForm.dni} onChange={(e) => setStudentForm({...studentForm, dni: e.target.value})}/>
-                    <input type="date" className="w-full bg-antigravity-charcoal border border-white/10 rounded-2xl px-4 py-4 text-sm text-white" value={studentForm.fechaNacimiento} onChange={(e) => setStudentForm({...studentForm, fechaNacimiento: e.target.value})}/>
+                    <input className="w-full bg-antigravity-charcoal border border-white/10 rounded-2xl px-5 py-4 text-sm text-white" placeholder="DNI (Opcional)" value={studentForm.dni} onChange={(e) => setStudentForm({...studentForm, dni: e.target.value})}/>
+                    <div className="relative">
+                      <input type="date" className="w-full bg-antigravity-charcoal border border-white/10 rounded-2xl px-4 py-4 text-sm text-white" value={studentForm.fechaNacimiento} onChange={(e) => setStudentForm({...studentForm, fechaNacimiento: e.target.value})}/>
+                      {!studentForm.fechaNacimiento && <span className="absolute left-4 top-4 text-sm text-slate-400 pointer-events-none">Fecha Nacimiento *</span>}
+                    </div>
                   </div>
                 </div>
               </div>
               <div className="space-y-4">
                 <h4 className="text-white font-black text-[10px] border-b border-white/5 pb-2 uppercase tracking-[0.3em] opacity-30 italic">Seguimiento Médico</h4>
-                <textarea className="w-full bg-antigravity-charcoal border border-white/10 rounded-2xl px-5 py-4 text-sm text-white h-24" placeholder="Afecciones, alergias o impedimentos médicos..." onChange={(e) => setStudentForm({...studentForm, alertas: [e.target.value]})}/>
+                <textarea className="w-full bg-antigravity-charcoal border border-white/10 rounded-2xl px-5 py-4 text-sm text-white h-24" placeholder="Observaciones de salud (Opcional)..." onChange={(e) => setStudentForm({...studentForm, alertas: [e.target.value]})}/>
                 <div className="space-y-1">
                   <label className="text-[10px] uppercase font-bold text-slate-500 ml-1">Fecha de Inicio de Actividades</label>
                   <input type="date" className="w-full bg-antigravity-charcoal border border-white/10 rounded-2xl px-5 py-4 text-sm text-white" value={studentForm.fechaPrimeraClase} onChange={(e) => setStudentForm({...studentForm, fechaPrimeraClase: e.target.value})}/>
                 </div>
               </div>
               <button onClick={handleSaveStudent} className="w-full py-5 rounded-3xl bg-accent-purple text-white font-black uppercase tracking-[0.3em] text-[10px] shadow-neon-purple active:scale-95 transition-all">
-                Finalizar Alta de Atleta
+                Finalizar Alta de Gimnasta
               </button>
             </div>
           </div>
@@ -1157,7 +1167,7 @@ const App: React.FC = () => {
               <table className="w-full border-collapse border-4 border-black">
                 <thead>
                   <tr className="bg-slate-100 uppercase text-[12px] font-black border-b-4 border-black">
-                    <th className="p-5 text-left border-r-4 border-black">Atleta</th>
+                    <th className="p-5 text-left border-r-4 border-black">Gimnasta</th>
                     <th className="p-5 text-center border-r-4 border-black">DNI</th>
                     <th className="p-5 text-center border-r-4 border-black">Asistencias</th>
                     <th className="p-5 text-right">Firma Tutor</th>
