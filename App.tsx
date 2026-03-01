@@ -32,6 +32,8 @@ const App: React.FC = () => {
 
   // Class Form State
   const [claseGrupo, setClaseGrupo] = useState("");
+  const [newClaseGroupName, setNewClaseGroupName] = useState("");
+  const [newClaseCoachName, setNewClaseCoachName] = useState("");
   const [faseInicial, setFaseInicial] = useState<string[]>([]);
   const [fasePrincipal, setFasePrincipal] = useState<string[]>([]);
   const [faseFinal, setFaseFinal] = useState<string[]>([]);
@@ -414,11 +416,39 @@ const App: React.FC = () => {
       setTimeout(() => setNotificacion(null), 3000);
       return;
     }
+
+    let finalGroupName = claseGrupo;
+    let finalCoachName = user?.displayName || 'Coach Pro';
+
+    if (claseGrupo === 'NEW_GROUP') {
+      if (!newClaseGroupName || !newClaseCoachName) {
+        setNotificacion({ t: "Error", d: "Nombre del grupo y profesor son obligatorios." });
+        setTimeout(() => setNotificacion(null), 3000);
+        return;
+      }
+      finalGroupName = newClaseGroupName;
+      finalCoachName = newClaseCoachName;
+
+      // Create the new group
+      await addDocument(COLLECTIONS.GRUPOS, {
+        nombre: newClaseGroupName,
+        entrenador: newClaseCoachName,
+        dias: [],
+        horario: "A definir"
+      });
+    } else {
+      // Find existing group to get its coach
+      const existingGroup = grupos.find(g => g.nombre === claseGrupo);
+      if (existingGroup && existingGroup.entrenador) {
+        finalCoachName = existingGroup.entrenador;
+      }
+    }
+
     const newClase: Omit<Clase, 'id'> = {
       fecha: new Date().toISOString(),
-      grupo: claseGrupo,
+      grupo: finalGroupName,
       horario: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      entrenador: user?.displayName || 'Coach Pro',
+      entrenador: finalCoachName,
       faseInicial: faseInicial,
       fasePrincipal: fasePrincipal,
       faseFinal: faseFinal
@@ -427,6 +457,8 @@ const App: React.FC = () => {
     loadData();
     setNotificacion({ t: "Éxito", d: `Clase registrada correctamente.` });
     setClaseGrupo("");
+    setNewClaseGroupName("");
+    setNewClaseCoachName("");
     setFaseInicial([]);
     setFasePrincipal([]);
     setFaseFinal([]);
@@ -1244,7 +1276,27 @@ const App: React.FC = () => {
                 >
                   <option value="" disabled>Seleccionar Grupo</option>
                   {grupos.map(g => <option key={g.id} value={g.nombre}>{g.nombre}</option>)}
+                  <option value="NEW_GROUP">+ Crear nuevo grupo...</option>
                 </select>
+
+                {claseGrupo === 'NEW_GROUP' && (
+                  <div className="space-y-4 pt-2">
+                    <input 
+                      type="text" 
+                      placeholder="Nombre del nuevo grupo" 
+                      value={newClaseGroupName} 
+                      onChange={(e) => setNewClaseGroupName(e.target.value)} 
+                      className="w-full bg-antigravity-charcoal border border-white/10 rounded-2xl px-5 py-4 text-sm text-white focus:ring-1 ring-primary/30"
+                    />
+                    <input 
+                      type="text" 
+                      placeholder="Nombre del profesor a cargo" 
+                      value={newClaseCoachName} 
+                      onChange={(e) => setNewClaseCoachName(e.target.value)} 
+                      className="w-full bg-antigravity-charcoal border border-white/10 rounded-2xl px-5 py-4 text-sm text-white focus:ring-1 ring-primary/30"
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="glass-card rounded-3xl p-6 border border-white/5 space-y-4">
