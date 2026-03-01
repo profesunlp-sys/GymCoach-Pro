@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Alumno, Clase, ViewMode, GrupoConfig, AsistenciaRecord, UserRole, Feedback } from './types.ts';
+import { Alumno, Clase, ViewMode, GrupoConfig, AsistenciaRecord, UserRole, Feedback, Skill, SkillStatus, Apparatus } from './types.ts';
 import { processClassAudio, refineClassAnalysis } from './services/geminiService.ts';
 import { db as firestore, auth, googleProvider, COLLECTIONS, getCollectionData, addDocument, updateDocument } from './services/firebase.ts';
 import { collection, query, where, getDocs, addDoc, doc, updateDoc, onSnapshot, orderBy } from 'firebase/firestore';
@@ -15,6 +15,7 @@ const App: React.FC = () => {
   const [grupos, setGrupos] = useState<GrupoConfig[]>([]);
   const [asistenciasHoy, setAsistenciasHoy] = useState<Record<string, boolean>>({});
   const [selectedClase, setSelectedClase] = useState<Clase | null>(null);
+  const [selectedAlumno, setSelectedAlumno] = useState<Alumno | null>(null);
   const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
   const [newFeedback, setNewFeedback] = useState("");
   
@@ -40,6 +41,11 @@ const App: React.FC = () => {
       emergenciaNombre: '', emergenciaTelefono: ''
     }
   });
+
+  // Skill Form State
+  const [isAddingSkill, setIsAddingSkill] = useState(false);
+  const [newSkill, setNewSkill] = useState<Partial<Skill>>({ name: '', status: 'No Iniciado', apparatus: 'Suelo', level: 1 });
+
   
   // IA Recording State
   const [isRecording, setIsRecording] = useState(false);
@@ -281,6 +287,30 @@ const App: React.FC = () => {
     setNewFeedback("");
   };
 
+  const handleAddSkill = async () => {
+    if (!selectedAlumno || !selectedAlumno.id || !newSkill.name) return;
+    
+    const skillToAdd: Skill = {
+      id: Date.now().toString(),
+      name: newSkill.name!,
+      status: newSkill.status as SkillStatus,
+      apparatus: newSkill.apparatus as Apparatus,
+      level: newSkill.level || 1
+    };
+
+    const updatedHabilidades = [...(selectedAlumno.habilidades || []), skillToAdd];
+    
+    await updateDocument(COLLECTIONS.ALUMNOS, selectedAlumno.id, {
+      habilidades: updatedHabilidades
+    });
+    
+    setSelectedAlumno({ ...selectedAlumno, habilidades: updatedHabilidades });
+    setIsAddingSkill(false);
+    setNewSkill({ name: '', status: 'No Iniciado', apparatus: 'Suelo', level: 1 });
+    loadData();
+  };
+
+
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -467,9 +497,24 @@ const App: React.FC = () => {
                   <span className="text-[8px] uppercase tracking-[0.2em] text-primary/60 font-bold">{userRole === 'Coordinator' ? 'Modo Coordinación' : 'Modo Entrenador'}</span>
                 </div>
               </div>
-              <button className="w-10 h-10 rounded-full glass-card flex items-center justify-center">
-                <span className="material-icons-outlined text-slate-400">notifications</span>
-              </button>
+              <div className="flex items-center gap-2">
+                {user?.email === COORDINATOR_EMAIL && (
+                  <button 
+                    onClick={() => setUserRole(prev => prev === 'Coordinator' ? 'Coach' : 'Coordinator')}
+                    className="w-10 h-10 rounded-full glass-card flex items-center justify-center border border-primary/30 text-primary active:scale-90 transition-all"
+                    title="Alternar Vista"
+                  >
+                    <span className="material-icons-outlined text-sm">swap_horiz</span>
+                  </button>
+                )}
+                <button 
+                  onClick={handleLogout}
+                  className="w-10 h-10 rounded-full glass-card flex items-center justify-center border border-rose-500/30 text-rose-500 active:scale-90 transition-all"
+                  title="Cerrar Sesión"
+                >
+                  <span className="material-icons-outlined text-sm">logout</span>
+                </button>
+              </div>
             </header>
 
             <section className="gradient-header rounded-[2.5rem] p-7 relative overflow-hidden shadow-2xl border border-white/10">
@@ -742,7 +787,11 @@ const App: React.FC = () => {
               {alumnos
                 .filter(a => a.nombre.toLowerCase().includes(searchQuery.toLowerCase()) || a.dni.includes(searchQuery))
                 .map(alumno => (
-                <div key={alumno.id} className="glass-card rounded-2xl p-4 border border-white/5 flex items-center justify-between">
+                <div 
+                  key={alumno.id} 
+                  onClick={() => { setSelectedAlumno(alumno); setVista('AlumnoDetalle'); }}
+                  className="glass-card rounded-2xl p-4 border border-white/5 flex items-center justify-between cursor-pointer active:scale-95 transition-all"
+                >
                   <div className="flex items-center gap-4">
                     <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center border border-white/10 overflow-hidden">
                       <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(alumno.nombre)}&background=random`} alt="" className="w-full h-full object-cover opacity-80" />
@@ -753,7 +802,7 @@ const App: React.FC = () => {
                     </div>
                   </div>
                   <button className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/40">
-                    <span className="material-icons-outlined text-sm">more_vert</span>
+                    <span className="material-icons-outlined text-sm">chevron_right</span>
                   </button>
                 </div>
               ))}
@@ -761,6 +810,110 @@ const App: React.FC = () => {
                 <div className="py-20 text-center opacity-20 italic text-sm">No hay atletas registrados.</div>
               )}
             </div>
+          </div>
+        )}
+
+        {vista === 'AlumnoDetalle' && selectedAlumno && (
+          <div className="px-6 py-8 space-y-8 page-transition">
+            <header className="flex items-center gap-4">
+              <button onClick={() => setVista('Alumnos')} className="w-10 h-10 rounded-full bg-antigravity-charcoal flex items-center justify-center text-primary border border-white/5 active:scale-90 transition-all">
+                <span className="material-icons-outlined">arrow_back</span>
+              </button>
+              <div>
+                <h2 className="text-2xl font-black text-white uppercase tracking-tighter leading-none">{selectedAlumno.nombre}</h2>
+                <p className="text-primary text-[10px] font-black uppercase tracking-widest mt-1">{selectedAlumno.grupo} • {selectedAlumno.nivel}</p>
+              </div>
+            </header>
+
+            <section className="space-y-4">
+              <div className="flex justify-between items-center px-1">
+                <h3 className="text-white font-bold text-lg">Habilidades</h3>
+                <button 
+                  onClick={() => setIsAddingSkill(!isAddingSkill)}
+                  className="text-primary text-xs font-bold uppercase tracking-wider flex items-center gap-1"
+                >
+                  <span className="material-icons-outlined text-sm">{isAddingSkill ? 'close' : 'add'}</span>
+                  {isAddingSkill ? 'Cancelar' : 'Añadir'}
+                </button>
+              </div>
+
+              {isAddingSkill && (
+                <div className="glass-card rounded-2xl p-5 border border-primary/30 space-y-4 shadow-neon-cyan">
+                  <input 
+                    type="text" 
+                    placeholder="Nombre de la habilidad (ej. Mortal Atrás)"
+                    className="w-full bg-antigravity-charcoal border border-white/10 rounded-xl py-3 px-4 text-sm text-white focus:border-primary/50 transition-all"
+                    value={newSkill.name}
+                    onChange={(e) => setNewSkill({...newSkill, name: e.target.value})}
+                  />
+                  <div className="grid grid-cols-2 gap-3">
+                    <select 
+                      className="bg-antigravity-charcoal border border-white/10 rounded-xl py-3 px-4 text-sm text-white focus:border-primary/50 transition-all"
+                      value={newSkill.apparatus}
+                      onChange={(e) => setNewSkill({...newSkill, apparatus: e.target.value as Apparatus})}
+                    >
+                      <option value="Suelo">Suelo</option>
+                      <option value="Viga">Viga</option>
+                      <option value="Paralelas">Paralelas</option>
+                      <option value="Salto">Salto</option>
+                      <option value="Anillas">Anillas</option>
+                      <option value="Arzones">Arzones</option>
+                      <option value="Barra Fija">Barra Fija</option>
+                    </select>
+                    <select 
+                      className="bg-antigravity-charcoal border border-white/10 rounded-xl py-3 px-4 text-sm text-white focus:border-primary/50 transition-all"
+                      value={newSkill.status}
+                      onChange={(e) => setNewSkill({...newSkill, status: e.target.value as SkillStatus})}
+                    >
+                      <option value="No Iniciado">No Iniciado</option>
+                      <option value="En Proceso">En Proceso</option>
+                      <option value="Dominado">Dominado</option>
+                      <option value="Elite">Elite</option>
+                    </select>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <label className="text-xs text-white/60 font-medium">Nivel:</label>
+                    <input 
+                      type="number" 
+                      min="1" max="10"
+                      className="w-20 bg-antigravity-charcoal border border-white/10 rounded-xl py-2 px-3 text-sm text-white text-center focus:border-primary/50 transition-all"
+                      value={newSkill.level}
+                      onChange={(e) => setNewSkill({...newSkill, level: parseInt(e.target.value) || 1})}
+                    />
+                  </div>
+                  <button 
+                    onClick={handleAddSkill}
+                    disabled={!newSkill.name}
+                    className="w-full py-3 rounded-xl bg-primary text-antigravity-black font-black uppercase text-[10px] tracking-widest active:scale-95 transition-all disabled:opacity-50"
+                  >
+                    Guardar Habilidad
+                  </button>
+                </div>
+              )}
+
+              <div className="space-y-3">
+                {selectedAlumno.habilidades && selectedAlumno.habilidades.length > 0 ? (
+                  selectedAlumno.habilidades.map(skill => (
+                    <div key={skill.id} className="glass-card rounded-2xl p-4 border border-white/5 flex items-center justify-between">
+                      <div>
+                        <h4 className="text-sm font-bold text-white">{skill.name}</h4>
+                        <p className="text-[10px] text-slate-500 font-medium uppercase tracking-wider mt-1">{skill.apparatus} • Nivel {skill.level}</p>
+                      </div>
+                      <div className={`px-3 py-1 rounded-lg border text-[9px] font-black uppercase tracking-widest ${
+                        skill.status === 'Dominado' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                        skill.status === 'En Proceso' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
+                        skill.status === 'Elite' ? 'bg-accent-purple/10 text-accent-purple border-accent-purple/20' :
+                        'bg-white/5 text-white/40 border-white/10'
+                      }`}>
+                        {skill.status}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="py-10 text-center opacity-20 italic text-sm">No hay habilidades registradas.</div>
+                )}
+              </div>
+            </section>
           </div>
         )}
 
