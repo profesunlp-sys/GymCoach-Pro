@@ -91,7 +91,7 @@ const App: React.FC = () => {
       let msg = `Error (${error.code || 'unknown'}): ${error.message || 'Error desconocido'}`;
       
       if (error.code === 'auth/unauthorized-domain') {
-        msg = "DOMINIO NO AUTORIZADO: Debes agregar la URL de esta app en Firebase Console -> Authentication -> Settings -> Authorized domains.";
+        msg = "DOMINIO NO AUTORIZADO: Agregaste el dominio en Firebase, pero la app sigue usando la base de datos de prueba. Debes configurar tus propias credenciales de Firebase en las variables de entorno (VITE_FIREBASE_...).";
       } else if (error.code === 'auth/popup-blocked') {
         msg = "El navegador bloqueó la ventana emergente. Por favor, permite las ventanas emergentes para este sitio.";
       } else if (error.code === 'auth/popup-closed-by-user') {
