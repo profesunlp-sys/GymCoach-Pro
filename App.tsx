@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Alumno, Clase, ViewMode, GrupoConfig, AsistenciaRecord, UserRole, Feedback, Skill, SkillStatus, Apparatus } from './types.ts';
 import { processClassAudio, refineClassAnalysis } from './services/geminiService.ts';
-import { db as firestore, auth, googleProvider, COLLECTIONS, getCollectionData, addDocument, updateDocument } from './services/firebase.ts';
+import { db as firestore, auth, googleProvider, COLLECTIONS, getCollectionData, addDocument, updateDocument, deleteDocument } from './services/firebase.ts';
 import { collection, query, where, getDocs, addDoc, doc, updateDoc, onSnapshot, orderBy } from 'firebase/firestore';
 import { signInWithPopup, signOut, onAuthStateChanged, User } from 'firebase/auth';
 
@@ -237,6 +237,31 @@ const App: React.FC = () => {
     loadData();
     setNotificacion({ t: "Éxito", d: `Grupo ${newGroupName} configurado.` });
     setTimeout(() => setNotificacion(null), 3000);
+  };
+
+  const handleDeleteGroup = async (grupo: GrupoConfig) => {
+    if (userRole === 'Coordinator') return;
+    if (!grupo.id) return;
+    
+    if (window.confirm(`¿Estás seguro de que deseas eliminar el grupo "${grupo.nombre}"? Esta acción no se puede deshacer y podrías perder el acceso a los datos asociados a este grupo.`)) {
+      try {
+        await deleteDocument(COLLECTIONS.GRUPOS, grupo.id);
+        loadData();
+        setNotificacion({ t: "Éxito", d: `Grupo ${grupo.nombre} eliminado.` });
+        if (activeGroup?.id === grupo.id) {
+          setActiveGroup(null);
+          setVista('Dashboard');
+        }
+        if (claseGrupo === grupo.nombre) {
+          setClaseGrupo('');
+        }
+        setTimeout(() => setNotificacion(null), 3000);
+      } catch (error) {
+        console.error("Error deleting group:", error);
+        setNotificacion({ t: "Error", d: "No se pudo eliminar el grupo." });
+        setTimeout(() => setNotificacion(null), 3000);
+      }
+    }
   };
 
   const handleSaveStudent = async () => {
@@ -776,7 +801,16 @@ const App: React.FC = () => {
                       <p className="text-xs text-slate-400 mt-2 font-medium italic">{g.horario}</p>
                       {g.entrenador && <p className="text-[10px] text-primary mt-1 font-bold uppercase tracking-wider">Prof: {g.entrenador}</p>}
                     </div>
-                    <div className="bg-primary/10 text-primary text-[10px] font-black px-3 py-1.5 rounded-lg border border-primary/20 tracking-wider shadow-neon-cyan uppercase">Active</div>
+                    <div className="flex flex-col items-end gap-2">
+                      <div className="bg-primary/10 text-primary text-[10px] font-black px-3 py-1.5 rounded-lg border border-primary/20 tracking-wider shadow-neon-cyan uppercase">Active</div>
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); handleDeleteGroup(g); }}
+                        className="text-rose-500 bg-rose-500/10 p-2 rounded-lg border border-rose-500/20 hover:bg-rose-500/20 transition-all flex items-center justify-center"
+                        title="Eliminar grupo"
+                      >
+                        <span className="material-icons-outlined text-[16px]">delete</span>
+                      </button>
+                    </div>
                   </div>
                   <button onClick={() => { setActiveGroup(g); setVista('AsistenciaLista'); }} className="w-full py-3.5 rounded-2xl border border-primary text-primary font-bold text-[11px] uppercase tracking-widest shadow-neon-cyan flex items-center justify-center gap-2.5 bg-primary/5 active:scale-95 transition-all">
                     <span className="material-icons-outlined text-[18px]">fact_check</span> Listas de Asistencia
@@ -1301,15 +1335,29 @@ const App: React.FC = () => {
             <div className="space-y-6">
               <div className="glass-card rounded-3xl p-6 border border-white/5 space-y-4">
                 <label className="text-[10px] uppercase font-bold text-slate-500 ml-1">Grupo</label>
-                <select 
-                  value={claseGrupo} 
-                  onChange={(e) => setClaseGrupo(e.target.value)} 
-                  className="w-full bg-antigravity-charcoal border border-white/10 rounded-2xl px-5 py-4 text-sm text-white appearance-none focus:ring-1 ring-primary/30"
-                >
-                  <option value="" disabled>Seleccionar Grupo</option>
-                  {grupos.map(g => <option key={g.id} value={g.nombre}>{g.nombre}</option>)}
-                  <option value="NEW_GROUP">+ Crear nuevo grupo...</option>
-                </select>
+                <div className="flex gap-2">
+                  <select 
+                    value={claseGrupo} 
+                    onChange={(e) => setClaseGrupo(e.target.value)} 
+                    className="flex-1 bg-antigravity-charcoal border border-white/10 rounded-2xl px-5 py-4 text-sm text-white appearance-none focus:ring-1 ring-primary/30"
+                  >
+                    <option value="" disabled>Seleccionar Grupo</option>
+                    {grupos.map(g => <option key={g.id} value={g.nombre}>{g.nombre}</option>)}
+                    <option value="NEW_GROUP">+ Crear nuevo grupo...</option>
+                  </select>
+                  {claseGrupo && claseGrupo !== 'NEW_GROUP' && (
+                    <button 
+                      onClick={() => {
+                        const grupo = grupos.find(g => g.nombre === claseGrupo);
+                        if (grupo) handleDeleteGroup(grupo);
+                      }}
+                      className="bg-rose-500/10 text-rose-500 px-4 rounded-2xl border border-rose-500/20 flex items-center justify-center hover:bg-rose-500/20 transition-all"
+                      title="Eliminar grupo"
+                    >
+                      <span className="material-icons-outlined">delete</span>
+                    </button>
+                  )}
+                </div>
 
                 {claseGrupo === 'NEW_GROUP' && (
                   <div className="space-y-4 pt-2">

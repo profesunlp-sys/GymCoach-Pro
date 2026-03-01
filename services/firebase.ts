@@ -45,3 +45,8 @@ export const updateDocument = async (collectionName: string, id: string, data: a
   const docRef = doc(db, collectionName, id);
   return await updateDoc(docRef, data);
 };
+
+export const deleteDocument = async (collectionName: string, id: string) => {
+  const docRef = doc(db, collectionName, id);
+  return await deleteDoc(docRef);
+};
