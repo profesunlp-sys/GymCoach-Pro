@@ -78,8 +78,11 @@ const App: React.FC = () => {
     return () => unsubscribe();
   }, []);
 
+  const [loginError, setLoginError] = useState<string | null>(null);
+
   const handleLogin = async () => {
     try {
+      setLoginError(null);
       console.log("Iniciando login con Google...");
       const result = await signInWithPopup(auth, googleProvider);
       console.log("Login exitoso:", result.user.email);
@@ -88,15 +91,16 @@ const App: React.FC = () => {
       let msg = `Error (${error.code || 'unknown'}): ${error.message || 'Error desconocido'}`;
       
       if (error.code === 'auth/unauthorized-domain') {
-        msg = "Dominio no autorizado. Verifica la consola de Firebase.";
+        msg = "DOMINIO NO AUTORIZADO: Debes agregar la URL de esta app en Firebase Console -> Authentication -> Settings -> Authorized domains.";
       } else if (error.code === 'auth/popup-blocked') {
-        msg = "El navegador bloqueó la ventana emergente.";
+        msg = "El navegador bloqueó la ventana emergente. Por favor, permite las ventanas emergentes para este sitio.";
       } else if (error.code === 'auth/popup-closed-by-user') {
-        msg = "Cerraste la ventana antes de terminar.";
+        msg = "Cerraste la ventana de inicio de sesión antes de terminar.";
       }
       
-      setNotificacion({ t: "Error de Autenticación", d: msg });
-      setTimeout(() => setNotificacion(null), 8000);
+      setLoginError(msg);
+      setNotificacion({ t: "Error de Autenticación", d: "Revisa el mensaje en pantalla." });
+      setTimeout(() => setNotificacion(null), 5000);
     }
   };
 
@@ -413,6 +417,20 @@ const App: React.FC = () => {
             <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-4 h-4" alt="Google" />
             INICIAR CON GOOGLE
           </button>
+          
+          {loginError && (
+            <div className="bg-rose-500/20 border border-rose-500/50 rounded-xl p-4 text-left mt-4">
+              <p className="text-rose-200 text-[10px] font-bold leading-relaxed">
+                {loginError}
+              </p>
+              {loginError.includes('DOMINIO NO AUTORIZADO') && (
+                <div className="mt-2 p-2 bg-black/30 rounded text-[9px] font-mono text-white break-all select-all">
+                  {window.location.host}
+                </div>
+              )}
+            </div>
+          )}
+
           <p className="text-[9px] text-white/30 uppercase tracking-widest mt-4">
             Acceso restringido para personal autorizado
           </p>
