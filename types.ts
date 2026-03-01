@@ -64,9 +64,12 @@ export interface Clase {
   grupo: string;
   horario?: string;
   entrenador?: string;
-  warmup?: string[];
-  apparatusUsed?: Apparatus[];
-  skillsCovered?: string[];
+  faseInicial?: string[];
+  fasePrincipal?: string[];
+  faseFinal?: string[];
+  warmup?: string[]; // Legacy
+  apparatusUsed?: string[]; // Legacy
+  skillsCovered?: string[]; // Legacy
 }
 
 export interface GrupoConfig {
@@ -87,4 +90,4 @@ export interface Feedback {
   timestamp: string;
 }
 
-export type ViewMode = 'Dashboard' | 'Horario' | 'Alumnos' | 'Ajustes' | 'NuevaClase' | 'RegistroAlumno' | 'AsistenciaLista' | 'ReportePDF' | 'ClaseDetalle' | 'Planes' | 'AlumnoDetalle';
+export type ViewMode = 'Dashboard' | 'Horario' | 'Alumnos' | 'Ajustes' | 'NuevaClase' | 'RegistroAlumno' | 'AsistenciaLista' | 'ReportePDF' | 'ClaseDetalle' | 'Planes' | 'AlumnoDetalle' | 'Profesores' | 'ProfesorDetalle';

@@ -16,6 +16,7 @@ const App: React.FC = () => {
   const [asistenciasHoy, setAsistenciasHoy] = useState<Record<string, boolean>>({});
   const [selectedClase, setSelectedClase] = useState<Clase | null>(null);
   const [selectedAlumno, setSelectedAlumno] = useState<Alumno | null>(null);
+  const [selectedProfesor, setSelectedProfesor] = useState<string | null>(null);
   const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
   const [newFeedback, setNewFeedback] = useState("");
   
@@ -28,6 +29,15 @@ const App: React.FC = () => {
   const [selectedDays, setSelectedDays] = useState<string[]>([]);
   const [startTime, setStartTime] = useState("17:00");
   const [endTime, setEndTime] = useState("19:00");
+
+  // Class Form State
+  const [claseGrupo, setClaseGrupo] = useState("");
+  const [faseInicial, setFaseInicial] = useState<string[]>([]);
+  const [fasePrincipal, setFasePrincipal] = useState<string[]>([]);
+  const [faseFinal, setFaseFinal] = useState<string[]>([]);
+  const [customInicial, setCustomInicial] = useState("");
+  const [customPrincipal, setCustomPrincipal] = useState("");
+  const [customFinal, setCustomFinal] = useState("");
 
   // Selected Group Context
   const [activeGroup, setActiveGroup] = useState<GrupoConfig | null>(null);
@@ -385,6 +395,9 @@ const App: React.FC = () => {
       grupo: result.grupo || 'General',
       horario: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       entrenador: result.entrenador || 'Coach Pro',
+      faseInicial: result.faseInicial || [],
+      fasePrincipal: result.fasePrincipal || [],
+      faseFinal: result.faseFinal || [],
       warmup: result.warmup || [],
       apparatusUsed: result.apparatusUsed || [],
       skillsCovered: result.skillsCovered || []
@@ -392,6 +405,31 @@ const App: React.FC = () => {
     await addDocument(COLLECTIONS.CLASES, newClase);
     loadData();
     setNotificacion({ t: "IA Assistant", d: `Clase registrada correctamente.` });
+    setVista('Dashboard');
+  };
+
+  const handleSaveManualClass = async () => {
+    if (!claseGrupo) {
+      setNotificacion({ t: "Error", d: "Debes seleccionar un grupo." });
+      setTimeout(() => setNotificacion(null), 3000);
+      return;
+    }
+    const newClase: Omit<Clase, 'id'> = {
+      fecha: new Date().toISOString(),
+      grupo: claseGrupo,
+      horario: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      entrenador: user?.displayName || 'Coach Pro',
+      faseInicial: faseInicial,
+      fasePrincipal: fasePrincipal,
+      faseFinal: faseFinal
+    };
+    await addDocument(COLLECTIONS.CLASES, newClase);
+    loadData();
+    setNotificacion({ t: "Éxito", d: `Clase registrada correctamente.` });
+    setClaseGrupo("");
+    setFaseInicial([]);
+    setFasePrincipal([]);
+    setFaseFinal([]);
     setVista('Dashboard');
   };
 
@@ -1122,30 +1160,38 @@ const App: React.FC = () => {
               <section className="space-y-4">
                 <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white/30 italic">Contenido de la Clase</h3>
                 <div className="glass-card rounded-3xl p-6 space-y-6">
-                  <div className="space-y-2">
-                    <p className="text-[10px] font-bold text-primary uppercase tracking-widest">Calentamiento</p>
-                    <div className="flex flex-wrap gap-2">
-                      {selectedClase.warmup?.map((item, i) => (
-                        <span key={i} className="bg-white/5 text-white/80 text-[10px] px-3 py-1.5 rounded-lg border border-white/10">{item}</span>
-                      ))}
+                  {(selectedClase.faseInicial?.length || selectedClase.warmup?.length) ? (
+                    <div className="space-y-2">
+                      <p className="text-[10px] font-bold text-primary uppercase tracking-widest">Fase Inicial (Entrada en calor)</p>
+                      <div className="flex flex-wrap gap-2">
+                        {(selectedClase.faseInicial || selectedClase.warmup || []).map((item, i) => (
+                          <span key={i} className="bg-white/5 text-white/80 text-[10px] px-3 py-1.5 rounded-lg border border-white/10">{item}</span>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                  <div className="space-y-2">
-                    <p className="text-[10px] font-bold text-primary uppercase tracking-widest">Aparatos</p>
-                    <div className="flex flex-wrap gap-2">
-                      {selectedClase.apparatusUsed?.map((item, i) => (
-                        <span key={i} className="bg-primary/10 text-primary text-[10px] px-3 py-1.5 rounded-lg border border-primary/20">{item}</span>
-                      ))}
+                  ) : null}
+                  
+                  {(selectedClase.fasePrincipal?.length || selectedClase.apparatusUsed?.length || selectedClase.skillsCovered?.length) ? (
+                    <div className="space-y-2">
+                      <p className="text-[10px] font-bold text-primary uppercase tracking-widest">Fase Principal</p>
+                      <div className="flex flex-wrap gap-2">
+                        {(selectedClase.fasePrincipal || [...(selectedClase.apparatusUsed || []), ...(selectedClase.skillsCovered || [])]).map((item, i) => (
+                          <span key={i} className="bg-primary/10 text-primary text-[10px] px-3 py-1.5 rounded-lg border border-primary/20">{item}</span>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                  <div className="space-y-2">
-                    <p className="text-[10px] font-bold text-primary uppercase tracking-widest">Habilidades</p>
-                    <div className="flex flex-wrap gap-2">
-                      {selectedClase.skillsCovered?.map((item, i) => (
-                        <span key={i} className="bg-accent-purple/10 text-accent-purple text-[10px] px-3 py-1.5 rounded-lg border border-accent-purple/20">{item}</span>
-                      ))}
+                  ) : null}
+
+                  {selectedClase.faseFinal && selectedClase.faseFinal.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-[10px] font-bold text-primary uppercase tracking-widest">Fase Final</p>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedClase.faseFinal.map((item, i) => (
+                          <span key={i} className="bg-accent-purple/10 text-accent-purple text-[10px] px-3 py-1.5 rounded-lg border border-accent-purple/20">{item}</span>
+                        ))}
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               </section>
 
@@ -1180,28 +1226,253 @@ const App: React.FC = () => {
         )}
 
         {vista === 'NuevaClase' && (
-          <div className="space-y-8 page-transition pt-8 px-6">
+          <div className="space-y-8 page-transition pt-8 px-6 pb-24">
             <header className="flex items-center gap-4 mb-8">
               <button onClick={() => setVista('Dashboard')} className="w-10 h-10 rounded-full bg-antigravity-charcoal flex items-center justify-center text-primary border border-white/5 active:scale-90 transition-all">
                 <span className="material-icons-outlined">arrow_back</span>
               </button>
-              <h2 className="text-white font-black text-2xl uppercase tracking-tighter">Reporte por Voz</h2>
+              <h2 className="text-white font-black text-2xl uppercase tracking-tighter">Reporte de Clase</h2>
             </header>
-            <div className="glass-card rounded-[3rem] p-10 text-center shadow-neon-cyan-strong border border-primary/20 relative overflow-hidden">
-              <div className="w-24 h-24 bg-primary/10 rounded-[2.5rem] flex items-center justify-center mx-auto mb-10 shadow-neon-cyan border border-primary/20">
-                <span className="material-icons-outlined text-primary text-5xl">mic</span>
+            
+            <div className="space-y-6">
+              <div className="glass-card rounded-3xl p-6 border border-white/5 space-y-4">
+                <label className="text-[10px] uppercase font-bold text-slate-500 ml-1">Grupo</label>
+                <select 
+                  value={claseGrupo} 
+                  onChange={(e) => setClaseGrupo(e.target.value)} 
+                  className="w-full bg-antigravity-charcoal border border-white/10 rounded-2xl px-5 py-4 text-sm text-white appearance-none focus:ring-1 ring-primary/30"
+                >
+                  <option value="" disabled>Seleccionar Grupo</option>
+                  {grupos.map(g => <option key={g.id} value={g.nombre}>{g.nombre}</option>)}
+                </select>
               </div>
-              <h3 className="text-2xl font-black text-white mb-4 italic tracking-tighter uppercase leading-none">Asistente IA</h3>
-              <p className="text-sm text-slate-500 mb-14 font-medium px-4">Describe los avances y aparatos trabajados hoy.</p>
-              
-              <div className="relative flex flex-col items-center">
-                <button onMouseDown={startRecording} onMouseUp={stopRecording} onTouchStart={startRecording} onTouchEnd={stopRecording}
-                  className={`w-36 h-36 rounded-full flex items-center justify-center transition-all duration-500 ${isRecording ? 'bg-rose-500 scale-110 shadow-lg' : 'bg-primary shadow-neon-cyan-strong'}`}>
-                  {isRecording ? <div className="flex gap-2 items-end h-10">{[1,2,3,4,5,6].map(i => (<div key={i} className="w-2 bg-white rounded-full animate-bounce" style={{animationDelay: `${i*0.1}s`, height: `${40+Math.random()*60}%`}}></div>))}</div> : <span className="material-icons-outlined text-background-dark text-6xl">mic</span>}
-                </button>
-                <p className="mt-12 text-[10px] font-black uppercase text-primary tracking-[0.4em] active-glow">{isRecording ? "Grabando Voz..." : "Mantén para Hablar"}</p>
+
+              <div className="glass-card rounded-3xl p-6 border border-white/5 space-y-4">
+                <label className="text-[10px] uppercase font-bold text-primary ml-1 tracking-widest">Fase Inicial (Entrada en calor)</label>
+                <div className="flex flex-wrap gap-2">
+                  {['Movilidad articular', 'Trote', 'Juegos', 'Estiramiento dinámico'].map(opt => (
+                    <button 
+                      key={opt}
+                      onClick={() => setFaseInicial(prev => prev.includes(opt) ? prev.filter(o => o !== opt) : [...prev, opt])}
+                      className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${faseInicial.includes(opt) ? 'bg-primary text-antigravity-black shadow-neon-cyan' : 'bg-antigravity-charcoal text-slate-400 border border-white/5'}`}
+                    >
+                      {opt}
+                    </button>
+                  ))}
+                  {faseInicial.filter(opt => !['Movilidad articular', 'Trote', 'Juegos', 'Estiramiento dinámico'].includes(opt)).map(opt => (
+                    <button 
+                      key={opt}
+                      onClick={() => setFaseInicial(prev => prev.filter(o => o !== opt))}
+                      className="px-4 py-2 rounded-xl text-xs font-bold bg-primary text-antigravity-black shadow-neon-cyan transition-all flex items-center gap-1"
+                    >
+                      {opt} <span className="material-icons-outlined text-[14px]">close</span>
+                    </button>
+                  ))}
+                </div>
+                <div className="flex gap-2 mt-2">
+                  <input 
+                    type="text" 
+                    value={customInicial} 
+                    onChange={(e) => setCustomInicial(e.target.value)} 
+                    placeholder="Agregar otra opción..." 
+                    className="flex-1 bg-antigravity-charcoal border border-white/10 rounded-xl px-4 py-2 text-xs text-white"
+                  />
+                  <button 
+                    onClick={() => { if(customInicial) { setFaseInicial(prev => [...prev, customInicial]); setCustomInicial(""); } }}
+                    className="bg-white/10 text-white px-4 py-2 rounded-xl text-xs font-bold"
+                  >
+                    Agregar
+                  </button>
+                </div>
               </div>
+
+              <div className="glass-card rounded-3xl p-6 border border-white/5 space-y-4">
+                <label className="text-[10px] uppercase font-bold text-primary ml-1 tracking-widest">Fase Principal (Aparatos)</label>
+                <div className="flex flex-wrap gap-2">
+                  {['Viga de equilibrio', 'Paralelas asimétricas', 'Suelo', 'Salto', 'Anillas', 'Arzones', 'Barra Fija', 'Trampolín'].map(opt => (
+                    <button 
+                      key={opt}
+                      onClick={() => setFasePrincipal(prev => prev.includes(opt) ? prev.filter(o => o !== opt) : [...prev, opt])}
+                      className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${fasePrincipal.includes(opt) ? 'bg-primary text-antigravity-black shadow-neon-cyan' : 'bg-antigravity-charcoal text-slate-400 border border-white/5'}`}
+                    >
+                      {opt}
+                    </button>
+                  ))}
+                  {fasePrincipal.filter(opt => !['Viga de equilibrio', 'Paralelas asimétricas', 'Suelo', 'Salto', 'Anillas', 'Arzones', 'Barra Fija', 'Trampolín'].includes(opt)).map(opt => (
+                    <button 
+                      key={opt}
+                      onClick={() => setFasePrincipal(prev => prev.filter(o => o !== opt))}
+                      className="px-4 py-2 rounded-xl text-xs font-bold bg-primary text-antigravity-black shadow-neon-cyan transition-all flex items-center gap-1"
+                    >
+                      {opt} <span className="material-icons-outlined text-[14px]">close</span>
+                    </button>
+                  ))}
+                </div>
+                <div className="flex gap-2 mt-2">
+                  <input 
+                    type="text" 
+                    value={customPrincipal} 
+                    onChange={(e) => setCustomPrincipal(e.target.value)} 
+                    placeholder="Ej. Tela acrobática..." 
+                    className="flex-1 bg-antigravity-charcoal border border-white/10 rounded-xl px-4 py-2 text-xs text-white"
+                  />
+                  <button 
+                    onClick={() => { if(customPrincipal) { setFasePrincipal(prev => [...prev, customPrincipal]); setCustomPrincipal(""); } }}
+                    className="bg-white/10 text-white px-4 py-2 rounded-xl text-xs font-bold"
+                  >
+                    Agregar
+                  </button>
+                </div>
+              </div>
+
+              <div className="glass-card rounded-3xl p-6 border border-white/5 space-y-4">
+                <label className="text-[10px] uppercase font-bold text-primary ml-1 tracking-widest">Fase Final</label>
+                <div className="flex flex-wrap gap-2">
+                  {['Elongación', 'Relajación', 'Feedback'].map(opt => (
+                    <button 
+                      key={opt}
+                      onClick={() => setFaseFinal(prev => prev.includes(opt) ? prev.filter(o => o !== opt) : [...prev, opt])}
+                      className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${faseFinal.includes(opt) ? 'bg-primary text-antigravity-black shadow-neon-cyan' : 'bg-antigravity-charcoal text-slate-400 border border-white/5'}`}
+                    >
+                      {opt}
+                    </button>
+                  ))}
+                  {faseFinal.filter(opt => !['Elongación', 'Relajación', 'Feedback'].includes(opt)).map(opt => (
+                    <button 
+                      key={opt}
+                      onClick={() => setFaseFinal(prev => prev.filter(o => o !== opt))}
+                      className="px-4 py-2 rounded-xl text-xs font-bold bg-primary text-antigravity-black shadow-neon-cyan transition-all flex items-center gap-1"
+                    >
+                      {opt} <span className="material-icons-outlined text-[14px]">close</span>
+                    </button>
+                  ))}
+                </div>
+                <div className="flex gap-2 mt-2">
+                  <input 
+                    type="text" 
+                    value={customFinal} 
+                    onChange={(e) => setCustomFinal(e.target.value)} 
+                    placeholder="Agregar otra opción..." 
+                    className="flex-1 bg-antigravity-charcoal border border-white/10 rounded-xl px-4 py-2 text-xs text-white"
+                  />
+                  <button 
+                    onClick={() => { if(customFinal) { setFaseFinal(prev => [...prev, customFinal]); setCustomFinal(""); } }}
+                    className="bg-white/10 text-white px-4 py-2 rounded-xl text-xs font-bold"
+                  >
+                    Agregar
+                  </button>
+                </div>
+              </div>
+
+              <button 
+                onClick={handleSaveManualClass} 
+                className="w-full py-5 rounded-3xl bg-primary text-antigravity-black font-black uppercase tracking-[0.3em] text-[10px] shadow-neon-cyan active:scale-95 transition-all"
+              >
+                Guardar Reporte
+              </button>
             </div>
+          </div>
+        )}
+        {vista === 'Profesores' && userRole === 'Coordinator' && (
+          <div className="px-6 py-8 space-y-8 page-transition pb-24">
+            <header>
+              <h2 className="text-3xl font-black text-white uppercase tracking-tighter">Profesores</h2>
+              <p className="text-primary text-[10px] font-black uppercase tracking-widest mt-1">Staff de Entrenamiento</p>
+            </header>
+            
+            <div className="space-y-4">
+              {Array.from(new Set([...grupos.map(g => g.entrenador), ...clases.map(c => c.entrenador)])).filter(Boolean).map((profesor, idx) => {
+                const profClases = clases.filter(c => c.entrenador === profesor);
+                const profGrupos = grupos.filter(g => g.entrenador === profesor);
+                return (
+                  <div 
+                    key={idx} 
+                    onClick={() => { setSelectedProfesor(profesor as string); setVista('ProfesorDetalle'); }}
+                    className="glass-card rounded-3xl p-6 border border-white/5 active:scale-95 transition-all cursor-pointer flex items-center justify-between"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center border border-primary/20">
+                        <span className="material-icons-outlined text-primary text-2xl">badge</span>
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-white text-lg">{profesor}</h4>
+                        <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">{profGrupos.length} Grupos • {profClases.length} Clases</p>
+                      </div>
+                    </div>
+                    <span className="material-icons-outlined text-slate-600">chevron_right</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {vista === 'ProfesorDetalle' && selectedProfesor && (
+          <div className="px-6 py-8 space-y-8 page-transition pb-24">
+            <header className="flex items-center gap-4 mb-8">
+              <button onClick={() => setVista('Profesores')} className="w-10 h-10 rounded-full bg-antigravity-charcoal flex items-center justify-center text-primary border border-white/5 active:scale-90 transition-all">
+                <span className="material-icons-outlined">arrow_back</span>
+              </button>
+              <div>
+                <h2 className="text-white font-black text-2xl uppercase tracking-tighter">{selectedProfesor}</h2>
+                <p className="text-primary text-[10px] font-black uppercase tracking-widest mt-1">Reporte de Actividad</p>
+              </div>
+            </header>
+
+            <section className="space-y-4">
+              <h3 className="text-white font-bold text-lg px-1">Grupos a cargo</h3>
+              <div className="grid grid-cols-2 gap-4">
+                {grupos.filter(g => g.entrenador === selectedProfesor).map(g => (
+                  <div key={g.id} className="glass-card rounded-2xl p-4 border border-white/5">
+                    <h4 className="font-bold text-white text-sm">{g.nombre}</h4>
+                    <p className="text-[10px] text-slate-400 mt-1">{g.horario}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <section className="space-y-4">
+              <h3 className="text-white font-bold text-lg px-1">Clases Registradas</h3>
+              <div className="space-y-3">
+                {clases.filter(c => c.entrenador === selectedProfesor).map(clase => (
+                  <div key={clase.id} className="glass-card rounded-2xl p-5 border border-white/5 space-y-3">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h4 className="font-bold text-white text-sm">{clase.grupo}</h4>
+                        <p className="text-[10px] text-slate-400">{new Date(clase.fecha).toLocaleDateString()} • {clase.horario}</p>
+                      </div>
+                    </div>
+                    
+                    {clase.faseInicial && clase.faseInicial.length > 0 && (
+                      <div>
+                        <p className="text-[9px] uppercase tracking-widest text-primary font-bold mb-1">Entrada en calor</p>
+                        <div className="flex flex-wrap gap-1">
+                          {clase.faseInicial.map((item, i) => <span key={i} className="text-[10px] bg-white/5 text-slate-300 px-2 py-1 rounded-md">{item}</span>)}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {clase.fasePrincipal && clase.fasePrincipal.length > 0 && (
+                      <div>
+                        <p className="text-[9px] uppercase tracking-widest text-primary font-bold mb-1">Fase Principal</p>
+                        <div className="flex flex-wrap gap-1">
+                          {clase.fasePrincipal.map((item, i) => <span key={i} className="text-[10px] bg-white/5 text-slate-300 px-2 py-1 rounded-md">{item}</span>)}
+                        </div>
+                      </div>
+                    )}
+
+                    {clase.faseFinal && clase.faseFinal.length > 0 && (
+                      <div>
+                        <p className="text-[9px] uppercase tracking-widest text-primary font-bold mb-1">Fase Final</p>
+                        <div className="flex flex-wrap gap-1">
+                          {clase.faseFinal.map((item, i) => <span key={i} className="text-[10px] bg-white/5 text-slate-300 px-2 py-1 rounded-md">{item}</span>)}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </section>
           </div>
         )}
       </main>
@@ -1212,7 +1483,7 @@ const App: React.FC = () => {
           {[
             { v: 'Dashboard', i: 'grid_view' },
             { v: 'Alumnos', i: 'group' },
-            { v: userRole === 'Coordinator' ? 'Planes' : 'Horario', i: userRole === 'Coordinator' ? 'description' : 'calendar_today' },
+            { v: userRole === 'Coordinator' ? 'Profesores' : 'Horario', i: userRole === 'Coordinator' ? 'badge' : 'calendar_today' },
             { v: 'Ajustes', i: 'app_settings_alt' }
           ].map(item => (
             <button 
