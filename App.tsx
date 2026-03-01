@@ -24,6 +24,7 @@ const App: React.FC = () => {
 
   // Group Form State
   const [newGroupName, setNewGroupName] = useState("");
+  const [newCoachName, setNewCoachName] = useState("");
   const [selectedDays, setSelectedDays] = useState<string[]>([]);
   const [startTime, setStartTime] = useState("17:00");
   const [endTime, setEndTime] = useState("19:00");
@@ -204,18 +205,20 @@ const App: React.FC = () => {
 
   const handleSaveGroup = async () => {
     if (userRole === 'Coordinator') return;
-    if (!newGroupName || selectedDays.length === 0) {
-      setNotificacion({ t: "Error", d: "Nombre y días obligatorios." });
+    if (!newGroupName || !newCoachName || selectedDays.length === 0) {
+      setNotificacion({ t: "Error", d: "Nombre del grupo, profesor y días son obligatorios." });
       setTimeout(() => setNotificacion(null), 3000);
       return;
     }
     
     await addDocument(COLLECTIONS.GRUPOS, {
       nombre: newGroupName,
+      entrenador: newCoachName,
       dias: selectedDays,
       horario: `${startTime} - ${endTime}`
     });
     setNewGroupName("");
+    setNewCoachName("");
     setSelectedDays([]);
     loadData();
     setNotificacion({ t: "Éxito", d: `Grupo ${newGroupName} configurado.` });
@@ -603,50 +606,6 @@ const App: React.FC = () => {
               </section>
             )}
 
-            {userRole === 'Coach' && (
-              <section className="space-y-4">
-                <h3 className="text-accent-purple font-bold text-lg active-glow">Configuración de Horario</h3>
-                <div className="glass-card rounded-[2.5rem] p-6 space-y-6">
-                  <div className="flex justify-between items-center px-1">
-                    {['L', 'M', 'M', 'J', 'V', 'S'].map((day, idx) => {
-                      const id = `${day}-${idx}`;
-                      const isSelected = selectedDays.includes(id);
-                      return (
-                        <button key={id} onClick={() => setSelectedDays(prev => prev.includes(id) ? prev.filter(d => d !== id) : [...prev, id])}
-                          className={`w-11 h-11 rounded-full flex items-center justify-center font-bold text-sm transition-all ${isSelected ? 'border-2 border-primary shadow-neon-cyan text-primary bg-primary/5' : 'bg-antigravity-charcoal text-slate-500'}`}>
-                          {day}
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  <div className="space-y-4">
-                    <input className="w-full bg-antigravity-charcoal border border-white/5 rounded-2xl px-5 py-4 text-sm text-white placeholder:text-slate-600 focus:ring-1 ring-primary/30"
-                      placeholder="Nombre del Grupo (Ej. Avanzados)" value={newGroupName} onChange={(e) => setNewGroupName(e.target.value)} />
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-1">
-                        <label className="text-[10px] uppercase font-bold text-slate-500 ml-1">Desde</label>
-                        <select value={startTime} onChange={(e) => setStartTime(e.target.value)} className="w-full bg-antigravity-charcoal border-none rounded-2xl px-4 py-3 text-sm text-white appearance-none">
-                          {timeIntervals.map(t => <option key={t} value={t} className="bg-antigravity-charcoal">{t}</option>)}
-                        </select>
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[10px] uppercase font-bold text-slate-500 ml-1">Hasta</label>
-                        <select value={endTime} onChange={(e) => setEndTime(e.target.value)} className="w-full bg-antigravity-charcoal border-none rounded-2xl px-4 py-3 text-sm text-white appearance-none">
-                          {timeIntervals.map(t => <option key={t} value={t} className="bg-antigravity-charcoal">{t}</option>)}
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-
-                  <button onClick={handleSaveGroup} className="w-full py-4.5 rounded-2xl border border-accent-purple text-accent-purple font-black bg-accent-purple/5 shadow-neon-purple active:scale-[0.98] transition-all uppercase text-[10px] tracking-[0.2em]">
-                    <span>Guardar Configuración</span>
-                  </button>
-                </div>
-              </section>
-            )}
-
             <section className="space-y-4">
               <div className="flex justify-between px-1"><h3 className="text-white font-bold text-lg">Actividad Reciente</h3></div>
               <div className="space-y-3">
@@ -670,13 +629,71 @@ const App: React.FC = () => {
                 ))}
               </div>
             </section>
+          </div>
+        )}
+
+        {vista === 'Horario' && (
+          <div className="px-6 py-8 space-y-8 page-transition">
+            <header>
+              <h2 className="text-3xl font-black text-white uppercase tracking-tighter">Horarios y Grupos</h2>
+              <p className="text-primary text-[10px] font-black uppercase tracking-widest mt-1">Gestión de Clases</p>
+            </header>
 
             <section className="space-y-4">
-              <div className="flex justify-between px-1"><h3 className="text-white font-bold text-lg">Mis Grupos</h3><span className="text-primary text-xs font-semibold">Ver todos</span></div>
+              <h3 className="text-accent-purple font-bold text-lg active-glow">Configuración de Horario</h3>
+              <div className="glass-card rounded-[2.5rem] p-6 space-y-6">
+                <div className="flex justify-between items-center px-1">
+                  {['L', 'M', 'M', 'J', 'V', 'S'].map((day, idx) => {
+                    const id = `${day}-${idx}`;
+                    const isSelected = selectedDays.includes(id);
+                    return (
+                      <button key={id} onClick={() => setSelectedDays(prev => prev.includes(id) ? prev.filter(d => d !== id) : [...prev, id])}
+                        className={`w-11 h-11 rounded-full flex items-center justify-center font-bold text-sm transition-all ${isSelected ? 'border-2 border-primary shadow-neon-cyan text-primary bg-primary/5' : 'bg-antigravity-charcoal text-slate-500'}`}>
+                        {day}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="space-y-4">
+                  <input className="w-full bg-antigravity-charcoal border border-white/5 rounded-2xl px-5 py-4 text-sm text-white placeholder:text-slate-600 focus:ring-1 ring-primary/30"
+                    placeholder="Nombre del Grupo (Ej. Avanzados)" value={newGroupName} onChange={(e) => setNewGroupName(e.target.value)} />
+                  
+                  <input className="w-full bg-antigravity-charcoal border border-white/5 rounded-2xl px-5 py-4 text-sm text-white placeholder:text-slate-600 focus:ring-1 ring-primary/30"
+                    placeholder="Nombre y Apellido del Profesor" value={newCoachName} onChange={(e) => setNewCoachName(e.target.value)} />
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-[10px] uppercase font-bold text-slate-500 ml-1">Desde</label>
+                      <select value={startTime} onChange={(e) => setStartTime(e.target.value)} className="w-full bg-antigravity-charcoal border-none rounded-2xl px-4 py-3 text-sm text-white appearance-none">
+                        {timeIntervals.map(t => <option key={t} value={t} className="bg-antigravity-charcoal">{t}</option>)}
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] uppercase font-bold text-slate-500 ml-1">Hasta</label>
+                      <select value={endTime} onChange={(e) => setEndTime(e.target.value)} className="w-full bg-antigravity-charcoal border-none rounded-2xl px-4 py-3 text-sm text-white appearance-none">
+                        {timeIntervals.map(t => <option key={t} value={t} className="bg-antigravity-charcoal">{t}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <button onClick={handleSaveGroup} className="w-full py-4.5 rounded-2xl border border-accent-purple text-accent-purple font-black bg-accent-purple/5 shadow-neon-purple active:scale-[0.98] transition-all uppercase text-[10px] tracking-[0.2em]">
+                  <span>Guardar Configuración</span>
+                </button>
+              </div>
+            </section>
+
+            <section className="space-y-4">
+              <div className="flex justify-between px-1"><h3 className="text-white font-bold text-lg">Mis Grupos</h3></div>
               {grupos.length > 0 ? grupos.map((g, idx) => (
                 <div key={idx} className="glass-card rounded-[1.5rem] p-6 space-y-5 border border-white/5">
                   <div className="flex justify-between items-start">
-                    <div><h4 className="font-bold text-white text-lg tracking-tight leading-none">{g.nombre}</h4><p className="text-xs text-slate-400 mt-2 font-medium italic">{g.horario}</p></div>
+                    <div>
+                      <h4 className="font-bold text-white text-lg tracking-tight leading-none">{g.nombre}</h4>
+                      <p className="text-xs text-slate-400 mt-2 font-medium italic">{g.horario}</p>
+                      {g.entrenador && <p className="text-[10px] text-primary mt-1 font-bold uppercase tracking-wider">Prof: {g.entrenador}</p>}
+                    </div>
                     <div className="bg-primary/10 text-primary text-[10px] font-black px-3 py-1.5 rounded-lg border border-primary/20 tracking-wider shadow-neon-cyan uppercase">Active</div>
                   </div>
                   <button onClick={() => { setActiveGroup(g); setVista('AsistenciaLista'); }} className="w-full py-3.5 rounded-2xl border border-primary text-primary font-bold text-[11px] uppercase tracking-widest shadow-neon-cyan flex items-center justify-center gap-2.5 bg-primary/5 active:scale-95 transition-all">

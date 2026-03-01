@@ -74,6 +74,7 @@ export interface GrupoConfig {
   nombre: string;
   dias: string[];
   horario: string;
+  entrenador?: string;
 }
 
 export type UserRole = 'Coach' | 'Coordinator';
