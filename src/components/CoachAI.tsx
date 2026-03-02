@@ -5,7 +5,7 @@ import { getSearchGroundedAnswer } from '../../services/geminiService.ts';
 import { GoogleGenAI } from "@google/genai";
 
 const getAI = () => {
-  return new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+  return new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || process.env.API_KEY });
 };
 
 export const CoachAI = () => {
