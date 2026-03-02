@@ -5,7 +5,17 @@ import { getSearchGroundedAnswer } from '../../services/geminiService.ts';
 import { GoogleGenAI } from "@google/genai";
 
 const getAI = () => {
-  return new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || process.env.API_KEY });
+  // Soporte para AI Studio (process.env) y Vercel (import.meta.env)
+  const apiKey = 
+    import.meta.env.VITE_GEMINI_API_KEY || 
+    (typeof process !== 'undefined' ? process.env.GEMINI_API_KEY || process.env.API_KEY : undefined) ||
+    ((window as any).process?.env?.GEMINI_API_KEY || (window as any).process?.env?.API_KEY);
+    
+  if (!apiKey) {
+    throw new Error("API Key no configurada. Si estás en Vercel, añade VITE_GEMINI_API_KEY en las variables de entorno.");
+  }
+  
+  return new GoogleGenAI({ apiKey: apiKey as string });
 };
 
 export const CoachAI = () => {
