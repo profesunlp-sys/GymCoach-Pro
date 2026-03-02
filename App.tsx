@@ -1705,12 +1705,16 @@ const App: React.FC = () => {
             <section className="space-y-4">
               <h3 className="text-white font-bold text-lg px-1">Grupos a cargo</h3>
               <div className="grid grid-cols-2 gap-4">
-                {grupos.filter(g => g.entrenador === selectedProfesor).map(g => (
-                  <div key={g.id} className="glass-card rounded-2xl p-4 border border-white/5">
-                    <h4 className="font-bold text-white text-sm">{g.nombre}</h4>
-                    <p className="text-[10px] text-slate-400 mt-1">{g.horario}</p>
-                  </div>
-                ))}
+                {grupos.filter(g => g.entrenador === selectedProfesor).length > 0 ? (
+                  grupos.filter(g => g.entrenador === selectedProfesor).map(g => (
+                    <div key={g.id} className="glass-card rounded-2xl p-4 border border-white/5">
+                      <h4 className="font-bold text-white text-sm">{g.nombre}</h4>
+                      <p className="text-[10px] text-slate-400 mt-1">{g.horario}</p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-slate-400 col-span-2 px-1">No tiene grupos asignados actualmente.</p>
+                )}
               </div>
             </section>
 

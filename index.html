@@ -88,11 +88,11 @@
         }
     </style>
     <script>
-        window.process = {
-            env: { API_KEY: "", GEMINI_API_KEY: "" },
-            browser: true,
-            version: ''
-        };
+        window.process = window.process || {};
+        window.process.env = window.process.env || {};
+        window.process.env.API_KEY = window.process.env.API_KEY || "";
+        window.process.browser = true;
+        window.process.version = window.process.version || '';
     </script>
     <script type="importmap">
     {
