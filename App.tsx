@@ -273,34 +273,47 @@ const App: React.FC = () => {
       return;
     }
 
-    // Calcular edad al 31 de diciembre del año corriente
-    const currentYear = new Date().getFullYear();
-    const birthDate = new Date(studentForm.fechaNacimiento);
-    const ageAtEndOfYear = currentYear - birthDate.getFullYear();
+    try {
+      // Calcular edad al 31 de diciembre del año corriente
+      const currentYear = new Date().getFullYear();
+      const birthDate = new Date(studentForm.fechaNacimiento);
+      const ageAtEndOfYear = currentYear - (birthDate.getFullYear() || currentYear);
 
-    const newStudent: Omit<Alumno, 'id'> = {
-      ...studentForm as Alumno,
-      edad: ageAtEndOfYear,
-      dni: studentForm.dni || 'No especificado',
-      grupo: activeGroup?.nombre || 'Sin Grupo',
-      fechaIngreso: new Date().toISOString(),
-      estadoPago: 'Al día',
-      habilidades: [],
-      biometria: { fuerza: 50, flexibilidad: 50, tecnica: 50, resistencia: 50, coordinacion: 50 },
-      qrCode: `QR_${studentForm.dni || new Date().getTime()}`,
-      asistenciasHistoricas: 0
-    };
+      const newStudent: Omit<Alumno, 'id'> = {
+        ...studentForm as Alumno,
+        edad: isNaN(ageAtEndOfYear) ? 0 : ageAtEndOfYear,
+        dni: studentForm.dni || 'No especificado',
+        grupo: activeGroup?.nombre || 'Sin Grupo',
+        fechaIngreso: new Date().toISOString(),
+        estadoPago: 'Al día',
+        habilidades: [],
+        biometria: { fuerza: 50, flexibilidad: 50, tecnica: 50, resistencia: 50, coordinacion: 50 },
+        qrCode: `QR_${studentForm.dni || new Date().getTime()}`,
+        asistenciasHistoricas: 0
+      };
 
-    await addDocument(COLLECTIONS.ALUMNOS, newStudent);
-    loadData();
-    setNotificacion({ t: "Gimnasta Registrado", d: `${newStudent.nombre} añadido.` });
-    setVista('AsistenciaLista');
-    setStudentForm({
-      nombre: '', dni: '', disciplina: 'GAF', nivel: 'Escuela',
-      fechaNacimiento: '', fechaPrimeraClase: new Date().toISOString().split('T')[0],
-      alertas: [], contacto: { padreNombre: '', padreTelefono: '', madreNombre: '', madreTelefono: '', emergenciaNombre: '', emergenciaTelefono: '' }
-    });
-    setTimeout(() => setNotificacion(null), 3000);
+      // Remove undefined values just in case
+      Object.keys(newStudent).forEach(key => {
+        if ((newStudent as any)[key] === undefined) {
+          delete (newStudent as any)[key];
+        }
+      });
+
+      await addDocument(COLLECTIONS.ALUMNOS, newStudent);
+      await loadData();
+      setNotificacion({ t: "Gimnasta Registrado", d: `${newStudent.nombre} añadido.` });
+      setVista('AsistenciaLista');
+      setStudentForm({
+        nombre: '', dni: '', disciplina: 'GAF', nivel: 'Escuela',
+        fechaNacimiento: '', fechaPrimeraClase: new Date().toISOString().split('T')[0],
+        alertas: [], contacto: { padreNombre: '', padreTelefono: '', madreNombre: '', madreTelefono: '', emergenciaNombre: '', emergenciaTelefono: '' }
+      });
+      setTimeout(() => setNotificacion(null), 3000);
+    } catch (error: any) {
+      console.error("Error saving student:", error);
+      setNotificacion({ t: "Error", d: "No se pudo guardar el gimnasta. " + (error.message || "") });
+      setTimeout(() => setNotificacion(null), 3000);
+    }
   };
 
   const toggleAttendance = async (alumnoId: string) => {
