@@ -5,7 +5,8 @@ import { getSearchGroundedAnswer } from '../../services/geminiService.ts';
 import { GoogleGenAI } from "@google/genai";
 
 const getAI = () => {
-  return new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+  const apiKey = (window as any).process?.env?.GEMINI_API_KEY || (window as any).process?.env?.API_KEY || process.env.GEMINI_API_KEY;
+  return new GoogleGenAI({ apiKey: apiKey as string });
 };
 
 export const CoachAI = () => {
@@ -37,9 +38,9 @@ export const CoachAI = () => {
         text: text,
         sources
       }]);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error en búsqueda:", error);
-      setMessages(prev => [...prev, { role: 'assistant', text: "Error al realizar la búsqueda." }]);
+      setMessages(prev => [...prev, { role: 'assistant', text: `Error al realizar la búsqueda: ${error.message || error}` }]);
     } finally {
       setIsLoading(false);
     }

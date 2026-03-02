@@ -33,20 +33,40 @@ export const COLLECTIONS = {
 
 // Generic helpers
 export const getCollectionData = async (collectionName: string) => {
-  const querySnapshot = await getDocs(collection(db, collectionName));
-  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  try {
+    const querySnapshot = await getDocs(collection(db, collectionName));
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  } catch (error: any) {
+    console.error(`Error getting data from ${collectionName}:`, error);
+    throw new Error(`No se pudieron cargar los datos de ${collectionName}. Verifica tu conexión o permisos. (${error.message})`);
+  }
 };
 
 export const addDocument = async (collectionName: string, data: any) => {
-  return await addDoc(collection(db, collectionName), data);
+  try {
+    return await addDoc(collection(db, collectionName), data);
+  } catch (error: any) {
+    console.error(`Error adding document to ${collectionName}:`, error);
+    throw new Error(`No se pudo guardar la información en ${collectionName}. Verifica tu conexión o permisos. (${error.message})`);
+  }
 };
 
 export const updateDocument = async (collectionName: string, id: string, data: any) => {
-  const docRef = doc(db, collectionName, id);
-  return await updateDoc(docRef, data);
+  try {
+    const docRef = doc(db, collectionName, id);
+    return await updateDoc(docRef, data);
+  } catch (error: any) {
+    console.error(`Error updating document ${id} in ${collectionName}:`, error);
+    throw new Error(`No se pudo actualizar la información. Verifica tu conexión o permisos. (${error.message})`);
+  }
 };
 
 export const deleteDocument = async (collectionName: string, id: string) => {
-  const docRef = doc(db, collectionName, id);
-  return await deleteDoc(docRef);
+  try {
+    const docRef = doc(db, collectionName, id);
+    return await deleteDoc(docRef);
+  } catch (error: any) {
+    console.error(`Error deleting document ${id} in ${collectionName}:`, error);
+    throw new Error(`No se pudo eliminar el registro. Verifica tu conexión o permisos. (${error.message})`);
+  }
 };

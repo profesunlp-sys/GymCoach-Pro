@@ -167,30 +167,36 @@ const App: React.FC = () => {
   const [alertasGlobales, setAlertasGlobales] = useState<Alumno[]>([]);
 
   const loadData = async () => {
-    const a = await getCollectionData(COLLECTIONS.ALUMNOS) as Alumno[];
-    const c = await getCollectionData(COLLECTIONS.CLASES) as Clase[];
-    const g = await getCollectionData(COLLECTIONS.GRUPOS) as GrupoConfig[];
-    setAlumnos(a);
-    setClases(c.sort((x, y) => new Date(y.fecha).getTime() - new Date(x.fecha).getTime()));
-    setGrupos(g);
-    
-    // Filter global alerts
-    setAlertasGlobales(a.filter(student => student.alertas && student.alertas.length > 0 && student.alertas[0] !== ""));
+    try {
+      const a = await getCollectionData(COLLECTIONS.ALUMNOS) as Alumno[];
+      const c = await getCollectionData(COLLECTIONS.CLASES) as Clase[];
+      const g = await getCollectionData(COLLECTIONS.GRUPOS) as GrupoConfig[];
+      setAlumnos(a);
+      setClases(c.sort((x, y) => new Date(y.fecha).getTime() - new Date(x.fecha).getTime()));
+      setGrupos(g);
+      
+      // Filter global alerts
+      setAlertasGlobales(a.filter(student => student.alertas && student.alertas.length > 0 && student.alertas[0] !== ""));
 
-    if (activeGroup) {
-      const today = new Date().toISOString().split('T')[0];
-      const q = query(
-        collection(firestore, COLLECTIONS.ASISTENCIAS),
-        where('fecha', '==', today),
-        where('grupo', '==', activeGroup.nombre)
-      );
-      const querySnapshot = await getDocs(q);
-      const attMap: Record<string, boolean> = {};
-      querySnapshot.forEach(doc => {
-        const data = doc.data() as AsistenciaRecord;
-        attMap[data.alumnoId] = data.presente;
-      });
-      setAsistenciasHoy(attMap);
+      if (activeGroup) {
+        const today = new Date().toISOString().split('T')[0];
+        const q = query(
+          collection(firestore, COLLECTIONS.ASISTENCIAS),
+          where('fecha', '==', today),
+          where('grupo', '==', activeGroup.nombre)
+        );
+        const querySnapshot = await getDocs(q);
+        const attMap: Record<string, boolean> = {};
+        querySnapshot.forEach(doc => {
+          const data = doc.data() as AsistenciaRecord;
+          attMap[data.alumnoId] = data.presente;
+        });
+        setAsistenciasHoy(attMap);
+      }
+    } catch (error: any) {
+      console.error("Error loading data:", error);
+      setNotificacion({ t: "Error de Conexión", d: error.message || "No se pudieron cargar los datos." });
+      setTimeout(() => setNotificacion(null), 5000);
     }
   };
 
@@ -228,18 +234,23 @@ const App: React.FC = () => {
       return;
     }
     
-    await addDocument(COLLECTIONS.GRUPOS, {
-      nombre: newGroupName,
-      entrenador: newCoachName,
-      dias: selectedDays,
-      horario: `${startTime} - ${endTime}`
-    });
-    setNewGroupName("");
-    setNewCoachName("");
-    setSelectedDays([]);
-    loadData();
-    setNotificacion({ t: "Éxito", d: `Grupo ${newGroupName} configurado.` });
-    setTimeout(() => setNotificacion(null), 3000);
+    try {
+      await addDocument(COLLECTIONS.GRUPOS, {
+        nombre: newGroupName,
+        entrenador: newCoachName,
+        dias: selectedDays,
+        horario: `${startTime} - ${endTime}`
+      });
+      setNewGroupName("");
+      setNewCoachName("");
+      setSelectedDays([]);
+      loadData();
+      setNotificacion({ t: "Éxito", d: `Grupo ${newGroupName} configurado.` });
+      setTimeout(() => setNotificacion(null), 3000);
+    } catch (error: any) {
+      setNotificacion({ t: "Error", d: error.message || "No se pudo guardar el grupo." });
+      setTimeout(() => setNotificacion(null), 5000);
+    }
   };
 
   const handleDeleteGroup = async (grupo: GrupoConfig) => {
@@ -318,63 +329,83 @@ const App: React.FC = () => {
   };
 
   const toggleAttendance = async (alumnoId: string) => {
-    const today = new Date().toISOString().split('T')[0];
-    const isPresent = !asistenciasHoy[alumnoId];
-    
-    setAsistenciasHoy(prev => ({ ...prev, [alumnoId]: isPresent }));
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const isPresent = !asistenciasHoy[alumnoId];
+      
+      setAsistenciasHoy(prev => ({ ...prev, [alumnoId]: isPresent }));
 
-    const q = query(
-      collection(firestore, COLLECTIONS.ASISTENCIAS),
-      where('fecha', '==', today),
-      where('alumnoId', '==', alumnoId)
-    );
-    const querySnapshot = await getDocs(q);
+      const q = query(
+        collection(firestore, COLLECTIONS.ASISTENCIAS),
+        where('fecha', '==', today),
+        where('alumnoId', '==', alumnoId)
+      );
+      const querySnapshot = await getDocs(q);
 
-    if (!querySnapshot.empty) {
-      const docId = querySnapshot.docs[0].id;
-      await updateDocument(COLLECTIONS.ASISTENCIAS, docId, { presente: isPresent });
-    } else {
-      await addDocument(COLLECTIONS.ASISTENCIAS, {
-        fecha: today,
-        alumnoId: alumnoId,
-        grupo: activeGroup?.nombre || 'General',
-        presente: isPresent
-      });
+      if (!querySnapshot.empty) {
+        const docId = querySnapshot.docs[0].id;
+        await updateDocument(COLLECTIONS.ASISTENCIAS, docId, { presente: isPresent });
+      } else {
+        await addDocument(COLLECTIONS.ASISTENCIAS, {
+          fecha: today,
+          alumnoId: alumnoId,
+          grupo: activeGroup?.nombre || 'General',
+          presente: isPresent
+        });
+      }
+    } catch (error: any) {
+      console.error("Error toggling attendance:", error);
+      setNotificacion({ t: "Error", d: error.message || "No se pudo actualizar la asistencia." });
+      setTimeout(() => setNotificacion(null), 5000);
+      // Revert optimistic update
+      setAsistenciasHoy(prev => ({ ...prev, [alumnoId]: !prev[alumnoId] }));
     }
   };
 
   const handleAddFeedback = async () => {
     if (!newFeedback.trim() || !selectedClase?.id) return;
-    await addDocument(COLLECTIONS.FEEDBACK, {
-      claseId: selectedClase.id,
-      author: userRole === 'Coordinator' ? 'Coordinador' : 'Profesor',
-      text: newFeedback,
-      timestamp: new Date().toISOString()
-    });
-    setNewFeedback("");
+    try {
+      await addDocument(COLLECTIONS.FEEDBACK, {
+        claseId: selectedClase.id,
+        author: userRole === 'Coordinator' ? 'Coordinador' : 'Profesor',
+        text: newFeedback,
+        timestamp: new Date().toISOString()
+      });
+      setNewFeedback("");
+    } catch (error: any) {
+      console.error("Error adding feedback:", error);
+      setNotificacion({ t: "Error", d: error.message || "No se pudo guardar el comentario." });
+      setTimeout(() => setNotificacion(null), 5000);
+    }
   };
 
   const handleAddSkill = async () => {
     if (!selectedAlumno || !selectedAlumno.id || !newSkill.name) return;
     
-    const skillToAdd: Skill = {
-      id: Date.now().toString(),
-      name: newSkill.name!,
-      status: newSkill.status as SkillStatus,
-      apparatus: newSkill.apparatus as Apparatus,
-      level: newSkill.level || 1
-    };
+    try {
+      const skillToAdd: Skill = {
+        id: Date.now().toString(),
+        name: newSkill.name!,
+        status: newSkill.status as SkillStatus,
+        apparatus: newSkill.apparatus as Apparatus,
+        level: newSkill.level || 1
+      };
 
-    const updatedHabilidades = [...(selectedAlumno.habilidades || []), skillToAdd];
-    
-    await updateDocument(COLLECTIONS.ALUMNOS, selectedAlumno.id, {
-      habilidades: updatedHabilidades
-    });
-    
-    setSelectedAlumno({ ...selectedAlumno, habilidades: updatedHabilidades });
-    setIsAddingSkill(false);
-    setNewSkill({ name: '', status: 'No Iniciado', apparatus: 'Suelo', level: 1 });
-    loadData();
+      const updatedHabilidades = [...(selectedAlumno.habilidades || []), skillToAdd];
+      
+      await updateDocument(COLLECTIONS.ALUMNOS, selectedAlumno.id, {
+        habilidades: updatedHabilidades
+      });
+      
+      setSelectedAlumno({ ...selectedAlumno, habilidades: updatedHabilidades });
+      setIsAddingSkill(false);
+      setNewSkill({ name: '', status: 'No Iniciado', apparatus: 'Suelo', level: 1 });
+      loadData();
+    } catch (error: any) {
+      console.error("Error adding skill:", error);
+      setNotificacion({ t: "Error", d: error.message || "No se pudo guardar la habilidad." });
+      setTimeout(() => setNotificacion(null), 5000);
+    }
   };
 
 
@@ -440,22 +471,28 @@ const App: React.FC = () => {
   };
 
   const saveClass = async (result: any) => {
-    const newClase: Omit<Clase, 'id'> = {
-      fecha: new Date().toISOString(),
-      grupo: result.grupo || 'General',
-      horario: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      entrenador: result.entrenador || 'Coach Pro',
-      faseInicial: result.faseInicial || [],
-      fasePrincipal: result.fasePrincipal || [],
-      faseFinal: result.faseFinal || [],
-      warmup: result.warmup || [],
-      apparatusUsed: result.apparatusUsed || [],
-      skillsCovered: result.skillsCovered || []
-    };
-    await addDocument(COLLECTIONS.CLASES, newClase);
-    loadData();
-    setNotificacion({ t: "IA Assistant", d: `Clase registrada correctamente.` });
-    setVista('Dashboard');
+    try {
+      const newClase: Omit<Clase, 'id'> = {
+        fecha: new Date().toISOString(),
+        grupo: result.grupo || 'General',
+        horario: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        entrenador: result.entrenador || 'Coach Pro',
+        faseInicial: result.faseInicial || [],
+        fasePrincipal: result.fasePrincipal || [],
+        faseFinal: result.faseFinal || [],
+        warmup: result.warmup || [],
+        apparatusUsed: result.apparatusUsed || [],
+        skillsCovered: result.skillsCovered || []
+      };
+      await addDocument(COLLECTIONS.CLASES, newClase);
+      loadData();
+      setNotificacion({ t: "IA Assistant", d: `Clase registrada correctamente.` });
+      setVista('Dashboard');
+    } catch (error: any) {
+      console.error("Error saving class:", error);
+      setNotificacion({ t: "Error", d: error.message || "No se pudo guardar la clase." });
+      setTimeout(() => setNotificacion(null), 5000);
+    }
   };
 
   const handleSaveManualClass = async () => {
@@ -468,52 +505,58 @@ const App: React.FC = () => {
     let finalGroupName = claseGrupo;
     let finalCoachName = user?.displayName || 'Coach Pro';
 
-    if (claseGrupo === 'NEW_GROUP') {
-      if (!newClaseGroupName || !newClaseCoachName) {
-        setNotificacion({ t: "Error", d: "Nombre del grupo y profesor son obligatorios." });
-        setTimeout(() => setNotificacion(null), 3000);
-        return;
-      }
-      finalGroupName = newClaseGroupName;
-      finalCoachName = newClaseCoachName;
+    try {
+      if (claseGrupo === 'NEW_GROUP') {
+        if (!newClaseGroupName || !newClaseCoachName) {
+          setNotificacion({ t: "Error", d: "Nombre del grupo y profesor son obligatorios." });
+          setTimeout(() => setNotificacion(null), 3000);
+          return;
+        }
+        finalGroupName = newClaseGroupName;
+        finalCoachName = newClaseCoachName;
 
-      // Create the new group
-      await addDocument(COLLECTIONS.GRUPOS, {
-        nombre: newClaseGroupName,
-        entrenador: newClaseCoachName,
-        dias: [],
-        horario: "A definir"
-      });
-    } else {
-      // Find existing group to get its coach
-      const existingGroup = grupos.find(g => g.nombre === claseGrupo);
-      if (existingGroup && existingGroup.entrenador) {
-        finalCoachName = existingGroup.entrenador;
+        // Create the new group
+        await addDocument(COLLECTIONS.GRUPOS, {
+          nombre: newClaseGroupName,
+          entrenador: newClaseCoachName,
+          dias: [],
+          horario: "A definir"
+        });
+      } else {
+        // Find existing group to get its coach
+        const existingGroup = grupos.find(g => g.nombre === claseGrupo);
+        if (existingGroup && existingGroup.entrenador) {
+          finalCoachName = existingGroup.entrenador;
+        }
       }
+
+      const newClase: Omit<Clase, 'id'> = {
+        fecha: new Date().toISOString(),
+        grupo: finalGroupName,
+        horario: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        entrenador: finalCoachName,
+        faseInicial: faseInicial,
+        fasePrincipal: fasePrincipal,
+        faseFinal: faseFinal,
+        habilidadesPorAparato: habilidadesPorAparato
+      };
+      await addDocument(COLLECTIONS.CLASES, newClase);
+      loadData();
+      setNotificacion({ t: "Éxito", d: `Clase registrada correctamente.` });
+      setTimeout(() => setNotificacion(null), 3000);
+      setClaseGrupo("");
+      setNewClaseGroupName("");
+      setNewClaseCoachName("");
+      setFaseInicial([]);
+      setFasePrincipal([]);
+      setFaseFinal([]);
+      setHabilidadesPorAparato({});
+      setVista('Dashboard');
+    } catch (error: any) {
+      console.error("Error saving manual class:", error);
+      setNotificacion({ t: "Error", d: error.message || "No se pudo guardar la clase manual." });
+      setTimeout(() => setNotificacion(null), 5000);
     }
-
-    const newClase: Omit<Clase, 'id'> = {
-      fecha: new Date().toISOString(),
-      grupo: finalGroupName,
-      horario: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      entrenador: finalCoachName,
-      faseInicial: faseInicial,
-      fasePrincipal: fasePrincipal,
-      faseFinal: faseFinal,
-      habilidadesPorAparato: habilidadesPorAparato
-    };
-    await addDocument(COLLECTIONS.CLASES, newClase);
-    loadData();
-    setNotificacion({ t: "Éxito", d: `Clase registrada correctamente.` });
-    setTimeout(() => setNotificacion(null), 3000);
-    setClaseGrupo("");
-    setNewClaseGroupName("");
-    setNewClaseCoachName("");
-    setFaseInicial([]);
-    setFasePrincipal([]);
-    setFaseFinal([]);
-    setHabilidadesPorAparato({});
-    setVista('Dashboard');
   };
 
   const timeIntervals = ["17:00", "17:30", "18:00", "18:30", "19:00", "19:30", "20:00"];
