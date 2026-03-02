@@ -5,7 +5,7 @@ import { getSearchGroundedAnswer } from '../../services/geminiService.ts';
 import { GoogleGenAI } from "@google/genai";
 
 const getAI = () => {
-  return new GoogleGenAI({ apiKey: process.env.API_KEY });
+  return new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 };
 
 export const CoachAI = () => {
@@ -47,6 +47,10 @@ export const CoachAI = () => {
 
   const startLiveSession = async () => {
     try {
+      setLiveStatus('Solicitando micrófono...');
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaStreamRef.current = stream;
+
       setLiveStatus('Conectando...');
       const ai = getAI();
       
@@ -55,14 +59,11 @@ export const CoachAI = () => {
       const sessionPromise = ai.live.connect({
         model: "gemini-2.5-flash-native-audio-preview-09-2025",
         callbacks: {
-          onopen: async () => {
+          onopen: () => {
             setLiveStatus('Escuchando...');
             setIsLive(true);
             
             try {
-              const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-              mediaStreamRef.current = stream;
-              
               const source = audioContextRef.current!.createMediaStreamSource(stream);
               sourceRef.current = source;
               
@@ -94,7 +95,7 @@ export const CoachAI = () => {
               source.connect(processor);
               processor.connect(audioContextRef.current!.destination);
             } catch (err) {
-              console.error("Error accessing microphone:", err);
+              console.error("Error setting up audio processing:", err);
               setLiveStatus('Error de micrófono');
               stopLiveSession();
             }
@@ -148,7 +149,8 @@ export const CoachAI = () => {
       
     } catch (error) {
       console.error("Error starting live session:", error);
-      setLiveStatus('Error de conexión');
+      setLiveStatus('Error de conexión o micrófono denegado');
+      stopLiveSession();
     }
   };
 

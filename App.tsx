@@ -879,7 +879,7 @@ const App: React.FC = () => {
 
             <main className="flex-1 overflow-y-auto px-6 py-2 space-y-4">
               {filteredAlumnos.length > 0 ? filteredAlumnos.map(alumno => (
-                <div key={alumno.id} className={`flex items-center justify-between p-4 rounded-2xl glass-card transition-all duration-300 ${!asistenciasHoy[alumno.id!] ? 'opacity-60' : 'border-neon-cyan/20'}`}>
+                <div key={alumno.id} className={`flex items-center justify-between p-4 rounded-2xl glass-card transition-all duration-300 ${!asistenciasHoy[alumno.id!] ? 'opacity-70 border-red-500/30 bg-red-900/10' : 'border-neon-cyan/20'}`}>
                   <div className="flex items-center gap-4">
                     <div className="relative">
                       <div className="w-12 h-12 rounded-xl bg-antigravity-charcoal flex items-center justify-center overflow-hidden border border-white/10">
