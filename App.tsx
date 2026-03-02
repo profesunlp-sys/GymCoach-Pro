@@ -267,7 +267,6 @@ const App: React.FC = () => {
   };
 
   const handleSaveStudent = async () => {
-    if (userRole === 'Coordinator') return;
     if (!studentForm.nombre || !studentForm.fechaNacimiento) {
       setNotificacion({ t: "Error", d: "Nombre y Fecha de Nacimiento son obligatorios." });
       setTimeout(() => setNotificacion(null), 3000);
@@ -305,7 +304,6 @@ const App: React.FC = () => {
   };
 
   const toggleAttendance = async (alumnoId: string) => {
-    if (userRole === 'Coordinator') return;
     const today = new Date().toISOString().split('T')[0];
     const isPresent = !asistenciasHoy[alumnoId];
     
