@@ -105,18 +105,26 @@ export async function analyzeChurnRisk(data: any): Promise<string> {
   }
 }
 
-export async function getPlanningAnalysis(history: string): Promise<string> {
+export async function getSearchGroundedAnswer(query: string): Promise<{ text: string, sources: any[] }> {
   try {
     const ai = getAI();
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
-      contents: `Eres un experto entrenador de gimnasia. Analiza: ${history}. 
-      Proporciona: 1. Análisis de aparatos, 2. Debilidades detectadas, 3. Plan próximo mes. 
-      Formato: Directo, técnico, profesional.`,
+      contents: `Eres un experto entrenador de gimnasia artística. Responde a la siguiente consulta sobre ejercitaciones, metodologías o enseñanza: "${query}". Usa información actualizada de la web.`,
+      config: {
+        tools: [{ googleSearch: {} }],
+      },
     });
-    return response.text || "";
+    
+    const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
+    const sources = chunks.map((chunk: any) => chunk.web).filter(Boolean);
+    
+    return {
+      text: response.text || "No se encontró información.",
+      sources
+    };
   } catch (error) {
-    console.error("Error en getPlanningAnalysis:", error);
-    return "Error en IA.";
+    console.error("Error en getSearchGroundedAnswer:", error);
+    return { text: "Error al realizar la búsqueda.", sources: [] };
   }
 }

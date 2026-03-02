@@ -4,6 +4,7 @@ import { processClassAudio, refineClassAnalysis } from './services/geminiService
 import { db as firestore, auth, googleProvider, COLLECTIONS, getCollectionData, addDocument, updateDocument, deleteDocument } from './services/firebase.ts';
 import { collection, query, where, getDocs, addDoc, doc, updateDoc, onSnapshot, orderBy } from 'firebase/firestore';
 import { signInWithPopup, signOut, onAuthStateChanged, User } from 'firebase/auth';
+import { CoachAI } from './components/CoachAI.tsx';
 
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -1170,6 +1171,10 @@ const App: React.FC = () => {
           </div>
         )}
 
+        {vista === 'Asistente' && (
+          <CoachAI />
+        )}
+
         {vista === 'Ajustes' && (
           <div className="px-6 py-8 space-y-8 page-transition">
             <header>
@@ -1736,6 +1741,7 @@ const App: React.FC = () => {
             { v: 'Dashboard', i: 'grid_view' },
             { v: 'Alumnos', i: 'group' },
             { v: userRole === 'Coordinator' ? 'Profesores' : 'Horario', i: userRole === 'Coordinator' ? 'badge' : 'calendar_today' },
+            { v: 'Asistente', i: 'smart_toy' },
             { v: 'Ajustes', i: 'app_settings_alt' }
           ].map(item => (
             <button 
