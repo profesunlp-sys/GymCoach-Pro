@@ -22,6 +22,8 @@ const App: React.FC = () => {
   
   // Search State
   const [searchQuery, setSearchQuery] = useState("");
+  const [planesFilterDate, setPlanesFilterDate] = useState("");
+  const [planesFilterCoach, setPlanesFilterCoach] = useState("");
 
   // Group Form State
   const [newGroupName, setNewGroupName] = useState("");
@@ -647,7 +649,7 @@ const App: React.FC = () => {
 
             <section className="gradient-header rounded-[2.5rem] p-7 relative overflow-hidden shadow-2xl border border-white/10">
               <div className="relative z-10">
-                <h2 className="text-2xl font-bold text-white mb-1 tracking-tight leading-tight">¡Hola {userRole === 'Coordinator' ? 'Coordinador' : 'José María'}!</h2>
+                <h2 className="text-2xl font-bold text-white mb-1 tracking-tight leading-tight">¡Hola {userRole === 'Coordinator' ? 'Coordinador' : (user?.displayName?.split(' ')[0] || 'Entrenador')}!</h2>
                 <p className="text-indigo-100 text-sm mb-7 font-medium">
                   {userRole === 'Coordinator' ? 'Supervisa el progreso de tus colegas.' : 'Configura tu semana para empezar.'}
                 </p>
@@ -1069,14 +1071,58 @@ const App: React.FC = () => {
         )}
 
         {vista === 'Planes' && (
-          <div className="px-6 py-8 space-y-8 page-transition">
+          <div className="px-6 py-8 space-y-8 page-transition pb-24">
             <header>
               <h2 className="text-3xl font-black text-white uppercase tracking-tighter">Planes de Trabajo</h2>
               <p className="text-primary text-[10px] font-black uppercase tracking-widest mt-1">Historial Técnico de Clases</p>
             </header>
 
             <div className="space-y-4">
-              {clases.map((clase) => (
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase font-bold text-slate-500 ml-1">Fecha</label>
+                  <input 
+                    type="date" 
+                    value={planesFilterDate} 
+                    onChange={(e) => setPlanesFilterDate(e.target.value)} 
+                    className="w-full bg-antigravity-charcoal border border-white/10 rounded-2xl px-4 py-3 text-sm text-white"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase font-bold text-slate-500 ml-1">Profesor</label>
+                  <select 
+                    value={planesFilterCoach} 
+                    onChange={(e) => setPlanesFilterCoach(e.target.value)} 
+                    className="w-full bg-antigravity-charcoal border border-white/10 rounded-2xl px-4 py-3 text-sm text-white appearance-none"
+                  >
+                    <option value="">Todos</option>
+                    {Array.from(new Set(clases.map(c => c.entrenador))).filter(Boolean).map(prof => (
+                      <option key={prof} value={prof}>{prof}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              
+              <div className="flex justify-end">
+                {(planesFilterDate || planesFilterCoach) && (
+                  <button 
+                    onClick={() => { setPlanesFilterDate(""); setPlanesFilterCoach(""); }}
+                    className="text-[10px] text-primary font-bold uppercase tracking-widest"
+                  >
+                    Limpiar Filtros
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              {clases
+                .filter(clase => {
+                  if (planesFilterDate && !clase.fecha.startsWith(planesFilterDate)) return false;
+                  if (planesFilterCoach && clase.entrenador !== planesFilterCoach) return false;
+                  return true;
+                })
+                .map((clase) => (
                 <div 
                   key={clase.id} 
                   onClick={() => { setSelectedClase(clase); setVista('ClaseDetalle'); }}
@@ -1102,8 +1148,12 @@ const App: React.FC = () => {
                   </div>
                 </div>
               ))}
-              {clases.length === 0 && (
-                <div className="py-20 text-center opacity-20 italic text-sm">No hay planes registrados.</div>
+              {clases.filter(clase => {
+                  if (planesFilterDate && !clase.fecha.startsWith(planesFilterDate)) return false;
+                  if (planesFilterCoach && clase.entrenador !== planesFilterCoach) return false;
+                  return true;
+                }).length === 0 && (
+                <div className="py-20 text-center opacity-20 italic text-sm">No hay planes registrados que coincidan con los filtros.</div>
               )}
             </div>
           </div>
