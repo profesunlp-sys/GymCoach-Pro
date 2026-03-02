@@ -4,7 +4,7 @@ import { processClassAudio, refineClassAnalysis } from './services/geminiService
 import { db as firestore, auth, googleProvider, COLLECTIONS, getCollectionData, addDocument, updateDocument, deleteDocument } from './services/firebase.ts';
 import { collection, query, where, getDocs, addDoc, doc, updateDoc, onSnapshot, orderBy } from 'firebase/firestore';
 import { signInWithPopup, signOut, onAuthStateChanged, User } from 'firebase/auth';
-import { CoachAI } from './components/CoachAI.tsx';
+import { CoachAI } from './src/components/CoachAI.tsx';
 
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);

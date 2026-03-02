@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { LiveServerMessage, Modality } from "@google/genai";
 import ReactMarkdown from 'react-markdown';
-import { getSearchGroundedAnswer } from '../services/geminiService.ts';
+import { getSearchGroundedAnswer } from '../../services/geminiService.ts';
 import { GoogleGenAI } from "@google/genai";
 
 const getAI = () => {
