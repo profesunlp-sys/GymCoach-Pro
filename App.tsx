@@ -26,6 +26,13 @@ const App: React.FC = () => {
   const [planesFilterDate, setPlanesFilterDate] = useState("");
   const [planesFilterCoach, setPlanesFilterCoach] = useState("");
 
+  // Add Gymnast/Teacher State
+  const [isAddingAlumno, setIsAddingAlumno] = useState(false);
+  const [newAlumnoForm, setNewAlumnoForm] = useState({ nombre: '', dni: '', grupo: '', nivel: '' });
+  const [isAddingProfesor, setIsAddingProfesor] = useState(false);
+  const [newProfesorName, setNewProfesorName] = useState('');
+  const [profesoresList, setProfesoresList] = useState<{id?: string, nombre: string}[]>([]);
+
   // Group Form State
   const [newGroupName, setNewGroupName] = useState("");
   const [newCoachName, setNewCoachName] = useState("");
@@ -171,9 +178,11 @@ const App: React.FC = () => {
       const a = await getCollectionData(COLLECTIONS.ALUMNOS) as Alumno[];
       const c = await getCollectionData(COLLECTIONS.CLASES) as Clase[];
       const g = await getCollectionData(COLLECTIONS.GRUPOS) as GrupoConfig[];
+      const p = await getCollectionData(COLLECTIONS.PROFESORES) as {id?: string, nombre: string}[];
       setAlumnos(a);
       setClases(c.sort((x, y) => new Date(y.fecha).getTime() - new Date(x.fecha).getTime()));
       setGrupos(g);
+      setProfesoresList(p || []);
       
       // Filter global alerts
       setAlertasGlobales(a.filter(student => student.alertas && student.alertas.length > 0 && student.alertas[0] !== ""));
