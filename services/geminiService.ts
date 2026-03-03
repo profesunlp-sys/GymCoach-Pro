@@ -1,14 +1,16 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
 const getAI = () => {
-  // Soporte para AI Studio (process.env) y Vercel (import.meta.env)
-  const apiKey = 
-    import.meta.env.VITE_GEMINI_API_KEY || 
-    (typeof process !== 'undefined' ? process.env.GEMINI_API_KEY || process.env.API_KEY : undefined) ||
-    ((window as any).process?.env?.GEMINI_API_KEY || (window as any).process?.env?.API_KEY);
+  // 1. Intentar obtener de Vercel (import.meta.env)
+  const vercelKey = import.meta.env.VITE_GEMINI_API_KEY;
+  
+  // 2. Intentar obtener de AI Studio (inyectado en window.process)
+  const studioKey = (window as any).process?.env?.GEMINI_API_KEY || (window as any).process?.env?.API_KEY;
+  
+  const apiKey = vercelKey || studioKey;
     
-  if (!apiKey) {
-    throw new Error("API Key no configurada. Si estás en Vercel, añade VITE_GEMINI_API_KEY en las variables de entorno.");
+  if (!apiKey || apiKey === "") {
+    throw new Error("Falta la API Key en Vercel. Debes crear una variable llamada exactamente VITE_GEMINI_API_KEY en la configuración de Vercel y volver a desplegar.");
   }
   
   return new GoogleGenAI({ apiKey: apiKey as string });
