@@ -7,7 +7,10 @@ const getAI = () => {
   // 2. Intentar obtener de AI Studio (inyectado en window.process)
   const studioKey = (window as any).process?.env?.GEMINI_API_KEY || (window as any).process?.env?.API_KEY;
   
-  const apiKey = vercelKey || studioKey;
+  // 3. Fallback directo (clave proporcionada) para asegurar que funcione en Vercel
+  const fallbackKey = "AIzaSyDFwUPfMglKC-heHEq3nFIxsCkfscTp4-c";
+  
+  const apiKey = vercelKey || studioKey || fallbackKey;
     
   if (!apiKey || apiKey === "") {
     throw new Error("Falta la API Key en Vercel. Debes crear una variable llamada exactamente VITE_GEMINI_API_KEY en la configuración de Vercel y volver a desplegar.");
