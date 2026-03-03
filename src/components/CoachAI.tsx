@@ -12,7 +12,7 @@ const getAI = () => {
   const studioKey = (window as any).process?.env?.GEMINI_API_KEY || (window as any).process?.env?.API_KEY;
   
   // 3. Fallback directo (clave proporcionada) para asegurar que funcione en Vercel
-  const fallbackKey = "AIzaSyDFwUPfMglKC-heHEq3nFIxsCkfscTp4-c";
+  const fallbackKey = "AIzaSyARdk49hhQgyaspzs9ICK-gVvtBb67rRyE";
   
   const apiKey = vercelKey || studioKey || fallbackKey;
     
