@@ -124,7 +124,7 @@ export async function getSearchGroundedAnswer(query: string): Promise<{ text: st
   try {
     const ai = getAI();
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-2.5-flash",
       contents: `Eres un experto entrenador de gimnasia artística. Responde a la siguiente consulta sobre ejercitaciones, metodologías o enseñanza: "${query}". Usa información actualizada de la web.`,
       config: {
         tools: [{ googleSearch: {} }],
