@@ -287,6 +287,48 @@ const App: React.FC = () => {
     }
   };
 
+  const handleAddAlumno = async () => {
+    if (!newAlumnoForm.nombre.trim()) return;
+    try {
+      const newStudent: Partial<Alumno> = {
+        nombre: newAlumnoForm.nombre,
+        dni: newAlumnoForm.dni,
+        grupo: newAlumnoForm.grupo,
+        nivel: newAlumnoForm.nivel,
+        disciplina: 'GAF',
+        fechaNacimiento: '',
+        fechaIngreso: new Date().toISOString().split('T')[0],
+        fechaPrimeraClase: new Date().toISOString().split('T')[0],
+        alertas: [],
+        contacto: { padreNombre: '', padreTelefono: '', madreNombre: '', madreTelefono: '', emergenciaNombre: '', emergenciaTelefono: '' },
+        asistencias: [],
+        habilidades: []
+      };
+      await addDocument(COLLECTIONS.ALUMNOS, newStudent);
+      await loadData();
+      setIsAddingAlumno(false);
+      setNewAlumnoForm({ nombre: '', dni: '', grupo: '', nivel: '' });
+      setNotificacion({ t: "Gimnasta Añadido", d: `${newStudent.nombre} registrado correctamente.` });
+    } catch (error) {
+      console.error("Error adding student:", error);
+      setNotificacion({ t: "Error", d: "No se pudo añadir al gimnasta." });
+    }
+  };
+
+  const handleAddProfesor = async () => {
+    if (!newProfesorName.trim()) return;
+    try {
+      await addDocument(COLLECTIONS.PROFESORES, { nombre: newProfesorName });
+      await loadData();
+      setIsAddingProfesor(false);
+      setNewProfesorName('');
+      setNotificacion({ t: "Profesor Añadido", d: `${newProfesorName} registrado correctamente.` });
+    } catch (error) {
+      console.error("Error adding professor:", error);
+      setNotificacion({ t: "Error", d: "No se pudo añadir al profesor." });
+    }
+  };
+
   const handleSaveStudent = async () => {
     if (!studentForm.nombre || !studentForm.fechaNacimiento) {
       setNotificacion({ t: "Error", d: "Nombre y Fecha de Nacimiento son obligatorios." });
@@ -969,7 +1011,7 @@ const App: React.FC = () => {
 
             {/* FAB button matches user snippet */}
             <button 
-              onClick={() => setVista('RegistroAlumno')}
+              onClick={() => setIsAddingAlumno(true)}
               className="absolute bottom-28 right-6 w-16 h-16 bg-neon-blue text-white rounded-2xl flex items-center justify-center neon-fab-blue active:scale-95 transition-all z-30"
             >
               <span className="material-symbols-outlined text-[32px] font-light">person_add</span>
@@ -999,6 +1041,61 @@ const App: React.FC = () => {
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
+
+            {isAddingAlumno && (
+              <div className="glass-card rounded-2xl p-5 border border-primary/30 space-y-4 shadow-neon-cyan">
+                <h3 className="text-white font-bold text-sm uppercase tracking-wider">Nuevo Gimnasta</h3>
+                <input 
+                  type="text" 
+                  placeholder="Nombre completo" 
+                  className="w-full bg-antigravity-charcoal border border-white/10 rounded-xl px-4 py-3 text-sm text-white"
+                  value={newAlumnoForm.nombre}
+                  onChange={e => setNewAlumnoForm({...newAlumnoForm, nombre: e.target.value})}
+                />
+                <input 
+                  type="text" 
+                  placeholder="DNI (Opcional)" 
+                  className="w-full bg-antigravity-charcoal border border-white/10 rounded-xl px-4 py-3 text-sm text-white"
+                  value={newAlumnoForm.dni}
+                  onChange={e => setNewAlumnoForm({...newAlumnoForm, dni: e.target.value})}
+                />
+                <div className="grid grid-cols-2 gap-3">
+                  <select 
+                    className="w-full bg-antigravity-charcoal border border-white/10 rounded-xl px-4 py-3 text-sm text-white appearance-none"
+                    value={newAlumnoForm.grupo}
+                    onChange={e => setNewAlumnoForm({...newAlumnoForm, grupo: e.target.value})}
+                  >
+                    <option value="">Grupo...</option>
+                    {grupos.map(g => <option key={g.id} value={g.nombre}>{g.nombre}</option>)}
+                  </select>
+                  <select 
+                    className="w-full bg-antigravity-charcoal border border-white/10 rounded-xl px-4 py-3 text-sm text-white appearance-none"
+                    value={newAlumnoForm.nivel}
+                    onChange={e => setNewAlumnoForm({...newAlumnoForm, nivel: e.target.value})}
+                  >
+                    <option value="">Nivel...</option>
+                    <option value="Escuela">Escuela</option>
+                    <option value="Pre-Equipo">Pre-Equipo</option>
+                    <option value="Equipo">Equipo</option>
+                  </select>
+                </div>
+                <div className="flex gap-2 pt-2">
+                  <button 
+                    onClick={() => setIsAddingAlumno(false)}
+                    className="flex-1 py-3 rounded-xl border border-white/10 text-white font-bold text-xs uppercase tracking-wider"
+                  >
+                    Cancelar
+                  </button>
+                  <button 
+                    onClick={handleAddAlumno}
+                    disabled={!newAlumnoForm.nombre.trim()}
+                    className="flex-1 py-3 rounded-xl bg-primary text-antigravity-black font-bold text-xs uppercase tracking-wider disabled:opacity-50"
+                  >
+                    Guardar
+                  </button>
+                </div>
+              </div>
+            )}
 
             <div className="space-y-3">
               {alumnos
@@ -1666,14 +1763,42 @@ const App: React.FC = () => {
           </div>
         )}
         {vista === 'Profesores' && userRole === 'Coordinator' && (
-          <div className="px-6 py-8 space-y-8 page-transition pb-24">
+          <div className="px-6 py-8 space-y-8 page-transition pb-24 relative">
             <header>
               <h2 className="text-3xl font-black text-white uppercase tracking-tighter">Profesores</h2>
               <p className="text-primary text-[10px] font-black uppercase tracking-widest mt-1">Staff de Entrenamiento</p>
             </header>
             
+            {isAddingProfesor && (
+              <div className="glass-card rounded-2xl p-5 border border-primary/30 space-y-4 shadow-neon-cyan">
+                <h3 className="text-white font-bold text-sm uppercase tracking-wider">Nuevo Profesor</h3>
+                <input 
+                  type="text" 
+                  placeholder="Nombre completo" 
+                  className="w-full bg-antigravity-charcoal border border-white/10 rounded-xl px-4 py-3 text-sm text-white"
+                  value={newProfesorName}
+                  onChange={e => setNewProfesorName(e.target.value)}
+                />
+                <div className="flex gap-2 pt-2">
+                  <button 
+                    onClick={() => setIsAddingProfesor(false)}
+                    className="flex-1 py-3 rounded-xl border border-white/10 text-white font-bold text-xs uppercase tracking-wider"
+                  >
+                    Cancelar
+                  </button>
+                  <button 
+                    onClick={handleAddProfesor}
+                    disabled={!newProfesorName.trim()}
+                    className="flex-1 py-3 rounded-xl bg-primary text-antigravity-black font-bold text-xs uppercase tracking-wider disabled:opacity-50"
+                  >
+                    Guardar
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div className="space-y-4">
-              {Array.from(new Set([...grupos.map(g => g.entrenador), ...clases.map(c => c.entrenador)])).filter(Boolean).map((profesor, idx) => {
+              {Array.from(new Set([...grupos.map(g => g.entrenador), ...clases.map(c => c.entrenador), ...profesoresList.map(p => p.nombre)])).filter(Boolean).map((profesor, idx) => {
                 const profClases = clases.filter(c => c.entrenador === profesor);
                 const profGrupos = grupos.filter(g => g.entrenador === profesor);
                 return (
@@ -1696,6 +1821,13 @@ const App: React.FC = () => {
                 );
               })}
             </div>
+
+            <button 
+              onClick={() => setIsAddingProfesor(true)}
+              className="absolute bottom-28 right-6 w-16 h-16 bg-neon-blue text-white rounded-2xl flex items-center justify-center neon-fab-blue active:scale-95 transition-all z-30"
+            >
+              <span className="material-symbols-outlined text-[32px] font-light">person_add</span>
+            </button>
           </div>
         )}
 
