@@ -445,7 +445,8 @@ const App: React.FC = () => {
         name: newSkill.name!,
         status: newSkill.status as SkillStatus,
         apparatus: newSkill.apparatus as Apparatus,
-        level: newSkill.level || '1'
+        level: newSkill.level || '1',
+        history: [{ status: newSkill.status || 'No Iniciado', date: new Date().toISOString() }]
       };
 
       const updatedHabilidades = [...(selectedAlumno.habilidades || []), skillToAdd];
@@ -468,9 +469,16 @@ const App: React.FC = () => {
   const handleUpdateSkill = async () => {
     if (!selectedAlumno || !selectedAlumno.id || !editingSkillId || !editingSkillData.name) return;
     try {
-      const updatedHabilidades = (selectedAlumno.habilidades || []).map(skill => 
-        skill.id === editingSkillId ? { ...skill, ...editingSkillData } as Skill : skill
-      );
+      const updatedHabilidades = (selectedAlumno.habilidades || []).map(skill => {
+        if (skill.id === editingSkillId) {
+          let newHistory = skill.history || [{ status: skill.status, date: new Date().toISOString() }];
+          if (skill.status !== editingSkillData.status) {
+            newHistory = [...newHistory, { status: editingSkillData.status as string, date: new Date().toISOString() }];
+          }
+          return { ...skill, ...editingSkillData, history: newHistory } as Skill;
+        }
+        return skill;
+      });
       await updateDocument(COLLECTIONS.ALUMNOS, selectedAlumno.id, { habilidades: updatedHabilidades });
       setSelectedAlumno({ ...selectedAlumno, habilidades: updatedHabilidades });
       setEditingSkillId(null);
@@ -1403,27 +1411,51 @@ const App: React.FC = () => {
                           </div>
                         </div>
                       ) : (
-                        <div className="flex items-center justify-between">
-                          <div className="flex-1" onClick={() => { setEditingSkillId(skill.id); setEditingSkillData(skill); }}>
-                            <h4 className="text-sm font-bold text-white">{skill.name}</h4>
-                            <p className="text-[10px] text-slate-500 font-medium uppercase tracking-wider mt-1">{skill.apparatus} • Nivel {skill.level}</p>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <div className={`px-3 py-1 rounded-lg border text-[9px] font-black uppercase tracking-widest ${
-                              skill.status === 'Dominado' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
-                              skill.status === 'En Proceso' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
-                              skill.status === 'Elite' ? 'bg-accent-purple/10 text-accent-purple border-accent-purple/20' :
-                              'bg-white/5 text-white/40 border-white/10'
-                            }`}>
-                              {skill.status}
+                        <div className="flex flex-col gap-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1" onClick={() => { setEditingSkillId(skill.id); setEditingSkillData(skill); }}>
+                              <h4 className="text-sm font-bold text-white">{skill.name}</h4>
+                              <p className="text-[10px] text-slate-500 font-medium uppercase tracking-wider mt-1">{skill.apparatus} • Nivel {skill.level}</p>
                             </div>
-                            <button 
-                              onClick={() => { setEditingSkillId(skill.id); setEditingSkillData(skill); }}
-                              className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/40 active:scale-90 transition-all"
-                            >
-                              <span className="material-icons-outlined text-sm">edit</span>
-                            </button>
+                            <div className="flex items-center gap-3">
+                              <div className={`px-3 py-1 rounded-lg border text-[9px] font-black uppercase tracking-widest ${
+                                skill.status === 'Dominado' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                                skill.status === 'En Proceso' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
+                                skill.status === 'Elite' ? 'bg-accent-purple/10 text-accent-purple border-accent-purple/20' :
+                                'bg-white/5 text-white/40 border-white/10'
+                              }`}>
+                                {skill.status}
+                              </div>
+                              <button 
+                                onClick={() => { setEditingSkillId(skill.id); setEditingSkillData(skill); }}
+                                className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/40 active:scale-90 transition-all"
+                              >
+                                <span className="material-icons-outlined text-sm">edit</span>
+                              </button>
+                            </div>
                           </div>
+                          
+                          {skill.history && skill.history.length > 0 && (
+                            <div className="mt-1 pt-3 border-t border-white/5">
+                              <p className="text-[9px] text-slate-500 uppercase tracking-widest mb-2 font-bold">
+                                Línea de tiempo
+                                {skill.status === 'Dominado' && skill.history.length > 1 && (
+                                  <span className="text-emerald-400 ml-1">
+                                    (Logrado en {Math.ceil(Math.abs(new Date(skill.history[skill.history.length - 1].date).getTime() - new Date(skill.history[0].date).getTime()) / (1000 * 60 * 60 * 24))} días)
+                                  </span>
+                                )}
+                              </p>
+                              <div className="flex flex-col gap-1.5">
+                                {skill.history.map((h, i) => (
+                                  <div key={i} className="flex items-center gap-2 text-[10px]">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-primary/50"></span>
+                                    <span className="text-slate-400 min-w-[70px]">{new Date(h.date).toLocaleDateString()}</span>
+                                    <span className="text-white/80 font-medium">{h.status}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>

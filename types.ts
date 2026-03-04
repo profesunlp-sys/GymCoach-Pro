@@ -11,12 +11,18 @@ export interface Biometrics {
   coordinacion: number;
 }
 
+export interface SkillHistoryEntry {
+  status: string;
+  date: string;
+}
+
 export interface Skill {
   id: string;
   name: string;
   status: SkillStatus;
   apparatus: Apparatus;
   level: string | number;
+  history?: SkillHistoryEntry[];
 }
 
 export interface ContactoFamilia {
