@@ -23,6 +23,8 @@ export interface Skill {
   apparatus: Apparatus;
   level: string | number;
   history?: SkillHistoryEntry[];
+  creationDate?: string;
+  lastUpdateDate?: string;
 }
 
 export interface ContactoFamilia {

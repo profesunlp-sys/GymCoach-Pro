@@ -440,13 +440,16 @@ const App: React.FC = () => {
     if (!selectedAlumno || !selectedAlumno.id || !newSkill.name) return;
     
     try {
+      const now = new Date().toISOString();
       const skillToAdd: Skill = {
         id: Date.now().toString(),
         name: newSkill.name!,
         status: newSkill.status as SkillStatus,
         apparatus: newSkill.apparatus as Apparatus,
         level: newSkill.level || '1',
-        history: [{ status: newSkill.status || 'No Iniciado', date: new Date().toISOString() }]
+        history: [{ status: newSkill.status || 'No Iniciado', date: now }],
+        creationDate: now,
+        lastUpdateDate: now
       };
 
       const updatedHabilidades = [...(selectedAlumno.habilidades || []), skillToAdd];
@@ -469,13 +472,14 @@ const App: React.FC = () => {
   const handleUpdateSkill = async () => {
     if (!selectedAlumno || !selectedAlumno.id || !editingSkillId || !editingSkillData.name) return;
     try {
+      const now = new Date().toISOString();
       const updatedHabilidades = (selectedAlumno.habilidades || []).map(skill => {
         if (skill.id === editingSkillId) {
-          let newHistory = skill.history || [{ status: skill.status, date: new Date().toISOString() }];
+          let newHistory = skill.history || [{ status: skill.status, date: skill.creationDate || now }];
           if (skill.status !== editingSkillData.status) {
-            newHistory = [...newHistory, { status: editingSkillData.status as string, date: new Date().toISOString() }];
+            newHistory = [...newHistory, { status: editingSkillData.status as string, date: now }];
           }
-          return { ...skill, ...editingSkillData, history: newHistory } as Skill;
+          return { ...skill, ...editingSkillData, history: newHistory, lastUpdateDate: now } as Skill;
         }
         return skill;
       });
@@ -1100,9 +1104,17 @@ const App: React.FC = () => {
                 <h2 className="text-3xl font-black text-white uppercase tracking-tighter">Gimnastas</h2>
                 <p className="text-primary text-[10px] font-black uppercase tracking-widest mt-1">Base de Datos {userRole === 'Coordinator' ? 'Global' : 'del Grupo'}</p>
               </div>
-              <div className="text-right">
-                <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Total</p>
-                <p className="text-2xl font-black text-white">{alumnos.length}</p>
+              <div className="flex items-center gap-4">
+                <div className="text-right">
+                  <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Total</p>
+                  <p className="text-2xl font-black text-white">{alumnos.length}</p>
+                </div>
+                <button 
+                  onClick={() => setIsAddingAlumno(!isAddingAlumno)}
+                  className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary border border-primary/20 active:scale-90 transition-all"
+                >
+                  <span className="material-icons-outlined text-sm">{isAddingAlumno ? 'close' : 'person_add'}</span>
+                </button>
               </div>
             </header>
 
@@ -2001,9 +2013,17 @@ const App: React.FC = () => {
         )}
         {vista === 'Profesores' && userRole === 'Coordinator' && (
           <div className="px-6 py-8 space-y-8 page-transition pb-24 relative">
-            <header>
-              <h2 className="text-3xl font-black text-white uppercase tracking-tighter">Profesores</h2>
-              <p className="text-primary text-[10px] font-black uppercase tracking-widest mt-1">Staff de Entrenamiento</p>
+            <header className="flex justify-between items-end">
+              <div>
+                <h2 className="text-3xl font-black text-white uppercase tracking-tighter">Profesores</h2>
+                <p className="text-primary text-[10px] font-black uppercase tracking-widest mt-1">Staff de Entrenamiento</p>
+              </div>
+              <button 
+                onClick={() => setIsAddingProfesor(!isAddingProfesor)}
+                className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary border border-primary/20 active:scale-90 transition-all"
+              >
+                <span className="material-icons-outlined text-sm">{isAddingProfesor ? 'close' : 'person_add'}</span>
+              </button>
             </header>
             
             {isAddingProfesor && (
