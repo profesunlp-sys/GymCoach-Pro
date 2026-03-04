@@ -899,29 +899,78 @@ const App: React.FC = () => {
               </section>
             )}
 
-            <section className="space-y-4">
-              <div className="flex justify-between px-1"><h3 className="text-white font-bold text-lg">Actividad Reciente</h3></div>
-              <div className="space-y-3">
-                {clases.slice(0, 5).map((clase) => (
-                  <div 
-                    key={clase.id} 
-                    onClick={() => { setSelectedClase(clase); setVista('ClaseDetalle'); }}
-                    className="glass-card rounded-2xl p-4 border border-white/5 flex items-center justify-between active:scale-95 transition-all cursor-pointer"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center border border-primary/20">
-                        <span className="material-icons-outlined text-primary text-xl">history_edu</span>
+            {userRole === 'Coordinator' && (
+              <section className="space-y-4">
+                <div className="flex justify-between px-1"><h3 className="text-white font-bold text-lg">Actividad Reciente</h3></div>
+                <div className="space-y-3">
+                  {clases.slice(0, 5).map((clase) => (
+                    <div 
+                      key={clase.id} 
+                      onClick={() => { setSelectedClase(clase); setVista('ClaseDetalle'); }}
+                      className="glass-card rounded-2xl p-4 border border-white/5 flex items-center justify-between active:scale-95 transition-all cursor-pointer"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center border border-primary/20">
+                          <span className="material-icons-outlined text-primary text-xl">history_edu</span>
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-bold text-white">{clase.grupo}</h4>
+                          <p className="text-[10px] text-slate-500 font-medium">{new Date(clase.fecha).toLocaleDateString()} • {clase.entrenador}</p>
+                        </div>
                       </div>
-                      <div>
-                        <h4 className="text-sm font-bold text-white">{clase.grupo}</h4>
-                        <p className="text-[10px] text-slate-500 font-medium">{new Date(clase.fecha).toLocaleDateString()} • {clase.entrenador}</p>
-                      </div>
+                      <span className="material-icons-outlined text-slate-600 text-sm">chevron_right</span>
                     </div>
-                    <span className="material-icons-outlined text-slate-600 text-sm">chevron_right</span>
-                  </div>
-                ))}
-              </div>
-            </section>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {userRole === 'Coach' && (
+              <section className="space-y-4">
+                <div className="flex justify-between px-1"><h3 className="text-white font-bold text-lg">Accesos Rápidos</h3></div>
+                <div className="grid grid-cols-2 gap-4">
+                  <button 
+                    onClick={() => { setVista('Horario'); }}
+                    className="glass-card rounded-3xl p-5 border border-white/5 flex flex-col items-center justify-center gap-3 active:scale-95 transition-all"
+                  >
+                    <div className="w-12 h-12 bg-neon-cyan/10 rounded-2xl flex items-center justify-center border border-neon-cyan/20 shadow-neon-cyan">
+                      <span className="material-icons-outlined text-neon-cyan text-2xl">fact_check</span>
+                    </div>
+                    <span className="text-xs font-bold text-white text-center">Lista de Asistencia</span>
+                  </button>
+                  
+                  <button 
+                    onClick={() => { setVista('Alumnos'); }}
+                    className="glass-card rounded-3xl p-5 border border-white/5 flex flex-col items-center justify-center gap-3 active:scale-95 transition-all"
+                  >
+                    <div className="w-12 h-12 bg-accent-purple/10 rounded-2xl flex items-center justify-center border border-accent-purple/20 shadow-neon-purple">
+                      <span className="material-icons-outlined text-accent-purple text-2xl">group</span>
+                    </div>
+                    <span className="text-xs font-bold text-white text-center">Datos de Alumnos</span>
+                  </button>
+
+                  <button 
+                    onClick={() => { setVista('Alumnos'); }}
+                    className="glass-card rounded-3xl p-5 border border-white/5 flex flex-col items-center justify-center gap-3 active:scale-95 transition-all"
+                  >
+                    <div className="w-12 h-12 bg-rose-500/10 rounded-2xl flex items-center justify-center border border-rose-500/20 shadow-neon-rose">
+                      <span className="material-icons-outlined text-rose-500 text-2xl">medical_services</span>
+                    </div>
+                    <span className="text-xs font-bold text-white text-center">Obs. de Salud</span>
+                  </button>
+
+                  <button 
+                    onClick={() => { setVista('Alumnos'); }}
+                    className="glass-card rounded-3xl p-5 border border-white/5 flex flex-col items-center justify-center gap-3 active:scale-95 transition-all"
+                  >
+                    <div className="w-12 h-12 bg-amber-500/10 rounded-2xl flex items-center justify-center border border-amber-500/20 shadow-neon-amber">
+                      <span className="material-icons-outlined text-amber-500 text-2xl">emergency</span>
+                    </div>
+                    <span className="text-xs font-bold text-white text-center">Emergencias</span>
+                  </button>
+                </div>
+              </section>
+            )}
           </div>
         )}
 
@@ -1574,26 +1623,87 @@ const App: React.FC = () => {
         )}
 
         {vista === 'Ajustes' && (
-          <div className="px-6 py-8 space-y-8 page-transition">
+          <div className="px-6 py-8 space-y-8 page-transition pb-24">
             <header>
               <h2 className="text-3xl font-black text-white uppercase tracking-tighter">Ajustes</h2>
               <p className="text-primary text-[10px] font-black uppercase tracking-widest mt-1">Configuración del Sistema</p>
             </header>
 
-            <div className="glass-card rounded-[2.5rem] p-8 space-y-6">
-              <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/10">
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 bg-primary/20 rounded-xl flex items-center justify-center border border-primary/30">
-                    <span className="material-icons-outlined text-primary">person</span>
+            <div className="glass-card rounded-[2.5rem] p-8 space-y-8">
+              {/* Perfil */}
+              <div className="space-y-4">
+                <h3 className="text-white/40 text-[10px] font-bold uppercase tracking-widest px-2">Perfil de Usuario</h3>
+                <div className="flex items-center gap-4 p-4 bg-white/5 rounded-2xl border border-white/10">
+                  <div className="w-12 h-12 bg-primary/20 rounded-xl flex items-center justify-center border border-primary/30">
+                    <span className="material-icons-outlined text-primary text-2xl">person</span>
                   </div>
-                  <div>
-                    <p className="text-xs font-bold text-white uppercase tracking-wider">{userRole === 'Coordinator' ? 'Coordinador General' : 'Entrenador Pro'}</p>
-                    <p className="text-[10px] text-slate-500">Sesión Activa</p>
+                  <div className="flex-1 overflow-hidden">
+                    <p className="text-sm font-bold text-white uppercase tracking-wider truncate">{user?.displayName || (userRole === 'Coordinator' ? 'Coordinador General' : 'Entrenador Pro')}</p>
+                    <p className="text-[10px] text-slate-400 truncate mt-0.5">{user?.email || 'usuario@gymcoach.pro'}</p>
                   </div>
                 </div>
               </div>
 
-              <div className="space-y-4 pt-4">
+              {/* Preferencias */}
+              <div className="space-y-4">
+                <h3 className="text-white/40 text-[10px] font-bold uppercase tracking-widest px-2">Preferencias</h3>
+                
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/10">
+                    <div className="flex items-center gap-3">
+                      <span className="material-icons-outlined text-white/60 text-lg">dark_mode</span>
+                      <span className="text-xs font-medium text-white">Modo Oscuro</span>
+                    </div>
+                    <div className="w-10 h-6 bg-primary rounded-full relative shadow-neon-cyan">
+                      <div className="absolute right-1 top-1 w-4 h-4 bg-antigravity-black rounded-full"></div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/10">
+                    <div className="flex items-center gap-3">
+                      <span className="material-icons-outlined text-white/60 text-lg">notifications</span>
+                      <span className="text-xs font-medium text-white">Notificaciones Push</span>
+                    </div>
+                    <div className="w-10 h-6 bg-primary rounded-full relative shadow-neon-cyan cursor-pointer" onClick={() => {
+                      setNotificacion({ t: "Info", d: "Las notificaciones están activadas." });
+                      setTimeout(() => setNotificacion(null), 3000);
+                    }}>
+                      <div className="absolute right-1 top-1 w-4 h-4 bg-antigravity-black rounded-full"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Datos */}
+              <div className="space-y-4">
+                <h3 className="text-white/40 text-[10px] font-bold uppercase tracking-widest px-2">Gestión de Datos</h3>
+                <button 
+                  onClick={() => {
+                    const data = { alumnos, clases, grupos, profesores: profesoresList };
+                    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `gymcoach_backup_${new Date().toISOString().split('T')[0]}.json`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    setNotificacion({ t: "Éxito", d: "Copia de seguridad descargada." });
+                    setTimeout(() => setNotificacion(null), 3000);
+                  }}
+                  className="w-full flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/10 active:scale-95 transition-all"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="material-icons-outlined text-neon-cyan text-lg">cloud_download</span>
+                    <span className="text-xs font-medium text-white">Exportar Copia de Seguridad</span>
+                  </div>
+                  <span className="material-icons-outlined text-white/30 text-sm">chevron_right</span>
+                </button>
+              </div>
+
+              {/* Sesión */}
+              <div className="pt-4 border-t border-white/10">
                 <button 
                   onClick={handleLogout}
                   className="w-full py-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-500 font-black uppercase text-[10px] tracking-[0.2em] flex items-center justify-center gap-3 active:scale-95 transition-all"
@@ -1604,8 +1714,9 @@ const App: React.FC = () => {
               </div>
             </div>
 
-            <div className="p-6 text-center opacity-20">
-              <p className="text-[8px] font-black uppercase tracking-[0.5em] text-white">GymCoach Pro v2.0 Cloud</p>
+            <div className="p-6 text-center opacity-40">
+              <p className="text-[9px] font-black uppercase tracking-[0.5em] text-white mb-2">GymCoach Pro v2.0 Cloud</p>
+              <p className="text-[10px] text-slate-400">Desarrollado para la excelencia gimnástica.</p>
             </div>
           </div>
         )}
