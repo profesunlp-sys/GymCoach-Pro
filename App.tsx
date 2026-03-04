@@ -69,7 +69,7 @@ const App: React.FC = () => {
 
   // Skill Form State
   const [isAddingSkill, setIsAddingSkill] = useState(false);
-  const [newSkill, setNewSkill] = useState<Partial<Skill>>({ name: '', status: 'No Iniciado', apparatus: 'Suelo', level: 1 });
+  const [newSkill, setNewSkill] = useState<Partial<Skill>>({ name: '', status: 'No Iniciado', apparatus: 'Suelo', level: '1' });
 
   
   // IA Recording State
@@ -439,7 +439,7 @@ const App: React.FC = () => {
         name: newSkill.name!,
         status: newSkill.status as SkillStatus,
         apparatus: newSkill.apparatus as Apparatus,
-        level: newSkill.level || 1
+        level: newSkill.level || '1'
       };
 
       const updatedHabilidades = [...(selectedAlumno.habilidades || []), skillToAdd];
@@ -450,7 +450,7 @@ const App: React.FC = () => {
       
       setSelectedAlumno({ ...selectedAlumno, habilidades: updatedHabilidades });
       setIsAddingSkill(false);
-      setNewSkill({ name: '', status: 'No Iniciado', apparatus: 'Suelo', level: 1 });
+      setNewSkill({ name: '', status: 'No Iniciado', apparatus: 'Suelo', level: '1' });
       loadData();
     } catch (error: any) {
       console.error("Error adding skill:", error);
@@ -1161,38 +1161,44 @@ const App: React.FC = () => {
                     onChange={(e) => setNewSkill({...newSkill, name: e.target.value})}
                   />
                   <div className="grid grid-cols-2 gap-3">
-                    <select 
+                    <input 
+                      list="apparatus-list"
+                      placeholder="Aparato (ej. Suelo)"
                       className="bg-antigravity-charcoal border border-white/10 rounded-xl py-3 px-4 text-sm text-white focus:border-primary/50 transition-all"
                       value={newSkill.apparatus}
                       onChange={(e) => setNewSkill({...newSkill, apparatus: e.target.value as Apparatus})}
-                    >
-                      <option value="Suelo">Suelo</option>
-                      <option value="Viga">Viga</option>
-                      <option value="Paralelas">Paralelas</option>
-                      <option value="Salto">Salto</option>
-                      <option value="Anillas">Anillas</option>
-                      <option value="Arzones">Arzones</option>
-                      <option value="Barra Fija">Barra Fija</option>
-                    </select>
-                    <select 
+                    />
+                    <datalist id="apparatus-list">
+                      <option value="Suelo" />
+                      <option value="Viga" />
+                      <option value="Paralelas" />
+                      <option value="Salto" />
+                      <option value="Anillas" />
+                      <option value="Arzones" />
+                      <option value="Barra Fija" />
+                    </datalist>
+                    <input 
+                      list="status-list"
+                      placeholder="Estado (ej. No Iniciado)"
                       className="bg-antigravity-charcoal border border-white/10 rounded-xl py-3 px-4 text-sm text-white focus:border-primary/50 transition-all"
                       value={newSkill.status}
                       onChange={(e) => setNewSkill({...newSkill, status: e.target.value as SkillStatus})}
-                    >
-                      <option value="No Iniciado">No Iniciado</option>
-                      <option value="En Proceso">En Proceso</option>
-                      <option value="Dominado">Dominado</option>
-                      <option value="Elite">Elite</option>
-                    </select>
+                    />
+                    <datalist id="status-list">
+                      <option value="No Iniciado" />
+                      <option value="En Proceso" />
+                      <option value="Dominado" />
+                      <option value="Elite" />
+                    </datalist>
                   </div>
                   <div className="flex items-center gap-3">
                     <label className="text-xs text-white/60 font-medium">Nivel:</label>
                     <input 
-                      type="number" 
-                      min="1" max="10"
-                      className="w-20 bg-antigravity-charcoal border border-white/10 rounded-xl py-2 px-3 text-sm text-white text-center focus:border-primary/50 transition-all"
+                      type="text" 
+                      placeholder="Ej. 1, E2, USAG 3"
+                      className="flex-1 bg-antigravity-charcoal border border-white/10 rounded-xl py-2 px-3 text-sm text-white focus:border-primary/50 transition-all"
                       value={newSkill.level}
-                      onChange={(e) => setNewSkill({...newSkill, level: parseInt(e.target.value) || 1})}
+                      onChange={(e) => setNewSkill({...newSkill, level: e.target.value})}
                     />
                   </div>
                   <button 

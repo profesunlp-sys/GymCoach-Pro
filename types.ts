@@ -1,6 +1,6 @@
-export type Discipline = 'GAF' | 'GAM' | 'Trampolín' | 'Rítmica';
-export type Apparatus = 'Suelo' | 'Viga' | 'Paralelas' | 'Salto' | 'Anillas' | 'Arzones' | 'Barra Fija';
-export type SkillStatus = 'No Iniciado' | 'En Proceso' | 'Dominado' | 'Elite';
+export type Discipline = 'GAF' | 'GAM' | 'Trampolín' | 'Rítmica' | string;
+export type Apparatus = 'Suelo' | 'Viga' | 'Paralelas' | 'Salto' | 'Anillas' | 'Arzones' | 'Barra Fija' | string;
+export type SkillStatus = 'No Iniciado' | 'En Proceso' | 'Dominado' | 'Elite' | string;
 export type PaymentStatus = 'Al día' | 'Pendiente' | 'Vencido' | 'Exento';
 
 export interface Biometrics {
@@ -16,7 +16,7 @@ export interface Skill {
   name: string;
   status: SkillStatus;
   apparatus: Apparatus;
-  level: number;
+  level: string | number;
 }
 
 export interface ContactoFamilia {
