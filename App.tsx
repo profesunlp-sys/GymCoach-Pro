@@ -11,6 +11,7 @@ const App: React.FC = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userRole, setUserRole] = useState<UserRole>('Coach');
   const [vista, setVista] = useState<ViewMode>('Dashboard');
+  const [alumnosFilterMode, setAlumnosFilterMode] = useState<'all' | 'alerts'>('all');
   const [alumnos, setAlumnos] = useState<Alumno[]>([]);
   const [clases, setClases] = useState<Clase[]>([]);
   const [grupos, setGrupos] = useState<GrupoConfig[]>([]);
@@ -23,6 +24,7 @@ const App: React.FC = () => {
   
   // Search State
   const [searchQuery, setSearchQuery] = useState("");
+  const [expandedAlumnoId, setExpandedAlumnoId] = useState<string | null>(null);
   const [planesFilterDate, setPlanesFilterDate] = useState("");
   const [planesFilterCoach, setPlanesFilterCoach] = useState("");
 
@@ -89,7 +91,10 @@ const App: React.FC = () => {
   // UI States
   const [notificacion, setNotificacion] = useState<{t: string, d: string} | null>(null);
   const [pendingNavigation, setPendingNavigation] = useState<ViewMode | null>(null);
-  const [emergencyInfo, setEmergencyInfo] = useState<{provider: string, phone: string}>({ provider: 'Servicio Médico', phone: '107' });
+  const [emergencyInfo, setEmergencyInfo] = useState<{publicProvider: string, publicPhone: string, privateProvider: string, privatePhone: string}>({ 
+    publicProvider: 'Emergencias Públicas', publicPhone: '107',
+    privateProvider: 'Servicio Médico Privado', privatePhone: 'SIPEM'
+  });
   const [isEditingEmergency, setIsEditingEmergency] = useState(false);
 
   const checkUnsavedChanges = () => {
@@ -1037,7 +1042,7 @@ const App: React.FC = () => {
                   </button>
                   
                   <button 
-                    onClick={() => { setVista('Alumnos'); }}
+                    onClick={() => { setAlumnosFilterMode('all'); handleNavigation('Alumnos'); }}
                     className="glass-card rounded-3xl p-5 border border-white/5 flex flex-col items-center justify-center gap-3 active:scale-95 transition-all"
                   >
                     <div className="w-12 h-12 bg-accent-purple/10 rounded-2xl flex items-center justify-center border border-accent-purple/20 shadow-neon-purple">
@@ -1047,7 +1052,7 @@ const App: React.FC = () => {
                   </button>
 
                   <button 
-                    onClick={() => { setVista('Alumnos'); }}
+                    onClick={() => { setAlumnosFilterMode('alerts'); handleNavigation('Alumnos'); }}
                     className="glass-card rounded-3xl p-5 border border-white/5 flex flex-col items-center justify-center gap-3 active:scale-95 transition-all"
                   >
                     <div className="w-12 h-12 bg-rose-500/10 rounded-2xl flex items-center justify-center border border-rose-500/20 shadow-neon-rose">
@@ -1196,36 +1201,134 @@ const App: React.FC = () => {
             </div>
 
             <main className="flex-1 overflow-y-auto px-6 py-2 space-y-4">
-              {filteredAlumnos.length > 0 ? filteredAlumnos.map(alumno => (
-                <div key={alumno.id} className={`flex items-center justify-between p-4 rounded-2xl glass-card transition-all duration-300 ${!asistenciasHoy[alumno.id!] ? 'opacity-70 border-red-500/30 bg-red-900/10' : 'border-neon-cyan/20'}`}>
-                  <div className="flex items-center gap-4">
-                    <div className="relative">
-                      <div className="w-12 h-12 rounded-xl bg-antigravity-charcoal flex items-center justify-center overflow-hidden border border-white/10">
-                        <img 
-                          alt="Avatar" 
-                          className={`w-full h-full object-cover ${!asistenciasHoy[alumno.id!] ? 'grayscale' : 'grayscale-[0.3]'}`} 
-                          src={`https://ui-avatars.com/api/?name=${encodeURIComponent(alumno.nombre)}&background=121214&color=fff&size=128`}
-                        />
+              {filteredAlumnos.length > 0 ? filteredAlumnos.map(alumno => {
+                const hasAlerts = alumno.alertas && alumno.alertas.length > 0 && alumno.alertas[0] !== '';
+                const isExpanded = expandedAlumnoId === alumno.id;
+
+                return (
+                  <div key={alumno.id} className={`flex flex-col p-4 rounded-2xl glass-card transition-all duration-300 ${!asistenciasHoy[alumno.id!] ? 'opacity-70 border-red-500/30 bg-red-900/10' : 'border-neon-cyan/20'}`}>
+                    <div className="flex items-center justify-between">
+                      <div 
+                        className="flex items-center gap-4 cursor-pointer flex-1"
+                        onClick={() => setExpandedAlumnoId(isExpanded ? null : alumno.id!)}
+                      >
+                        <div className="relative">
+                          <div className="w-12 h-12 rounded-xl bg-antigravity-charcoal flex items-center justify-center overflow-hidden border border-white/10">
+                            <img 
+                              alt="Avatar" 
+                              className={`w-full h-full object-cover ${!asistenciasHoy[alumno.id!] ? 'grayscale' : 'grayscale-[0.3]'}`} 
+                              src={`https://ui-avatars.com/api/?name=${encodeURIComponent(alumno.nombre)}&background=121214&color=fff&size=128`}
+                            />
+                          </div>
+                          {asistenciasHoy[alumno.id!] && <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-neon-cyan rounded-full border-2 border-antigravity-black"></div>}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h4 className={`text-sm font-semibold ${asistenciasHoy[alumno.id!] ? 'text-white' : 'text-white/70'} leading-none`}>{alumno.nombre}</h4>
+                            {hasAlerts && (
+                              <span className="material-icons-outlined text-amber-500 text-[16px] animate-pulse" title="Alerta Médica">warning</span>
+                            )}
+                          </div>
+                          <p className={`text-[10px] font-bold uppercase tracking-wider mt-2 ${asistenciasHoy[alumno.id!] ? 'text-white/40' : 'text-white/30'}`}>{alumno.nivel}</p>
+                        </div>
                       </div>
-                      {asistenciasHoy[alumno.id!] && <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-neon-cyan rounded-full border-2 border-antigravity-black"></div>}
+                      
+                      <div className="flex items-center gap-4">
+                        <button 
+                          onClick={() => setExpandedAlumnoId(isExpanded ? null : alumno.id!)}
+                          className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-white/50 hover:text-white transition-colors"
+                        >
+                          <span className="material-icons-outlined text-[18px]">{isExpanded ? 'expand_less' : 'expand_more'}</span>
+                        </button>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input 
+                            type="checkbox" 
+                            className="sr-only ios-toggle peer" 
+                            checked={asistenciasHoy[alumno.id!] || false}
+                            onChange={() => toggleAttendance(alumno.id!)}
+                          />
+                          <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full ios-toggle-label after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white/60 after:rounded-full after:h-5 after:w-5 after:transition-all shadow-sm"></div>
+                        </label>
+                      </div>
                     </div>
-                    <div>
-                      <h4 className={`text-sm font-semibold ${asistenciasHoy[alumno.id!] ? 'text-white' : 'text-white/70'} leading-none`}>{alumno.nombre}</h4>
-                      <p className={`text-[10px] font-bold uppercase tracking-wider mt-2 ${asistenciasHoy[alumno.id!] ? 'text-white/40' : 'text-white/30'}`}>{alumno.nivel}</p>
-                    </div>
+
+                    {/* Expanded Details */}
+                    {isExpanded && (
+                      <div className="mt-4 pt-4 border-t border-white/10 space-y-4 animate-in slide-in-from-top-2 duration-200">
+                        {/* Health Alerts */}
+                        {hasAlerts && (
+                          <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3">
+                            <h5 className="text-[10px] font-bold text-amber-500 uppercase tracking-widest mb-2 flex items-center gap-1">
+                              <span className="material-icons-outlined text-[14px]">medical_services</span>
+                              Observaciones de Salud
+                            </h5>
+                            <ul className="space-y-1">
+                              {alumno.alertas.map((alerta, idx) => (
+                                <li key={idx} className="text-xs text-amber-200/80 flex items-start gap-2">
+                                  <span className="text-amber-500 mt-0.5">•</span>
+                                  {alerta}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {/* Emergency Contacts */}
+                        {alumno.contacto && (
+                          <div className="bg-white/5 rounded-xl p-3 space-y-3">
+                            <h5 className="text-[10px] font-bold text-white/40 uppercase tracking-widest flex items-center gap-1">
+                              <span className="material-icons-outlined text-[14px]">contact_phone</span>
+                              Contactos de Emergencia
+                            </h5>
+                            
+                            <div className="grid grid-cols-1 gap-2">
+                              {alumno.contacto.emergenciaNombre && alumno.contacto.emergenciaTelefono && (
+                                <div className="flex items-center justify-between bg-black/20 p-2 rounded-lg">
+                                  <div>
+                                    <p className="text-[10px] text-white/40 uppercase">Emergencia</p>
+                                    <p className="text-xs text-white font-medium">{alumno.contacto.emergenciaNombre}</p>
+                                  </div>
+                                  <a href={`tel:${alumno.contacto.emergenciaTelefono}`} className="w-8 h-8 rounded-full bg-rose-500/20 text-rose-500 flex items-center justify-center">
+                                    <span className="material-icons-outlined text-[16px]">call</span>
+                                  </a>
+                                </div>
+                              )}
+                              
+                              {alumno.contacto.padreNombre && alumno.contacto.padreTelefono && (
+                                <div className="flex items-center justify-between bg-black/20 p-2 rounded-lg">
+                                  <div>
+                                    <p className="text-[10px] text-white/40 uppercase">Padre</p>
+                                    <p className="text-xs text-white font-medium">{alumno.contacto.padreNombre}</p>
+                                  </div>
+                                  <a href={`tel:${alumno.contacto.padreTelefono}`} className="w-8 h-8 rounded-full bg-neon-cyan/20 text-neon-cyan flex items-center justify-center">
+                                    <span className="material-icons-outlined text-[16px]">call</span>
+                                  </a>
+                                </div>
+                              )}
+
+                              {alumno.contacto.madreNombre && alumno.contacto.madreTelefono && (
+                                <div className="flex items-center justify-between bg-black/20 p-2 rounded-lg">
+                                  <div>
+                                    <p className="text-[10px] text-white/40 uppercase">Madre</p>
+                                    <p className="text-xs text-white font-medium">{alumno.contacto.madreNombre}</p>
+                                  </div>
+                                  <a href={`tel:${alumno.contacto.madreTelefono}`} className="w-8 h-8 rounded-full bg-neon-cyan/20 text-neon-cyan flex items-center justify-center">
+                                    <span className="material-icons-outlined text-[16px]">call</span>
+                                  </a>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {(!alumno.contacto || (!alumno.contacto.emergenciaTelefono && !alumno.contacto.padreTelefono && !alumno.contacto.madreTelefono)) && (
+                          <p className="text-[10px] text-white/30 italic text-center">No hay contactos registrados</p>
+                        )}
+                      </div>
+                    )}
                   </div>
-                  
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input 
-                      type="checkbox" 
-                      className="sr-only ios-toggle peer" 
-                      checked={asistenciasHoy[alumno.id!] || false}
-                      onChange={() => toggleAttendance(alumno.id!)}
-                    />
-                    <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full ios-toggle-label after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white/60 after:rounded-full after:h-5 after:w-5 after:transition-all shadow-sm"></div>
-                  </label>
-                </div>
-              )) : (
+                );
+              }) : (
                 <div className="py-24 text-center flex flex-col items-center space-y-6 opacity-30">
                   <span className="material-symbols-outlined text-[80px] font-light">person_off</span>
                   <p className="text-sm font-medium italic tracking-wide">Inicia agregando tu primer alumno<br/>usando el botón azul inferior.</p>
@@ -1247,20 +1350,28 @@ const App: React.FC = () => {
           <div className="px-6 py-8 space-y-8 page-transition">
             <header className="flex justify-between items-end">
               <div>
-                <h2 className="text-3xl font-black text-white uppercase tracking-tighter">Gimnastas</h2>
-                <p className="text-primary text-[10px] font-black uppercase tracking-widest mt-1">Base de Datos {userRole === 'Coordinator' ? 'Global' : 'del Grupo'}</p>
+                <h2 className="text-3xl font-black text-white uppercase tracking-tighter">
+                  {alumnosFilterMode === 'alerts' ? 'Obs. de Salud' : 'Gimnastas'}
+                </h2>
+                <p className="text-primary text-[10px] font-black uppercase tracking-widest mt-1">
+                  {alumnosFilterMode === 'alerts' ? 'Gimnastas con Alertas Médicas' : `Base de Datos ${userRole === 'Coordinator' ? 'Global' : 'del Grupo'}`}
+                </p>
               </div>
               <div className="flex items-center gap-4">
                 <div className="text-right">
                   <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Total</p>
-                  <p className="text-2xl font-black text-white">{alumnos.length}</p>
+                  <p className="text-2xl font-black text-white">
+                    {alumnos.filter(a => alumnosFilterMode === 'alerts' ? (a.alertas && a.alertas.length > 0 && a.alertas[0] !== '') : true).length}
+                  </p>
                 </div>
-                <button 
-                  onClick={() => setIsAddingAlumno(!isAddingAlumno)}
-                  className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary border border-primary/20 active:scale-90 transition-all"
-                >
-                  <span className="material-icons-outlined text-sm">{isAddingAlumno ? 'close' : 'person_add'}</span>
-                </button>
+                {alumnosFilterMode === 'all' && (
+                  <button 
+                    onClick={() => setIsAddingAlumno(!isAddingAlumno)}
+                    className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary border border-primary/20 active:scale-90 transition-all"
+                  >
+                    <span className="material-icons-outlined text-sm">{isAddingAlumno ? 'close' : 'person_add'}</span>
+                  </button>
+                )}
               </div>
             </header>
 
@@ -1331,29 +1442,40 @@ const App: React.FC = () => {
 
             <div className="space-y-3">
               {alumnos
+                .filter(a => alumnosFilterMode === 'alerts' ? (a.alertas && a.alertas.length > 0 && a.alertas[0] !== '') : true)
                 .filter(a => a.nombre.toLowerCase().includes(searchQuery.toLowerCase()) || a.dni.includes(searchQuery))
-                .map(alumno => (
-                <div 
-                  key={alumno.id} 
-                  onClick={() => { setSelectedAlumno(alumno); handleNavigation('AlumnoDetalle'); }}
-                  className="glass-card rounded-2xl p-4 border border-white/5 flex items-center justify-between cursor-pointer active:scale-95 transition-all"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center border border-white/10 overflow-hidden">
-                      <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(alumno.nombre)}&background=random`} alt="" className="w-full h-full object-cover opacity-80" />
+                .map(alumno => {
+                  const hasAlerts = alumno.alertas && alumno.alertas.length > 0 && alumno.alertas[0] !== '';
+                  return (
+                    <div 
+                      key={alumno.id} 
+                      onClick={() => { setSelectedAlumno(alumno); handleNavigation('AlumnoDetalle'); }}
+                      className={`glass-card rounded-2xl p-4 border flex items-center justify-between cursor-pointer active:scale-95 transition-all ${hasAlerts && alumnosFilterMode === 'alerts' ? 'border-amber-500/30 bg-amber-500/5' : 'border-white/5'}`}
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center border border-white/10 overflow-hidden relative">
+                          <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(alumno.nombre)}&background=random`} alt="" className="w-full h-full object-cover opacity-80" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-sm font-bold text-white">{alumno.nombre}</h4>
+                            {hasAlerts && (
+                              <span className="material-icons-outlined text-amber-500 text-[16px] animate-pulse" title="Alerta Médica">warning</span>
+                            )}
+                          </div>
+                          <p className="text-[10px] text-slate-500 font-medium uppercase tracking-wider">{alumno.grupo} • {alumno.nivel}</p>
+                        </div>
+                      </div>
+                      <button className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/40">
+                        <span className="material-icons-outlined text-sm">chevron_right</span>
+                      </button>
                     </div>
-                    <div>
-                      <h4 className="text-sm font-bold text-white">{alumno.nombre}</h4>
-                      <p className="text-[10px] text-slate-500 font-medium uppercase tracking-wider">{alumno.grupo} • {alumno.nivel}</p>
-                    </div>
-                  </div>
-                  <button className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/40">
-                    <span className="material-icons-outlined text-sm">chevron_right</span>
-                  </button>
+                  );
+                })}
+              {alumnos.filter(a => alumnosFilterMode === 'alerts' ? (a.alertas && a.alertas.length > 0 && a.alertas[0] !== '') : true).length === 0 && (
+                <div className="py-20 text-center opacity-20 italic text-sm">
+                  {alumnosFilterMode === 'alerts' ? 'No hay gimnastas con alertas médicas.' : 'No hay gimnastas registrados.'}
                 </div>
-              ))}
-              {alumnos.length === 0 && (
-                <div className="py-20 text-center opacity-20 italic text-sm">No hay gimnastas registrados.</div>
               )}
             </div>
           </div>
@@ -1738,27 +1860,55 @@ const App: React.FC = () => {
                 </div>
 
                 {isEditingEmergency ? (
-                  <div className="space-y-4">
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest px-2">Servicio Médico</label>
-                      <input 
-                        type="text" 
-                        value={emergencyInfo.provider}
-                        onChange={(e) => setEmergencyInfo({...emergencyInfo, provider: e.target.value})}
-                        className="w-full bg-white/10 border border-white/20 rounded-2xl px-4 py-3 text-white text-sm focus:outline-none focus:border-rose-500/50 transition-colors"
-                        placeholder="Ej. SAME, OSDE, Swiss Medical..."
-                      />
+                  <div className="space-y-6">
+                    <div className="space-y-4">
+                      <h4 className="text-white font-bold text-sm border-b border-white/10 pb-2">Servicio Público</h4>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest px-2">Nombre</label>
+                        <input 
+                          type="text" 
+                          value={emergencyInfo.publicProvider}
+                          onChange={(e) => setEmergencyInfo({...emergencyInfo, publicProvider: e.target.value})}
+                          className="w-full bg-white/10 border border-white/20 rounded-2xl px-4 py-3 text-white text-sm focus:outline-none focus:border-rose-500/50 transition-colors"
+                          placeholder="Ej. SAME"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest px-2">Teléfono</label>
+                        <input 
+                          type="tel" 
+                          value={emergencyInfo.publicPhone}
+                          onChange={(e) => setEmergencyInfo({...emergencyInfo, publicPhone: e.target.value})}
+                          className="w-full bg-white/10 border border-white/20 rounded-2xl px-4 py-3 text-white text-sm focus:outline-none focus:border-rose-500/50 transition-colors"
+                          placeholder="Ej. 107"
+                        />
+                      </div>
                     </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest px-2">Teléfono de Emergencia</label>
-                      <input 
-                        type="tel" 
-                        value={emergencyInfo.phone}
-                        onChange={(e) => setEmergencyInfo({...emergencyInfo, phone: e.target.value})}
-                        className="w-full bg-white/10 border border-white/20 rounded-2xl px-4 py-3 text-white text-sm focus:outline-none focus:border-rose-500/50 transition-colors"
-                        placeholder="Ej. 107"
-                      />
+
+                    <div className="space-y-4">
+                      <h4 className="text-white font-bold text-sm border-b border-white/10 pb-2">Servicio Privado</h4>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest px-2">Nombre</label>
+                        <input 
+                          type="text" 
+                          value={emergencyInfo.privateProvider}
+                          onChange={(e) => setEmergencyInfo({...emergencyInfo, privateProvider: e.target.value})}
+                          className="w-full bg-white/10 border border-white/20 rounded-2xl px-4 py-3 text-white text-sm focus:outline-none focus:border-rose-500/50 transition-colors"
+                          placeholder="Ej. SIPEM, OSDE..."
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest px-2">Teléfono</label>
+                        <input 
+                          type="tel" 
+                          value={emergencyInfo.privatePhone}
+                          onChange={(e) => setEmergencyInfo({...emergencyInfo, privatePhone: e.target.value})}
+                          className="w-full bg-white/10 border border-white/20 rounded-2xl px-4 py-3 text-white text-sm focus:outline-none focus:border-rose-500/50 transition-colors"
+                          placeholder="Ej. 0800-..."
+                        />
+                      </div>
                     </div>
+
                     <button 
                       onClick={() => setIsEditingEmergency(false)}
                       className="w-full py-4 rounded-2xl bg-rose-500 text-white font-black uppercase text-xs tracking-widest shadow-neon-rose active:scale-95 transition-all mt-4"
@@ -1767,31 +1917,57 @@ const App: React.FC = () => {
                     </button>
                   </div>
                 ) : (
-                  <div className="text-center space-y-6">
-                    <div>
-                      <h3 className="text-white/60 text-sm font-bold uppercase tracking-widest mb-2">{emergencyInfo.provider}</h3>
+                  <div className="text-center space-y-8">
+                    {/* Public Emergency */}
+                    <div className="space-y-4">
+                      <div>
+                        <h3 className="text-white/60 text-sm font-bold uppercase tracking-widest mb-1">{emergencyInfo.publicProvider}</h3>
+                        <a 
+                          href={`tel:${emergencyInfo.publicPhone}`}
+                          className="block text-5xl font-black text-white tracking-tighter hover:text-rose-400 transition-colors"
+                        >
+                          {emergencyInfo.publicPhone}
+                        </a>
+                      </div>
+                      
                       <a 
-                        href={`tel:${emergencyInfo.phone}`}
-                        className="block text-6xl font-black text-white tracking-tighter hover:text-rose-400 transition-colors"
+                        href={`tel:${emergencyInfo.publicPhone}`}
+                        className="w-full py-4 rounded-2xl bg-rose-500 text-white font-black uppercase text-sm tracking-widest shadow-neon-rose active:scale-95 transition-all flex items-center justify-center gap-3"
                       >
-                        {emergencyInfo.phone}
+                        <span className="material-icons-outlined">call</span>
+                        Llamar a {emergencyInfo.publicProvider}
                       </a>
                     </div>
-                    
-                    <a 
-                      href={`tel:${emergencyInfo.phone}`}
-                      className="w-full py-5 rounded-2xl bg-rose-500 text-white font-black uppercase text-sm tracking-widest shadow-neon-rose active:scale-95 transition-all flex items-center justify-center gap-3"
-                    >
-                      <span className="material-icons-outlined">call</span>
-                      Llamar Ahora
-                    </a>
+
+                    <div className="h-px w-full bg-white/10"></div>
+
+                    {/* Private Emergency */}
+                    <div className="space-y-4">
+                      <div>
+                        <h3 className="text-white/60 text-sm font-bold uppercase tracking-widest mb-1">{emergencyInfo.privateProvider}</h3>
+                        <a 
+                          href={`tel:${emergencyInfo.privatePhone}`}
+                          className="block text-4xl font-black text-white tracking-tighter hover:text-rose-400 transition-colors"
+                        >
+                          {emergencyInfo.privatePhone}
+                        </a>
+                      </div>
+                      
+                      <a 
+                        href={`tel:${emergencyInfo.privatePhone}`}
+                        className="w-full py-4 rounded-2xl bg-white/10 text-white border border-white/20 font-black uppercase text-sm tracking-widest active:scale-95 transition-all flex items-center justify-center gap-3"
+                      >
+                        <span className="material-icons-outlined">call</span>
+                        Llamar a {emergencyInfo.privateProvider}
+                      </a>
+                    </div>
 
                     <button 
                       onClick={() => setIsEditingEmergency(true)}
-                      className="text-[10px] text-white/40 uppercase tracking-widest font-bold hover:text-white transition-colors flex items-center justify-center gap-1 mx-auto"
+                      className="text-[10px] text-white/40 uppercase tracking-widest font-bold hover:text-white transition-colors flex items-center justify-center gap-1 mx-auto pt-4"
                     >
                       <span className="material-icons-outlined text-[14px]">edit</span>
-                      Configurar Número
+                      Configurar Números
                     </button>
                   </div>
                 )}
@@ -2500,7 +2676,10 @@ const App: React.FC = () => {
           ].map(item => (
             <button 
               key={item.v} 
-              onClick={() => setVista(item.v as ViewMode)} 
+              onClick={() => {
+                if (item.v === 'Alumnos') setAlumnosFilterMode('all');
+                handleNavigation(item.v as ViewMode);
+              }} 
               className={`flex flex-col items-center gap-1.5 transition-all flex-1 ${vista === item.v || (vista === 'AsistenciaLista' && item.v === 'Horario') ? 'text-neon-cyan active-glow' : 'text-white/30 hover:text-white'}`}
             >
               <span className={`material-symbols-outlined text-[26px] font-light ${vista === item.v || (vista === 'AsistenciaLista' && item.v === 'Horario') ? 'neon-glow-cyan' : ''}`}>{item.i}</span>
