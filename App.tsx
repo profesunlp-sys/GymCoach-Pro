@@ -88,6 +88,74 @@ const App: React.FC = () => {
 
   // UI States
   const [notificacion, setNotificacion] = useState<{t: string, d: string} | null>(null);
+  const [pendingNavigation, setPendingNavigation] = useState<ViewMode | null>(null);
+  const [emergencyInfo, setEmergencyInfo] = useState<{provider: string, phone: string}>({ provider: 'Servicio Médico', phone: '107' });
+  const [isEditingEmergency, setIsEditingEmergency] = useState(false);
+
+  const checkUnsavedChanges = () => {
+    if (vista === 'NuevaClase') {
+      return selectedGroupForClass !== '' || faseInicial.length > 0 || fasePrincipal.length > 0 || faseFinal.length > 0 || observacionesClase !== '';
+    }
+    if (vista === 'RegistroAlumno') {
+      return studentForm.nombre !== '' || studentForm.dni !== '' || (studentForm.alertas && studentForm.alertas.length > 0 && studentForm.alertas[0] !== '');
+    }
+    if (vista === 'Alumnos' && isAddingAlumno) {
+      return newAlumnoForm.nombre !== '' || newAlumnoForm.dni !== '' || newAlumnoForm.grupo !== '';
+    }
+    if (vista === 'Profesores' && isAddingProfesor) {
+      return newProfesorName !== '';
+    }
+    if (vista === 'AlumnoDetalle' && isAddingSkill) {
+      return newSkill.name !== '';
+    }
+    if (vista === 'AlumnoDetalle' && editingSkillId) {
+      return true;
+    }
+    if (vista === 'AlumnoDetalle' && isEditingAlumno) {
+      return true;
+    }
+    return false;
+  };
+
+  const handleNavigation = (newVista: ViewMode) => {
+    if (vista === newVista) return;
+    if (checkUnsavedChanges()) {
+      setPendingNavigation(newVista);
+    } else {
+      setVista(newVista);
+    }
+  };
+
+  const confirmNavigation = () => {
+    if (pendingNavigation) {
+      if (vista === 'NuevaClase') {
+        setSelectedGroupForClass('');
+        setFaseInicial([]);
+        setFasePrincipal([]);
+        setFaseFinal([]);
+        setObservacionesClase('');
+      } else if (vista === 'RegistroAlumno') {
+        setStudentForm({ nombre: '', dni: '', fechaNacimiento: '', fechaPrimeraClase: new Date().toISOString().split('T')[0], alertas: [] });
+      } else if (vista === 'Alumnos') {
+        setIsAddingAlumno(false);
+        setNewAlumnoForm({ nombre: '', dni: '', grupo: '', nivel: 'Inicial' });
+      } else if (vista === 'Profesores') {
+        setIsAddingProfesor(false);
+        setNewProfesorName('');
+      } else if (vista === 'AlumnoDetalle') {
+        setIsAddingSkill(false);
+        setEditingSkillId(null);
+        setIsEditingAlumno(false);
+        setNewSkill({ name: '', status: 'No Iniciado', apparatus: 'Suelo', level: '1' });
+      }
+      setVista(pendingNavigation);
+      setPendingNavigation(null);
+    }
+  };
+
+  const cancelNavigation = () => {
+    setPendingNavigation(null);
+  };
 
   const COORDINATOR_EMAIL = "profesunlp@gmail.com";
 
@@ -138,7 +206,7 @@ const App: React.FC = () => {
   const handleLogout = async () => {
     try {
       await signOut(auth);
-      setVista('Dashboard');
+      handleNavigation('Dashboard');
     } catch (error) {
       console.error("Logout error:", error);
     }
@@ -371,7 +439,7 @@ const App: React.FC = () => {
       await addDocument(COLLECTIONS.ALUMNOS, newStudent);
       await loadData();
       setNotificacion({ t: "Gimnasta Registrado", d: `${newStudent.nombre} añadido.` });
-      setVista('AsistenciaLista');
+      handleNavigation('AsistenciaLista');
       setStudentForm({
         nombre: '', dni: '', disciplina: 'GAF', nivel: 'Escuela',
         fechaNacimiento: '', fechaPrimeraClase: new Date().toISOString().split('T')[0],
@@ -527,7 +595,7 @@ const App: React.FC = () => {
     if (!confirm(`¿Estás seguro de eliminar a ${selectedAlumno.nombre}? Esta acción no se puede deshacer.`)) return;
     try {
       await deleteDocument(COLLECTIONS.ALUMNOS, selectedAlumno.id);
-      setVista('Alumnos');
+      handleNavigation('Alumnos');
       setSelectedAlumno(null);
       loadData();
       setNotificacion({ t: "Gimnasta Eliminado", d: "El registro ha sido borrado." });
@@ -738,6 +806,35 @@ const App: React.FC = () => {
   return (
     <div className="max-w-[430px] mx-auto min-h-screen bg-antigravity-black shadow-2xl relative overflow-hidden flex flex-col font-display pb-32">
       
+      {/* Unsaved Changes Modal */}
+      {pendingNavigation && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[200] flex items-center justify-center p-6">
+          <div className="bg-antigravity-charcoal border border-white/10 rounded-3xl p-6 w-full max-w-sm space-y-6 shadow-2xl animate-in fade-in zoom-in duration-200">
+            <div className="flex items-center gap-3 text-rose-500">
+              <span className="material-icons-outlined text-3xl">warning</span>
+              <h3 className="font-bold text-lg">Cambios sin guardar</h3>
+            </div>
+            <p className="text-sm text-white/70">
+              Tienes datos sin guardar en esta pantalla. Si sales ahora, se perderán. ¿Qué deseas hacer?
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <button 
+                onClick={cancelNavigation}
+                className="py-3 rounded-xl border border-white/10 text-white font-bold text-xs uppercase tracking-wider active:scale-95 transition-all"
+              >
+                Cancelar
+              </button>
+              <button 
+                onClick={confirmNavigation}
+                className="py-3 rounded-xl bg-rose-500/20 text-rose-500 border border-rose-500/30 font-bold text-xs uppercase tracking-wider active:scale-95 transition-all"
+              >
+                Descartar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Refinement UI Overlay */}
       {pendingAnalysis && (
         <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-xl flex items-center justify-center p-6">
@@ -838,7 +935,7 @@ const App: React.FC = () => {
                   {userRole === 'Coordinator' ? 'Supervisa el progreso de tus colegas.' : 'Configura tu semana para empezar.'}
                 </p>
                 {userRole === 'Coach' && (
-                  <button onClick={() => setVista('NuevaClase')} className="bg-white text-indigo-800 font-black px-7 py-3.5 rounded-[1.25rem] flex items-center gap-2 shadow-xl text-[11px] uppercase tracking-widest active:scale-95 transition-all">
+                  <button onClick={() => handleNavigation('NuevaClase')} className="bg-white text-indigo-800 font-black px-7 py-3.5 rounded-[1.25rem] flex items-center gap-2 shadow-xl text-[11px] uppercase tracking-widest active:scale-95 transition-all">
                     <span className="material-icons-outlined text-sm">add_circle</span> Registrar Clase
                   </button>
                 )}
@@ -906,7 +1003,7 @@ const App: React.FC = () => {
                   {clases.slice(0, 5).map((clase) => (
                     <div 
                       key={clase.id} 
-                      onClick={() => { setSelectedClase(clase); setVista('ClaseDetalle'); }}
+                      onClick={() => { setSelectedClase(clase); handleNavigation('ClaseDetalle'); }}
                       className="glass-card rounded-2xl p-4 border border-white/5 flex items-center justify-between active:scale-95 transition-all cursor-pointer"
                     >
                       <div className="flex items-center gap-4">
@@ -930,7 +1027,7 @@ const App: React.FC = () => {
                 <div className="flex justify-between px-1"><h3 className="text-white font-bold text-lg">Accesos Rápidos</h3></div>
                 <div className="grid grid-cols-2 gap-4">
                   <button 
-                    onClick={() => { setVista('Horario'); }}
+                    onClick={() => { handleNavigation('Horario'); }}
                     className="glass-card rounded-3xl p-5 border border-white/5 flex flex-col items-center justify-center gap-3 active:scale-95 transition-all"
                   >
                     <div className="w-12 h-12 bg-neon-cyan/10 rounded-2xl flex items-center justify-center border border-neon-cyan/20 shadow-neon-cyan">
@@ -960,7 +1057,7 @@ const App: React.FC = () => {
                   </button>
 
                   <button 
-                    onClick={() => { setVista('Alumnos'); }}
+                    onClick={() => { handleNavigation('Emergencias'); }}
                     className="glass-card rounded-3xl p-5 border border-white/5 flex flex-col items-center justify-center gap-3 active:scale-95 transition-all"
                   >
                     <div className="w-12 h-12 bg-amber-500/10 rounded-2xl flex items-center justify-center border border-amber-500/20 shadow-neon-amber">
@@ -1238,7 +1335,7 @@ const App: React.FC = () => {
                 .map(alumno => (
                 <div 
                   key={alumno.id} 
-                  onClick={() => { setSelectedAlumno(alumno); setVista('AlumnoDetalle'); }}
+                  onClick={() => { setSelectedAlumno(alumno); handleNavigation('AlumnoDetalle'); }}
                   className="glass-card rounded-2xl p-4 border border-white/5 flex items-center justify-between cursor-pointer active:scale-95 transition-all"
                 >
                   <div className="flex items-center gap-4">
@@ -1614,6 +1711,95 @@ const App: React.FC = () => {
                 }).length === 0 && (
                 <div className="py-20 text-center opacity-20 italic text-sm">No hay planes registrados que coincidan con los filtros.</div>
               )}
+            </div>
+          </div>
+        )}
+
+        {vista === 'Emergencias' && (
+          <div className="px-6 py-8 space-y-8 page-transition pb-24">
+            <header className="flex items-center gap-4">
+              <button onClick={() => handleNavigation('Dashboard')} className="w-10 h-10 rounded-full bg-antigravity-charcoal flex items-center justify-center text-primary border border-white/5 active:scale-90 transition-all">
+                <span className="material-icons-outlined">arrow_back</span>
+              </button>
+              <div>
+                <h2 className="text-3xl font-black text-white uppercase tracking-tighter">Emergencias</h2>
+                <p className="text-rose-500 text-[10px] font-black uppercase tracking-widest mt-1">Contacto Médico de Urgencia</p>
+              </div>
+            </header>
+
+            <div className="glass-card rounded-[2.5rem] p-8 space-y-8 border border-rose-500/20 shadow-neon-rose overflow-hidden relative">
+              <div className="absolute -top-20 -right-20 w-64 h-64 bg-rose-500/10 rounded-full blur-3xl"></div>
+              
+              <div className="relative z-10 space-y-8">
+                <div className="flex justify-center">
+                  <div className="w-24 h-24 bg-rose-500/20 rounded-full flex items-center justify-center border-4 border-rose-500/30 shadow-neon-rose animate-pulse">
+                    <span className="material-icons-outlined text-rose-500 text-5xl">emergency</span>
+                  </div>
+                </div>
+
+                {isEditingEmergency ? (
+                  <div className="space-y-4">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest px-2">Servicio Médico</label>
+                      <input 
+                        type="text" 
+                        value={emergencyInfo.provider}
+                        onChange={(e) => setEmergencyInfo({...emergencyInfo, provider: e.target.value})}
+                        className="w-full bg-white/10 border border-white/20 rounded-2xl px-4 py-3 text-white text-sm focus:outline-none focus:border-rose-500/50 transition-colors"
+                        placeholder="Ej. SAME, OSDE, Swiss Medical..."
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest px-2">Teléfono de Emergencia</label>
+                      <input 
+                        type="tel" 
+                        value={emergencyInfo.phone}
+                        onChange={(e) => setEmergencyInfo({...emergencyInfo, phone: e.target.value})}
+                        className="w-full bg-white/10 border border-white/20 rounded-2xl px-4 py-3 text-white text-sm focus:outline-none focus:border-rose-500/50 transition-colors"
+                        placeholder="Ej. 107"
+                      />
+                    </div>
+                    <button 
+                      onClick={() => setIsEditingEmergency(false)}
+                      className="w-full py-4 rounded-2xl bg-rose-500 text-white font-black uppercase text-xs tracking-widest shadow-neon-rose active:scale-95 transition-all mt-4"
+                    >
+                      Guardar Configuración
+                    </button>
+                  </div>
+                ) : (
+                  <div className="text-center space-y-6">
+                    <div>
+                      <h3 className="text-white/60 text-sm font-bold uppercase tracking-widest mb-2">{emergencyInfo.provider}</h3>
+                      <a 
+                        href={`tel:${emergencyInfo.phone}`}
+                        className="block text-6xl font-black text-white tracking-tighter hover:text-rose-400 transition-colors"
+                      >
+                        {emergencyInfo.phone}
+                      </a>
+                    </div>
+                    
+                    <a 
+                      href={`tel:${emergencyInfo.phone}`}
+                      className="w-full py-5 rounded-2xl bg-rose-500 text-white font-black uppercase text-sm tracking-widest shadow-neon-rose active:scale-95 transition-all flex items-center justify-center gap-3"
+                    >
+                      <span className="material-icons-outlined">call</span>
+                      Llamar Ahora
+                    </a>
+
+                    <button 
+                      onClick={() => setIsEditingEmergency(true)}
+                      className="text-[10px] text-white/40 uppercase tracking-widest font-bold hover:text-white transition-colors flex items-center justify-center gap-1 mx-auto"
+                    >
+                      <span className="material-icons-outlined text-[14px]">edit</span>
+                      Configurar Número
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="p-6 text-center opacity-40">
+              <p className="text-[10px] text-slate-400">En caso de emergencia médica grave, contacte inmediatamente a los servicios de salud locales.</p>
             </div>
           </div>
         )}
@@ -2172,7 +2358,7 @@ const App: React.FC = () => {
                 return (
                   <div 
                     key={idx} 
-                    onClick={() => { setSelectedProfesor(profesor as string); setVista('ProfesorDetalle'); }}
+                    onClick={() => { setSelectedProfesor(profesor as string); handleNavigation('ProfesorDetalle'); }}
                     className="glass-card rounded-3xl p-6 border border-white/5 active:scale-95 transition-all cursor-pointer flex items-center justify-between"
                   >
                     <div className="flex items-center gap-4">
@@ -2202,7 +2388,7 @@ const App: React.FC = () => {
         {vista === 'ProfesorDetalle' && selectedProfesor && (
           <div className="px-6 py-8 space-y-8 page-transition pb-24">
             <header className="flex items-center gap-4 mb-8">
-              <button onClick={() => setVista('Profesores')} className="w-10 h-10 rounded-full bg-antigravity-charcoal flex items-center justify-center text-primary border border-white/5 active:scale-90 transition-all">
+              <button onClick={() => handleNavigation('Profesores')} className="w-10 h-10 rounded-full bg-antigravity-charcoal flex items-center justify-center text-primary border border-white/5 active:scale-90 transition-all">
                 <span className="material-icons-outlined">arrow_back</span>
               </button>
               <div>
