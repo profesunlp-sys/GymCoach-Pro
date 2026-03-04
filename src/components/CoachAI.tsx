@@ -104,7 +104,7 @@ export const CoachAI = () => {
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
             placeholder="Buscar metodologías..."
-            className="flex-1 bg-transparent border-none text-white text-sm px-4 focus:outline-none placeholder:text-white/30"
+            className="flex-1 bg-white/10 border border-white/20 focus:bg-white/20 focus:border-primary/50 placeholder:text-white/50 rounded-2xl py-3 px-4 text-sm text-white focus:outline-none transition-all"
             disabled={isLoading}
           />
           

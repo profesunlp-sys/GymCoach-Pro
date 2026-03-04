@@ -949,7 +949,7 @@ const App: React.FC = () => {
                 </div>
 
                 <div className="space-y-4">
-                  <input className="w-full bg-antigravity-charcoal border border-white/5 rounded-2xl px-5 py-4 text-sm text-white placeholder:text-slate-600 focus:ring-1 ring-primary/30"
+                  <input className="w-full bg-white/10 border border-white/20 focus:bg-white/20 focus:border-primary/50 placeholder:text-white/50 rounded-2xl px-5 py-4 text-sm text-white placeholder:text-slate-600 focus:ring-1 ring-primary/30"
                     placeholder="Nombre del Grupo (Ej. Avanzados)" value={newGroupName} onChange={(e) => setNewGroupName(e.target.value)} />
                   
                   <input className="w-full bg-antigravity-charcoal border border-white/5 rounded-2xl px-5 py-4 text-sm text-white placeholder:text-slate-600 focus:ring-1 ring-primary/30"
@@ -1014,7 +1014,7 @@ const App: React.FC = () => {
           <div className="page-transition flex flex-col min-h-screen relative bg-antigravity-black">
             <header className="px-6 py-4 flex flex-col gap-4 bg-antigravity-black sticky top-12 z-40">
               <div className="flex items-center justify-between">
-                <button onClick={() => setVista('Dashboard')} className="w-10 h-10 flex items-center justify-center rounded-full bg-antigravity-charcoal border border-white/10 text-white">
+                <button onClick={() => setVista('Dashboard')} className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 border border-white/20 focus:bg-white/20 focus:border-primary/50 placeholder:text-white/50 text-white">
                   <span className="material-symbols-outlined text-[20px]">arrow_back_ios_new</span>
                 </button>
                 <h1 className="text-sm font-bold tracking-widest uppercase text-white/60">Asistencia</h1>
@@ -2103,16 +2103,28 @@ const App: React.FC = () => {
             <section className="space-y-4">
               <h3 className="text-white font-bold text-lg px-1">Grupos a cargo</h3>
               <div className="grid grid-cols-2 gap-4">
-                {grupos.filter(g => g.entrenador === selectedProfesor).length > 0 ? (
-                  grupos.filter(g => g.entrenador === selectedProfesor).map(g => (
-                    <div key={g.id} className="glass-card rounded-2xl p-4 border border-white/5">
-                      <h4 className="font-bold text-white text-sm">{g.nombre}</h4>
-                      <p className="text-[10px] text-slate-400 mt-1">{g.horario}</p>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-sm text-slate-400 col-span-2 px-1">No tiene grupos asignados actualmente.</p>
-                )}
+                {(() => {
+                  const profGruposActuales = grupos.filter(g => g.entrenador === selectedProfesor);
+                  const profGruposHistoricos = Array.from(new Set(clases.filter(c => c.entrenador === selectedProfesor).map(c => c.grupo)));
+                  
+                  if (profGruposActuales.length > 0) {
+                    return profGruposActuales.map(g => (
+                      <div key={g.id} className="glass-card rounded-2xl p-4 border border-white/5">
+                        <h4 className="font-bold text-white text-sm">{g.nombre}</h4>
+                        <p className="text-[10px] text-slate-400 mt-1">{g.horario}</p>
+                      </div>
+                    ));
+                  } else if (profGruposHistoricos.length > 0) {
+                    return profGruposHistoricos.map((nombre, idx) => (
+                      <div key={idx} className="glass-card rounded-2xl p-4 border border-white/5 opacity-70">
+                        <h4 className="font-bold text-white text-sm">{nombre}</h4>
+                        <p className="text-[10px] text-slate-400 mt-1">Histórico</p>
+                      </div>
+                    ));
+                  } else {
+                    return <p className="text-sm text-slate-400 col-span-2 px-1">No tiene grupos registrados.</p>;
+                  }
+                })()}
               </div>
             </section>
 
