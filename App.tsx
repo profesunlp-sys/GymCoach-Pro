@@ -70,6 +70,12 @@ const App: React.FC = () => {
   // Skill Form State
   const [isAddingSkill, setIsAddingSkill] = useState(false);
   const [newSkill, setNewSkill] = useState<Partial<Skill>>({ name: '', status: 'No Iniciado', apparatus: 'Suelo', level: '1' });
+  const [editingSkillId, setEditingSkillId] = useState<string | null>(null);
+  const [editingSkillData, setEditingSkillData] = useState<Partial<Skill>>({});
+
+  // Edit Alumno State
+  const [isEditingAlumno, setIsEditingAlumno] = useState(false);
+  const [editingAlumnoData, setEditingAlumnoData] = useState<Partial<Alumno>>({});
 
   
   // IA Recording State
@@ -456,6 +462,66 @@ const App: React.FC = () => {
       console.error("Error adding skill:", error);
       setNotificacion({ t: "Error", d: error.message || "No se pudo guardar la habilidad." });
       setTimeout(() => setNotificacion(null), 5000);
+    }
+  };
+
+  const handleUpdateSkill = async () => {
+    if (!selectedAlumno || !selectedAlumno.id || !editingSkillId || !editingSkillData.name) return;
+    try {
+      const updatedHabilidades = (selectedAlumno.habilidades || []).map(skill => 
+        skill.id === editingSkillId ? { ...skill, ...editingSkillData } as Skill : skill
+      );
+      await updateDocument(COLLECTIONS.ALUMNOS, selectedAlumno.id, { habilidades: updatedHabilidades });
+      setSelectedAlumno({ ...selectedAlumno, habilidades: updatedHabilidades });
+      setEditingSkillId(null);
+      setEditingSkillData({});
+      loadData();
+    } catch (error) {
+      console.error("Error updating skill:", error);
+      setNotificacion({ t: "Error", d: "No se pudo actualizar la habilidad." });
+    }
+  };
+
+  const handleDeleteSkill = async (skillId: string) => {
+    if (!selectedAlumno || !selectedAlumno.id) return;
+    if (!confirm("¿Eliminar esta habilidad?")) return;
+    try {
+      const updatedHabilidades = (selectedAlumno.habilidades || []).filter(skill => skill.id !== skillId);
+      await updateDocument(COLLECTIONS.ALUMNOS, selectedAlumno.id, { habilidades: updatedHabilidades });
+      setSelectedAlumno({ ...selectedAlumno, habilidades: updatedHabilidades });
+      loadData();
+    } catch (error) {
+      console.error("Error deleting skill:", error);
+      setNotificacion({ t: "Error", d: "No se pudo eliminar la habilidad." });
+    }
+  };
+
+  const handleUpdateAlumno = async () => {
+    if (!selectedAlumno || !selectedAlumno.id || !editingAlumnoData.nombre) return;
+    try {
+      await updateDocument(COLLECTIONS.ALUMNOS, selectedAlumno.id, editingAlumnoData);
+      setSelectedAlumno({ ...selectedAlumno, ...editingAlumnoData } as Alumno);
+      setIsEditingAlumno(false);
+      loadData();
+      setNotificacion({ t: "Gimnasta Actualizado", d: "Datos guardados correctamente." });
+    } catch (error) {
+      console.error("Error updating student:", error);
+      setNotificacion({ t: "Error", d: "No se pudo actualizar al gimnasta." });
+    }
+  };
+
+  const handleDeleteAlumno = async () => {
+    if (!selectedAlumno || !selectedAlumno.id) return;
+    if (!confirm(`¿Estás seguro de eliminar a ${selectedAlumno.nombre}? Esta acción no se puede deshacer.`)) return;
+    try {
+      await deleteDocument(COLLECTIONS.ALUMNOS, selectedAlumno.id);
+      setVista('Alumnos');
+      setSelectedAlumno(null);
+      loadData();
+      setNotificacion({ t: "Gimnasta Eliminado", d: "El registro ha sido borrado." });
+    } catch (error) {
+      console.error("Error deleting student:", error);
+      setNotificacion({ t: "Error", d: "No se pudo eliminar al gimnasta." });
     }
   };
 
@@ -1133,11 +1199,75 @@ const App: React.FC = () => {
               <button onClick={() => setVista('Alumnos')} className="w-10 h-10 rounded-full bg-antigravity-charcoal flex items-center justify-center text-primary border border-white/5 active:scale-90 transition-all">
                 <span className="material-icons-outlined">arrow_back</span>
               </button>
-              <div>
+              <div className="flex-1">
                 <h2 className="text-2xl font-black text-white uppercase tracking-tighter leading-none">{selectedAlumno.nombre}</h2>
                 <p className="text-primary text-[10px] font-black uppercase tracking-widest mt-1">{selectedAlumno.grupo} • {selectedAlumno.nivel}</p>
               </div>
+              <button 
+                onClick={() => {
+                  setEditingAlumnoData(selectedAlumno);
+                  setIsEditingAlumno(!isEditingAlumno);
+                }}
+                className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/60 border border-white/10 active:scale-90 transition-all"
+              >
+                <span className="material-icons-outlined text-sm">{isEditingAlumno ? 'close' : 'edit'}</span>
+              </button>
             </header>
+
+            {isEditingAlumno && (
+              <div className="glass-card rounded-2xl p-5 border border-primary/30 space-y-4 shadow-neon-cyan">
+                <h3 className="text-white font-bold text-sm uppercase tracking-wider">Editar Gimnasta</h3>
+                <input 
+                  type="text" 
+                  placeholder="Nombre completo" 
+                  className="w-full bg-antigravity-charcoal border border-white/10 rounded-xl px-4 py-3 text-sm text-white"
+                  value={editingAlumnoData.nombre || ''}
+                  onChange={e => setEditingAlumnoData({...editingAlumnoData, nombre: e.target.value})}
+                />
+                <input 
+                  type="text" 
+                  placeholder="DNI (Opcional)" 
+                  className="w-full bg-antigravity-charcoal border border-white/10 rounded-xl px-4 py-3 text-sm text-white"
+                  value={editingAlumnoData.dni || ''}
+                  onChange={e => setEditingAlumnoData({...editingAlumnoData, dni: e.target.value})}
+                />
+                <div className="grid grid-cols-2 gap-3">
+                  <select 
+                    className="w-full bg-antigravity-charcoal border border-white/10 rounded-xl px-4 py-3 text-sm text-white appearance-none"
+                    value={editingAlumnoData.grupo || ''}
+                    onChange={e => setEditingAlumnoData({...editingAlumnoData, grupo: e.target.value})}
+                  >
+                    <option value="">Grupo...</option>
+                    {grupos.map(g => <option key={g.id} value={g.nombre}>{g.nombre}</option>)}
+                  </select>
+                  <select 
+                    className="w-full bg-antigravity-charcoal border border-white/10 rounded-xl px-4 py-3 text-sm text-white appearance-none"
+                    value={editingAlumnoData.nivel || ''}
+                    onChange={e => setEditingAlumnoData({...editingAlumnoData, nivel: e.target.value})}
+                  >
+                    <option value="">Nivel...</option>
+                    <option value="Escuela">Escuela</option>
+                    <option value="Pre-Equipo">Pre-Equipo</option>
+                    <option value="Equipo">Equipo</option>
+                  </select>
+                </div>
+                <div className="flex gap-2 pt-2">
+                  <button 
+                    onClick={handleDeleteAlumno}
+                    className="py-3 px-4 rounded-xl border border-red-500/30 text-red-400 font-bold text-xs uppercase tracking-wider bg-red-500/10"
+                  >
+                    <span className="material-icons-outlined text-sm">delete</span>
+                  </button>
+                  <button 
+                    onClick={handleUpdateAlumno}
+                    disabled={!editingAlumnoData.nombre?.trim()}
+                    className="flex-1 py-3 rounded-xl bg-primary text-antigravity-black font-bold text-xs uppercase tracking-wider disabled:opacity-50"
+                  >
+                    Guardar Cambios
+                  </button>
+                </div>
+              </div>
+            )}
 
             <section className="space-y-4">
               <div className="flex justify-between items-center px-1">
@@ -1214,19 +1344,88 @@ const App: React.FC = () => {
               <div className="space-y-3">
                 {selectedAlumno.habilidades && selectedAlumno.habilidades.length > 0 ? (
                   selectedAlumno.habilidades.map(skill => (
-                    <div key={skill.id} className="glass-card rounded-2xl p-4 border border-white/5 flex items-center justify-between">
-                      <div>
-                        <h4 className="text-sm font-bold text-white">{skill.name}</h4>
-                        <p className="text-[10px] text-slate-500 font-medium uppercase tracking-wider mt-1">{skill.apparatus} • Nivel {skill.level}</p>
-                      </div>
-                      <div className={`px-3 py-1 rounded-lg border text-[9px] font-black uppercase tracking-widest ${
-                        skill.status === 'Dominado' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
-                        skill.status === 'En Proceso' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
-                        skill.status === 'Elite' ? 'bg-accent-purple/10 text-accent-purple border-accent-purple/20' :
-                        'bg-white/5 text-white/40 border-white/10'
-                      }`}>
-                        {skill.status}
-                      </div>
+                    <div key={skill.id} className="glass-card rounded-2xl p-4 border border-white/5">
+                      {editingSkillId === skill.id ? (
+                        <div className="space-y-4">
+                          <input 
+                            type="text" 
+                            placeholder="Nombre de la habilidad"
+                            className="w-full bg-antigravity-charcoal border border-white/10 rounded-xl py-3 px-4 text-sm text-white focus:border-primary/50 transition-all"
+                            value={editingSkillData.name || ''}
+                            onChange={(e) => setEditingSkillData({...editingSkillData, name: e.target.value})}
+                          />
+                          <div className="grid grid-cols-2 gap-3">
+                            <input 
+                              list="apparatus-list"
+                              placeholder="Aparato"
+                              className="bg-antigravity-charcoal border border-white/10 rounded-xl py-3 px-4 text-sm text-white focus:border-primary/50 transition-all"
+                              value={editingSkillData.apparatus || ''}
+                              onChange={(e) => setEditingSkillData({...editingSkillData, apparatus: e.target.value as Apparatus})}
+                            />
+                            <input 
+                              list="status-list"
+                              placeholder="Estado"
+                              className="bg-antigravity-charcoal border border-white/10 rounded-xl py-3 px-4 text-sm text-white focus:border-primary/50 transition-all"
+                              value={editingSkillData.status || ''}
+                              onChange={(e) => setEditingSkillData({...editingSkillData, status: e.target.value as SkillStatus})}
+                            />
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <label className="text-xs text-white/60 font-medium">Nivel:</label>
+                            <input 
+                              type="text" 
+                              placeholder="Ej. 1, E2, USAG 3"
+                              className="flex-1 bg-antigravity-charcoal border border-white/10 rounded-xl py-2 px-3 text-sm text-white focus:border-primary/50 transition-all"
+                              value={editingSkillData.level || ''}
+                              onChange={(e) => setEditingSkillData({...editingSkillData, level: e.target.value})}
+                            />
+                          </div>
+                          <div className="flex gap-2 pt-2">
+                            <button 
+                              onClick={() => handleDeleteSkill(skill.id)}
+                              className="py-3 px-4 rounded-xl border border-red-500/30 text-red-400 font-bold text-xs uppercase tracking-wider bg-red-500/10"
+                            >
+                              <span className="material-icons-outlined text-sm">delete</span>
+                            </button>
+                            <button 
+                              onClick={() => { setEditingSkillId(null); setEditingSkillData({}); }}
+                              className="flex-1 py-3 rounded-xl border border-white/10 text-white font-bold text-xs uppercase tracking-wider"
+                            >
+                              Cancelar
+                            </button>
+                            <button 
+                              onClick={handleUpdateSkill}
+                              disabled={!editingSkillData.name?.trim()}
+                              className="flex-1 py-3 rounded-xl bg-primary text-antigravity-black font-bold text-xs uppercase tracking-wider disabled:opacity-50"
+                            >
+                              Guardar
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1" onClick={() => { setEditingSkillId(skill.id); setEditingSkillData(skill); }}>
+                            <h4 className="text-sm font-bold text-white">{skill.name}</h4>
+                            <p className="text-[10px] text-slate-500 font-medium uppercase tracking-wider mt-1">{skill.apparatus} • Nivel {skill.level}</p>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <div className={`px-3 py-1 rounded-lg border text-[9px] font-black uppercase tracking-widest ${
+                              skill.status === 'Dominado' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                              skill.status === 'En Proceso' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
+                              skill.status === 'Elite' ? 'bg-accent-purple/10 text-accent-purple border-accent-purple/20' :
+                              'bg-white/5 text-white/40 border-white/10'
+                            }`}>
+                              {skill.status}
+                            </div>
+                            <button 
+                              onClick={() => { setEditingSkillId(skill.id); setEditingSkillData(skill); }}
+                              className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/40 active:scale-90 transition-all"
+                            >
+                              <span className="material-icons-outlined text-sm">edit</span>
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))
                 ) : (
