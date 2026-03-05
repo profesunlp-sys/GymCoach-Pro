@@ -864,7 +864,7 @@ const App: React.FC = () => {
             
             <div className="space-y-4">
               <textarea 
-                className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm text-white placeholder:text-white/20 focus:ring-1 focus:ring-primary/50 transition-all min-h-[100px]"
+                className="w-full bg-white/5 border rounded-2xl p-4 text-sm text-white placeholder:text-white/20 transition-all min-h-[100px] border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
                 placeholder="Escribe tu aclaración aquí..."
                 value={clarificationText}
                 onChange={(e) => setClarificationText(e.target.value)}
@@ -1100,22 +1100,22 @@ const App: React.FC = () => {
                 </div>
 
                 <div className="space-y-4">
-                  <input className="w-full bg-white/10 border border-white/20 focus:bg-white/20 focus:border-primary/50 placeholder:text-white/50 rounded-2xl px-5 py-4 text-sm text-white placeholder:text-slate-600 focus:ring-1 ring-primary/30"
+                  <input className="w-full bg-white/10 border bg-white/20 placeholder:text-white/50 rounded-2xl px-5 py-4 text-sm text-white placeholder:text-slate-600 border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
                     placeholder="Nombre del Grupo (Ej. Avanzados)" value={newGroupName} onChange={(e) => setNewGroupName(e.target.value)} />
                   
-                  <input className="w-full bg-antigravity-charcoal border border-white/5 rounded-2xl px-5 py-4 text-sm text-white placeholder:text-slate-600 focus:ring-1 ring-primary/30"
+                  <input className="w-full bg-antigravity-charcoal border rounded-2xl px-5 py-4 text-sm text-white placeholder:text-slate-600 border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
                     placeholder="Nombre y Apellido del Profesor" value={newCoachName} onChange={(e) => setNewCoachName(e.target.value)} />
                   
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1">
                       <label className="text-[10px] uppercase font-bold text-slate-500 ml-1">Desde</label>
-                      <select value={startTime} onChange={(e) => setStartTime(e.target.value)} className="w-full bg-antigravity-charcoal border-none rounded-2xl px-4 py-3 text-sm text-white appearance-none">
+                      <select value={startTime} onChange={(e) => setStartTime(e.target.value)} className="w-full bg-antigravity-charcoal rounded-2xl px-4 py-3 text-sm text-white appearance-none border border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none">
                         {timeIntervals.map(t => <option key={t} value={t} className="bg-antigravity-charcoal">{t}</option>)}
                       </select>
                     </div>
                     <div className="space-y-1">
                       <label className="text-[10px] uppercase font-bold text-slate-500 ml-1">Hasta</label>
-                      <select value={endTime} onChange={(e) => setEndTime(e.target.value)} className="w-full bg-antigravity-charcoal border-none rounded-2xl px-4 py-3 text-sm text-white appearance-none">
+                      <select value={endTime} onChange={(e) => setEndTime(e.target.value)} className="w-full bg-antigravity-charcoal rounded-2xl px-4 py-3 text-sm text-white appearance-none border border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none">
                         {timeIntervals.map(t => <option key={t} value={t} className="bg-antigravity-charcoal">{t}</option>)}
                       </select>
                     </div>
@@ -1165,7 +1165,7 @@ const App: React.FC = () => {
           <div className="page-transition flex flex-col min-h-screen relative bg-antigravity-black">
             <header className="px-6 py-4 flex flex-col gap-4 bg-antigravity-black sticky top-12 z-40">
               <div className="flex items-center justify-between">
-                <button onClick={() => setVista('Dashboard')} className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 border border-white/20 focus:bg-white/20 focus:border-primary/50 placeholder:text-white/50 text-white">
+                <button onClick={() => setVista('Dashboard')} className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 border border-white/20 bg-white/20 border-primary/50 placeholder:text-white/50 text-white">
                   <span className="material-symbols-outlined text-[20px]">arrow_back_ios_new</span>
                 </button>
                 <h1 className="text-sm font-bold tracking-widest uppercase text-white/60">Asistencia</h1>
@@ -1191,7 +1191,7 @@ const App: React.FC = () => {
               <div className="relative group">
                 <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-white/30 text-xl group-focus-within:text-neon-cyan transition-colors">search</span>
                 <input 
-                  className="w-full bg-antigravity-charcoal border border-white/10 rounded-2xl py-3.5 pl-12 pr-4 text-sm focus:ring-1 focus:ring-neon-cyan/50 focus:border-neon-cyan/50 placeholder:text-white/20 text-white neon-border-cyan transition-all" 
+                  className="w-full bg-antigravity-charcoal border rounded-2xl py-3.5 pl-12 pr-4 text-sm ring-neon-cyan/50 border-neon-cyan/50 placeholder:text-white/20 text-white transition-all border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none" 
                   placeholder="Buscar alumno..." 
                   type="text"
                   value={searchQuery}
@@ -1243,11 +1243,11 @@ const App: React.FC = () => {
                         <label className="relative inline-flex items-center cursor-pointer">
                           <input 
                             type="checkbox" 
-                            className="sr-only ios-toggle peer" 
+                            className="sr-only ios-toggle peer border border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none" 
                             checked={asistenciasHoy[alumno.id!] || false}
                             onChange={() => toggleAttendance(alumno.id!)}
                           />
-                          <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full ios-toggle-label after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white/60 after:rounded-full after:h-5 after:w-5 after:transition-all shadow-sm"></div>
+                          <div className="w-11 h-6 bg-white/10 peer-outline-none rounded-full ios-toggle-label after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white/60 after:rounded-full after:h-5 after:w-5 after:transition-all shadow-sm"></div>
                         </label>
                       </div>
                     </div>
@@ -1378,7 +1378,7 @@ const App: React.FC = () => {
             <div className="relative">
               <span className="material-icons-outlined absolute left-4 top-1/2 -translate-y-1/2 text-white/20">search</span>
               <input 
-                className="w-full bg-antigravity-charcoal border border-white/5 rounded-2xl py-4 pl-12 pr-4 text-sm text-white placeholder:text-white/20"
+                className="w-full bg-antigravity-charcoal border rounded-2xl py-4 pl-12 pr-4 text-sm text-white placeholder:text-white/20 border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
                 placeholder="Buscar por nombre o DNI..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -1391,20 +1391,20 @@ const App: React.FC = () => {
                 <input 
                   type="text" 
                   placeholder="Nombre completo" 
-                  className="w-full bg-antigravity-charcoal border border-white/10 rounded-xl px-4 py-3 text-sm text-white"
+                  className="w-full bg-antigravity-charcoal border rounded-xl px-4 py-3 text-sm text-white border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
                   value={newAlumnoForm.nombre}
                   onChange={e => setNewAlumnoForm({...newAlumnoForm, nombre: e.target.value})}
                 />
                 <input 
                   type="text" 
                   placeholder="DNI (Opcional)" 
-                  className="w-full bg-antigravity-charcoal border border-white/10 rounded-xl px-4 py-3 text-sm text-white"
+                  className="w-full bg-antigravity-charcoal border rounded-xl px-4 py-3 text-sm text-white border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
                   value={newAlumnoForm.dni}
                   onChange={e => setNewAlumnoForm({...newAlumnoForm, dni: e.target.value})}
                 />
                 <div className="grid grid-cols-2 gap-3">
                   <select 
-                    className="w-full bg-antigravity-charcoal border border-white/10 rounded-xl px-4 py-3 text-sm text-white appearance-none"
+                    className="w-full bg-antigravity-charcoal border rounded-xl px-4 py-3 text-sm text-white appearance-none border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
                     value={newAlumnoForm.grupo}
                     onChange={e => setNewAlumnoForm({...newAlumnoForm, grupo: e.target.value})}
                   >
@@ -1412,7 +1412,7 @@ const App: React.FC = () => {
                     {grupos.map(g => <option key={g.id} value={g.nombre}>{g.nombre}</option>)}
                   </select>
                   <select 
-                    className="w-full bg-antigravity-charcoal border border-white/10 rounded-xl px-4 py-3 text-sm text-white appearance-none"
+                    className="w-full bg-antigravity-charcoal border rounded-xl px-4 py-3 text-sm text-white appearance-none border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
                     value={newAlumnoForm.nivel}
                     onChange={e => setNewAlumnoForm({...newAlumnoForm, nivel: e.target.value})}
                   >
@@ -1508,20 +1508,20 @@ const App: React.FC = () => {
                 <input 
                   type="text" 
                   placeholder="Nombre completo" 
-                  className="w-full bg-antigravity-charcoal border border-white/10 rounded-xl px-4 py-3 text-sm text-white"
+                  className="w-full bg-antigravity-charcoal border rounded-xl px-4 py-3 text-sm text-white border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
                   value={editingAlumnoData.nombre || ''}
                   onChange={e => setEditingAlumnoData({...editingAlumnoData, nombre: e.target.value})}
                 />
                 <input 
                   type="text" 
                   placeholder="DNI (Opcional)" 
-                  className="w-full bg-antigravity-charcoal border border-white/10 rounded-xl px-4 py-3 text-sm text-white"
+                  className="w-full bg-antigravity-charcoal border rounded-xl px-4 py-3 text-sm text-white border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
                   value={editingAlumnoData.dni || ''}
                   onChange={e => setEditingAlumnoData({...editingAlumnoData, dni: e.target.value})}
                 />
                 <div className="grid grid-cols-2 gap-3">
                   <select 
-                    className="w-full bg-antigravity-charcoal border border-white/10 rounded-xl px-4 py-3 text-sm text-white appearance-none"
+                    className="w-full bg-antigravity-charcoal border rounded-xl px-4 py-3 text-sm text-white appearance-none border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
                     value={editingAlumnoData.grupo || ''}
                     onChange={e => setEditingAlumnoData({...editingAlumnoData, grupo: e.target.value})}
                   >
@@ -1529,7 +1529,7 @@ const App: React.FC = () => {
                     {grupos.map(g => <option key={g.id} value={g.nombre}>{g.nombre}</option>)}
                   </select>
                   <select 
-                    className="w-full bg-antigravity-charcoal border border-white/10 rounded-xl px-4 py-3 text-sm text-white appearance-none"
+                    className="w-full bg-antigravity-charcoal border rounded-xl px-4 py-3 text-sm text-white appearance-none border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
                     value={editingAlumnoData.nivel || ''}
                     onChange={e => setEditingAlumnoData({...editingAlumnoData, nivel: e.target.value})}
                   >
@@ -1574,7 +1574,7 @@ const App: React.FC = () => {
                   <input 
                     type="text" 
                     placeholder="Nombre de la habilidad (ej. Mortal Atrás)"
-                    className="w-full bg-antigravity-charcoal border border-white/10 rounded-xl py-3 px-4 text-sm text-white focus:border-primary/50 transition-all"
+                    className="w-full bg-antigravity-charcoal border rounded-xl py-3 px-4 text-sm text-white transition-all border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
                     value={newSkill.name}
                     onChange={(e) => setNewSkill({...newSkill, name: e.target.value})}
                   />
@@ -1582,7 +1582,7 @@ const App: React.FC = () => {
                     <input 
                       list="apparatus-list"
                       placeholder="Aparato (ej. Suelo)"
-                      className="bg-antigravity-charcoal border border-white/10 rounded-xl py-3 px-4 text-sm text-white focus:border-primary/50 transition-all"
+                      className="bg-antigravity-charcoal border rounded-xl py-3 px-4 text-sm text-white transition-all border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
                       value={newSkill.apparatus}
                       onChange={(e) => setNewSkill({...newSkill, apparatus: e.target.value as Apparatus})}
                     />
@@ -1598,7 +1598,7 @@ const App: React.FC = () => {
                     <input 
                       list="status-list"
                       placeholder="Estado (ej. No Iniciado)"
-                      className="bg-antigravity-charcoal border border-white/10 rounded-xl py-3 px-4 text-sm text-white focus:border-primary/50 transition-all"
+                      className="bg-antigravity-charcoal border rounded-xl py-3 px-4 text-sm text-white transition-all border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
                       value={newSkill.status}
                       onChange={(e) => setNewSkill({...newSkill, status: e.target.value as SkillStatus})}
                     />
@@ -1614,7 +1614,7 @@ const App: React.FC = () => {
                     <input 
                       type="text" 
                       placeholder="Ej. 1, E2, USAG 3"
-                      className="flex-1 bg-antigravity-charcoal border border-white/10 rounded-xl py-2 px-3 text-sm text-white focus:border-primary/50 transition-all"
+                      className="flex-1 bg-antigravity-charcoal border rounded-xl py-2 px-3 text-sm text-white transition-all border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
                       value={newSkill.level}
                       onChange={(e) => setNewSkill({...newSkill, level: e.target.value})}
                     />
@@ -1638,7 +1638,7 @@ const App: React.FC = () => {
                           <input 
                             type="text" 
                             placeholder="Nombre de la habilidad"
-                            className="w-full bg-antigravity-charcoal border border-white/10 rounded-xl py-3 px-4 text-sm text-white focus:border-primary/50 transition-all"
+                            className="w-full bg-antigravity-charcoal border rounded-xl py-3 px-4 text-sm text-white transition-all border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
                             value={editingSkillData.name || ''}
                             onChange={(e) => setEditingSkillData({...editingSkillData, name: e.target.value})}
                           />
@@ -1646,14 +1646,14 @@ const App: React.FC = () => {
                             <input 
                               list="apparatus-list"
                               placeholder="Aparato"
-                              className="bg-antigravity-charcoal border border-white/10 rounded-xl py-3 px-4 text-sm text-white focus:border-primary/50 transition-all"
+                              className="bg-antigravity-charcoal border rounded-xl py-3 px-4 text-sm text-white transition-all border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
                               value={editingSkillData.apparatus || ''}
                               onChange={(e) => setEditingSkillData({...editingSkillData, apparatus: e.target.value as Apparatus})}
                             />
                             <input 
                               list="status-list"
                               placeholder="Estado"
-                              className="bg-antigravity-charcoal border border-white/10 rounded-xl py-3 px-4 text-sm text-white focus:border-primary/50 transition-all"
+                              className="bg-antigravity-charcoal border rounded-xl py-3 px-4 text-sm text-white transition-all border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
                               value={editingSkillData.status || ''}
                               onChange={(e) => setEditingSkillData({...editingSkillData, status: e.target.value as SkillStatus})}
                             />
@@ -1663,7 +1663,7 @@ const App: React.FC = () => {
                             <input 
                               type="text" 
                               placeholder="Ej. 1, E2, USAG 3"
-                              className="flex-1 bg-antigravity-charcoal border border-white/10 rounded-xl py-2 px-3 text-sm text-white focus:border-primary/50 transition-all"
+                              className="flex-1 bg-antigravity-charcoal border rounded-xl py-2 px-3 text-sm text-white transition-all border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
                               value={editingSkillData.level || ''}
                               onChange={(e) => setEditingSkillData({...editingSkillData, level: e.target.value})}
                             />
@@ -1763,7 +1763,7 @@ const App: React.FC = () => {
                     type="date" 
                     value={planesFilterDate} 
                     onChange={(e) => setPlanesFilterDate(e.target.value)} 
-                    className="w-full bg-antigravity-charcoal border border-white/10 rounded-2xl px-4 py-3 text-sm text-white"
+                    className="w-full bg-antigravity-charcoal border rounded-2xl px-4 py-3 text-sm text-white border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
                   />
                 </div>
                 <div className="space-y-1">
@@ -1771,7 +1771,7 @@ const App: React.FC = () => {
                   <select 
                     value={planesFilterCoach} 
                     onChange={(e) => setPlanesFilterCoach(e.target.value)} 
-                    className="w-full bg-antigravity-charcoal border border-white/10 rounded-2xl px-4 py-3 text-sm text-white appearance-none"
+                    className="w-full bg-antigravity-charcoal border rounded-2xl px-4 py-3 text-sm text-white appearance-none border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
                   >
                     <option value="">Todos</option>
                     {Array.from(new Set(clases.map(c => c.entrenador))).filter(Boolean).map(prof => (
@@ -1869,7 +1869,7 @@ const App: React.FC = () => {
                           type="text" 
                           value={emergencyInfo.publicProvider}
                           onChange={(e) => setEmergencyInfo({...emergencyInfo, publicProvider: e.target.value})}
-                          className="w-full bg-white/10 border border-white/20 rounded-2xl px-4 py-3 text-white text-sm focus:outline-none focus:border-rose-500/50 transition-colors"
+                          className="w-full bg-white/10 border rounded-2xl px-4 py-3 text-white text-sm transition-colors border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
                           placeholder="Ej. SAME"
                         />
                       </div>
@@ -1879,7 +1879,7 @@ const App: React.FC = () => {
                           type="tel" 
                           value={emergencyInfo.publicPhone}
                           onChange={(e) => setEmergencyInfo({...emergencyInfo, publicPhone: e.target.value})}
-                          className="w-full bg-white/10 border border-white/20 rounded-2xl px-4 py-3 text-white text-sm focus:outline-none focus:border-rose-500/50 transition-colors"
+                          className="w-full bg-white/10 border rounded-2xl px-4 py-3 text-white text-sm transition-colors border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
                           placeholder="Ej. 107"
                         />
                       </div>
@@ -1893,7 +1893,7 @@ const App: React.FC = () => {
                           type="text" 
                           value={emergencyInfo.privateProvider}
                           onChange={(e) => setEmergencyInfo({...emergencyInfo, privateProvider: e.target.value})}
-                          className="w-full bg-white/10 border border-white/20 rounded-2xl px-4 py-3 text-white text-sm focus:outline-none focus:border-rose-500/50 transition-colors"
+                          className="w-full bg-white/10 border rounded-2xl px-4 py-3 text-white text-sm transition-colors border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
                           placeholder="Ej. SIPEM, OSDE..."
                         />
                       </div>
@@ -1903,7 +1903,7 @@ const App: React.FC = () => {
                           type="tel" 
                           value={emergencyInfo.privatePhone}
                           onChange={(e) => setEmergencyInfo({...emergencyInfo, privatePhone: e.target.value})}
-                          className="w-full bg-white/10 border border-white/20 rounded-2xl px-4 py-3 text-white text-sm focus:outline-none focus:border-rose-500/50 transition-colors"
+                          className="w-full bg-white/10 border rounded-2xl px-4 py-3 text-white text-sm transition-colors border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
                           placeholder="Ej. 0800-..."
                         />
                       </div>
@@ -2094,11 +2094,11 @@ const App: React.FC = () => {
               <div className="space-y-4">
                 <h4 className="text-white font-black text-[10px] border-b border-white/5 pb-2 uppercase tracking-[0.3em] opacity-30 italic">Identificación</h4>
                 <div className="space-y-4">
-                  <input className="w-full bg-antigravity-charcoal border border-white/10 rounded-2xl px-5 py-4 text-sm text-white" placeholder="Nombre y Apellido *" value={studentForm.nombre} onChange={(e) => setStudentForm({...studentForm, nombre: e.target.value})}/>
+                  <input className="w-full bg-antigravity-charcoal border rounded-2xl px-5 py-4 text-sm text-white border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none" placeholder="Nombre y Apellido *" value={studentForm.nombre} onChange={(e) => setStudentForm({...studentForm, nombre: e.target.value})}/>
                   <div className="grid grid-cols-2 gap-4">
-                    <input className="w-full bg-antigravity-charcoal border border-white/10 rounded-2xl px-5 py-4 text-sm text-white" placeholder="DNI (Opcional)" value={studentForm.dni} onChange={(e) => setStudentForm({...studentForm, dni: e.target.value})}/>
+                    <input className="w-full bg-antigravity-charcoal border rounded-2xl px-5 py-4 text-sm text-white border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none" placeholder="DNI (Opcional)" value={studentForm.dni} onChange={(e) => setStudentForm({...studentForm, dni: e.target.value})}/>
                     <div className="relative">
-                      <input type="date" className="w-full bg-antigravity-charcoal border border-white/10 rounded-2xl px-4 py-4 text-sm text-white" value={studentForm.fechaNacimiento} onChange={(e) => setStudentForm({...studentForm, fechaNacimiento: e.target.value})}/>
+                      <input type="date" className="w-full bg-antigravity-charcoal border rounded-2xl px-4 py-4 text-sm text-white border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none" value={studentForm.fechaNacimiento} onChange={(e) => setStudentForm({...studentForm, fechaNacimiento: e.target.value})}/>
                       {!studentForm.fechaNacimiento && <span className="absolute left-4 top-4 text-sm text-slate-400 pointer-events-none">Fecha Nacimiento *</span>}
                     </div>
                   </div>
@@ -2106,10 +2106,10 @@ const App: React.FC = () => {
               </div>
               <div className="space-y-4">
                 <h4 className="text-white font-black text-[10px] border-b border-white/5 pb-2 uppercase tracking-[0.3em] opacity-30 italic">Seguimiento Médico</h4>
-                <textarea className="w-full bg-antigravity-charcoal border border-white/10 rounded-2xl px-5 py-4 text-sm text-white h-24" placeholder="Observaciones de salud (Opcional)..." onChange={(e) => setStudentForm({...studentForm, alertas: [e.target.value]})}/>
+                <textarea className="w-full bg-antigravity-charcoal border rounded-2xl px-5 py-4 text-sm text-white h-24 border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none" placeholder="Observaciones de salud (Opcional)..." onChange={(e) => setStudentForm({...studentForm, alertas: [e.target.value]})}/>
                 <div className="space-y-1">
                   <label className="text-[10px] uppercase font-bold text-slate-500 ml-1">Fecha de Inicio de Actividades</label>
-                  <input type="date" className="w-full bg-antigravity-charcoal border border-white/10 rounded-2xl px-5 py-4 text-sm text-white" value={studentForm.fechaPrimeraClase} onChange={(e) => setStudentForm({...studentForm, fechaPrimeraClase: e.target.value})}/>
+                  <input type="date" className="w-full bg-antigravity-charcoal border rounded-2xl px-5 py-4 text-sm text-white border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none" value={studentForm.fechaPrimeraClase} onChange={(e) => setStudentForm({...studentForm, fechaPrimeraClase: e.target.value})}/>
                 </div>
               </div>
               <button onClick={handleSaveStudent} className="w-full py-5 rounded-3xl bg-accent-purple text-white font-black uppercase tracking-[0.3em] text-[10px] shadow-neon-purple active:scale-95 transition-all">
@@ -2246,7 +2246,7 @@ const App: React.FC = () => {
 
                 <div className="flex gap-3 mt-6">
                   <input 
-                    className="flex-1 bg-antigravity-charcoal border border-white/10 rounded-2xl px-5 py-3.5 text-xs text-white placeholder:text-white/20"
+                    className="flex-1 bg-antigravity-charcoal border rounded-2xl px-5 py-3.5 text-xs text-white placeholder:text-white/20 border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
                     placeholder="Escribir feedback..."
                     value={newFeedback}
                     onChange={(e) => setNewFeedback(e.target.value)}
@@ -2276,7 +2276,7 @@ const App: React.FC = () => {
                   <select 
                     value={claseGrupo} 
                     onChange={(e) => setClaseGrupo(e.target.value)} 
-                    className="flex-1 bg-antigravity-charcoal border border-white/10 rounded-2xl px-5 py-4 text-sm text-white appearance-none focus:ring-1 ring-primary/30"
+                    className="flex-1 bg-antigravity-charcoal border rounded-2xl px-5 py-4 text-sm text-white appearance-none border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
                   >
                     <option value="" disabled>Seleccionar Grupo</option>
                     {grupos.map(g => <option key={g.id} value={g.nombre}>{g.nombre}</option>)}
@@ -2303,14 +2303,14 @@ const App: React.FC = () => {
                       placeholder="Nombre del nuevo grupo" 
                       value={newClaseGroupName} 
                       onChange={(e) => setNewClaseGroupName(e.target.value)} 
-                      className="w-full bg-antigravity-charcoal border border-white/10 rounded-2xl px-5 py-4 text-sm text-white focus:ring-1 ring-primary/30"
+                      className="w-full bg-antigravity-charcoal border rounded-2xl px-5 py-4 text-sm text-white border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
                     />
                     <input 
                       type="text" 
                       placeholder="Nombre del profesor a cargo" 
                       value={newClaseCoachName} 
                       onChange={(e) => setNewClaseCoachName(e.target.value)} 
-                      className="w-full bg-antigravity-charcoal border border-white/10 rounded-2xl px-5 py-4 text-sm text-white focus:ring-1 ring-primary/30"
+                      className="w-full bg-antigravity-charcoal border rounded-2xl px-5 py-4 text-sm text-white border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
                     />
                   </div>
                 )}
@@ -2344,7 +2344,7 @@ const App: React.FC = () => {
                     value={customInicial} 
                     onChange={(e) => setCustomInicial(e.target.value)} 
                     placeholder="Agregar otra opción..." 
-                    className="flex-1 bg-antigravity-charcoal border border-white/10 rounded-xl px-4 py-2 text-xs text-white"
+                    className="flex-1 bg-antigravity-charcoal border rounded-xl px-4 py-2 text-xs text-white border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
                   />
                   <button 
                     onClick={() => { if(customInicial) { setFaseInicial(prev => [...prev, customInicial]); setCustomInicial(""); } }}
@@ -2383,7 +2383,7 @@ const App: React.FC = () => {
                     value={customPrincipal} 
                     onChange={(e) => setCustomPrincipal(e.target.value)} 
                     placeholder="Ej. Tela acrobática..." 
-                    className="flex-1 bg-antigravity-charcoal border border-white/10 rounded-xl px-4 py-2 text-xs text-white"
+                    className="flex-1 bg-antigravity-charcoal border rounded-xl px-4 py-2 text-xs text-white border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
                   />
                   <button 
                     onClick={() => { if(customPrincipal) { setFasePrincipal(prev => [...prev, customPrincipal]); setCustomPrincipal(""); } }}
@@ -2415,7 +2415,7 @@ const App: React.FC = () => {
                             value={customHabilidad[aparato] || ""} 
                             onChange={(e) => setCustomHabilidad(prev => ({...prev, [aparato]: e.target.value}))} 
                             placeholder={`Ej. Rol adelante en ${aparato}...`} 
-                            className="flex-1 bg-antigravity-charcoal border border-white/10 rounded-xl px-4 py-2 text-xs text-white"
+                            className="flex-1 bg-antigravity-charcoal border rounded-xl px-4 py-2 text-xs text-white border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
                           />
                           <button 
                             onClick={() => { 
@@ -2464,7 +2464,7 @@ const App: React.FC = () => {
                     value={customFinal} 
                     onChange={(e) => setCustomFinal(e.target.value)} 
                     placeholder="Agregar otra opción..." 
-                    className="flex-1 bg-antigravity-charcoal border border-white/10 rounded-xl px-4 py-2 text-xs text-white"
+                    className="flex-1 bg-antigravity-charcoal border rounded-xl px-4 py-2 text-xs text-white border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
                   />
                   <button 
                     onClick={() => { if(customFinal) { setFaseFinal(prev => [...prev, customFinal]); setCustomFinal(""); } }}
@@ -2505,7 +2505,7 @@ const App: React.FC = () => {
                 <input 
                   type="text" 
                   placeholder="Nombre completo" 
-                  className="w-full bg-antigravity-charcoal border border-white/10 rounded-xl px-4 py-3 text-sm text-white"
+                  className="w-full bg-antigravity-charcoal border rounded-xl px-4 py-3 text-sm text-white border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
                   value={newProfesorName}
                   onChange={e => setNewProfesorName(e.target.value)}
                 />
