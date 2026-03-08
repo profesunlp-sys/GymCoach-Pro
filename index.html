@@ -72,6 +72,12 @@
                 transform: translateX(20px);
                 background-color: #0A0A0B;
             }
+            .crafted-input {
+                @apply bg-antigravity-charcoal border border-neon-blue/30 rounded-2xl px-5 py-4 text-sm text-white transition-all outline-none shadow-inner;
+            }
+            .crafted-input:focus {
+                @apply border-neon-blue ring-1 ring-neon-blue/50 shadow-[0_0_15px_rgba(46,91,255,0.2)];
+            }
         }
         body {
             font-family: 'Lexend', sans-serif;

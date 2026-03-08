@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Alumno, Clase, ViewMode, GrupoConfig, AsistenciaRecord, UserRole, Feedback, Skill, SkillStatus, Apparatus } from './types.ts';
 import { processClassAudio, refineClassAnalysis } from './services/geminiService.ts';
+import { SKILL_TREE, DISCIPLINAS, NIVELES as DEFAULT_NIVELES } from './constants.tsx';
 import { db as firestore, auth, googleProvider, COLLECTIONS, getCollectionData, addDocument, updateDocument, deleteDocument } from './services/firebase.ts';
 import { collection, query, where, getDocs, addDoc, doc, updateDoc, onSnapshot, orderBy } from 'firebase/firestore';
-import { signInWithPopup, signOut, onAuthStateChanged, User } from 'firebase/auth';
+import { signInWithPopup, signOut, onAuthStateChanged, User, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, setPersistence, browserLocalPersistence, browserSessionPersistence } from 'firebase/auth';
 import { CoachAI } from './src/components/CoachAI.tsx';
 
 const EditableDropdown = ({ 
@@ -153,6 +154,9 @@ const App: React.FC = () => {
   const [faseInicial, setFaseInicial] = useState<string[]>([]);
   const [fasePrincipal, setFasePrincipal] = useState<string[]>([]);
   const [faseFinal, setFaseFinal] = useState<string[]>([]);
+  const [faseInicialDuration, setFaseInicialDuration] = useState("15");
+  const [fasePrincipalDuration, setFasePrincipalDuration] = useState("60");
+  const [faseFinalDuration, setFaseFinalDuration] = useState("15");
   const [habilidadesPorAparato, setHabilidadesPorAparato] = useState<Record<string, string[]>>({});
   const [customHabilidad, setCustomHabilidad] = useState<Record<string, string>>({});
   const [customInicial, setCustomInicial] = useState("");
@@ -287,6 +291,96 @@ const App: React.FC = () => {
   }, []);
 
   const [loginError, setLoginError] = useState<string | null>(null);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
+
+  const handleEmailLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !password) return;
+    try {
+      setLoginError(null);
+      await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
+      await signInWithEmailAndPassword(auth, email, password);
+    } catch (error: any) {
+      console.error("Login error:", error);
+      setLoginError(error.message);
+    }
+  };
+
+  const handleSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !password) return;
+    try {
+      setLoginError(null);
+      await createUserWithEmailAndPassword(auth, email, password);
+    } catch (error: any) {
+      console.error("SignUp error:", error);
+      setLoginError(error.message);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email) {
+      setNotificacion({ t: "Info", d: "Ingresa tu email para restablecer la contraseña." });
+      setTimeout(() => setNotificacion(null), 3000);
+      return;
+    }
+    try {
+      await sendPasswordResetEmail(auth, email);
+      setNotificacion({ t: "Éxito", d: "Email de restablecimiento enviado." });
+    } catch (error: any) {
+      setLoginError(error.message);
+    }
+    setTimeout(() => setNotificacion(null), 3000);
+  };
+
+  const handleImportBackup = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const content = e.target?.result as string;
+        const data = JSON.parse(content);
+        
+        if (!data.alumnos || !data.clases || !data.grupos) {
+          throw new Error("Formato de archivo inválido.");
+        }
+
+        setNotificacion({ t: "Importando...", d: "Por favor espera." });
+
+        for (const alumno of data.alumnos) {
+          const { id, ...rest } = alumno;
+          await addDocument(COLLECTIONS.ALUMNOS, rest);
+        }
+        for (const clase of data.clases) {
+          const { id, ...rest } = clase;
+          await addDocument(COLLECTIONS.CLASES, rest);
+        }
+        for (const grupo of data.grupos) {
+          const { id, ...rest } = grupo;
+          await addDocument(COLLECTIONS.GRUPOS, rest);
+        }
+        if (data.profesores) {
+          for (const prof of data.profesores) {
+            const { id, ...rest } = prof;
+            await addDocument(COLLECTIONS.PROFESORES, rest);
+          }
+        }
+
+        setNotificacion({ t: "Éxito", d: "Datos importados correctamente." });
+        loadData();
+      } catch (error: any) {
+        console.error("Import error:", error);
+        setNotificacion({ t: "Error", d: "No se pudo importar: " + error.message });
+      }
+      setTimeout(() => setNotificacion(null), 5000);
+    };
+    reader.readAsText(file);
+  };
 
   const handleLogin = async () => {
     try {
@@ -898,6 +992,9 @@ const App: React.FC = () => {
         faseInicial: faseInicial,
         fasePrincipal: fasePrincipal,
         faseFinal: faseFinal,
+        faseInicialDuration: faseInicialDuration,
+        fasePrincipalDuration: fasePrincipalDuration,
+        faseFinalDuration: faseFinalDuration,
         habilidadesPorAparato: habilidadesPorAparato
       };
       await addDocument(COLLECTIONS.CLASES, newClase);
@@ -939,11 +1036,73 @@ const App: React.FC = () => {
           ELITE GYMNASTICS MANAGEMENT
         </p>
 
-        <div className="w-full max-w-[280px] space-y-4">
-          <button onClick={handleLogin} className="w-full py-4.5 bg-white text-[#1e1b4b] rounded-full font-bold uppercase text-[10px] tracking-[0.18em] shadow-[0_20px_40px_rgba(0,0,0,0.3)] active:scale-95 transition-all hover:bg-slate-50 flex items-center justify-center gap-3">
+        <div className="w-full max-w-[320px] space-y-4">
+          <form onSubmit={isSignUp ? handleSignUp : handleEmailLogin} className="space-y-3">
+            <div className="space-y-1">
+              <input 
+                type="email" 
+                placeholder="Email" 
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-sm text-white placeholder:text-white/30 focus:border-primary focus:ring-1 focus:ring-primary/50 outline-none transition-all"
+                required
+              />
+            </div>
+            <div className="space-y-1">
+              <input 
+                type="password" 
+                placeholder="Contraseña" 
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-sm text-white placeholder:text-white/30 focus:border-primary focus:ring-1 focus:ring-primary/50 outline-none transition-all"
+                required
+              />
+            </div>
+
+            <div className="flex items-center justify-between px-1">
+              <label className="flex items-center gap-2 cursor-pointer group">
+                <div 
+                  onClick={() => setRememberMe(!rememberMe)}
+                  className={`w-4 h-4 rounded border transition-all flex items-center justify-center ${rememberMe ? 'bg-primary border-primary' : 'border-white/20'}`}
+                >
+                  {rememberMe && <span className="material-icons-outlined text-antigravity-black text-[12px] font-bold">check</span>}
+                </div>
+                <span className="text-[10px] text-white/40 uppercase font-bold tracking-widest group-hover:text-white/60 transition-colors">Recordarme</span>
+              </label>
+              {!isSignUp && (
+                <button 
+                  type="button"
+                  onClick={handleForgotPassword}
+                  className="text-[10px] text-primary/60 uppercase font-bold tracking-widest hover:text-primary transition-colors"
+                >
+                  ¿Olvidaste tu contraseña?
+                </button>
+              )}
+            </div>
+
+            <button type="submit" className="w-full py-4.5 bg-primary text-antigravity-black rounded-full font-black uppercase text-[10px] tracking-[0.2em] shadow-neon-cyan active:scale-95 transition-all mt-2">
+              {isSignUp ? 'CREAR CUENTA' : 'ENTRAR'}
+            </button>
+          </form>
+
+          <div className="relative py-4">
+            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/10"></div></div>
+            <div className="relative flex justify-center text-[10px] uppercase font-bold tracking-[0.3em]"><span className="bg-antigravity-black px-4 text-white/20 italic">O</span></div>
+          </div>
+
+          <button onClick={handleLogin} className="w-full py-4.5 bg-white/5 border border-white/10 text-white rounded-full font-bold uppercase text-[10px] tracking-[0.18em] active:scale-95 transition-all hover:bg-white/10 flex items-center justify-center gap-3">
             <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-4 h-4" alt="Google" />
             INICIAR CON GOOGLE
           </button>
+
+          <div className="pt-4">
+            <button 
+              onClick={() => setIsSignUp(!isSignUp)}
+              className="text-[11px] text-white/40 font-medium hover:text-white transition-colors"
+            >
+              {isSignUp ? '¿Ya tienes cuenta? Inicia sesión' : '¿No tienes cuenta? Regístrate gratis'}
+            </button>
+          </div>
           
           {loginError && (
             <div className="bg-rose-500/20 border border-rose-500/50 rounded-xl p-4 text-left mt-4">
@@ -1777,58 +1936,79 @@ const App: React.FC = () => {
 
               {isAddingSkill && (
                 <div className="glass-card rounded-2xl p-5 border border-primary/30 space-y-4 shadow-neon-cyan">
-                  <input 
-                    type="text" 
-                    placeholder="Nombre de la habilidad (ej. Mortal Atrás)"
-                    className="w-full bg-antigravity-charcoal border rounded-xl py-3 px-4 text-sm text-white transition-all border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
-                    value={newSkill.name}
-                    onChange={(e) => setNewSkill({...newSkill, name: e.target.value})}
-                  />
-                  <div className="grid grid-cols-2 gap-3">
-                    <input 
-                      list="apparatus-list"
-                      placeholder="Aparato (ej. Suelo)"
-                      className="bg-antigravity-charcoal border rounded-xl py-3 px-4 text-sm text-white transition-all border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest ml-1">Aparato</label>
+                    <select 
+                      className="w-full crafted-input"
                       value={newSkill.apparatus}
-                      onChange={(e) => setNewSkill({...newSkill, apparatus: e.target.value as Apparatus})}
-                    />
-                    <datalist id="apparatus-list">
-                      <option value="Suelo" />
-                      <option value="Viga" />
-                      <option value="Paralelas" />
-                      <option value="Salto" />
-                      <option value="Anillas" />
-                      <option value="Arzones" />
-                      <option value="Barra Fija" />
-                    </datalist>
-                    <input 
-                      list="status-list"
-                      placeholder="Estado (ej. No Iniciado)"
-                      className="bg-antigravity-charcoal border rounded-xl py-3 px-4 text-sm text-white transition-all border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
-                      value={newSkill.status}
-                      onChange={(e) => setNewSkill({...newSkill, status: e.target.value as SkillStatus})}
-                    />
-                    <datalist id="status-list">
-                      <option value="No Iniciado" />
-                      <option value="En Proceso" />
-                      <option value="Dominado" />
-                      <option value="Elite" />
-                    </datalist>
+                      onChange={(e) => setNewSkill({...newSkill, apparatus: e.target.value as Apparatus, name: ''})}
+                    >
+                      {Object.keys(SKILL_TREE).map(ap => (
+                        <option key={ap} value={ap}>{ap}</option>
+                      ))}
+                    </select>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <label className="text-xs text-white/60 font-medium">Nivel:</label>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest ml-1">Habilidad (IFG Tree)</label>
+                    <select 
+                      className="w-full crafted-input"
+                      value={newSkill.name}
+                      onChange={(e) => {
+                        const selectedSkill = SKILL_TREE[newSkill.apparatus as Apparatus]?.find(s => s.name === e.target.value);
+                        setNewSkill({
+                          ...newSkill, 
+                          name: e.target.value,
+                          level: selectedSkill?.difficulty || '1'
+                        });
+                      }}
+                    >
+                      <option value="">Seleccionar habilidad...</option>
+                      {SKILL_TREE[newSkill.apparatus as Apparatus]?.map(s => (
+                        <option key={s.name} value={s.name}>{s.name} ({s.difficulty})</option>
+                      ))}
+                      <option value="custom">-- Otra habilidad --</option>
+                    </select>
+                  </div>
+
+                  {newSkill.name === 'custom' && (
                     <input 
                       type="text" 
-                      placeholder="Ej. 1, E2, USAG 3"
-                      className="flex-1 bg-antigravity-charcoal border rounded-xl py-2 px-3 text-sm text-white transition-all border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
-                      value={newSkill.level}
-                      onChange={(e) => setNewSkill({...newSkill, level: e.target.value})}
+                      placeholder="Nombre de la habilidad personalizada"
+                      className="w-full crafted-input"
+                      onChange={(e) => setNewSkill({...newSkill, name: e.target.value})}
                     />
+                  )}
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest ml-1">Estado</label>
+                      <select 
+                        className="w-full crafted-input"
+                        value={newSkill.status}
+                        onChange={(e) => setNewSkill({...newSkill, status: e.target.value as SkillStatus})}
+                      >
+                        <option value="No Iniciado">No Iniciado</option>
+                        <option value="En Proceso">En Proceso</option>
+                        <option value="Dominado">Dominado</option>
+                        <option value="Elite">Elite</option>
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest ml-1">Dificultad IFG</label>
+                      <input 
+                        type="text" 
+                        placeholder="Nivel/Dificultad"
+                        className="w-full crafted-input"
+                        value={newSkill.level}
+                        onChange={(e) => setNewSkill({...newSkill, level: e.target.value})}
+                      />
+                    </div>
                   </div>
                   <button 
                     onClick={handleAddSkill}
-                    disabled={!newSkill.name}
-                    className="w-full py-3 rounded-xl bg-primary text-antigravity-black font-black uppercase text-[10px] tracking-widest active:scale-95 transition-all disabled:opacity-50"
+                    disabled={!newSkill.name || newSkill.name === 'custom'}
+                    className="w-full py-3 rounded-xl bg-primary text-antigravity-black font-black uppercase text-[10px] tracking-widest active:scale-95 transition-all disabled:opacity-50 shadow-neon-cyan"
                   >
                     Guardar Habilidad
                   </button>
@@ -2268,6 +2448,26 @@ const App: React.FC = () => {
                   </div>
                   <span className="material-icons-outlined text-white/30 text-sm">chevron_right</span>
                 </button>
+
+                <div className="relative">
+                  <input 
+                    type="file" 
+                    id="import-backup" 
+                    className="hidden" 
+                    accept=".json"
+                    onChange={handleImportBackup}
+                  />
+                  <label 
+                    htmlFor="import-backup"
+                    className="w-full flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/10 active:scale-95 transition-all cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="material-icons-outlined text-primary text-lg">cloud_upload</span>
+                      <span className="text-xs font-medium text-white">Importar Copia de Seguridad</span>
+                    </div>
+                    <span className="material-icons-outlined text-white/30 text-sm">chevron_right</span>
+                  </label>
+                </div>
               </div>
 
               {/* Sesión */}
@@ -2300,11 +2500,11 @@ const App: React.FC = () => {
               <div className="space-y-4">
                 <h4 className="text-white font-black text-[10px] border-b border-white/5 pb-2 uppercase tracking-[0.3em] opacity-30 italic">Identificación</h4>
                 <div className="space-y-4">
-                  <input className="w-full bg-antigravity-charcoal border rounded-2xl px-5 py-4 text-sm text-white border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none" placeholder="Nombre y Apellido *" value={studentForm.nombre} onChange={(e) => setStudentForm({...studentForm, nombre: e.target.value})}/>
+                  <input className="w-full crafted-input" placeholder="Nombre y Apellido *" value={studentForm.nombre} onChange={(e) => setStudentForm({...studentForm, nombre: e.target.value})}/>
                   <div className="grid grid-cols-2 gap-4">
-                    <input className="w-full bg-antigravity-charcoal border rounded-2xl px-5 py-4 text-sm text-white border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none" placeholder="DNI (Opcional)" value={studentForm.dni} onChange={(e) => setStudentForm({...studentForm, dni: e.target.value})}/>
+                    <input className="w-full crafted-input" placeholder="DNI (Opcional)" value={studentForm.dni} onChange={(e) => setStudentForm({...studentForm, dni: e.target.value})}/>
                     <div className="relative">
-                      <input type="date" className="w-full bg-antigravity-charcoal border rounded-2xl px-4 py-4 text-sm text-white border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none" value={studentForm.fechaNacimiento} onChange={(e) => setStudentForm({...studentForm, fechaNacimiento: e.target.value})}/>
+                      <input type="date" className="w-full crafted-input" value={studentForm.fechaNacimiento} onChange={(e) => setStudentForm({...studentForm, fechaNacimiento: e.target.value})}/>
                       {!studentForm.fechaNacimiento && <span className="absolute left-4 top-4 text-sm text-slate-400 pointer-events-none">Fecha Nacimiento *</span>}
                     </div>
                   </div>
@@ -2312,10 +2512,10 @@ const App: React.FC = () => {
               </div>
               <div className="space-y-4">
                 <h4 className="text-white font-black text-[10px] border-b border-white/5 pb-2 uppercase tracking-[0.3em] opacity-30 italic">Seguimiento Médico</h4>
-                <textarea className="w-full bg-antigravity-charcoal border rounded-2xl px-5 py-4 text-sm text-white h-24 border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none" placeholder="Observaciones de salud (Opcional)..." onChange={(e) => setStudentForm({...studentForm, alertas: [e.target.value]})}/>
+                <textarea className="w-full crafted-input h-24" placeholder="Observaciones de salud (Opcional)..." onChange={(e) => setStudentForm({...studentForm, alertas: [e.target.value]})}/>
                 <div className="space-y-1">
                   <label className="text-[10px] uppercase font-bold text-slate-500 ml-1">Fecha de Inicio de Actividades</label>
-                  <input type="date" className="w-full bg-antigravity-charcoal border rounded-2xl px-5 py-4 text-sm text-white border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none" value={studentForm.fechaPrimeraClase} onChange={(e) => setStudentForm({...studentForm, fechaPrimeraClase: e.target.value})}/>
+                  <input type="date" className="w-full crafted-input" value={studentForm.fechaPrimeraClase} onChange={(e) => setStudentForm({...studentForm, fechaPrimeraClase: e.target.value})}/>
                 </div>
               </div>
               <button onClick={handleSaveStudent} className="w-full py-5 rounded-3xl bg-accent-purple text-white font-black uppercase tracking-[0.3em] text-[10px] shadow-neon-purple active:scale-95 transition-all">
@@ -2495,7 +2695,19 @@ const App: React.FC = () => {
 
             <div className="space-y-6">
               <div className="glass-card rounded-3xl p-6 border border-white/5 space-y-4">
-                <label className="text-[10px] uppercase font-bold text-primary ml-1 tracking-widest">Fase Inicial (Entrada en calor)</label>
+                <div className="flex justify-between items-center">
+                  <label className="text-[10px] uppercase font-bold text-primary ml-1 tracking-widest">Fase Inicial (Entrada en calor)</label>
+                  <div className="flex items-center gap-2 bg-antigravity-charcoal px-3 py-1 rounded-full border border-white/5">
+                    <span className="material-icons-outlined text-[14px] text-white/40">schedule</span>
+                    <input 
+                      type="number" 
+                      value={faseInicialDuration} 
+                      onChange={(e) => setFaseInicialDuration(e.target.value)}
+                      className="w-8 bg-transparent text-[10px] text-white font-bold outline-none text-center" 
+                    />
+                    <span className="text-[8px] text-white/20 uppercase font-black">min</span>
+                  </div>
+                </div>
                 <div className="flex flex-wrap gap-2">
                   {['Movilidad articular', 'Trote', 'Juegos', 'Estiramiento dinámico'].map(opt => (
                     <button 
@@ -2522,7 +2734,7 @@ const App: React.FC = () => {
                     value={customInicial} 
                     onChange={(e) => setCustomInicial(e.target.value)} 
                     placeholder="Agregar otra opción..." 
-                    className="flex-1 bg-antigravity-charcoal border rounded-xl px-4 py-2 text-xs text-white border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
+                    className="flex-1 crafted-input !py-2"
                   />
                   <button 
                     onClick={() => { if(customInicial) { setFaseInicial(prev => [...prev, customInicial]); setCustomInicial(""); } }}
@@ -2534,7 +2746,19 @@ const App: React.FC = () => {
               </div>
 
               <div className="glass-card rounded-3xl p-6 border border-white/5 space-y-4">
-                <label className="text-[10px] uppercase font-bold text-primary ml-1 tracking-widest">Fase Principal (Aparatos)</label>
+                <div className="flex justify-between items-center">
+                  <label className="text-[10px] uppercase font-bold text-primary ml-1 tracking-widest">Fase Principal (Aparatos)</label>
+                  <div className="flex items-center gap-2 bg-antigravity-charcoal px-3 py-1 rounded-full border border-white/5">
+                    <span className="material-icons-outlined text-[14px] text-white/40">schedule</span>
+                    <input 
+                      type="number" 
+                      value={fasePrincipalDuration} 
+                      onChange={(e) => setFasePrincipalDuration(e.target.value)}
+                      className="w-8 bg-transparent text-[10px] text-white font-bold outline-none text-center" 
+                    />
+                    <span className="text-[8px] text-white/20 uppercase font-black">min</span>
+                  </div>
+                </div>
                 <div className="flex flex-wrap gap-2">
                   {['Viga de equilibrio', 'Paralelas asimétricas', 'Suelo', 'Salto', 'Anillas', 'Arzones', 'Barra Fija', 'Trampolín'].map(opt => (
                     <button 
@@ -2561,7 +2785,7 @@ const App: React.FC = () => {
                     value={customPrincipal} 
                     onChange={(e) => setCustomPrincipal(e.target.value)} 
                     placeholder="Ej. Tela acrobática..." 
-                    className="flex-1 bg-antigravity-charcoal border rounded-xl px-4 py-2 text-xs text-white border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
+                    className="flex-1 crafted-input !py-2"
                   />
                   <button 
                     onClick={() => { if(customPrincipal) { setFasePrincipal(prev => [...prev, customPrincipal]); setCustomPrincipal(""); } }}
@@ -2593,7 +2817,7 @@ const App: React.FC = () => {
                             value={customHabilidad[aparato] || ""} 
                             onChange={(e) => setCustomHabilidad(prev => ({...prev, [aparato]: e.target.value}))} 
                             placeholder={`Ej. Rol adelante en ${aparato}...`} 
-                            className="flex-1 bg-antigravity-charcoal border rounded-xl px-4 py-2 text-xs text-white border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
+                            className="flex-1 crafted-input !py-2"
                           />
                           <button 
                             onClick={() => { 
@@ -2615,7 +2839,19 @@ const App: React.FC = () => {
               </div>
 
               <div className="glass-card rounded-3xl p-6 border border-white/5 space-y-4">
-                <label className="text-[10px] uppercase font-bold text-primary ml-1 tracking-widest">Fase Final</label>
+                <div className="flex justify-between items-center">
+                  <label className="text-[10px] uppercase font-bold text-primary ml-1 tracking-widest">Fase Final</label>
+                  <div className="flex items-center gap-2 bg-antigravity-charcoal px-3 py-1 rounded-full border border-white/5">
+                    <span className="material-icons-outlined text-[14px] text-white/40">schedule</span>
+                    <input 
+                      type="number" 
+                      value={faseFinalDuration} 
+                      onChange={(e) => setFaseFinalDuration(e.target.value)}
+                      className="w-8 bg-transparent text-[10px] text-white font-bold outline-none text-center" 
+                    />
+                    <span className="text-[8px] text-white/20 uppercase font-black">min</span>
+                  </div>
+                </div>
                 <div className="flex flex-wrap gap-2">
                   {['Elongación', 'Relajación', 'Feedback'].map(opt => (
                     <button 
@@ -2642,7 +2878,7 @@ const App: React.FC = () => {
                     value={customFinal} 
                     onChange={(e) => setCustomFinal(e.target.value)} 
                     placeholder="Agregar otra opción..." 
-                    className="flex-1 bg-antigravity-charcoal border rounded-xl px-4 py-2 text-xs text-white border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
+                    className="flex-1 crafted-input !py-2"
                   />
                   <button 
                     onClick={() => { if(customFinal) { setFaseFinal(prev => [...prev, customFinal]); setCustomFinal(""); } }}
