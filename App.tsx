@@ -31,7 +31,7 @@ const EditableDropdown = ({
 
   return (
     <div className="space-y-1 relative">
-      <label className="text-[10px] uppercase font-bold text-slate-500 ml-1">{label}</label>
+      <label className="text-[10px] uppercase font-bold text-slate-300 ml-1">{label}</label>
       <div className="relative group">
         <select 
           value={value} 
@@ -422,6 +422,69 @@ const App: React.FC = () => {
   };
 
   const [asistenciasGlobales, setAsistenciasGlobales] = useState<Record<string, { presentes: number, total: number }>>({});
+  const [monthlyStats, setMonthlyStats] = useState<Record<string, { attended: number, expected: number }>>({});
+  const [reportMonth, setReportMonth] = useState(new Date().getMonth());
+  const [reportYear, setReportYear] = useState(new Date().getFullYear());
+  const [isLoadingMonthly, setIsLoadingMonthly] = useState(false);
+
+  const calculateExpectedClasses = (groupDias: string[], month: number, year: number) => {
+    if (!groupDias || groupDias.length === 0) return 0;
+    
+    const dayIndices = groupDias.map(d => {
+      const idx = parseInt(d.split('-')[1]);
+      // L-0=1, M-1=2, M-2=3, J-3=4, V-4=5, S-5=6, D-6=0
+      return idx === 6 ? 0 : idx + 1;
+    });
+
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    let count = 0;
+    for (let d = 1; d <= daysInMonth; d++) {
+      const date = new Date(year, month, d);
+      if (dayIndices.includes(date.getDay())) {
+        count++;
+      }
+    }
+    return count;
+  };
+
+  const loadMonthlyReport = async (groupName: string, month: number, year: number) => {
+    setIsLoadingMonthly(true);
+    const group = grupos.find(g => g.nombre === groupName);
+    if (!group) {
+      setIsLoadingMonthly(false);
+      return;
+    }
+
+    const expectedCount = calculateExpectedClasses(group.dias || [], month, year);
+
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const start = new Date(year, month, 1).toISOString().split('T')[0];
+    const end = new Date(year, month, daysInMonth).toISOString().split('T')[0];
+    
+    const q = query(
+      collection(firestore, COLLECTIONS.ASISTENCIAS),
+      where('grupo', '==', groupName),
+      where('fecha', '>=', start),
+      where('fecha', '<=', end)
+    );
+    
+    const snap = await getDocs(q);
+    const stats: Record<string, { attended: number, expected: number }> = {};
+    
+    alumnos.filter(a => a.grupo === groupName).forEach(a => {
+      stats[a.id!] = { attended: 0, expected: expectedCount };
+    });
+
+    snap.forEach(doc => {
+      const data = doc.data() as AsistenciaRecord;
+      if (stats[data.alumnoId] && data.presente) {
+        stats[data.alumnoId].attended += 1;
+      }
+    });
+
+    setMonthlyStats(stats);
+    setIsLoadingMonthly(false);
+  };
 
   const loadGlobalAttendance = async () => {
     if (userRole !== 'Coordinator') return;
@@ -1038,7 +1101,7 @@ const App: React.FC = () => {
         <h1 className="text-[42px] font-extrabold tracking-tighter mb-1 text-white leading-none">
           GymCoach <span className="text-primary">Pro</span>
         </h1>
-        <p className="text-white/40 text-[10px] font-bold italic uppercase tracking-[0.4em] mb-12 whitespace-nowrap">
+        <p className="text-white/70 text-[10px] font-bold italic uppercase tracking-[0.4em] mb-12 whitespace-nowrap">
           ELITE GYMNASTICS MANAGEMENT
         </p>
 
@@ -1050,7 +1113,7 @@ const App: React.FC = () => {
                 placeholder="Email" 
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-sm text-white placeholder:text-white/30 focus:border-primary focus:ring-1 focus:ring-primary/50 outline-none transition-all"
+                className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-sm text-white placeholder:text-white/70 focus:border-primary focus:ring-1 focus:ring-primary/50 outline-none transition-all"
                 required
               />
             </div>
@@ -1060,7 +1123,7 @@ const App: React.FC = () => {
                 placeholder="Contraseña" 
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-sm text-white placeholder:text-white/30 focus:border-primary focus:ring-1 focus:ring-primary/50 outline-none transition-all"
+                className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-sm text-white placeholder:text-white/70 focus:border-primary focus:ring-1 focus:ring-primary/50 outline-none transition-all"
                 required
               />
             </div>
@@ -1073,7 +1136,7 @@ const App: React.FC = () => {
                 >
                   {rememberMe && <span className="material-icons-outlined text-antigravity-black text-[12px] font-bold">check</span>}
                 </div>
-                <span className="text-[10px] text-white/40 uppercase font-bold tracking-widest group-hover:text-white/60 transition-colors">Recordarme</span>
+                <span className="text-[10px] text-white/70 uppercase font-bold tracking-widest group-hover:text-white/80 transition-colors">Recordarme</span>
               </label>
               {!isSignUp && (
                 <button 
@@ -1093,7 +1156,7 @@ const App: React.FC = () => {
 
           <div className="relative py-4">
             <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/10"></div></div>
-            <div className="relative flex justify-center text-[10px] uppercase font-bold tracking-[0.3em]"><span className="bg-antigravity-black px-4 text-white/20 italic">O</span></div>
+            <div className="relative flex justify-center text-[10px] uppercase font-bold tracking-[0.3em]"><span className="bg-antigravity-black px-4 text-white/50 italic">O</span></div>
           </div>
 
           <button onClick={handleLogin} className="w-full py-4.5 bg-white/5 border border-white/10 text-white rounded-full font-bold uppercase text-[10px] tracking-[0.18em] active:scale-95 transition-all hover:bg-white/10 flex items-center justify-center gap-3">
@@ -1104,7 +1167,7 @@ const App: React.FC = () => {
           <div className="pt-4">
             <button 
               onClick={() => setIsSignUp(!isSignUp)}
-              className="text-[11px] text-white/40 font-medium hover:text-white transition-colors"
+              className="text-[11px] text-white/70 font-medium hover:text-white transition-colors"
             >
               {isSignUp ? '¿Ya tienes cuenta? Inicia sesión' : '¿No tienes cuenta? Regístrate gratis'}
             </button>
@@ -1123,7 +1186,7 @@ const App: React.FC = () => {
             </div>
           )}
 
-          <p className="text-[9px] text-white/30 uppercase tracking-widest mt-4">
+          <p className="text-[9px] text-white/60 uppercase tracking-widest mt-4">
             Acceso restringido para personal autorizado
           </p>
         </div>
@@ -1305,7 +1368,7 @@ const App: React.FC = () => {
                         <h4 className="text-xs font-bold text-white truncate">{g.nombre}</h4>
                         <div className="flex items-end justify-between">
                           <span className={`text-xl font-black ${isTaken ? 'text-primary' : 'text-rose-500'}`}>
-                            {stats.presentes}<span className="text-[10px] text-white/20 mx-1">/</span>{stats.total}
+                            {stats.presentes}<span className="text-[10px] text-white/50 mx-1">/</span>{stats.total}
                           </span>
                           <span className={`text-[8px] font-black uppercase tracking-widest ${isTaken ? 'text-primary/60' : 'text-rose-500/60'}`}>
                             {isTaken ? 'Enviada' : 'Pendiente'}
@@ -1427,7 +1490,7 @@ const App: React.FC = () => {
               </div>
               <div className="glass-card rounded-[2.5rem] p-6 space-y-6">
                 <div className="flex justify-between items-center px-1">
-                  {['L', 'M', 'M', 'J', 'V', 'S'].map((day, idx) => {
+                  {['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((day, idx) => {
                     const id = `${day}-${idx}`;
                     const isSelected = selectedDays.includes(id);
                     return (
@@ -1448,13 +1511,13 @@ const App: React.FC = () => {
                   
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1">
-                      <label className="text-[10px] uppercase font-bold text-slate-500 ml-1">Desde</label>
+                      <label className="text-[10px] uppercase font-bold text-slate-300 ml-1">Desde</label>
                       <select value={startTime} onChange={(e) => setStartTime(e.target.value)} className="w-full bg-antigravity-charcoal rounded-2xl px-4 py-3 text-sm text-white appearance-none border border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none">
                         {timeIntervals.map(t => <option key={t} value={t} className="bg-antigravity-charcoal">{t}</option>)}
                       </select>
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[10px] uppercase font-bold text-slate-500 ml-1">Hasta</label>
+                      <label className="text-[10px] uppercase font-bold text-slate-300 ml-1">Hasta</label>
                       <select value={endTime} onChange={(e) => setEndTime(e.target.value)} className="w-full bg-antigravity-charcoal rounded-2xl px-4 py-3 text-sm text-white appearance-none border border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none">
                         {timeIntervals.map(t => <option key={t} value={t} className="bg-antigravity-charcoal">{t}</option>)}
                       </select>
@@ -1475,7 +1538,7 @@ const App: React.FC = () => {
                   <div className="flex justify-between items-start">
                     <div>
                       <h4 className="font-bold text-white text-lg tracking-tight leading-none">{g.nombre}</h4>
-                      <p className="text-xs text-slate-400 mt-2 font-medium italic">{g.horario}</p>
+                      <p className="text-xs text-slate-200 mt-2 font-medium italic">{g.horario}</p>
                       {g.entrenador && <p className="text-[10px] text-primary mt-1 font-bold uppercase tracking-wider">Prof: {g.entrenador}</p>}
                     </div>
                     <div className="flex flex-col items-end gap-2">
@@ -1529,8 +1592,17 @@ const App: React.FC = () => {
                 <button onClick={() => setVista('Dashboard')} className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 border border-white/20 bg-white/20 border-primary/50 placeholder:text-white/50 text-white">
                   <span className="material-symbols-outlined text-[20px]">arrow_back_ios_new</span>
                 </button>
-                <h1 className="text-sm font-bold tracking-widest uppercase text-white/60">Asistencia</h1>
-                <div className="w-10"></div>
+                <h1 className="text-sm font-bold tracking-widest uppercase text-white/80">Asistencia</h1>
+                <button 
+                  onClick={() => {
+                    loadMonthlyReport(activeGroup.nombre, reportMonth, reportYear);
+                    setVista('ReportePDF');
+                  }}
+                  className="w-10 h-10 flex items-center justify-center rounded-full bg-primary/10 border border-primary/30 text-primary"
+                  title="Reporte Mensual"
+                >
+                  <span className="material-icons-outlined text-[20px]">assessment</span>
+                </button>
               </div>
               <div className="flex justify-between items-end">
                 <div>
@@ -1540,7 +1612,7 @@ const App: React.FC = () => {
                   </p>
                 </div>
                 <div className="text-right">
-                  <span className="text-[10px] font-bold text-white/40 uppercase tracking-[0.2em]">Presentes</span>
+                  <span className="text-[10px] font-bold text-white/70 uppercase tracking-[0.2em]">Presentes</span>
                   <div className="text-2xl font-bold text-neon-cyan neon-glow-cyan">
                     {presentCount}<span className="text-white/20 mx-1">/</span>{filteredAlumnos.length}
                   </div>
@@ -1550,7 +1622,7 @@ const App: React.FC = () => {
 
             <div className="px-6 pt-2 pb-4">
               <div className="relative group">
-                <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-white/30 text-xl group-focus-within:text-neon-cyan transition-colors">search</span>
+                <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-white/60 text-xl group-focus-within:text-neon-cyan transition-colors">search</span>
                 <input 
                   className="w-full crafted-input pl-12 !py-3.5 !border-neon-cyan/50 !ring-neon-cyan/50" 
                   placeholder="Buscar alumno..." 
@@ -1590,7 +1662,7 @@ const App: React.FC = () => {
                               <span className="material-icons-outlined text-amber-500 text-[16px] animate-pulse" title="Alerta Médica">warning</span>
                             )}
                           </div>
-                          <p className={`text-[10px] font-bold uppercase tracking-wider mt-2 ${asistenciasHoy[alumno.id!] ? 'text-white/40' : 'text-white/30'}`}>{alumno.nivel}</p>
+                          <p className={`text-[10px] font-bold uppercase tracking-wider mt-2 ${asistenciasHoy[alumno.id!] ? 'text-white/70' : 'text-white/60'}`}>{alumno.nivel}</p>
                         </div>
                       </div>
                       
@@ -1637,7 +1709,7 @@ const App: React.FC = () => {
                         {/* Emergency Contacts */}
                         {alumno.contacto && (
                           <div className="bg-white/5 rounded-xl p-3 space-y-3">
-                            <h5 className="text-[10px] font-bold text-white/40 uppercase tracking-widest flex items-center gap-1">
+                            <h5 className="text-[10px] font-bold text-white/70 uppercase tracking-widest flex items-center gap-1">
                               <span className="material-icons-outlined text-[14px]">contact_phone</span>
                               Contactos de Emergencia
                             </h5>
@@ -1646,7 +1718,7 @@ const App: React.FC = () => {
                               {alumno.contacto.emergenciaNombre && alumno.contacto.emergenciaTelefono && (
                                 <div className="flex items-center justify-between bg-black/20 p-2 rounded-lg">
                                   <div>
-                                    <p className="text-[10px] text-white/40 uppercase">Emergencia</p>
+                                    <p className="text-[10px] text-white/70 uppercase">Emergencia</p>
                                     <p className="text-xs text-white font-medium">{alumno.contacto.emergenciaNombre}</p>
                                   </div>
                                   <a href={`tel:${alumno.contacto.emergenciaTelefono}`} className="w-8 h-8 rounded-full bg-rose-500/20 text-rose-500 flex items-center justify-center">
@@ -1658,7 +1730,7 @@ const App: React.FC = () => {
                               {alumno.contacto.padreNombre && alumno.contacto.padreTelefono && (
                                 <div className="flex items-center justify-between bg-black/20 p-2 rounded-lg">
                                   <div>
-                                    <p className="text-[10px] text-white/40 uppercase">Padre</p>
+                                    <p className="text-[10px] text-white/70 uppercase">Padre</p>
                                     <p className="text-xs text-white font-medium">{alumno.contacto.padreNombre}</p>
                                   </div>
                                   <a href={`tel:${alumno.contacto.padreTelefono}`} className="w-8 h-8 rounded-full bg-neon-cyan/20 text-neon-cyan flex items-center justify-center">
@@ -1670,7 +1742,7 @@ const App: React.FC = () => {
                               {alumno.contacto.madreNombre && alumno.contacto.madreTelefono && (
                                 <div className="flex items-center justify-between bg-black/20 p-2 rounded-lg">
                                   <div>
-                                    <p className="text-[10px] text-white/40 uppercase">Madre</p>
+                                    <p className="text-[10px] text-white/70 uppercase">Madre</p>
                                     <p className="text-xs text-white font-medium">{alumno.contacto.madreNombre}</p>
                                   </div>
                                   <a href={`tel:${alumno.contacto.madreTelefono}`} className="w-8 h-8 rounded-full bg-neon-cyan/20 text-neon-cyan flex items-center justify-center">
@@ -1683,7 +1755,7 @@ const App: React.FC = () => {
                         )}
                         
                         {(!alumno.contacto || (!alumno.contacto.emergenciaTelefono && !alumno.contacto.padreTelefono && !alumno.contacto.madreTelefono)) && (
-                          <p className="text-[10px] text-white/30 italic text-center">No hay contactos registrados</p>
+                          <p className="text-[10px] text-white/60 italic text-center">No hay contactos registrados</p>
                         )}
                       </div>
                     )}
@@ -1721,7 +1793,7 @@ const App: React.FC = () => {
             </div>
             <div className="flex items-center gap-4">
               <div className="text-right">
-                <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Total</p>
+                <p className="text-[10px] font-bold text-white/70 uppercase tracking-widest">Total</p>
                 <p className="text-2xl font-black text-white">
                   {alumnos
                     .filter(a => alumnosFilterMode === 'alerts' ? (a.alertas && a.alertas.length > 0 && a.alertas[0] !== '') : true)
@@ -1743,7 +1815,7 @@ const App: React.FC = () => {
 
           <div className="space-y-4">
             <div className="relative">
-              <span className="material-icons-outlined absolute left-4 top-1/2 -translate-y-1/2 text-white/20">search</span>
+              <span className="material-icons-outlined absolute left-4 top-1/2 -translate-y-1/2 text-white/50">search</span>
               <input 
                 className="w-full crafted-input pl-12"
                 placeholder="Buscar por nombre o DNI..."
@@ -1761,7 +1833,7 @@ const App: React.FC = () => {
                   className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all border ${
                     selectedDisciplina === disc 
                       ? 'bg-primary text-antigravity-black border-primary shadow-neon-cyan' 
-                      : 'bg-white/5 text-white/40 border-white/10 hover:border-white/20'
+                      : 'bg-white/5 text-white/70 border-white/10 hover:border-white/20'
                   }`}
                 >
                   {disc}
@@ -1863,10 +1935,10 @@ const App: React.FC = () => {
                               <span className="material-icons-outlined text-amber-500 text-[16px] animate-pulse" title="Alerta Médica">warning</span>
                             )}
                           </div>
-                          <p className="text-[10px] text-slate-500 font-medium uppercase tracking-wider">{alumno.grupo} • {alumno.nivel}</p>
+                          <p className="text-[10px] text-slate-300 font-medium uppercase tracking-wider">{alumno.grupo} • {alumno.nivel}</p>
                         </div>
                       </div>
-                      <button className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/40">
+                      <button className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/70">
                         <span className="material-icons-outlined text-sm">chevron_right</span>
                       </button>
                     </div>
@@ -1908,7 +1980,7 @@ const App: React.FC = () => {
                 
                 <div className="space-y-4">
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest ml-1">Información Básica</label>
+                    <label className="text-[10px] font-bold text-white/70 uppercase tracking-widest ml-1">Información Básica</label>
                     <input 
                       type="text" 
                       placeholder="Nombre completo" 
@@ -1966,7 +2038,7 @@ const App: React.FC = () => {
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest ml-1">Observaciones de Salud</label>
+                    <label className="text-[10px] font-bold text-white/70 uppercase tracking-widest ml-1">Observaciones de Salud</label>
                     <textarea 
                       className="w-full crafted-input h-20"
                       placeholder="Alergias, lesiones, condiciones médicas..."
@@ -1976,7 +2048,7 @@ const App: React.FC = () => {
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest ml-1">Contacto de Emergencia</label>
+                    <label className="text-[10px] font-bold text-white/70 uppercase tracking-widest ml-1">Contacto de Emergencia</label>
                     <div className="grid grid-cols-2 gap-3">
                       <input 
                         type="text" 
@@ -2019,12 +2091,12 @@ const App: React.FC = () => {
               <h3 className="text-white font-bold text-lg px-1">Resumen de Progreso</h3>
               <div className="grid grid-cols-2 gap-4">
                 <div className="glass-card rounded-2xl p-4 border border-white/5 flex flex-col items-center justify-center text-center">
-                  <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1">Habilidades</p>
+                  <p className="text-[10px] font-bold text-white/70 uppercase tracking-widest mb-1">Habilidades</p>
                   <p className="text-2xl font-black text-white">{selectedAlumno.habilidades?.length || 0}</p>
                   <p className="text-[9px] text-primary font-bold uppercase mt-1">Registradas</p>
                 </div>
                 <div className="glass-card rounded-2xl p-4 border border-white/5 flex flex-col items-center justify-center text-center">
-                  <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1">Dominadas</p>
+                  <p className="text-[10px] font-bold text-white/70 uppercase tracking-widest mb-1">Dominadas</p>
                   <p className="text-2xl font-black text-emerald-400">{selectedAlumno.habilidades?.filter(s => s.status === 'Dominado' || s.status === 'Elite').length || 0}</p>
                   <p className="text-[9px] text-emerald-500/60 font-bold uppercase mt-1">Logros</p>
                 </div>
@@ -2032,7 +2104,7 @@ const App: React.FC = () => {
               
               {/* Apparatus Progress */}
               <div className="glass-card rounded-2xl p-5 border border-white/5 space-y-4">
-                <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Progreso por Aparato</p>
+                <p className="text-[10px] font-bold text-white/70 uppercase tracking-widest">Progreso por Aparato</p>
                 <div className="space-y-3">
                   {Object.keys(SKILL_TREE).map(apparatus => {
                     const skills = selectedAlumno.habilidades?.filter(s => s.apparatus === apparatus) || [];
@@ -2063,7 +2135,7 @@ const App: React.FC = () => {
             <section className="space-y-4">
               <div className="flex justify-between items-center px-1">
                 <h3 className="text-white font-bold text-lg">Historial de Asistencia</h3>
-                <div className="text-[10px] font-bold text-white/40 uppercase tracking-widest">
+                <div className="text-[10px] font-bold text-white/70 uppercase tracking-widest">
                   {alumnoAsistencias.filter(a => a.presente).length} Presentes
                 </div>
               </div>
@@ -2081,7 +2153,7 @@ const App: React.FC = () => {
                           <div className={`w-2 h-2 rounded-full ${record.presente ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-rose-500'}`}></div>
                           <div>
                             <p className="text-xs font-bold text-white">{new Date(record.fecha).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'short' })}</p>
-                            <p className="text-[9px] text-white/30 uppercase font-bold tracking-widest">{record.grupo}</p>
+                            <p className="text-[9px] text-white/60 uppercase font-bold tracking-widest">{record.grupo}</p>
                           </div>
                         </div>
                         <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-md ${record.presente ? 'text-emerald-400 bg-emerald-500/10' : 'text-rose-400 bg-rose-500/10'}`}>
@@ -2116,7 +2188,7 @@ const App: React.FC = () => {
               {isAddingSkill && (
                 <div className="glass-card rounded-2xl p-5 border border-primary/30 space-y-4 shadow-neon-cyan">
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest ml-1">Aparato</label>
+                    <label className="text-[10px] font-bold text-white/70 uppercase tracking-widest ml-1">Aparato</label>
                     <select 
                       className="w-full crafted-input"
                       value={newSkill.apparatus}
@@ -2129,7 +2201,7 @@ const App: React.FC = () => {
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest ml-1">Habilidad (IFG Tree)</label>
+                    <label className="text-[10px] font-bold text-white/70 uppercase tracking-widest ml-1">Habilidad (IFG Tree)</label>
                     <select 
                       className="w-full crafted-input"
                       value={newSkill.name}
@@ -2161,7 +2233,7 @@ const App: React.FC = () => {
 
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest ml-1">Estado</label>
+                      <label className="text-[10px] font-bold text-white/70 uppercase tracking-widest ml-1">Estado</label>
                       <select 
                         className="w-full crafted-input"
                         value={newSkill.status}
@@ -2174,7 +2246,7 @@ const App: React.FC = () => {
                       </select>
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest ml-1">Dificultad IFG</label>
+                      <label className="text-[10px] font-bold text-white/70 uppercase tracking-widest ml-1">Dificultad IFG</label>
                       <input 
                         type="text" 
                         placeholder="Nivel/Dificultad"
@@ -2260,20 +2332,20 @@ const App: React.FC = () => {
                           <div className="flex items-center justify-between">
                             <div className="flex-1" onClick={() => { setEditingSkillId(skill.id); setEditingSkillData(skill); }}>
                               <h4 className="text-sm font-bold text-white">{skill.name}</h4>
-                              <p className="text-[10px] text-slate-500 font-medium uppercase tracking-wider mt-1">{skill.apparatus} • Nivel {skill.level}</p>
+                              <p className="text-[10px] text-slate-300 font-medium uppercase tracking-wider mt-1">{skill.apparatus} • Nivel {skill.level}</p>
                             </div>
                             <div className="flex items-center gap-3">
                               <div className={`px-3 py-1 rounded-lg border text-[9px] font-black uppercase tracking-widest ${
                                 skill.status === 'Dominado' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
                                 skill.status === 'En Proceso' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
                                 skill.status === 'Elite' ? 'bg-accent-purple/10 text-accent-purple border-accent-purple/20' :
-                                'bg-white/5 text-white/40 border-white/10'
+                                'bg-white/5 text-white/70 border-white/10'
                               }`}>
                                 {skill.status}
                               </div>
                               <button 
                                 onClick={() => { setEditingSkillId(skill.id); setEditingSkillData(skill); }}
-                                className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/40 active:scale-90 transition-all"
+                                className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/70 active:scale-90 transition-all"
                               >
                                 <span className="material-icons-outlined text-sm">edit</span>
                               </button>
@@ -2282,7 +2354,7 @@ const App: React.FC = () => {
                           
                           {skill.history && skill.history.length > 0 && (
                             <div className="mt-1 pt-3 border-t border-white/5">
-                              <p className="text-[9px] text-slate-500 uppercase tracking-widest mb-2 font-bold">
+                              <p className="text-[9px] text-slate-300 uppercase tracking-widest mb-2 font-bold">
                                 Línea de tiempo
                                 {skill.status === 'Dominado' && skill.history.length > 1 && (
                                   <span className="text-emerald-400 ml-1">
@@ -2294,7 +2366,7 @@ const App: React.FC = () => {
                                 {skill.history.map((h, i) => (
                                   <div key={i} className="flex items-center gap-2 text-[10px]">
                                     <span className="w-1.5 h-1.5 rounded-full bg-primary/50"></span>
-                                    <span className="text-slate-400 min-w-[70px]">{new Date(h.date).toLocaleDateString()}</span>
+                                    <span className="text-slate-200 min-w-[70px]">{new Date(h.date).toLocaleDateString()}</span>
                                     <span className="text-white/80 font-medium">{h.status}</span>
                                   </div>
                                 ))}
@@ -2323,7 +2395,7 @@ const App: React.FC = () => {
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-[10px] uppercase font-bold text-slate-500 ml-1">Fecha</label>
+                  <label className="text-[10px] uppercase font-bold text-slate-300 ml-1">Fecha</label>
                   <input 
                     type="date" 
                     value={planesFilterDate} 
@@ -2332,7 +2404,7 @@ const App: React.FC = () => {
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] uppercase font-bold text-slate-500 ml-1">Profesor</label>
+                  <label className="text-[10px] uppercase font-bold text-slate-300 ml-1">Profesor</label>
                   <select 
                     value={planesFilterCoach} 
                     onChange={(e) => setPlanesFilterCoach(e.target.value)} 
@@ -2377,7 +2449,7 @@ const App: React.FC = () => {
                       <p className="text-[10px] text-primary font-bold uppercase tracking-widest mt-2">{new Date(clase.fecha).toLocaleDateString()} • {clase.entrenador}</p>
                     </div>
                     <div className="w-10 h-10 bg-white/5 rounded-xl flex items-center justify-center border border-white/10">
-                      <span className="material-icons-outlined text-white/40 text-sm">description</span>
+                      <span className="material-icons-outlined text-white/70 text-sm">description</span>
                     </div>
                   </div>
                   
@@ -2429,7 +2501,7 @@ const App: React.FC = () => {
                     <div className="space-y-4">
                       <h4 className="text-white font-bold text-sm border-b border-white/10 pb-2">Servicio Público</h4>
                       <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest px-2">Nombre</label>
+                        <label className="text-[10px] font-bold text-white/70 uppercase tracking-widest px-2">Nombre</label>
                         <input 
                           type="text" 
                           value={emergencyInfo.publicProvider}
@@ -2439,7 +2511,7 @@ const App: React.FC = () => {
                         />
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest px-2">Teléfono</label>
+                        <label className="text-[10px] font-bold text-white/70 uppercase tracking-widest px-2">Teléfono</label>
                         <input 
                           type="tel" 
                           value={emergencyInfo.publicPhone}
@@ -2453,7 +2525,7 @@ const App: React.FC = () => {
                     <div className="space-y-4">
                       <h4 className="text-white font-bold text-sm border-b border-white/10 pb-2">Servicio Privado</h4>
                       <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest px-2">Nombre</label>
+                        <label className="text-[10px] font-bold text-white/70 uppercase tracking-widest px-2">Nombre</label>
                         <input 
                           type="text" 
                           value={emergencyInfo.privateProvider}
@@ -2463,7 +2535,7 @@ const App: React.FC = () => {
                         />
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest px-2">Teléfono</label>
+                        <label className="text-[10px] font-bold text-white/70 uppercase tracking-widest px-2">Teléfono</label>
                         <input 
                           type="tel" 
                           value={emergencyInfo.privatePhone}
@@ -2529,7 +2601,7 @@ const App: React.FC = () => {
 
                     <button 
                       onClick={() => setIsEditingEmergency(true)}
-                      className="text-[10px] text-white/40 uppercase tracking-widest font-bold hover:text-white transition-colors flex items-center justify-center gap-1 mx-auto pt-4"
+                      className="text-[10px] text-white/70 uppercase tracking-widest font-bold hover:text-white transition-colors flex items-center justify-center gap-1 mx-auto pt-4"
                     >
                       <span className="material-icons-outlined text-[14px]">edit</span>
                       Configurar Números
@@ -2559,7 +2631,7 @@ const App: React.FC = () => {
             <div className="glass-card rounded-[2.5rem] p-8 space-y-8">
               {/* Perfil */}
               <div className="space-y-4">
-                <h3 className="text-white/40 text-[10px] font-bold uppercase tracking-widest px-2">Perfil de Usuario</h3>
+                <h3 className="text-white/70 text-[10px] font-bold uppercase tracking-widest px-2">Perfil de Usuario</h3>
                 <div className="flex items-center gap-4 p-4 bg-white/5 rounded-2xl border border-white/10">
                   <div className="w-12 h-12 bg-primary/20 rounded-xl flex items-center justify-center border border-primary/30">
                     <span className="material-icons-outlined text-primary text-2xl">person</span>
@@ -2573,7 +2645,7 @@ const App: React.FC = () => {
 
               {/* Preferencias */}
               <div className="space-y-4">
-                <h3 className="text-white/40 text-[10px] font-bold uppercase tracking-widest px-2">Preferencias</h3>
+                <h3 className="text-white/70 text-[10px] font-bold uppercase tracking-widest px-2">Preferencias</h3>
                 
                 <div className="space-y-2">
                   <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/10">
@@ -2603,7 +2675,7 @@ const App: React.FC = () => {
 
               {/* Datos */}
               <div className="space-y-4">
-                <h3 className="text-white/40 text-[10px] font-bold uppercase tracking-widest px-2">Gestión de Datos</h3>
+                <h3 className="text-white/70 text-[10px] font-bold uppercase tracking-widest px-2">Gestión de Datos</h3>
                 <button 
                   onClick={() => {
                     const data = { alumnos, clases, grupos, profesores: profesoresList };
@@ -2644,7 +2716,7 @@ const App: React.FC = () => {
                       <span className="material-icons-outlined text-primary text-lg">cloud_upload</span>
                       <span className="text-xs font-medium text-white">Importar Copia de Seguridad</span>
                     </div>
-                    <span className="material-icons-outlined text-white/30 text-sm">chevron_right</span>
+                    <span className="material-icons-outlined text-white/60 text-sm">chevron_right</span>
                   </label>
                 </div>
               </div>
@@ -2680,16 +2752,16 @@ const App: React.FC = () => {
                 <h4 className="text-white font-black text-[10px] border-b border-white/5 pb-2 uppercase tracking-[0.3em] opacity-30 italic">Identificación</h4>
                 <div className="space-y-4">
                   <div className="space-y-1">
-                    <label className="text-[10px] uppercase font-bold text-slate-500 ml-1">Nombre y Apellido *</label>
+                    <label className="text-[10px] uppercase font-bold text-slate-300 ml-1">Nombre y Apellido *</label>
                     <input className="w-full crafted-input" placeholder="Nombre completo..." value={studentForm.nombre} onChange={(e) => setStudentForm({...studentForm, nombre: e.target.value})}/>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1">
-                      <label className="text-[10px] uppercase font-bold text-slate-500 ml-1">DNI (Opcional)</label>
+                      <label className="text-[10px] uppercase font-bold text-slate-300 ml-1">DNI (Opcional)</label>
                       <input className="w-full crafted-input" placeholder="Número..." value={studentForm.dni} onChange={(e) => setStudentForm({...studentForm, dni: e.target.value})}/>
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[10px] uppercase font-bold text-slate-500 ml-1">Fecha Nacimiento *</label>
+                      <label className="text-[10px] uppercase font-bold text-slate-300 ml-1">Fecha Nacimiento *</label>
                       <input type="date" className="w-full crafted-input" value={studentForm.fechaNacimiento} onChange={(e) => setStudentForm({...studentForm, fechaNacimiento: e.target.value})}/>
                     </div>
                   </div>
@@ -2698,11 +2770,11 @@ const App: React.FC = () => {
               <div className="space-y-4">
                 <h4 className="text-white font-black text-[10px] border-b border-white/5 pb-2 uppercase tracking-[0.3em] opacity-30 italic">Seguimiento Médico</h4>
                 <div className="space-y-1">
-                  <label className="text-[10px] uppercase font-bold text-slate-500 ml-1">Observaciones de Salud (Opcional)</label>
+                  <label className="text-[10px] uppercase font-bold text-slate-300 ml-1">Observaciones de Salud (Opcional)</label>
                   <textarea className="w-full crafted-input h-24" placeholder="Alergias, condiciones médicas..." onChange={(e) => setStudentForm({...studentForm, alertas: [e.target.value]})}/>
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] uppercase font-bold text-slate-500 ml-1">Fecha de Inicio de Actividades</label>
+                  <label className="text-[10px] uppercase font-bold text-slate-300 ml-1">Fecha de Inicio de Actividades</label>
                   <input type="date" className="w-full crafted-input" value={studentForm.fechaPrimeraClase} onChange={(e) => setStudentForm({...studentForm, fechaPrimeraClase: e.target.value})}/>
                 </div>
               </div>
@@ -2715,40 +2787,102 @@ const App: React.FC = () => {
 
         {vista === 'ReportePDF' && activeGroup && (
           <div className="page-transition p-8 bg-white text-black min-h-screen">
-            <button onClick={() => setVista('AsistenciaLista')} className="mb-8 text-blue-600 font-bold print:hidden flex items-center gap-2">
-              <span className="material-icons-outlined">arrow_back</span> Volver a la Lista
-            </button>
+            <div className="flex items-center justify-between mb-8 print:hidden">
+              <button onClick={() => setVista('AsistenciaLista')} className="text-blue-600 font-bold flex items-center gap-2">
+                <span className="material-icons-outlined">arrow_back</span> Volver
+              </button>
+              
+              <div className="flex items-center gap-4">
+                <select 
+                  value={reportMonth} 
+                  onChange={(e) => {
+                    const m = parseInt(e.target.value);
+                    setReportMonth(m);
+                    loadMonthlyReport(activeGroup.nombre, m, reportYear);
+                  }}
+                  className="bg-slate-100 border-2 border-black rounded-lg px-3 py-2 font-bold text-sm"
+                >
+                  {['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'].map((m, i) => (
+                    <option key={i} value={i}>{m}</option>
+                  ))}
+                </select>
+                <select 
+                  value={reportYear} 
+                  onChange={(e) => {
+                    const y = parseInt(e.target.value);
+                    setReportYear(y);
+                    loadMonthlyReport(activeGroup.nombre, reportMonth, y);
+                  }}
+                  className="bg-slate-100 border-2 border-black rounded-lg px-3 py-2 font-bold text-sm"
+                >
+                  {[2024, 2025, 2026].map(y => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
             <div className="border-[6px] border-black p-10 max-w-5xl mx-auto space-y-12">
               <header className="flex justify-between items-start border-b-4 border-black pb-8">
                 <div className="space-y-2">
                   <h1 className="text-6xl font-black uppercase tracking-tighter leading-none">GymCoach Pro</h1>
-                  <h2 className="text-2xl font-black text-slate-500 uppercase tracking-widest">Planilla Mensual</h2>
+                  <h2 className="text-2xl font-black text-slate-300 uppercase tracking-widest">Planilla Mensual</h2>
                 </div>
                 <div className="text-right space-y-1 font-black uppercase text-sm">
                   <p>Grupo: <span className="bg-black text-white px-2 py-0.5">{activeGroup.nombre}</span></p>
-                  <p>Mes: <span className="bg-black text-white px-2 py-0.5">SEPTIEMBRE 2024</span></p>
+                  <p>Mes: <span className="bg-black text-white px-2 py-0.5">{['ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO', 'JULIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE'][reportMonth]} {reportYear}</span></p>
                 </div>
               </header>
-              <table className="w-full border-collapse border-4 border-black">
-                <thead>
-                  <tr className="bg-slate-100 uppercase text-[12px] font-black border-b-4 border-black">
-                    <th className="p-5 text-left border-r-4 border-black">Gimnasta</th>
-                    <th className="p-5 text-center border-r-4 border-black">DNI</th>
-                    <th className="p-5 text-center border-r-4 border-black">Asistencias</th>
-                    <th className="p-5 text-right">Firma Tutor</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredAlumnos.map(a => (
-                    <tr key={a.id} className="border-b-4 border-black font-bold">
-                      <td className="p-5 border-r-4 border-black uppercase">{a.nombre}</td>
-                      <td className="p-5 text-center border-r-4 border-black font-mono">{a.dni}</td>
-                      <td className="p-5 text-center border-r-4 border-black font-black">12/12</td>
-                      <td className="p-5 text-right w-48"></td>
+
+              {isLoadingMonthly ? (
+                <div className="py-20 text-center">
+                  <div className="w-12 h-12 border-4 border-black border-t-transparent rounded-full animate-spin mx-auto"></div>
+                  <p className="mt-4 font-black uppercase tracking-widest">Calculando Asistencias...</p>
+                </div>
+              ) : (
+                <table className="w-full border-collapse border-4 border-black">
+                  <thead>
+                    <tr className="bg-slate-100 uppercase text-[12px] font-black border-b-4 border-black">
+                      <th className="p-5 text-left border-r-4 border-black">Gimnasta</th>
+                      <th className="p-5 text-center border-r-4 border-black">DNI</th>
+                      <th className="p-5 text-center border-r-4 border-black">Asistencias</th>
+                      <th className="p-5 text-center border-r-4 border-black">%</th>
+                      <th className="p-5 text-right">Firma Tutor</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {alumnos.filter(a => a.grupo === activeGroup.nombre).map(a => {
+                      const stats = monthlyStats[a.id!] || { attended: 0, expected: 0 };
+                      const percentage = stats.expected > 0 ? Math.round((stats.attended / stats.expected) * 100) : 0;
+                      return (
+                        <tr key={a.id} className="border-b-4 border-black font-bold">
+                          <td className="p-5 border-r-4 border-black uppercase">{a.nombre}</td>
+                          <td className="p-5 text-center border-r-4 border-black font-mono">{a.dni || '---'}</td>
+                          <td className="p-5 text-center border-r-4 border-black font-black">
+                            {stats.attended} / {stats.expected}
+                          </td>
+                          <td className="p-5 text-center border-r-4 border-black font-black">
+                            {percentage}%
+                          </td>
+                          <td className="p-5 text-right w-48"></td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+
+              <div className="grid grid-cols-2 gap-8 pt-12">
+                <div className="border-t-4 border-black pt-4">
+                  <p className="text-xs font-black uppercase tracking-widest">Firma del Profesor</p>
+                  <p className="mt-2 font-bold">{activeGroup.entrenador || '____________________'}</p>
+                </div>
+                <div className="border-t-4 border-black pt-4 text-right">
+                  <p className="text-xs font-black uppercase tracking-widest">Fecha de Emisión</p>
+                  <p className="mt-2 font-bold">{new Date().toLocaleDateString()}</p>
+                </div>
+              </div>
+
               <button onClick={() => window.print()} className="w-full py-6 mt-12 bg-black text-white font-black uppercase tracking-[0.4em] rounded-2xl print:hidden shadow-2xl">
                 Imprimir Documento
               </button>
@@ -2771,7 +2905,7 @@ const App: React.FC = () => {
             <main className="flex-1 px-6 space-y-8 pb-12">
               <section className="space-y-4">
                 <div className="flex justify-between items-center">
-                  <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white/30 italic">Asistencia de la Clase</h3>
+                  <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white/60 italic">Asistencia de la Clase</h3>
                   <button 
                     onClick={async () => {
                       setIsLoadingAsistenciasClase(true);
@@ -2817,7 +2951,7 @@ const App: React.FC = () => {
                     </div>
                   ) : (
                     <div className="py-8 text-center">
-                      <p className="text-xs text-white/30 italic">No hay registros de asistencia para esta clase.</p>
+                      <p className="text-xs text-white/60 italic">No hay registros de asistencia para esta clase.</p>
                       <button 
                         onClick={async () => {
                           setIsLoadingAsistenciasClase(true);
@@ -2841,7 +2975,7 @@ const App: React.FC = () => {
               </section>
 
               <section className="space-y-4">
-                <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white/30 italic">Contenido de la Clase</h3>
+                <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white/60 italic">Contenido de la Clase</h3>
                 <div className="glass-card rounded-3xl p-6 space-y-6">
                   {(selectedClase.faseInicial?.length || selectedClase.warmup?.length) ? (
                     <div className="space-y-2">
@@ -2868,7 +3002,7 @@ const App: React.FC = () => {
                           {Object.entries(selectedClase.habilidadesPorAparato).map(([aparato, habilidades]) => (
                             habilidades.length > 0 && (
                               <div key={aparato} className="bg-white/5 p-3 rounded-xl border border-white/10">
-                                <p className="text-[10px] font-bold text-white mb-2">{aparato}</p>
+                                <p className="text-[10px] font-bold text-white/80 mb-2">{aparato}</p>
                                 <ul className="list-disc list-inside text-xs text-slate-300 space-y-1">
                                   {habilidades.map((hab, idx) => (
                                     <li key={idx}>{hab}</li>
@@ -2896,13 +3030,13 @@ const App: React.FC = () => {
               </section>
 
               <section className="space-y-4">
-                <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white/30 italic">Feedback del Coordinador</h3>
+                <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white/60 italic">Feedback del Coordinador</h3>
                 <div className="space-y-4">
                   {feedbacks.map((fb) => (
                     <div key={fb.id} className={`p-4 rounded-2xl border ${fb.author === 'Coordinador' ? 'bg-primary/5 border-primary/20 ml-4' : 'bg-white/5 border-white/10 mr-4'}`}>
                       <div className="flex justify-between items-center mb-2">
-                        <span className={`text-[9px] font-black uppercase tracking-widest ${fb.author === 'Coordinador' ? 'text-primary' : 'text-white/40'}`}>{fb.author}</span>
-                        <span className="text-[8px] text-white/20">{new Date(fb.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                        <span className={`text-[9px] font-black uppercase tracking-widest ${fb.author === 'Coordinador' ? 'text-primary' : 'text-white/70'}`}>{fb.author}</span>
+                        <span className="text-[8px] text-white/50">{new Date(fb.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                       </div>
                       <p className="text-xs text-white/80 leading-relaxed italic">"{fb.text}"</p>
                     </div>
@@ -2957,14 +3091,14 @@ const App: React.FC = () => {
                 <div className="flex justify-between items-center">
                   <label className="text-[10px] uppercase font-bold text-primary ml-1 tracking-widest">Fase Inicial (Entrada en calor)</label>
                   <div className="flex items-center gap-2 bg-antigravity-charcoal px-3 py-1 rounded-full border border-white/5">
-                    <span className="material-icons-outlined text-[14px] text-white/40">schedule</span>
+                    <span className="material-icons-outlined text-[14px] text-white/70">schedule</span>
                     <input 
                       type="number" 
                       value={faseInicialDuration} 
                       onChange={(e) => setFaseInicialDuration(e.target.value)}
                       className="w-8 bg-transparent text-[10px] text-white font-bold outline-none text-center" 
                     />
-                    <span className="text-[8px] text-white/20 uppercase font-black">min</span>
+                    <span className="text-[8px] text-white/50 uppercase font-black">min</span>
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -3008,14 +3142,14 @@ const App: React.FC = () => {
                 <div className="flex justify-between items-center">
                   <label className="text-[10px] uppercase font-bold text-primary ml-1 tracking-widest">Fase Principal (Aparatos)</label>
                   <div className="flex items-center gap-2 bg-antigravity-charcoal px-3 py-1 rounded-full border border-white/5">
-                    <span className="material-icons-outlined text-[14px] text-white/40">schedule</span>
+                    <span className="material-icons-outlined text-[14px] text-white/70">schedule</span>
                     <input 
                       type="number" 
                       value={fasePrincipalDuration} 
                       onChange={(e) => setFasePrincipalDuration(e.target.value)}
                       className="w-8 bg-transparent text-[10px] text-white font-bold outline-none text-center" 
                     />
-                    <span className="text-[8px] text-white/20 uppercase font-black">min</span>
+                    <span className="text-[8px] text-white/50 uppercase font-black">min</span>
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -3056,7 +3190,7 @@ const App: React.FC = () => {
 
                 {fasePrincipal.length > 0 && (
                   <div className="mt-6 space-y-4 border-t border-white/10 pt-4">
-                    <label className="text-[10px] uppercase font-bold text-slate-400 ml-1 tracking-widest">Habilidades por Aparato</label>
+                    <label className="text-[10px] uppercase font-bold text-slate-200 ml-1 tracking-widest">Habilidades por Aparato</label>
                     {fasePrincipal.map(aparato => (
                       <div key={aparato} className="space-y-2 bg-antigravity-charcoal/50 p-4 rounded-2xl border border-white/5">
                         <p className="text-xs font-bold text-white">{aparato}</p>
@@ -3101,14 +3235,14 @@ const App: React.FC = () => {
                 <div className="flex justify-between items-center">
                   <label className="text-[10px] uppercase font-bold text-primary ml-1 tracking-widest">Fase Final</label>
                   <div className="flex items-center gap-2 bg-antigravity-charcoal px-3 py-1 rounded-full border border-white/5">
-                    <span className="material-icons-outlined text-[14px] text-white/40">schedule</span>
+                    <span className="material-icons-outlined text-[14px] text-white/70">schedule</span>
                     <input 
                       type="number" 
                       value={faseFinalDuration} 
                       onChange={(e) => setFaseFinalDuration(e.target.value)}
                       className="w-8 bg-transparent text-[10px] text-white font-bold outline-none text-center" 
                     />
-                    <span className="text-[8px] text-white/20 uppercase font-black">min</span>
+                    <span className="text-[8px] text-white/50 uppercase font-black">min</span>
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -3257,7 +3391,7 @@ const App: React.FC = () => {
                     return profGruposActuales.map(g => (
                       <div key={g.id} className="glass-card rounded-2xl p-4 border border-white/5">
                         <h4 className="font-bold text-white text-sm">{g.nombre}</h4>
-                        <p className="text-[10px] text-slate-400 mt-1">{g.horario}</p>
+                        <p className="text-[10px] text-slate-200 mt-1">{g.horario}</p>
                       </div>
                     ));
                   } else if (profGruposHistoricos.length > 0) {
@@ -3353,7 +3487,7 @@ const App: React.FC = () => {
                 if (item.v === 'Alumnos') setAlumnosFilterMode('all');
                 handleNavigation(item.v as ViewMode);
               }} 
-              className={`flex flex-col items-center gap-1.5 transition-all flex-1 ${vista === item.v || (vista === 'AsistenciaLista' && item.v === 'Horario') ? 'text-neon-cyan active-glow' : 'text-white/30 hover:text-white'}`}
+              className={`flex flex-col items-center gap-1.5 transition-all flex-1 ${vista === item.v || (vista === 'AsistenciaLista' && item.v === 'Horario') ? 'text-neon-cyan active-glow' : 'text-white/60 hover:text-white'}`}
             >
               <span className={`material-symbols-outlined text-[26px] font-light ${vista === item.v || (vista === 'AsistenciaLista' && item.v === 'Horario') ? 'neon-glow-cyan' : ''}`}>{item.i}</span>
               <span className={`text-[9px] uppercase tracking-wide ${vista === item.v || (vista === 'AsistenciaLista' && item.v === 'Horario') ? 'font-bold' : 'font-medium'}`}>

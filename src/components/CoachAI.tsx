@@ -150,7 +150,7 @@ export const CoachAI = () => {
               <div key={idx} className="bg-primary/10 border border-primary/30 rounded-full px-3 py-1 flex items-center gap-2 animate-in fade-in zoom-in duration-200">
                 <span className="material-icons-outlined text-xs text-primary">picture_as_pdf</span>
                 <span className="text-[10px] text-white/70 truncate max-w-[100px]">{file.name}</span>
-                <button onClick={() => removeFile(idx)} className="text-white/40 hover:text-white">
+                <button onClick={() => removeFile(idx)} className="text-white/70 hover:text-white">
                   <span className="material-icons-outlined text-[14px]">close</span>
                 </button>
               </div>
@@ -170,7 +170,7 @@ export const CoachAI = () => {
           
           <button 
             onClick={() => fileInputRef.current?.click()}
-            className="w-10 h-10 rounded-2xl flex items-center justify-center bg-white/5 border border-white/10 text-white/60 hover:text-primary hover:border-primary/30 transition-all"
+            className="w-10 h-10 rounded-2xl flex items-center justify-center bg-white/5 border border-white/10 text-white/80 hover:text-primary hover:border-primary/30 transition-all"
             title="Adjuntar PDF"
           >
             <span className="material-icons-outlined text-lg">add</span>
@@ -182,14 +182,14 @@ export const CoachAI = () => {
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
             placeholder="Preguntar al Coach o sobre PDFs..."
-            className="flex-1 bg-antigravity-charcoal border border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none placeholder:text-white/30 rounded-2xl py-3 px-4 text-sm text-white transition-all"
+            className="flex-1 bg-antigravity-charcoal border border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none placeholder:text-white/70 rounded-2xl py-3 px-4 text-sm text-white transition-all"
             disabled={isLoading}
           />
           
           <button 
             onClick={handleSearch}
             disabled={(!query.trim() && attachedFiles.length === 0) || isLoading}
-            className={`w-10 h-10 rounded-2xl flex items-center justify-center active:scale-95 transition-all ${(query.trim() || attachedFiles.length > 0) ? 'bg-primary text-antigravity-black shadow-neon-cyan' : 'bg-antigravity-charcoal text-white/30 border border-white/10'}`}
+            className={`w-10 h-10 rounded-2xl flex items-center justify-center active:scale-95 transition-all ${(query.trim() || attachedFiles.length > 0) ? 'bg-primary text-antigravity-black shadow-neon-cyan' : 'bg-antigravity-charcoal text-white/60 border border-white/10'}`}
           >
             <span className="material-icons-outlined text-lg">send</span>
           </button>
