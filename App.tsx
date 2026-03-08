@@ -6,6 +6,109 @@ import { collection, query, where, getDocs, addDoc, doc, updateDoc, onSnapshot, 
 import { signInWithPopup, signOut, onAuthStateChanged, User } from 'firebase/auth';
 import { CoachAI } from './src/components/CoachAI.tsx';
 
+const EditableDropdown = ({ 
+  label, 
+  value, 
+  onChange, 
+  options, 
+  onAdd, 
+  onEdit,
+  onDelete, 
+  placeholder 
+}: { 
+  label: string, 
+  value: string, 
+  onChange: (val: string) => void, 
+  options: any[], 
+  onAdd: (name: string) => void, 
+  onEdit: (id: string, name: string) => void,
+  onDelete: (id: string) => void,
+  placeholder: string
+}) => {
+  const [isAdding, setIsAdding] = useState(false);
+  const [newItem, setNewItem] = useState('');
+
+  return (
+    <div className="space-y-1 relative">
+      <label className="text-[10px] uppercase font-bold text-slate-500 ml-1">{label}</label>
+      <div className="relative group">
+        <select 
+          value={value} 
+          onChange={(e) => onChange(e.target.value)}
+          className="w-full bg-antigravity-charcoal border rounded-xl px-4 py-3 text-sm text-white appearance-none border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none transition-all"
+        >
+          <option value="">{placeholder}</option>
+          {options.map((opt, idx) => (
+            <option key={opt.id || idx} value={opt.nombre}>
+              {opt.nombre} {opt.entrenador ? `— ${opt.entrenador}` : ''}
+            </option>
+          ))}
+        </select>
+        <div className="absolute right-10 top-1/2 -translate-y-1/2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-antigravity-charcoal px-1">
+           {value && (
+             <>
+               <button 
+                 type="button"
+                 onClick={() => {
+                   const opt = options.find(o => o.nombre === value);
+                   if (opt?.id) {
+                     const newName = window.prompt(`Editar ${label.toLowerCase()}:`, opt.nombre);
+                     if (newName && newName !== opt.nombre) onEdit(opt.id, newName);
+                   }
+                 }}
+                 className="p-1 text-primary hover:bg-primary/10 rounded transition-colors"
+               >
+                 <span className="material-icons-outlined text-xs">edit</span>
+               </button>
+               <button 
+                 type="button"
+                 onClick={() => {
+                   const opt = options.find(o => o.nombre === value);
+                   if (opt?.id) onDelete(opt.id);
+                 }}
+                 className="p-1 text-rose-500 hover:bg-rose-500/10 rounded transition-colors"
+               >
+                 <span className="material-icons-outlined text-xs">delete</span>
+               </button>
+             </>
+           )}
+        </div>
+        <button 
+          type="button"
+          onClick={() => setIsAdding(!isAdding)}
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-primary hover:scale-110 transition-transform"
+        >
+          <span className="material-icons-outlined text-sm">{isAdding ? 'close' : 'add'}</span>
+        </button>
+      </div>
+      {isAdding && (
+        <div className="flex gap-2 mt-2 animate-in slide-in-from-top-1 duration-200">
+          <input 
+            type="text" 
+            value={newItem} 
+            onChange={(e) => setNewItem(e.target.value)}
+            placeholder={`Nuevo ${label.toLowerCase()}...`}
+            className="flex-1 bg-antigravity-charcoal border border-neon-blue rounded-lg px-3 py-2 text-xs text-white outline-none focus:ring-1 focus:ring-neon-blue/50 transition-all"
+          />
+          <button 
+            type="button"
+            onClick={() => {
+              if (newItem.trim()) {
+                onAdd(newItem.trim());
+                setNewItem('');
+                setIsAdding(false);
+              }
+            }}
+            className="px-3 py-2 bg-primary text-antigravity-black rounded-lg text-xs font-bold active:scale-95 transition-all"
+          >
+            Añadir
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -15,6 +118,7 @@ const App: React.FC = () => {
   const [alumnos, setAlumnos] = useState<Alumno[]>([]);
   const [clases, setClases] = useState<Clase[]>([]);
   const [grupos, setGrupos] = useState<GrupoConfig[]>([]);
+  const [niveles, setNiveles] = useState<{id?: string, nombre: string}[]>([]);
   const [asistenciasHoy, setAsistenciasHoy] = useState<Record<string, boolean>>({});
   const [selectedClase, setSelectedClase] = useState<Clase | null>(null);
   const [selectedAlumno, setSelectedAlumno] = useState<Alumno | null>(null);
@@ -57,6 +161,7 @@ const App: React.FC = () => {
 
   // Selected Group Context
   const [activeGroup, setActiveGroup] = useState<GrupoConfig | null>(null);
+  const [editingGroup, setEditingGroup] = useState<GrupoConfig | null>(null);
 
   // Student Form State
   const [studentForm, setStudentForm] = useState<Partial<Alumno>>({
@@ -99,7 +204,7 @@ const App: React.FC = () => {
 
   const checkUnsavedChanges = () => {
     if (vista === 'NuevaClase') {
-      return selectedGroupForClass !== '' || faseInicial.length > 0 || fasePrincipal.length > 0 || faseFinal.length > 0 || observacionesClase !== '';
+      return claseGrupo !== '' || faseInicial.length > 0 || fasePrincipal.length > 0 || faseFinal.length > 0;
     }
     if (vista === 'RegistroAlumno') {
       return studentForm.nombre !== '' || studentForm.dni !== '' || (studentForm.alertas && studentForm.alertas.length > 0 && studentForm.alertas[0] !== '');
@@ -134,11 +239,10 @@ const App: React.FC = () => {
   const confirmNavigation = () => {
     if (pendingNavigation) {
       if (vista === 'NuevaClase') {
-        setSelectedGroupForClass('');
+        setClaseGrupo('');
         setFaseInicial([]);
         setFasePrincipal([]);
         setFaseFinal([]);
-        setObservacionesClase('');
       } else if (vista === 'RegistroAlumno') {
         setStudentForm({ nombre: '', dni: '', fechaNacimiento: '', fechaPrimeraClase: new Date().toISOString().split('T')[0], alertas: [] });
       } else if (vista === 'Alumnos') {
@@ -258,10 +362,16 @@ const App: React.FC = () => {
       const c = await getCollectionData(COLLECTIONS.CLASES) as Clase[];
       const g = await getCollectionData(COLLECTIONS.GRUPOS) as GrupoConfig[];
       const p = await getCollectionData(COLLECTIONS.PROFESORES) as {id?: string, nombre: string}[];
+      const n = await getCollectionData(COLLECTIONS.NIVELES) as {id?: string, nombre: string}[];
       setAlumnos(a);
       setClases(c.sort((x, y) => new Date(y.fecha).getTime() - new Date(x.fecha).getTime()));
       setGrupos(g);
       setProfesoresList(p || []);
+      setNiveles(n.length > 0 ? n : [
+        { nombre: 'Escuela' },
+        { nombre: 'Pre-Equipo' },
+        { nombre: 'Equipo' }
+      ]);
       
       // Filter global alerts
       setAlertasGlobales(a.filter(student => student.alertas && student.alertas.length > 0 && student.alertas[0] !== ""));
@@ -323,17 +433,28 @@ const App: React.FC = () => {
     }
     
     try {
-      await addDocument(COLLECTIONS.GRUPOS, {
-        nombre: newGroupName,
-        entrenador: newCoachName,
-        dias: selectedDays,
-        horario: `${startTime} - ${endTime}`
-      });
+      if (editingGroup && editingGroup.id) {
+        await updateDocument(COLLECTIONS.GRUPOS, editingGroup.id, {
+          nombre: newGroupName,
+          entrenador: newCoachName,
+          dias: selectedDays,
+          horario: `${startTime} - ${endTime}`
+        });
+        setNotificacion({ t: "Éxito", d: `Grupo ${newGroupName} actualizado.` });
+      } else {
+        await addDocument(COLLECTIONS.GRUPOS, {
+          nombre: newGroupName,
+          entrenador: newCoachName,
+          dias: selectedDays,
+          horario: `${startTime} - ${endTime}`
+        });
+        setNotificacion({ t: "Éxito", d: `Grupo ${newGroupName} configurado.` });
+      }
       setNewGroupName("");
       setNewCoachName("");
       setSelectedDays([]);
+      setEditingGroup(null);
       loadData();
-      setNotificacion({ t: "Éxito", d: `Grupo ${newGroupName} configurado.` });
       setTimeout(() => setNotificacion(null), 3000);
     } catch (error: any) {
       setNotificacion({ t: "Error", d: error.message || "No se pudo guardar el grupo." });
@@ -366,6 +487,62 @@ const App: React.FC = () => {
     }
   };
 
+  const handleQuickSaveGroup = async (nombre: string) => {
+    try {
+      await addDocument(COLLECTIONS.GRUPOS, { 
+        nombre, 
+        entrenador: user?.displayName || 'Sin Asignar',
+        dias: [],
+        horario: 'Sin definir'
+      });
+      setNotificacion({ t: "Éxito", d: `Grupo ${nombre} añadido.` });
+      loadData();
+    } catch (error: any) {
+      setNotificacion({ t: "Error", d: error.message });
+    }
+  };
+
+  const handleSaveLevel = async (nombre: string) => {
+    try {
+      await addDocument(COLLECTIONS.NIVELES, { nombre });
+      setNotificacion({ t: "Éxito", d: `Nivel ${nombre} añadido.` });
+      loadData();
+    } catch (error: any) {
+      setNotificacion({ t: "Error", d: error.message });
+    }
+  };
+
+  const handleUpdateLevel = async (id: string, nombre: string) => {
+    try {
+      await updateDocument(COLLECTIONS.NIVELES, id, { nombre });
+      setNotificacion({ t: "Éxito", d: "Nivel actualizado." });
+      loadData();
+    } catch (error: any) {
+      setNotificacion({ t: "Error", d: error.message });
+    }
+  };
+
+  const handleDeleteLevel = async (id: string) => {
+    if (!window.confirm("¿Eliminar este nivel?")) return;
+    try {
+      await deleteDocument(COLLECTIONS.NIVELES, id);
+      setNotificacion({ t: "Éxito", d: "Nivel eliminado." });
+      loadData();
+    } catch (error: any) {
+      setNotificacion({ t: "Error", d: error.message });
+    }
+  };
+
+  const handleUpdateGroupQuick = async (id: string, nombre: string) => {
+    try {
+      await updateDocument(COLLECTIONS.GRUPOS, id, { nombre });
+      setNotificacion({ t: "Éxito", d: "Grupo actualizado." });
+      loadData();
+    } catch (error: any) {
+      setNotificacion({ t: "Error", d: error.message });
+    }
+  };
+
   const handleAddAlumno = async () => {
     if (!newAlumnoForm.nombre.trim()) return;
     try {
@@ -380,7 +557,6 @@ const App: React.FC = () => {
         fechaPrimeraClase: new Date().toISOString().split('T')[0],
         alertas: [],
         contacto: { padreNombre: '', padreTelefono: '', madreNombre: '', madreTelefono: '', emergenciaNombre: '', emergenciaTelefono: '' },
-        asistencias: [],
         habilidades: []
       };
       await addDocument(COLLECTIONS.ALUMNOS, newStudent);
@@ -708,28 +884,10 @@ const App: React.FC = () => {
     let finalCoachName = user?.displayName || 'Coach Pro';
 
     try {
-      if (claseGrupo === 'NEW_GROUP') {
-        if (!newClaseGroupName || !newClaseCoachName) {
-          setNotificacion({ t: "Error", d: "Nombre del grupo y profesor son obligatorios." });
-          setTimeout(() => setNotificacion(null), 3000);
-          return;
-        }
-        finalGroupName = newClaseGroupName;
-        finalCoachName = newClaseCoachName;
-
-        // Create the new group
-        await addDocument(COLLECTIONS.GRUPOS, {
-          nombre: newClaseGroupName,
-          entrenador: newClaseCoachName,
-          dias: [],
-          horario: "A definir"
-        });
-      } else {
-        // Find existing group to get its coach
-        const existingGroup = grupos.find(g => g.nombre === claseGrupo);
-        if (existingGroup && existingGroup.entrenador) {
-          finalCoachName = existingGroup.entrenador;
-        }
+      // Find existing group to get its coach
+      const existingGroup = grupos.find(g => g.nombre === claseGrupo);
+      if (existingGroup && existingGroup.entrenador) {
+        finalCoachName = existingGroup.entrenador;
       }
 
       const newClase: Omit<Clase, 'id'> = {
@@ -1084,7 +1242,24 @@ const App: React.FC = () => {
             </header>
 
             <section className="space-y-4">
-              <h3 className="text-accent-purple font-bold text-lg active-glow">Configuración de Horario</h3>
+              <div className="flex justify-between items-center">
+                <h3 className="text-accent-purple font-bold text-lg active-glow">
+                  {editingGroup ? 'Editar Grupo' : 'Configuración de Horario'}
+                </h3>
+                {editingGroup && (
+                  <button 
+                    onClick={() => {
+                      setEditingGroup(null);
+                      setNewGroupName("");
+                      setNewCoachName("");
+                      setSelectedDays([]);
+                    }}
+                    className="text-[10px] text-slate-400 uppercase font-bold hover:text-white transition-colors"
+                  >
+                    Cancelar Edición
+                  </button>
+                )}
+              </div>
               <div className="glass-card rounded-[2.5rem] p-6 space-y-6">
                 <div className="flex justify-between items-center px-1">
                   {['L', 'M', 'M', 'J', 'V', 'S'].map((day, idx) => {
@@ -1100,10 +1275,10 @@ const App: React.FC = () => {
                 </div>
 
                 <div className="space-y-4">
-                  <input className="w-full bg-white/10 border bg-white/20 placeholder:text-white/50 rounded-2xl px-5 py-4 text-sm text-white placeholder:text-slate-600 border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
+                  <input className="w-full bg-antigravity-charcoal border rounded-2xl px-5 py-4 text-sm text-white placeholder:text-white/20 border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
                     placeholder="Nombre del Grupo (Ej. Avanzados)" value={newGroupName} onChange={(e) => setNewGroupName(e.target.value)} />
                   
-                  <input className="w-full bg-antigravity-charcoal border rounded-2xl px-5 py-4 text-sm text-white placeholder:text-slate-600 border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
+                  <input className="w-full bg-antigravity-charcoal border rounded-2xl px-5 py-4 text-sm text-white placeholder:text-white/20 border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
                     placeholder="Nombre y Apellido del Profesor" value={newCoachName} onChange={(e) => setNewCoachName(e.target.value)} />
                   
                   <div className="grid grid-cols-2 gap-4">
@@ -1123,7 +1298,7 @@ const App: React.FC = () => {
                 </div>
 
                 <button onClick={handleSaveGroup} className="w-full py-4.5 rounded-2xl border border-accent-purple text-accent-purple font-black bg-accent-purple/5 shadow-neon-purple active:scale-[0.98] transition-all uppercase text-[10px] tracking-[0.2em]">
-                  <span>Guardar Configuración</span>
+                  <span>{editingGroup ? 'Actualizar Configuración' : 'Guardar Configuración'}</span>
                 </button>
               </div>
             </section>
@@ -1140,13 +1315,34 @@ const App: React.FC = () => {
                     </div>
                     <div className="flex flex-col items-end gap-2">
                       <div className="bg-primary/10 text-primary text-[10px] font-black px-3 py-1.5 rounded-lg border border-primary/20 tracking-wider shadow-neon-cyan uppercase">Active</div>
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); handleDeleteGroup(g); }}
-                        className="text-rose-500 bg-rose-500/10 p-2 rounded-lg border border-rose-500/20 hover:bg-rose-500/20 transition-all flex items-center justify-center"
-                        title="Eliminar grupo"
-                      >
-                        <span className="material-icons-outlined text-[16px]">delete</span>
-                      </button>
+                      <div className="flex gap-2">
+                        <button 
+                          onClick={(e) => { 
+                            e.stopPropagation(); 
+                            setEditingGroup(g);
+                            setNewGroupName(g.nombre);
+                            setNewCoachName(g.entrenador || "");
+                            setSelectedDays(g.dias || []);
+                            const times = g.horario.split(' - ');
+                            if (times.length === 2) {
+                              setStartTime(times[0]);
+                              setEndTime(times[1]);
+                            }
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                          }}
+                          className="text-primary bg-primary/10 p-2 rounded-lg border border-primary/20 hover:bg-primary/20 transition-all flex items-center justify-center"
+                          title="Editar grupo"
+                        >
+                          <span className="material-icons-outlined text-[16px]">edit</span>
+                        </button>
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); handleDeleteGroup(g); }}
+                          className="text-rose-500 bg-rose-500/10 p-2 rounded-lg border border-rose-500/20 hover:bg-rose-500/20 transition-all flex items-center justify-center"
+                          title="Eliminar grupo"
+                        >
+                          <span className="material-icons-outlined text-[16px]">delete</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
                   <button onClick={() => { setActiveGroup(g); setVista('AsistenciaLista'); }} className="w-full py-3.5 rounded-2xl border border-primary text-primary font-bold text-[11px] uppercase tracking-widest shadow-neon-cyan flex items-center justify-center gap-2.5 bg-primary/5 active:scale-95 transition-all">
@@ -1403,24 +1599,29 @@ const App: React.FC = () => {
                   onChange={e => setNewAlumnoForm({...newAlumnoForm, dni: e.target.value})}
                 />
                 <div className="grid grid-cols-2 gap-3">
-                  <select 
-                    className="w-full bg-antigravity-charcoal border rounded-xl px-4 py-3 text-sm text-white appearance-none border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
+                  <EditableDropdown 
+                    label="Grupo"
+                    placeholder="Grupo..."
                     value={newAlumnoForm.grupo}
-                    onChange={e => setNewAlumnoForm({...newAlumnoForm, grupo: e.target.value})}
-                  >
-                    <option value="">Grupo...</option>
-                    {grupos.map(g => <option key={g.id} value={g.nombre}>{g.nombre}</option>)}
-                  </select>
-                  <select 
-                    className="w-full bg-antigravity-charcoal border rounded-xl px-4 py-3 text-sm text-white appearance-none border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
+                    onChange={val => setNewAlumnoForm({...newAlumnoForm, grupo: val})}
+                    options={grupos.filter(g => userRole === 'Coordinator' || !user?.displayName || g.entrenador === user.displayName)}
+                    onAdd={handleQuickSaveGroup}
+                    onEdit={handleUpdateGroupQuick}
+                    onDelete={(id) => {
+                      const g = grupos.find(x => x.id === id);
+                      if (g) handleDeleteGroup(g);
+                    }}
+                  />
+                  <EditableDropdown 
+                    label="Nivel"
+                    placeholder="Nivel..."
                     value={newAlumnoForm.nivel}
-                    onChange={e => setNewAlumnoForm({...newAlumnoForm, nivel: e.target.value})}
-                  >
-                    <option value="">Nivel...</option>
-                    <option value="Escuela">Escuela</option>
-                    <option value="Pre-Equipo">Pre-Equipo</option>
-                    <option value="Equipo">Equipo</option>
-                  </select>
+                    onChange={val => setNewAlumnoForm({...newAlumnoForm, nivel: val})}
+                    options={niveles}
+                    onAdd={handleSaveLevel}
+                    onEdit={handleUpdateLevel}
+                    onDelete={handleDeleteLevel}
+                  />
                 </div>
                 <div className="flex gap-2 pt-2">
                   <button 
@@ -1520,24 +1721,29 @@ const App: React.FC = () => {
                   onChange={e => setEditingAlumnoData({...editingAlumnoData, dni: e.target.value})}
                 />
                 <div className="grid grid-cols-2 gap-3">
-                  <select 
-                    className="w-full bg-antigravity-charcoal border rounded-xl px-4 py-3 text-sm text-white appearance-none border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
+                  <EditableDropdown 
+                    label="Grupo"
+                    placeholder="Grupo..."
                     value={editingAlumnoData.grupo || ''}
-                    onChange={e => setEditingAlumnoData({...editingAlumnoData, grupo: e.target.value})}
-                  >
-                    <option value="">Grupo...</option>
-                    {grupos.map(g => <option key={g.id} value={g.nombre}>{g.nombre}</option>)}
-                  </select>
-                  <select 
-                    className="w-full bg-antigravity-charcoal border rounded-xl px-4 py-3 text-sm text-white appearance-none border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
+                    onChange={val => setEditingAlumnoData({...editingAlumnoData, grupo: val})}
+                    options={grupos.filter(g => userRole === 'Coordinator' || !user?.displayName || g.entrenador === user.displayName)}
+                    onAdd={handleQuickSaveGroup}
+                    onEdit={handleUpdateGroupQuick}
+                    onDelete={(id) => {
+                      const g = grupos.find(x => x.id === id);
+                      if (g) handleDeleteGroup(g);
+                    }}
+                  />
+                  <EditableDropdown 
+                    label="Nivel"
+                    placeholder="Nivel..."
                     value={editingAlumnoData.nivel || ''}
-                    onChange={e => setEditingAlumnoData({...editingAlumnoData, nivel: e.target.value})}
-                  >
-                    <option value="">Nivel...</option>
-                    <option value="Escuela">Escuela</option>
-                    <option value="Pre-Equipo">Pre-Equipo</option>
-                    <option value="Equipo">Equipo</option>
-                  </select>
+                    onChange={val => setEditingAlumnoData({...editingAlumnoData, nivel: val})}
+                    options={niveles}
+                    onAdd={handleSaveLevel}
+                    onEdit={handleUpdateLevel}
+                    onDelete={handleDeleteLevel}
+                  />
                 </div>
                 <div className="flex gap-2 pt-2">
                   <button 
@@ -2271,51 +2477,23 @@ const App: React.FC = () => {
             
             <div className="space-y-6">
               <div className="glass-card rounded-3xl p-6 border border-white/5 space-y-4">
-                <label className="text-[10px] uppercase font-bold text-slate-500 ml-1">Grupo</label>
-                <div className="flex gap-2">
-                  <select 
-                    value={claseGrupo} 
-                    onChange={(e) => setClaseGrupo(e.target.value)} 
-                    className="flex-1 bg-antigravity-charcoal border rounded-2xl px-5 py-4 text-sm text-white appearance-none border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
-                  >
-                    <option value="" disabled>Seleccionar Grupo</option>
-                    {grupos.map(g => <option key={g.id} value={g.nombre}>{g.nombre}</option>)}
-                    <option value="NEW_GROUP">+ Crear nuevo grupo...</option>
-                  </select>
-                  {claseGrupo && claseGrupo !== 'NEW_GROUP' && (
-                    <button 
-                      onClick={() => {
-                        const grupo = grupos.find(g => g.nombre === claseGrupo);
-                        if (grupo) handleDeleteGroup(grupo);
-                      }}
-                      className="bg-rose-500/10 text-rose-500 px-4 rounded-2xl border border-rose-500/20 flex items-center justify-center hover:bg-rose-500/20 transition-all"
-                      title="Eliminar grupo"
-                    >
-                      <span className="material-icons-outlined">delete</span>
-                    </button>
-                  )}
-                </div>
-
-                {claseGrupo === 'NEW_GROUP' && (
-                  <div className="space-y-4 pt-2">
-                    <input 
-                      type="text" 
-                      placeholder="Nombre del nuevo grupo" 
-                      value={newClaseGroupName} 
-                      onChange={(e) => setNewClaseGroupName(e.target.value)} 
-                      className="w-full bg-antigravity-charcoal border rounded-2xl px-5 py-4 text-sm text-white border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
-                    />
-                    <input 
-                      type="text" 
-                      placeholder="Nombre del profesor a cargo" 
-                      value={newClaseCoachName} 
-                      onChange={(e) => setNewClaseCoachName(e.target.value)} 
-                      className="w-full bg-antigravity-charcoal border rounded-2xl px-5 py-4 text-sm text-white border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
-                    />
-                  </div>
-                )}
+                <EditableDropdown 
+                  label="Grupo"
+                  placeholder="Seleccionar Grupo..."
+                  value={claseGrupo}
+                  onChange={setClaseGrupo}
+                  options={grupos.filter(g => userRole === 'Coordinator' || !user?.displayName || g.entrenador === user.displayName)}
+                  onAdd={handleQuickSaveGroup}
+                  onEdit={handleUpdateGroupQuick}
+                  onDelete={(id) => {
+                    const g = grupos.find(x => x.id === id);
+                    if (g) handleDeleteGroup(g);
+                  }}
+                />
               </div>
+            </div>
 
+            <div className="space-y-6">
               <div className="glass-card rounded-3xl p-6 border border-white/5 space-y-4">
                 <label className="text-[10px] uppercase font-bold text-primary ml-1 tracking-widest">Fase Inicial (Entrada en calor)</label>
                 <div className="flex flex-wrap gap-2">

@@ -27,23 +27,70 @@ export const CoachAI = () => {
   const [query, setQuery] = useState('');
   const [messages, setMessages] = useState<{ role: 'user' | 'assistant', text: string, sources?: any[] }[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [attachedFiles, setAttachedFiles] = useState<{ name: string, data: string, type: string }[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    Array.from(files).forEach(file => {
+      if (file.type !== 'application/pdf') {
+        alert('Solo se permiten archivos PDF');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const base64 = (event.target?.result as string).split(',')[1];
+        setAttachedFiles(prev => [...prev, { name: file.name, data: base64, type: file.type }]);
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const removeFile = (index: number) => {
+    setAttachedFiles(prev => prev.filter((_, i) => i !== index));
+  };
 
   const handleSearch = async () => {
-    if (!query.trim()) return;
+    if (!query.trim() && attachedFiles.length === 0) return;
     
     const userMsg = query;
     setQuery('');
-    setMessages(prev => [...prev, { role: 'user', text: userMsg }]);
+    const currentFiles = [...attachedFiles];
+    setAttachedFiles([]);
+    
+    setMessages(prev => [...prev, { role: 'user', text: userMsg || `Analizando ${currentFiles.length} archivos...` }]);
     setIsLoading(true);
     
     try {
-      const { text, sources } = await getSearchGroundedAnswer(userMsg);
-      
-      setMessages(prev => [...prev, { 
-        role: 'assistant', 
-        text: text,
-        sources
-      }]);
+      if (currentFiles.length > 0) {
+        const ai = getAI();
+        const parts: any[] = currentFiles.map(f => ({
+          inlineData: {
+            data: f.data,
+            mimeType: f.type
+          }
+        }));
+        parts.push({ text: userMsg || "Resume y analiza estos documentos PDF enfocándote en la gimnasia artística." });
+
+        const response = await ai.models.generateContent({
+          model: "gemini-2.0-flash",
+          contents: [{ parts }]
+        });
+
+        setMessages(prev => [...prev, { 
+          role: 'assistant', 
+          text: response.text || "No se pudo generar una respuesta."
+        }]);
+      } else {
+        const { text, sources } = await getSearchGroundedAnswer(userMsg);
+        setMessages(prev => [...prev, { 
+          role: 'assistant', 
+          text: text,
+          sources
+        }]);
+      }
     } catch (error: any) {
       console.error("Error en búsqueda:", error);
       setMessages(prev => [...prev, { role: 'assistant', text: `Error al realizar la búsqueda: ${error.message || error}` }]);
@@ -96,22 +143,53 @@ export const CoachAI = () => {
         )}
       </div>
 
-      <div className="fixed bottom-[80px] left-1/2 -translate-x-1/2 w-full max-w-[430px] px-6 z-40">
+      <div className="fixed bottom-[80px] left-1/2 -translate-x-1/2 w-full max-w-[430px] px-6 z-40 space-y-3">
+        {attachedFiles.length > 0 && (
+          <div className="flex flex-wrap gap-2 px-2">
+            {attachedFiles.map((file, idx) => (
+              <div key={idx} className="bg-primary/10 border border-primary/30 rounded-full px-3 py-1 flex items-center gap-2 animate-in fade-in zoom-in duration-200">
+                <span className="material-icons-outlined text-xs text-primary">picture_as_pdf</span>
+                <span className="text-[10px] text-white/70 truncate max-w-[100px]">{file.name}</span>
+                <button onClick={() => removeFile(idx)} className="text-white/40 hover:text-white">
+                  <span className="material-icons-outlined text-[14px]">close</span>
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        
         <div className="glass-card rounded-3xl p-2 flex items-center gap-2 border border-white/10 shadow-2xl">
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            onChange={handleFileUpload} 
+            accept=".pdf" 
+            multiple 
+            className="hidden" 
+          />
+          
+          <button 
+            onClick={() => fileInputRef.current?.click()}
+            className="w-10 h-10 rounded-2xl flex items-center justify-center bg-white/5 border border-white/10 text-white/60 hover:text-primary hover:border-primary/30 transition-all"
+            title="Adjuntar PDF"
+          >
+            <span className="material-icons-outlined text-lg">add</span>
+          </button>
+
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-            placeholder="Buscar metodologías..."
-            className="flex-1 bg-white/10 border border-white/20 focus:bg-white/20 focus:border-primary/50 placeholder:text-white/50 rounded-2xl py-3 px-4 text-sm text-white focus:outline-none transition-all"
+            placeholder="Preguntar al Coach o sobre PDFs..."
+            className="flex-1 bg-antigravity-charcoal border border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none placeholder:text-white/30 rounded-2xl py-3 px-4 text-sm text-white transition-all"
             disabled={isLoading}
           />
           
           <button 
             onClick={handleSearch}
-            disabled={!query.trim() || isLoading}
-            className={`w-10 h-10 rounded-2xl flex items-center justify-center active:scale-95 transition-all ${query.trim() ? 'bg-primary text-antigravity-black' : 'bg-antigravity-charcoal text-white/30 border border-white/10'}`}
+            disabled={(!query.trim() && attachedFiles.length === 0) || isLoading}
+            className={`w-10 h-10 rounded-2xl flex items-center justify-center active:scale-95 transition-all ${(query.trim() || attachedFiles.length > 0) ? 'bg-primary text-antigravity-black shadow-neon-cyan' : 'bg-antigravity-charcoal text-white/30 border border-white/10'}`}
           >
             <span className="material-icons-outlined text-lg">send</span>
           </button>

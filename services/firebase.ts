@@ -29,7 +29,8 @@ export const COLLECTIONS = {
   GRUPOS: "grupos",
   ASISTENCIAS: "asistencias",
   FEEDBACK: "feedback",
-  PROFESORES: "profesores"
+  PROFESORES: "profesores",
+  NIVELES: "niveles"
 };
 
 // Generic helpers
