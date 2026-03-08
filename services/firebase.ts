@@ -72,3 +72,14 @@ export const deleteDocument = async (collectionName: string, id: string) => {
     throw new Error(`No se pudo eliminar el registro. Verifica tu conexión o permisos. (${error.message})`);
   }
 };
+
+export const getAttendanceByStudent = async (studentId: string) => {
+  try {
+    const q = query(collection(db, COLLECTIONS.ASISTENCIAS), where("alumnoId", "==", studentId));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  } catch (error: any) {
+    console.error(`Error getting attendance for student ${studentId}:`, error);
+    return [];
+  }
+};

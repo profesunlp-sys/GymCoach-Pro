@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Alumno, Clase, ViewMode, GrupoConfig, AsistenciaRecord, UserRole, Feedback, Skill, SkillStatus, Apparatus } from './types.ts';
 import { processClassAudio, refineClassAnalysis } from './services/geminiService.ts';
 import { SKILL_TREE, DISCIPLINAS, NIVELES as DEFAULT_NIVELES } from './constants.tsx';
-import { db as firestore, auth, googleProvider, COLLECTIONS, getCollectionData, addDocument, updateDocument, deleteDocument } from './services/firebase.ts';
+import { db as firestore, auth, googleProvider, COLLECTIONS, getCollectionData, addDocument, updateDocument, deleteDocument, getAttendanceByStudent } from './services/firebase.ts';
 import { collection, query, where, getDocs, addDoc, doc, updateDoc, onSnapshot, orderBy } from 'firebase/firestore';
 import { signInWithPopup, signOut, onAuthStateChanged, User, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, setPersistence, browserLocalPersistence, browserSessionPersistence } from 'firebase/auth';
 import { CoachAI } from './src/components/CoachAI.tsx';
@@ -123,6 +123,8 @@ const App: React.FC = () => {
   const [asistenciasHoy, setAsistenciasHoy] = useState<Record<string, boolean>>({});
   const [selectedClase, setSelectedClase] = useState<Clase | null>(null);
   const [selectedAlumno, setSelectedAlumno] = useState<Alumno | null>(null);
+  const [alumnoAsistencias, setAlumnoAsistencias] = useState<AsistenciaRecord[]>([]);
+  const [isLoadingAsistencias, setIsLoadingAsistencias] = useState(false);
   const [selectedProfesor, setSelectedProfesor] = useState<string | null>(null);
   const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
   const [newFeedback, setNewFeedback] = useState("");
@@ -1181,7 +1183,7 @@ const App: React.FC = () => {
             
             <div className="space-y-4">
               <textarea 
-                className="w-full bg-white/5 border rounded-2xl p-4 text-sm text-white placeholder:text-white/20 transition-all min-h-[100px] border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
+                className="w-full crafted-input min-h-[100px] !bg-white/5"
                 placeholder="Escribe tu aclaración aquí..."
                 value={clarificationText}
                 onChange={(e) => setClarificationText(e.target.value)}
@@ -1434,10 +1436,10 @@ const App: React.FC = () => {
                 </div>
 
                 <div className="space-y-4">
-                  <input className="w-full bg-antigravity-charcoal border rounded-2xl px-5 py-4 text-sm text-white placeholder:text-white/20 border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
+                  <input className="w-full crafted-input"
                     placeholder="Nombre del Grupo (Ej. Avanzados)" value={newGroupName} onChange={(e) => setNewGroupName(e.target.value)} />
                   
-                  <input className="w-full bg-antigravity-charcoal border rounded-2xl px-5 py-4 text-sm text-white placeholder:text-white/20 border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
+                  <input className="w-full crafted-input"
                     placeholder="Nombre y Apellido del Profesor" value={newCoachName} onChange={(e) => setNewCoachName(e.target.value)} />
                   
                   <div className="grid grid-cols-2 gap-4">
@@ -1546,7 +1548,7 @@ const App: React.FC = () => {
               <div className="relative group">
                 <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-white/30 text-xl group-focus-within:text-neon-cyan transition-colors">search</span>
                 <input 
-                  className="w-full bg-antigravity-charcoal border rounded-2xl py-3.5 pl-12 pr-4 text-sm ring-neon-cyan/50 border-neon-cyan/50 placeholder:text-white/20 text-white transition-all border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none" 
+                  className="w-full crafted-input pl-12 !py-3.5 !border-neon-cyan/50 !ring-neon-cyan/50" 
                   placeholder="Buscar alumno..." 
                   type="text"
                   value={searchQuery}
@@ -1733,7 +1735,7 @@ const App: React.FC = () => {
             <div className="relative">
               <span className="material-icons-outlined absolute left-4 top-1/2 -translate-y-1/2 text-white/20">search</span>
               <input 
-                className="w-full bg-antigravity-charcoal border rounded-2xl py-4 pl-12 pr-4 text-sm text-white placeholder:text-white/20 border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
+                className="w-full crafted-input pl-12"
                 placeholder="Buscar por nombre o DNI..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -1809,7 +1811,16 @@ const App: React.FC = () => {
                   return (
                     <div 
                       key={alumno.id} 
-                      onClick={() => { setSelectedAlumno(alumno); handleNavigation('AlumnoDetalle'); }}
+                      onClick={async () => { 
+                        setSelectedAlumno(alumno); 
+                        handleNavigation('AlumnoDetalle'); 
+                        if (alumno.id) {
+                          setIsLoadingAsistencias(true);
+                          const history = (await getAttendanceByStudent(alumno.id)) as AsistenciaRecord[];
+                          setAlumnoAsistencias(history.sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime()));
+                          setIsLoadingAsistencias(false);
+                        }
+                      }}
                       className={`glass-card rounded-2xl p-4 border flex items-center justify-between cursor-pointer active:scale-95 transition-all ${hasAlerts && alumnosFilterMode === 'alerts' ? 'border-amber-500/30 bg-amber-500/5' : 'border-white/5'}`}
                     >
                       <div className="flex items-center gap-4">
@@ -1865,45 +1876,91 @@ const App: React.FC = () => {
             {isEditingAlumno && (
               <div className="glass-card rounded-2xl p-5 border border-primary/30 space-y-4 shadow-neon-cyan">
                 <h3 className="text-white font-bold text-sm uppercase tracking-wider">Editar Gimnasta</h3>
-                <input 
-                  type="text" 
-                  placeholder="Nombre completo" 
-                  className="w-full bg-antigravity-charcoal border rounded-xl px-4 py-3 text-sm text-white border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
-                  value={editingAlumnoData.nombre || ''}
-                  onChange={e => setEditingAlumnoData({...editingAlumnoData, nombre: e.target.value})}
-                />
-                <input 
-                  type="text" 
-                  placeholder="DNI (Opcional)" 
-                  className="w-full bg-antigravity-charcoal border rounded-xl px-4 py-3 text-sm text-white border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
-                  value={editingAlumnoData.dni || ''}
-                  onChange={e => setEditingAlumnoData({...editingAlumnoData, dni: e.target.value})}
-                />
-                <div className="grid grid-cols-2 gap-3">
-                  <EditableDropdown 
-                    label="Grupo"
-                    placeholder="Grupo..."
-                    value={editingAlumnoData.grupo || ''}
-                    onChange={val => setEditingAlumnoData({...editingAlumnoData, grupo: val})}
-                    options={grupos.filter(g => userRole === 'Coordinator' || !user?.displayName || g.entrenador === user.displayName)}
-                    onAdd={handleQuickSaveGroup}
-                    onEdit={handleUpdateGroupQuick}
-                    onDelete={(id) => {
-                      const g = grupos.find(x => x.id === id);
-                      if (g) handleDeleteGroup(g);
-                    }}
-                  />
-                  <EditableDropdown 
-                    label="Nivel"
-                    placeholder="Nivel..."
-                    value={editingAlumnoData.nivel || ''}
-                    onChange={val => setEditingAlumnoData({...editingAlumnoData, nivel: val})}
-                    options={niveles}
-                    onAdd={handleSaveLevel}
-                    onEdit={handleUpdateLevel}
-                    onDelete={handleDeleteLevel}
-                  />
+                
+                <div className="space-y-4">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest ml-1">Información Básica</label>
+                    <input 
+                      type="text" 
+                      placeholder="Nombre completo" 
+                      className="w-full crafted-input"
+                      value={editingAlumnoData.nombre || ''}
+                      onChange={e => setEditingAlumnoData({...editingAlumnoData, nombre: e.target.value})}
+                    />
+                    <div className="grid grid-cols-2 gap-3">
+                      <input 
+                        type="text" 
+                        placeholder="DNI (Opcional)" 
+                        className="w-full crafted-input"
+                        value={editingAlumnoData.dni || ''}
+                        onChange={e => setEditingAlumnoData({...editingAlumnoData, dni: e.target.value})}
+                      />
+                      <input 
+                        type="date" 
+                        className="w-full crafted-input"
+                        value={editingAlumnoData.fechaNacimiento || ''}
+                        onChange={e => setEditingAlumnoData({...editingAlumnoData, fechaNacimiento: e.target.value})}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <EditableDropdown 
+                      label="Grupo"
+                      placeholder="Grupo..."
+                      value={editingAlumnoData.grupo || ''}
+                      onChange={val => setEditingAlumnoData({...editingAlumnoData, grupo: val})}
+                      options={grupos.filter(g => userRole === 'Coordinator' || !user?.displayName || g.entrenador === user.displayName)}
+                      onAdd={handleQuickSaveGroup}
+                      onEdit={handleUpdateGroupQuick}
+                      onDelete={(id) => {
+                        const g = grupos.find(x => x.id === id);
+                        if (g) handleDeleteGroup(g);
+                      }}
+                    />
+                    <EditableDropdown 
+                      label="Nivel"
+                      placeholder="Nivel..."
+                      value={editingAlumnoData.nivel || ''}
+                      onChange={val => setEditingAlumnoData({...editingAlumnoData, nivel: val})}
+                      options={niveles}
+                      onAdd={handleSaveLevel}
+                      onEdit={handleUpdateLevel}
+                      onDelete={handleDeleteLevel}
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest ml-1">Observaciones de Salud</label>
+                    <textarea 
+                      className="w-full crafted-input h-20"
+                      placeholder="Alergias, lesiones, condiciones médicas..."
+                      value={editingAlumnoData.alertas?.[0] || ''}
+                      onChange={e => setEditingAlumnoData({...editingAlumnoData, alertas: [e.target.value]})}
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest ml-1">Contacto de Emergencia</label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <input 
+                        type="text" 
+                        placeholder="Nombre" 
+                        className="w-full crafted-input"
+                        value={editingAlumnoData.contacto?.emergenciaNombre || ''}
+                        onChange={e => setEditingAlumnoData({...editingAlumnoData, contacto: {...(editingAlumnoData.contacto || {}), emergenciaNombre: e.target.value}})}
+                      />
+                      <input 
+                        type="tel" 
+                        placeholder="Teléfono" 
+                        className="w-full crafted-input"
+                        value={editingAlumnoData.contacto?.emergenciaTelefono || ''}
+                        onChange={e => setEditingAlumnoData({...editingAlumnoData, contacto: {...(editingAlumnoData.contacto || {}), emergenciaTelefono: e.target.value}})}
+                      />
+                    </div>
+                  </div>
                 </div>
+
                 <div className="flex gap-2 pt-2">
                   <button 
                     onClick={handleDeleteAlumno}
@@ -1921,6 +1978,93 @@ const App: React.FC = () => {
                 </div>
               </div>
             )}
+
+            {/* Progress Summary */}
+            <section className="space-y-4">
+              <h3 className="text-white font-bold text-lg px-1">Resumen de Progreso</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="glass-card rounded-2xl p-4 border border-white/5 flex flex-col items-center justify-center text-center">
+                  <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1">Habilidades</p>
+                  <p className="text-2xl font-black text-white">{selectedAlumno.habilidades?.length || 0}</p>
+                  <p className="text-[9px] text-primary font-bold uppercase mt-1">Registradas</p>
+                </div>
+                <div className="glass-card rounded-2xl p-4 border border-white/5 flex flex-col items-center justify-center text-center">
+                  <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1">Dominadas</p>
+                  <p className="text-2xl font-black text-emerald-400">{selectedAlumno.habilidades?.filter(s => s.status === 'Dominado' || s.status === 'Elite').length || 0}</p>
+                  <p className="text-[9px] text-emerald-500/60 font-bold uppercase mt-1">Logros</p>
+                </div>
+              </div>
+              
+              {/* Apparatus Progress */}
+              <div className="glass-card rounded-2xl p-5 border border-white/5 space-y-4">
+                <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Progreso por Aparato</p>
+                <div className="space-y-3">
+                  {Object.keys(SKILL_TREE).map(apparatus => {
+                    const skills = selectedAlumno.habilidades?.filter(s => s.apparatus === apparatus) || [];
+                    if (skills.length === 0) return null;
+                    const mastered = skills.filter(s => s.status === 'Dominado' || s.status === 'Elite').length;
+                    const percent = Math.round((mastered / skills.length) * 100);
+                    
+                    return (
+                      <div key={apparatus} className="space-y-1.5">
+                        <div className="flex justify-between text-[10px] uppercase font-bold tracking-wider">
+                          <span className="text-white/70">{apparatus}</span>
+                          <span className="text-primary">{percent}%</span>
+                        </div>
+                        <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-primary shadow-neon-cyan transition-all duration-1000" 
+                            style={{ width: `${percent}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </section>
+
+            {/* Attendance History */}
+            <section className="space-y-4">
+              <div className="flex justify-between items-center px-1">
+                <h3 className="text-white font-bold text-lg">Historial de Asistencia</h3>
+                <div className="text-[10px] font-bold text-white/40 uppercase tracking-widest">
+                  {alumnoAsistencias.filter(a => a.presente).length} Presentes
+                </div>
+              </div>
+              
+              <div className="glass-card rounded-2xl overflow-hidden border border-white/5">
+                {isLoadingAsistencias ? (
+                  <div className="p-8 text-center">
+                    <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
+                  </div>
+                ) : alumnoAsistencias.length > 0 ? (
+                  <div className="divide-y divide-white/5">
+                    {alumnoAsistencias.slice(0, 5).map((record, idx) => (
+                      <div key={record.id || idx} className="p-4 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-2 h-2 rounded-full ${record.presente ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-rose-500'}`}></div>
+                          <div>
+                            <p className="text-xs font-bold text-white">{new Date(record.fecha).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'short' })}</p>
+                            <p className="text-[9px] text-white/30 uppercase font-bold tracking-widest">{record.grupo}</p>
+                          </div>
+                        </div>
+                        <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-md ${record.presente ? 'text-emerald-400 bg-emerald-500/10' : 'text-rose-400 bg-rose-500/10'}`}>
+                          {record.presente ? 'Presente' : 'Ausente'}
+                        </span>
+                      </div>
+                    ))}
+                    {alumnoAsistencias.length > 5 && (
+                      <button className="w-full py-3 text-[10px] font-bold text-primary uppercase tracking-widest hover:bg-white/5 transition-colors">
+                        Ver historial completo
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="p-8 text-center opacity-30 italic text-sm">No hay registros de asistencia.</div>
+                )}
+              </div>
+            </section>
 
             <section className="space-y-4">
               <div className="flex justify-between items-center px-1">
@@ -2652,7 +2796,7 @@ const App: React.FC = () => {
 
                 <div className="flex gap-3 mt-6">
                   <input 
-                    className="flex-1 bg-antigravity-charcoal border rounded-2xl px-5 py-3.5 text-xs text-white placeholder:text-white/20 border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
+                    className="flex-1 crafted-input !py-3.5 !text-xs"
                     placeholder="Escribir feedback..."
                     value={newFeedback}
                     onChange={(e) => setNewFeedback(e.target.value)}
