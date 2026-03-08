@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Alumno, Clase, ViewMode, GrupoConfig, AsistenciaRecord, UserRole, Feedback, Skill, SkillStatus, Apparatus } from './types.ts';
-import { processClassAudio, refineClassAnalysis } from './services/geminiService.ts';
-import { SKILL_TREE, DISCIPLINAS, NIVELES as DEFAULT_NIVELES } from './constants.tsx';
-import { db as firestore, auth, googleProvider, COLLECTIONS, getCollectionData, addDocument, updateDocument, deleteDocument, getAttendanceByStudent } from './services/firebase.ts';
+import { Alumno, Clase, ViewMode, GrupoConfig, AsistenciaRecord, UserRole, Feedback, Skill, SkillStatus, Apparatus } from './types';
+import { processClassAudio, refineClassAnalysis } from './services/geminiService';
+import { SKILL_TREE, DISCIPLINAS, NIVELES as DEFAULT_NIVELES } from './constants';
+import { db as firestore, auth, googleProvider, COLLECTIONS, getCollectionData, addDocument, updateDocument, deleteDocument, getAttendanceByStudent } from './services/firebase';
 import { collection, query, where, getDocs, addDoc, doc, updateDoc, onSnapshot, orderBy } from 'firebase/firestore';
 import { signInWithPopup, signOut, onAuthStateChanged, User, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, setPersistence, browserLocalPersistence, browserSessionPersistence } from 'firebase/auth';
-import { CoachAI } from './src/components/CoachAI.tsx';
+import { CoachAI } from './src/components/CoachAI';
 
 const EditableDropdown = ({ 
   label, 
@@ -129,6 +129,10 @@ const App: React.FC = () => {
   const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
   const [newFeedback, setNewFeedback] = useState("");
   
+  const [selectedDisciplina, setSelectedDisciplina] = useState<string>('Todas');
+  const [asistenciasClase, setAsistenciasClase] = useState<AsistenciaRecord[]>([]);
+  const [isLoadingAsistenciasClase, setIsLoadingAsistenciasClase] = useState(false);
+
   // Search State
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedAlumnoId, setExpandedAlumnoId] = useState<string | null>(null);
@@ -1695,7 +1699,7 @@ const App: React.FC = () => {
 
             {/* FAB button matches user snippet */}
             <button 
-              onClick={() => setIsAddingAlumno(true)}
+              onClick={() => handleNavigation('RegistroAlumno')}
               className="absolute bottom-28 right-6 w-16 h-16 bg-neon-blue text-white rounded-2xl flex items-center justify-center neon-fab-blue active:scale-95 transition-all z-30"
             >
               <span className="material-symbols-outlined text-[32px] font-light">person_add</span>
@@ -1703,35 +1707,41 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {vista === 'Alumnos' && (
-          <div className="px-6 py-8 space-y-8 page-transition">
-            <header className="flex justify-between items-end">
-              <div>
-                <h2 className="text-3xl font-black text-white uppercase tracking-tighter">
-                  {alumnosFilterMode === 'alerts' ? 'Obs. de Salud' : 'Gimnastas'}
-                </h2>
-                <p className="text-primary text-[10px] font-black uppercase tracking-widest mt-1">
-                  {alumnosFilterMode === 'alerts' ? 'Gimnastas con Alertas Médicas' : `Base de Datos ${userRole === 'Coordinator' ? 'Global' : 'del Grupo'}`}
+      {/* VISTA: ALUMNOS */}
+      {vista === 'Alumnos' && (
+        <div className="px-6 py-8 space-y-8 page-transition pb-24">
+          <header className="flex justify-between items-end">
+            <div>
+              <h2 className="text-3xl font-black text-white uppercase tracking-tighter">
+                {alumnosFilterMode === 'alerts' ? 'Obs. de Salud' : 'Gimnastas'}
+              </h2>
+              <p className="text-primary text-[10px] font-black uppercase tracking-widest mt-1">
+                {alumnosFilterMode === 'alerts' ? 'Gimnastas con Alertas Médicas' : `Base de Datos ${userRole === 'Coordinator' ? 'Global' : 'del Grupo'}`}
+              </p>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="text-right">
+                <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Total</p>
+                <p className="text-2xl font-black text-white">
+                  {alumnos
+                    .filter(a => alumnosFilterMode === 'alerts' ? (a.alertas && a.alertas.length > 0 && a.alertas[0] !== '') : true)
+                    .filter(a => selectedDisciplina === 'Todas' || a.disciplina === selectedDisciplina)
+                    .filter(a => a.nombre.toLowerCase().includes(searchQuery.toLowerCase()) || a.dni.includes(searchQuery))
+                    .length}
                 </p>
               </div>
-              <div className="flex items-center gap-4">
-                <div className="text-right">
-                  <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Total</p>
-                  <p className="text-2xl font-black text-white">
-                    {alumnos.filter(a => alumnosFilterMode === 'alerts' ? (a.alertas && a.alertas.length > 0 && a.alertas[0] !== '') : true).length}
-                  </p>
-                </div>
-                {alumnosFilterMode === 'all' && (
-                  <button 
-                    onClick={() => setIsAddingAlumno(!isAddingAlumno)}
-                    className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary border border-primary/20 active:scale-90 transition-all"
-                  >
-                    <span className="material-icons-outlined text-sm">{isAddingAlumno ? 'close' : 'person_add'}</span>
-                  </button>
-                )}
-              </div>
-            </header>
+              {alumnosFilterMode === 'all' && (
+                <button 
+                  onClick={() => setIsAddingAlumno(!isAddingAlumno)}
+                  className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary border border-primary/20 active:scale-90 transition-all"
+                >
+                  <span className="material-icons-outlined text-sm">{isAddingAlumno ? 'close' : 'person_add'}</span>
+                </button>
+              )}
+            </div>
+          </header>
 
+          <div className="space-y-4">
             <div className="relative">
               <span className="material-icons-outlined absolute left-4 top-1/2 -translate-y-1/2 text-white/20">search</span>
               <input 
@@ -1741,6 +1751,24 @@ const App: React.FC = () => {
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
+
+            {/* Discipline Filter */}
+            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+              {['Todas', ...DISCIPLINAS].map(disc => (
+                <button
+                  key={disc}
+                  onClick={() => setSelectedDisciplina(disc)}
+                  className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all border ${
+                    selectedDisciplina === disc 
+                      ? 'bg-primary text-antigravity-black border-primary shadow-neon-cyan' 
+                      : 'bg-white/5 text-white/40 border-white/10 hover:border-white/20'
+                  }`}
+                >
+                  {disc}
+                </button>
+              ))}
+            </div>
+          </div>
 
             {isAddingAlumno && (
               <div className="glass-card rounded-2xl p-5 border border-primary/30 space-y-4 shadow-neon-cyan">
@@ -1805,6 +1833,7 @@ const App: React.FC = () => {
             <div className="space-y-3">
               {alumnos
                 .filter(a => alumnosFilterMode === 'alerts' ? (a.alertas && a.alertas.length > 0 && a.alertas[0] !== '') : true)
+                .filter(a => selectedDisciplina === 'Todas' || a.disciplina === selectedDisciplina)
                 .filter(a => a.nombre.toLowerCase().includes(searchQuery.toLowerCase()) || a.dni.includes(searchQuery))
                 .map(alumno => {
                   const hasAlerts = alumno.alertas && alumno.alertas.length > 0 && alumno.alertas[0] !== '';
@@ -1888,19 +1917,25 @@ const App: React.FC = () => {
                       onChange={e => setEditingAlumnoData({...editingAlumnoData, nombre: e.target.value})}
                     />
                     <div className="grid grid-cols-2 gap-3">
-                      <input 
-                        type="text" 
-                        placeholder="DNI (Opcional)" 
-                        className="w-full crafted-input"
-                        value={editingAlumnoData.dni || ''}
-                        onChange={e => setEditingAlumnoData({...editingAlumnoData, dni: e.target.value})}
-                      />
-                      <input 
-                        type="date" 
-                        className="w-full crafted-input"
-                        value={editingAlumnoData.fechaNacimiento || ''}
-                        onChange={e => setEditingAlumnoData({...editingAlumnoData, fechaNacimiento: e.target.value})}
-                      />
+                      <div className="space-y-1">
+                        <label className="text-[10px] uppercase font-bold text-slate-500 ml-1">DNI (Opcional)</label>
+                        <input 
+                          type="text" 
+                          placeholder="Número..." 
+                          className="w-full crafted-input"
+                          value={editingAlumnoData.dni || ''}
+                          onChange={e => setEditingAlumnoData({...editingAlumnoData, dni: e.target.value})}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] uppercase font-bold text-slate-500 ml-1">Fecha Nacimiento</label>
+                        <input 
+                          type="date" 
+                          className="w-full crafted-input"
+                          value={editingAlumnoData.fechaNacimiento || ''}
+                          onChange={e => setEditingAlumnoData({...editingAlumnoData, fechaNacimiento: e.target.value})}
+                        />
+                      </div>
                     </div>
                   </div>
 
@@ -2644,19 +2679,28 @@ const App: React.FC = () => {
               <div className="space-y-4">
                 <h4 className="text-white font-black text-[10px] border-b border-white/5 pb-2 uppercase tracking-[0.3em] opacity-30 italic">Identificación</h4>
                 <div className="space-y-4">
-                  <input className="w-full crafted-input" placeholder="Nombre y Apellido *" value={studentForm.nombre} onChange={(e) => setStudentForm({...studentForm, nombre: e.target.value})}/>
+                  <div className="space-y-1">
+                    <label className="text-[10px] uppercase font-bold text-slate-500 ml-1">Nombre y Apellido *</label>
+                    <input className="w-full crafted-input" placeholder="Nombre completo..." value={studentForm.nombre} onChange={(e) => setStudentForm({...studentForm, nombre: e.target.value})}/>
+                  </div>
                   <div className="grid grid-cols-2 gap-4">
-                    <input className="w-full crafted-input" placeholder="DNI (Opcional)" value={studentForm.dni} onChange={(e) => setStudentForm({...studentForm, dni: e.target.value})}/>
-                    <div className="relative">
+                    <div className="space-y-1">
+                      <label className="text-[10px] uppercase font-bold text-slate-500 ml-1">DNI (Opcional)</label>
+                      <input className="w-full crafted-input" placeholder="Número..." value={studentForm.dni} onChange={(e) => setStudentForm({...studentForm, dni: e.target.value})}/>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] uppercase font-bold text-slate-500 ml-1">Fecha Nacimiento *</label>
                       <input type="date" className="w-full crafted-input" value={studentForm.fechaNacimiento} onChange={(e) => setStudentForm({...studentForm, fechaNacimiento: e.target.value})}/>
-                      {!studentForm.fechaNacimiento && <span className="absolute left-4 top-4 text-sm text-slate-400 pointer-events-none">Fecha Nacimiento *</span>}
                     </div>
                   </div>
                 </div>
               </div>
               <div className="space-y-4">
                 <h4 className="text-white font-black text-[10px] border-b border-white/5 pb-2 uppercase tracking-[0.3em] opacity-30 italic">Seguimiento Médico</h4>
-                <textarea className="w-full crafted-input h-24" placeholder="Observaciones de salud (Opcional)..." onChange={(e) => setStudentForm({...studentForm, alertas: [e.target.value]})}/>
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase font-bold text-slate-500 ml-1">Observaciones de Salud (Opcional)</label>
+                  <textarea className="w-full crafted-input h-24" placeholder="Alergias, condiciones médicas..." onChange={(e) => setStudentForm({...studentForm, alertas: [e.target.value]})}/>
+                </div>
                 <div className="space-y-1">
                   <label className="text-[10px] uppercase font-bold text-slate-500 ml-1">Fecha de Inicio de Actividades</label>
                   <input type="date" className="w-full crafted-input" value={studentForm.fechaPrimeraClase} onChange={(e) => setStudentForm({...studentForm, fechaPrimeraClase: e.target.value})}/>
@@ -2713,9 +2757,9 @@ const App: React.FC = () => {
         )}
 
         {vista === 'ClaseDetalle' && selectedClase && (
-          <div className="page-transition flex flex-col min-h-screen bg-antigravity-black">
+          <div className="page-transition flex flex-col min-h-screen bg-antigravity-black pb-24">
             <header className="px-6 py-6 flex items-center gap-4 sticky top-12 bg-antigravity-black z-40">
-              <button onClick={() => setVista('Dashboard')} className="w-10 h-10 flex items-center justify-center rounded-full bg-antigravity-charcoal border border-white/10 text-white">
+              <button onClick={() => setVista('Planes')} className="w-10 h-10 flex items-center justify-center rounded-full bg-antigravity-charcoal border border-white/10 text-white">
                 <span className="material-symbols-outlined text-[20px]">arrow_back_ios_new</span>
               </button>
               <div>
@@ -2725,6 +2769,77 @@ const App: React.FC = () => {
             </header>
 
             <main className="flex-1 px-6 space-y-8 pb-12">
+              <section className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white/30 italic">Asistencia de la Clase</h3>
+                  <button 
+                    onClick={async () => {
+                      setIsLoadingAsistenciasClase(true);
+                      const q = query(
+                        collection(firestore, COLLECTIONS.ASISTENCIAS),
+                        where('fecha', '==', selectedClase.fecha.split('T')[0]),
+                        where('grupo', '==', selectedClase.grupo)
+                      );
+                      const snap = await getDocs(q);
+                      const records = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as AsistenciaRecord));
+                      setAsistenciasClase(records);
+                      setIsLoadingAsistenciasClase(false);
+                    }}
+                    className="text-[10px] font-bold text-primary uppercase tracking-widest flex items-center gap-1"
+                  >
+                    <span className="material-icons-outlined text-sm">refresh</span> Actualizar
+                  </button>
+                </div>
+                
+                <div className="glass-card rounded-3xl p-6 border border-white/5">
+                  {isLoadingAsistenciasClase ? (
+                    <div className="py-8 text-center">
+                      <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
+                    </div>
+                  ) : asistenciasClase.length > 0 ? (
+                    <div className="space-y-3">
+                      {asistenciasClase.map(record => {
+                        const alumno = alumnos.find(a => a.id === record.alumnoId);
+                        return (
+                          <div key={record.id} className="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center overflow-hidden">
+                                <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(alumno?.nombre || 'Alumno')}&background=random`} alt="" className="w-full h-full object-cover opacity-60" />
+                              </div>
+                              <span className="text-sm text-white font-medium">{alumno?.nombre || 'Alumno Desconocido'}</span>
+                            </div>
+                            <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-md ${record.presente ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'}`}>
+                              {record.presente ? 'Presente' : 'Ausente'}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="py-8 text-center">
+                      <p className="text-xs text-white/30 italic">No hay registros de asistencia para esta clase.</p>
+                      <button 
+                        onClick={async () => {
+                          setIsLoadingAsistenciasClase(true);
+                          const q = query(
+                            collection(firestore, COLLECTIONS.ASISTENCIAS),
+                            where('fecha', '==', selectedClase.fecha.split('T')[0]),
+                            where('grupo', '==', selectedClase.grupo)
+                          );
+                          const snap = await getDocs(q);
+                          const records = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as AsistenciaRecord));
+                          setAsistenciasClase(records);
+                          setIsLoadingAsistenciasClase(false);
+                        }}
+                        className="mt-4 px-4 py-2 rounded-xl bg-white/5 text-white text-[10px] font-bold uppercase tracking-widest border border-white/10"
+                      >
+                        Cargar Asistencia
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </section>
+
               <section className="space-y-4">
                 <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white/30 italic">Contenido de la Clase</h3>
                 <div className="glass-card rounded-3xl p-6 space-y-6">
