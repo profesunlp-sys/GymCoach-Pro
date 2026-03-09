@@ -3,7 +3,7 @@ import { Alumno, Clase, ViewMode, GrupoConfig, AsistenciaRecord, UserRole, Feedb
 import { processClassAudio, refineClassAnalysis } from './services/geminiService';
 import { SKILL_TREE, DISCIPLINAS, NIVELES as DEFAULT_NIVELES } from './constants';
 import { db as firestore, auth, googleProvider, COLLECTIONS, getCollectionData, addDocument, updateDocument, deleteDocument, getAttendanceByStudent } from './services/firebase';
-import { collection, query, where, getDocs, addDoc, doc, updateDoc, onSnapshot, orderBy } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, doc, updateDoc, onSnapshot, orderBy, setDoc } from 'firebase/firestore';
 import { signInWithPopup, signOut, onAuthStateChanged, User, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, setPersistence, browserLocalPersistence, browserSessionPersistence } from 'firebase/auth';
 import { CoachAI } from './src/components/CoachAI';
 
@@ -124,6 +124,7 @@ const App: React.FC = () => {
   const [selectedClase, setSelectedClase] = useState<Clase | null>(null);
   const [selectedAlumno, setSelectedAlumno] = useState<Alumno | null>(null);
   const [alumnoAsistencias, setAlumnoAsistencias] = useState<AsistenciaRecord[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const [isLoadingAsistencias, setIsLoadingAsistencias] = useState(false);
   const [selectedProfesor, setSelectedProfesor] = useState<string | null>(null);
   const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
@@ -205,6 +206,8 @@ const App: React.FC = () => {
 
   // UI States
   const [notificacion, setNotificacion] = useState<{t: string, d: string} | null>(null);
+  const [hasNewData, setHasNewData] = useState(false);
+  const isFirstLoad = useRef(true);
   const [pendingNavigation, setPendingNavigation] = useState<ViewMode | null>(null);
   const [emergencyInfo, setEmergencyInfo] = useState<{publicProvider: string, publicPhone: string, privateProvider: string, privatePhone: string}>({ 
     publicProvider: 'Emergencias Públicas', publicPhone: '107',
@@ -564,14 +567,43 @@ const App: React.FC = () => {
   useEffect(() => {
     if (isLoggedIn) {
       loadData();
-      // Real-time updates for classes (important for coordinator)
-      const unsub = onSnapshot(collection(firestore, COLLECTIONS.CLASES), (snapshot) => {
-        const c = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Clase[];
-        setClases(c.sort((x, y) => new Date(y.fecha).getTime() - new Date(x.fecha).getTime()));
+      
+      // Real-time updates for classes
+      const unsubClases = onSnapshot(collection(firestore, COLLECTIONS.CLASES), (snapshot) => {
+        if (isFirstLoad.current) return;
+        if (snapshot.metadata.hasPendingWrites) return;
+        setHasNewData(true);
       });
-      return () => unsub();
+
+      // Real-time updates for students
+      const unsubAlumnos = onSnapshot(collection(firestore, COLLECTIONS.ALUMNOS), (snapshot) => {
+        if (isFirstLoad.current) return;
+        if (snapshot.metadata.hasPendingWrites) return;
+        setHasNewData(true);
+      });
+
+      // Load emergency info
+      const loadEmergency = async () => {
+        const config = await getCollectionData(COLLECTIONS.CONFIG);
+        const emergency = config.find(c => c.id === 'emergency');
+        if (emergency) {
+          setEmergencyInfo(emergency as any);
+        }
+      };
+      loadEmergency();
+
+      // Reset first load after a short delay
+      const timer = setTimeout(() => {
+        isFirstLoad.current = false;
+      }, 3000);
+
+      return () => {
+        unsubClases();
+        unsubAlumnos();
+        clearTimeout(timer);
+      };
     }
-  }, [isLoggedIn, activeGroup]);
+  }, [isLoggedIn]);
 
   useEffect(() => {
     if (selectedClase?.id) {
@@ -745,6 +777,67 @@ const App: React.FC = () => {
       console.error("Error adding professor:", error);
       setNotificacion({ t: "Error", d: "No se pudo añadir al profesor." });
     }
+  };
+
+  const [isBulkImporting, setIsBulkImporting] = useState(false);
+  const [bulkImportText, setBulkImportText] = useState("");
+
+  const handleBulkImport = async () => {
+    const lines = bulkImportText.split('\n').filter(line => line.trim() !== '');
+    if (lines.length === 0) return;
+
+    setIsLoading(true);
+    let importedCount = 0;
+    
+    for (const line of lines) {
+      // Split by comma, semicolon or tab
+      const parts = line.split(/[,;\t]/).map(p => p.trim());
+      if (parts.length < 1 || !parts[0]) continue;
+
+      const nombre = parts[0];
+      const dni = parts[1] || '';
+      const grupo = parts[2] || 'Sin Grupo';
+      const nivel = parts[3] || 'Escuela';
+      const telefono = parts[4] || '';
+
+      const currentYear = new Date().getFullYear();
+      const ageAtEndOfYear = 0; // Default if not provided
+
+      const newStudent: Omit<Alumno, 'id'> = {
+        nombre,
+        dni: dni || 'No especificado',
+        disciplina: 'GAF',
+        nivel,
+        grupo,
+        fechaNacimiento: '2010-01-01',
+        fechaIngreso: new Date().toISOString(),
+        fechaPrimeraClase: new Date().toISOString().split('T')[0],
+        estadoPago: 'Al día',
+        habilidades: [],
+        biometria: { fuerza: 50, flexibilidad: 50, tecnica: 50, resistencia: 50, coordinacion: 50 },
+        qrCode: `QR_${dni || new Date().getTime()}_${Math.random().toString(36).substr(2, 5)}`,
+        asistenciasHistoricas: 0,
+        alertas: [],
+        contacto: {
+          padreNombre: '', padreTelefono: '', madreNombre: '', madreTelefono: '',
+          emergenciaNombre: 'Contacto Masivo', emergenciaTelefono: telefono
+        }
+      };
+
+      try {
+        await addDocument(COLLECTIONS.ALUMNOS, newStudent);
+        importedCount++;
+      } catch (e) {
+        console.error("Error importing student", e);
+      }
+    }
+
+    await loadData();
+    setIsLoading(false);
+    setNotificacion({ t: "Importación Exitosa", d: `${importedCount} alumnos añadidos.` });
+    setIsBulkImporting(false);
+    setBulkImportText("");
+    setTimeout(() => setNotificacion(null), 3000);
   };
 
   const handleSaveStudent = async () => {
@@ -1803,12 +1896,21 @@ const App: React.FC = () => {
                 </p>
               </div>
               {alumnosFilterMode === 'all' && (
-                <button 
-                  onClick={() => setIsAddingAlumno(!isAddingAlumno)}
-                  className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary border border-primary/20 active:scale-90 transition-all"
-                >
-                  <span className="material-icons-outlined text-sm">{isAddingAlumno ? 'close' : 'person_add'}</span>
-                </button>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => setIsBulkImporting(true)}
+                    className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/60 border border-white/10 active:scale-90 transition-all"
+                    title="Importación Masiva"
+                  >
+                    <span className="material-icons-outlined text-sm">upload_file</span>
+                  </button>
+                  <button 
+                    onClick={() => setIsAddingAlumno(!isAddingAlumno)}
+                    className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary border border-primary/20 active:scale-90 transition-all"
+                  >
+                    <span className="material-icons-outlined text-sm">{isAddingAlumno ? 'close' : 'person_add'}</span>
+                  </button>
+                </div>
               )}
             </div>
           </header>
@@ -2048,22 +2150,56 @@ const App: React.FC = () => {
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-white/70 uppercase tracking-widest ml-1">Contacto de Emergencia</label>
-                    <div className="grid grid-cols-2 gap-3">
-                      <input 
-                        type="text" 
-                        placeholder="Nombre" 
-                        className="w-full crafted-input"
-                        value={editingAlumnoData.contacto?.emergenciaNombre || ''}
-                        onChange={e => setEditingAlumnoData({...editingAlumnoData, contacto: {...(editingAlumnoData.contacto || {}), emergenciaNombre: e.target.value}})}
-                      />
-                      <input 
-                        type="tel" 
-                        placeholder="Teléfono" 
-                        className="w-full crafted-input"
-                        value={editingAlumnoData.contacto?.emergenciaTelefono || ''}
-                        onChange={e => setEditingAlumnoData({...editingAlumnoData, contacto: {...(editingAlumnoData.contacto || {}), emergenciaTelefono: e.target.value}})}
-                      />
+                    <label className="text-[10px] font-bold text-white/70 uppercase tracking-widest ml-1">Contactos de Familia</label>
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-2 gap-3">
+                        <input 
+                          type="text" 
+                          placeholder="Nombre Padre" 
+                          className="w-full crafted-input"
+                          value={editingAlumnoData.contacto?.padreNombre || ''}
+                          onChange={e => setEditingAlumnoData({...editingAlumnoData, contacto: {...(editingAlumnoData.contacto || {}), padreNombre: e.target.value}})}
+                        />
+                        <input 
+                          type="tel" 
+                          placeholder="Tel Padre" 
+                          className="w-full crafted-input"
+                          value={editingAlumnoData.contacto?.padreTelefono || ''}
+                          onChange={e => setEditingAlumnoData({...editingAlumnoData, contacto: {...(editingAlumnoData.contacto || {}), padreTelefono: e.target.value}})}
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <input 
+                          type="text" 
+                          placeholder="Nombre Madre" 
+                          className="w-full crafted-input"
+                          value={editingAlumnoData.contacto?.madreNombre || ''}
+                          onChange={e => setEditingAlumnoData({...editingAlumnoData, contacto: {...(editingAlumnoData.contacto || {}), madreNombre: e.target.value}})}
+                        />
+                        <input 
+                          type="tel" 
+                          placeholder="Tel Madre" 
+                          className="w-full crafted-input"
+                          value={editingAlumnoData.contacto?.madreTelefono || ''}
+                          onChange={e => setEditingAlumnoData({...editingAlumnoData, contacto: {...(editingAlumnoData.contacto || {}), madreTelefono: e.target.value}})}
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <input 
+                          type="text" 
+                          placeholder="Emergencia Nombre" 
+                          className="w-full crafted-input"
+                          value={editingAlumnoData.contacto?.emergenciaNombre || ''}
+                          onChange={e => setEditingAlumnoData({...editingAlumnoData, contacto: {...(editingAlumnoData.contacto || {}), emergenciaNombre: e.target.value}})}
+                        />
+                        <input 
+                          type="tel" 
+                          placeholder="Emergencia Tel" 
+                          className="w-full crafted-input"
+                          value={editingAlumnoData.contacto?.emergenciaTelefono || ''}
+                          onChange={e => setEditingAlumnoData({...editingAlumnoData, contacto: {...(editingAlumnoData.contacto || {}), emergenciaTelefono: e.target.value}})}
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -2547,7 +2683,16 @@ const App: React.FC = () => {
                     </div>
 
                     <button 
-                      onClick={() => setIsEditingEmergency(false)}
+                      onClick={async () => {
+                        try {
+                          await setDoc(doc(firestore, COLLECTIONS.CONFIG, 'emergency'), emergencyInfo);
+                          setIsEditingEmergency(false);
+                          setNotificacion({ t: "Configuración Guardada", d: "Números de emergencia actualizados." });
+                          setTimeout(() => setNotificacion(null), 3000);
+                        } catch (e) {
+                          console.error("Error saving emergency info", e);
+                        }
+                      }}
                       className="w-full py-4 rounded-2xl bg-rose-500 text-white font-black uppercase text-xs tracking-widest shadow-neon-rose active:scale-95 transition-all mt-4"
                     >
                       Guardar Configuración
@@ -2763,6 +2908,41 @@ const App: React.FC = () => {
                     <div className="space-y-1">
                       <label className="text-[10px] uppercase font-bold text-slate-300 ml-1">Fecha Nacimiento *</label>
                       <input type="date" className="w-full crafted-input" value={studentForm.fechaNacimiento} onChange={(e) => setStudentForm({...studentForm, fechaNacimiento: e.target.value})}/>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-4">
+                <h4 className="text-white font-black text-[10px] border-b border-white/5 pb-2 uppercase tracking-[0.3em] opacity-30 italic">Contactos de Familia</h4>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-[10px] uppercase font-bold text-slate-300 ml-1">Nombre del Padre</label>
+                      <input className="w-full crafted-input" placeholder="Nombre..." value={studentForm.contacto?.padreNombre} onChange={(e) => setStudentForm({...studentForm, contacto: {...(studentForm.contacto || {}), padreNombre: e.target.value}})}/>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] uppercase font-bold text-slate-300 ml-1">Teléfono Padre</label>
+                      <input type="tel" className="w-full crafted-input" placeholder="Número..." value={studentForm.contacto?.padreTelefono} onChange={(e) => setStudentForm({...studentForm, contacto: {...(studentForm.contacto || {}), padreTelefono: e.target.value}})}/>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-[10px] uppercase font-bold text-slate-300 ml-1">Nombre de la Madre</label>
+                      <input className="w-full crafted-input" placeholder="Nombre..." value={studentForm.contacto?.madreNombre} onChange={(e) => setStudentForm({...studentForm, contacto: {...(studentForm.contacto || {}), madreNombre: e.target.value}})}/>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] uppercase font-bold text-slate-300 ml-1">Teléfono Madre</label>
+                      <input type="tel" className="w-full crafted-input" placeholder="Número..." value={studentForm.contacto?.madreTelefono} onChange={(e) => setStudentForm({...studentForm, contacto: {...(studentForm.contacto || {}), madreTelefono: e.target.value}})}/>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-[10px] uppercase font-bold text-slate-300 ml-1">Contacto Emergencia</label>
+                      <input className="w-full crafted-input" placeholder="Nombre..." value={studentForm.contacto?.emergenciaNombre} onChange={(e) => setStudentForm({...studentForm, contacto: {...(studentForm.contacto || {}), emergenciaNombre: e.target.value}})}/>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] uppercase font-bold text-slate-300 ml-1">Teléfono Emergencia</label>
+                      <input type="tel" className="w-full crafted-input" placeholder="Número..." value={studentForm.contacto?.emergenciaTelefono} onChange={(e) => setStudentForm({...studentForm, contacto: {...(studentForm.contacto || {}), emergenciaTelefono: e.target.value}})}/>
                     </div>
                   </div>
                 </div>
@@ -3504,6 +3684,61 @@ const App: React.FC = () => {
           <div className="h-1.5 w-32 bg-white/10 rounded-full mx-auto shrink-0"></div>
         </div>
       )}
+
+        {hasNewData && (
+          <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[110] animate-in slide-in-from-top-4 duration-300">
+            <button 
+              onClick={() => {
+                loadData();
+                setHasNewData(false);
+              }}
+              className="bg-primary text-antigravity-black px-6 py-2 rounded-full font-bold text-[10px] uppercase tracking-widest shadow-neon-cyan flex items-center gap-2 border border-white/20"
+            >
+              <span className="material-icons-outlined text-sm">refresh</span>
+              Nuevos datos disponibles. ¿Actualizar?
+            </button>
+          </div>
+        )}
+
+        {isBulkImporting && (
+          <div className="fixed inset-0 z-[100] bg-antigravity-black/90 backdrop-blur-sm flex items-center justify-center p-6">
+            <div className="glass-card w-full max-w-lg rounded-[2.5rem] p-8 border border-white/10 space-y-6 animate-in zoom-in duration-300">
+              <div className="flex justify-between items-center">
+                <h3 className="text-xl font-black text-white uppercase tracking-tighter">Importación Masiva</h3>
+                <button onClick={() => setIsBulkImporting(false)} className="text-white/40 hover:text-white">
+                  <span className="material-icons-outlined">close</span>
+                </button>
+              </div>
+              <div className="bg-primary/5 border border-primary/20 rounded-2xl p-4">
+                <p className="text-[10px] text-primary font-black uppercase tracking-widest leading-relaxed">
+                  Pega los datos desde Excel o Google Sheets. <br/>
+                  Formato: <span className="text-white">Nombre, DNI, Grupo, Nivel, Teléfono</span>
+                </p>
+              </div>
+              <textarea 
+                className="w-full h-64 bg-antigravity-charcoal border border-white/10 rounded-2xl p-4 text-xs text-white placeholder:text-white/20 outline-none focus:border-primary/50 transition-all font-mono"
+                placeholder="Juan Perez, 12345678, Grupo A, Escuela, 1122334455&#10;Maria Gomez, 87654321, Grupo B, Escuela, 5544332211"
+                value={bulkImportText}
+                onChange={(e) => setBulkImportText(e.target.value)}
+              />
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => setIsBulkImporting(false)}
+                  className="flex-1 py-4 rounded-2xl border border-white/10 text-white font-bold text-[10px] uppercase tracking-widest"
+                >
+                  Cancelar
+                </button>
+                <button 
+                  onClick={handleBulkImport}
+                  disabled={!bulkImportText.trim() || isLoading}
+                  className="flex-1 py-4 rounded-2xl bg-primary text-antigravity-black font-black text-[10px] uppercase tracking-widest shadow-neon-cyan active:scale-95 transition-all disabled:opacity-50"
+                >
+                  {isLoading ? 'Procesando...' : 'Importar Lista'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
       {/* Notificaciones */}
       {notificacion && (

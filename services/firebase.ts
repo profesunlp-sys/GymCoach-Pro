@@ -30,7 +30,8 @@ export const COLLECTIONS = {
   ASISTENCIAS: "asistencias",
   FEEDBACK: "feedback",
   PROFESORES: "profesores",
-  NIVELES: "niveles"
+  NIVELES: "niveles",
+  CONFIG: "config"
 };
 
 // Generic helpers
