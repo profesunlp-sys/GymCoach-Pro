@@ -1868,7 +1868,27 @@ const App: React.FC = () => {
               </div>
               <div className="flex justify-between items-end">
                 <div>
-                  <h2 className="text-3xl font-bold text-white tracking-tight leading-none">{activeGroup.nombre}</h2>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-3xl font-bold text-white tracking-tight leading-none">{activeGroup.nombre}</h2>
+                    <button 
+                      onClick={() => {
+                        setEditingGroup(activeGroup);
+                        setNewGroupName(activeGroup.nombre);
+                        setNewCoachName(activeGroup.entrenador || "");
+                        setSelectedDays(activeGroup.dias || []);
+                        const times = activeGroup.horario.split(' - ');
+                        if (times.length === 2) {
+                          setStartTime(times[0]);
+                          setEndTime(times[1]);
+                        }
+                        setVista('Horario');
+                      }}
+                      className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 border border-white/10 text-white/40 hover:text-primary transition-all"
+                      title="Editar Grupo"
+                    >
+                      <span className="material-icons-outlined text-[16px]">edit</span>
+                    </button>
+                  </div>
                   <p className="text-neon-cyan font-medium flex items-center gap-2 mt-2 opacity-90 text-sm">
                     <span className="material-symbols-outlined text-[18px]">schedule</span> {activeGroup.horario}
                   </p>
@@ -1881,6 +1901,33 @@ const App: React.FC = () => {
                 </div>
               </div>
             </header>
+
+            <div className="px-6 py-2 flex gap-3 overflow-x-auto scrollbar-hide">
+              <button 
+                onClick={() => handleNavigation('RegistroAlumno')}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary/10 border border-primary/20 text-primary text-[10px] font-black uppercase tracking-widest whitespace-nowrap active:scale-95 transition-all"
+              >
+                <span className="material-icons-outlined text-sm">person_add</span>
+                Agregar Gimnasta
+              </button>
+              <button 
+                onClick={handleAIAnalysis}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-accent-purple/10 border border-accent-purple/20 text-accent-purple text-[10px] font-black uppercase tracking-widest whitespace-nowrap active:scale-95 transition-all"
+              >
+                <span className="material-icons-outlined text-sm">psychology</span>
+                Asistente IA
+              </button>
+              <button 
+                onClick={() => {
+                  const element = document.getElementById('recent-classes-section');
+                  element?.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white/60 text-[10px] font-black uppercase tracking-widest whitespace-nowrap active:scale-95 transition-all"
+              >
+                <span className="material-icons-outlined text-sm">history</span>
+                Clases Recientes
+              </button>
+            </div>
 
             <div className="px-6 pt-2 pb-4">
               <div className="relative group">
@@ -2029,6 +2076,42 @@ const App: React.FC = () => {
                   <p className="text-sm font-medium italic tracking-wide">Inicia agregando tu primer alumno<br/>usando el botón azul inferior.</p>
                 </div>
               )}
+
+              {/* Recent Classes Section for this group */}
+              <section id="recent-classes-section" className="pt-8 pb-12 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-white font-bold text-sm uppercase tracking-widest opacity-50">Clases Recientes</h3>
+                  <span className="text-[10px] font-bold text-primary uppercase tracking-widest">{activeGroup.nombre}</span>
+                </div>
+                <div className="space-y-3">
+                  {clases
+                    .filter(c => c.grupo === activeGroup.nombre)
+                    .slice(0, 3)
+                    .map((clase) => (
+                      <div 
+                        key={clase.id} 
+                        onClick={() => { setSelectedClase(clase); handleNavigation('ClaseDetalle'); }}
+                        className="glass-card rounded-2xl p-4 border border-white/5 flex items-center justify-between active:scale-95 transition-all cursor-pointer"
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center border border-primary/20">
+                            <span className="material-icons-outlined text-primary text-xl">history_edu</span>
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-bold text-white">{new Date(clase.fecha).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}</h4>
+                            <p className="text-[10px] text-slate-500 font-medium uppercase tracking-wider">{clase.entrenador}</p>
+                          </div>
+                        </div>
+                        <span className="material-icons-outlined text-slate-600 text-sm">chevron_right</span>
+                      </div>
+                    ))}
+                  {clases.filter(c => c.grupo === activeGroup.nombre).length === 0 && (
+                    <div className="py-8 text-center border border-dashed border-white/5 rounded-2xl opacity-20 italic text-xs">
+                      No hay clases registradas para este grupo.
+                    </div>
+                  )}
+                </div>
+              </section>
             </main>
 
             {/* FAB button matches user snippet */}
@@ -2059,7 +2142,6 @@ const App: React.FC = () => {
                 <p className="text-2xl font-black text-white">
                   {alumnos
                     .filter(a => alumnosFilterMode === 'alerts' ? (a.alertas && a.alertas.length > 0 && a.alertas[0] !== '') : true)
-                    .filter(a => selectedDisciplina === 'Todas' || a.disciplina === selectedDisciplina)
                     .filter(a => a.nombre.toLowerCase().includes(searchQuery.toLowerCase()) || a.dni.includes(searchQuery))
                     .length}
                 </p>
@@ -2093,23 +2175,6 @@ const App: React.FC = () => {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
-            </div>
-
-            {/* Discipline Filter */}
-            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-              {['Todas', ...DISCIPLINAS].map(disc => (
-                <button
-                  key={disc}
-                  onClick={() => setSelectedDisciplina(disc)}
-                  className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all border ${
-                    selectedDisciplina === disc 
-                      ? 'bg-primary text-antigravity-black border-primary shadow-neon-cyan' 
-                      : 'bg-white/5 text-white/70 border-white/10 hover:border-white/20'
-                  }`}
-                >
-                  {disc}
-                </button>
-              ))}
             </div>
           </div>
 
@@ -2187,7 +2252,6 @@ const App: React.FC = () => {
             <div className="space-y-3">
               {alumnos
                 .filter(a => alumnosFilterMode === 'alerts' ? (a.alertas && a.alertas.length > 0 && a.alertas[0] !== '') : true)
-                .filter(a => selectedDisciplina === 'Todas' || a.disciplina === selectedDisciplina)
                 .filter(a => a.nombre.toLowerCase().includes(searchQuery.toLowerCase()) || a.dni.includes(searchQuery))
                 .map(alumno => {
                   const hasAlerts = alumno.alertas && alumno.alertas.length > 0 && alumno.alertas[0] !== '';
