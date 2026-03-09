@@ -143,3 +143,19 @@ export async function getSearchGroundedAnswer(query: string): Promise<{ text: st
     return { text: `Error al realizar la búsqueda: ${error.message || error}`, sources: [] };
   }
 }
+
+export async function analyzeAttendanceStats(stats: any): Promise<string> {
+  try {
+    const ai = getAI();
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: `Analiza estas estadísticas de asistencia y matrícula del gimnasio: ${JSON.stringify(stats)}. 
+      Proporciona un resumen ejecutivo, identifica tendencias (positivas o negativas) y sugiere 3 acciones concretas para mejorar la retención o el crecimiento. 
+      Responde en español, con un tono profesional y directo. Usa markdown para el formato.`,
+    });
+    return response.text || "Análisis no disponible.";
+  } catch (error) {
+    console.error("Error en analyzeAttendanceStats:", error);
+    return "Error al analizar las estadísticas.";
+  }
+}

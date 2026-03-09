@@ -1,6 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
+import Papa from 'papaparse';
+import Markdown from 'react-markdown';
+import { 
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
+  BarChart, Bar, Cell, Legend, PieChart, Pie
+} from 'recharts';
 import { Alumno, Clase, ViewMode, GrupoConfig, AsistenciaRecord, UserRole, Feedback, Skill, SkillStatus, Apparatus } from './types';
-import { processClassAudio, refineClassAnalysis } from './services/geminiService';
+import { processClassAudio, refineClassAnalysis, analyzeAttendanceStats } from './services/geminiService';
 import { SKILL_TREE, DISCIPLINAS, NIVELES as DEFAULT_NIVELES } from './constants';
 import { db as firestore, auth, googleProvider, COLLECTIONS, getCollectionData, addDocument, updateDocument, deleteDocument, getAttendanceByStudent } from './services/firebase';
 import { collection, query, where, getDocs, addDoc, doc, updateDoc, onSnapshot, orderBy, setDoc } from 'firebase/firestore';
@@ -144,6 +150,7 @@ const App: React.FC = () => {
   const [isAddingAlumno, setIsAddingAlumno] = useState(false);
   const [newAlumnoForm, setNewAlumnoForm] = useState({ nombre: '', dni: '', grupo: '', nivel: '' });
   const [isAddingProfesor, setIsAddingProfesor] = useState(false);
+  const [isSavingProfesor, setIsSavingProfesor] = useState(false);
   const [newProfesorName, setNewProfesorName] = useState('');
   const [profesoresList, setProfesoresList] = useState<{id?: string, nombre: string}[]>([]);
 
@@ -193,6 +200,7 @@ const App: React.FC = () => {
 
   // Edit Alumno State
   const [isEditingAlumno, setIsEditingAlumno] = useState(false);
+  const [isSavingStudent, setIsSavingStudent] = useState(false);
   const [editingAlumnoData, setEditingAlumnoData] = useState<Partial<Alumno>>({});
 
   
@@ -767,6 +775,7 @@ const App: React.FC = () => {
 
   const handleAddProfesor = async () => {
     if (!newProfesorName.trim()) return;
+    setIsSavingProfesor(true);
     try {
       await addDocument(COLLECTIONS.PROFESORES, { nombre: newProfesorName });
       await loadData();
@@ -776,11 +785,92 @@ const App: React.FC = () => {
     } catch (error) {
       console.error("Error adding professor:", error);
       setNotificacion({ t: "Error", d: "No se pudo añadir al profesor." });
+    } finally {
+      setIsSavingProfesor(false);
     }
   };
 
   const [isBulkImporting, setIsBulkImporting] = useState(false);
   const [bulkImportText, setBulkImportText] = useState("");
+  const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
+  const [groupSearch, setGroupSearch] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!isLoggedIn) return;
+
+    const unsubAlumnos = onSnapshot(collection(firestore, COLLECTIONS.ALUMNOS), (snapshot) => {
+      snapshot.docChanges().forEach((change) => {
+        if (change.type === "added" && !snapshot.metadata.hasPendingWrites) {
+          const data = change.doc.data() as Alumno;
+          setNotificacion({ t: "Nuevo Alumno", d: `${data.nombre} se ha unido al gimnasio.` });
+        }
+      });
+    });
+
+    const unsubClases = onSnapshot(collection(firestore, COLLECTIONS.CLASES), (snapshot) => {
+      snapshot.docChanges().forEach((change) => {
+        if (change.type === "added" && !snapshot.metadata.hasPendingWrites) {
+          const data = change.doc.data() as Clase;
+          setNotificacion({ t: "Nueva Clase", d: `Clase de ${data.grupo} registrada.` });
+        }
+      });
+    });
+
+    return () => {
+      unsubAlumnos();
+      unsubClases();
+    };
+  }, [isLoggedIn]);
+
+  useEffect(() => {
+    if (notificacion) {
+      const timer = setTimeout(() => {
+        setNotificacion(null);
+      }, 6000);
+      return () => clearTimeout(timer);
+    }
+  }, [notificacion]);
+
+  const handleAIAnalysis = async () => {
+    setIsAnalyzing(true);
+    try {
+      const statsData = {
+        totalAlumnos: alumnos.length,
+        alumnosPorGrupo: grupos.map(g => ({
+          nombre: g.nombre,
+          total: alumnos.filter(a => a.grupo === g.nombre).length
+        })),
+        estadoPagos: {
+          alDia: alumnos.filter(a => a.estadoPago === 'Al día').length,
+          pendiente: alumnos.filter(a => a.estadoPago === 'Pendiente').length,
+          vencido: alumnos.filter(a => a.estadoPago === 'Vencido').length
+        },
+        presentesHoy: presentCount
+      };
+      const analysis = await analyzeAttendanceStats(statsData);
+      setAiAnalysis(analysis);
+    } catch (error) {
+      console.error("Error in AI analysis:", error);
+      setNotificacion({ t: "Error", d: "No se pudo realizar el análisis de IA." });
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const handleCsvImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    Papa.parse(file, {
+      header: false,
+      skipEmptyLines: true,
+      complete: (results: Papa.ParseResult<any>) => {
+        const text = results.data.map((row: any) => row.join(',')).join('\n');
+        setBulkImportText(text);
+      }
+    });
+  };
 
   const handleBulkImport = async () => {
     const lines = bulkImportText.split('\n').filter(line => line.trim() !== '');
@@ -788,11 +878,15 @@ const App: React.FC = () => {
 
     setIsLoading(true);
     let importedCount = 0;
+    let errors: string[] = [];
     
     for (const line of lines) {
       // Split by comma, semicolon or tab
       const parts = line.split(/[,;\t]/).map(p => p.trim());
-      if (parts.length < 1 || !parts[0]) continue;
+      if (parts.length < 1 || !parts[0]) {
+        errors.push(`Línea vacía o sin nombre: "${line}"`);
+        continue;
+      }
 
       const nombre = parts[0];
       const dni = parts[1] || '';
@@ -800,8 +894,15 @@ const App: React.FC = () => {
       const nivel = parts[3] || 'Escuela';
       const telefono = parts[4] || '';
 
-      const currentYear = new Date().getFullYear();
-      const ageAtEndOfYear = 0; // Default if not provided
+      // Validación básica
+      if (nombre.length < 3) {
+        errors.push(`Nombre demasiado corto: "${nombre}"`);
+        continue;
+      }
+      if (dni && !/^\d+$/.test(dni)) {
+        errors.push(`DNI inválido (solo números): "${dni}" para ${nombre}`);
+        continue;
+      }
 
       const newStudent: Omit<Alumno, 'id'> = {
         nombre,
@@ -828,25 +929,34 @@ const App: React.FC = () => {
         await addDocument(COLLECTIONS.ALUMNOS, newStudent);
         importedCount++;
       } catch (e) {
-        console.error("Error importing student", e);
+        errors.push(`Error al guardar a ${nombre}: ${e}`);
       }
     }
 
     await loadData();
     setIsLoading(false);
-    setNotificacion({ t: "Importación Exitosa", d: `${importedCount} alumnos añadidos.` });
     setIsBulkImporting(false);
     setBulkImportText("");
+    
+    if (errors.length > 0) {
+      setNotificacion({ 
+        t: "Importación Parcial", 
+        d: `Se importaron ${importedCount} alumnos. Hubo ${errors.length} errores.` 
+      });
+      console.warn("Errores de importación:", errors);
+    } else {
+      setNotificacion({ t: "Importación Exitosa", d: `Se importaron ${importedCount} alumnos correctamente.` });
+    }
     setTimeout(() => setNotificacion(null), 3000);
   };
 
   const handleSaveStudent = async () => {
     if (!studentForm.nombre || !studentForm.fechaNacimiento) {
       setNotificacion({ t: "Error", d: "Nombre y Fecha de Nacimiento son obligatorios." });
-      setTimeout(() => setNotificacion(null), 3000);
       return;
     }
 
+    setIsSavingStudent(true);
     try {
       // Calcular edad al 31 de diciembre del año corriente
       const currentYear = new Date().getFullYear();
@@ -882,11 +992,11 @@ const App: React.FC = () => {
         fechaNacimiento: '', fechaPrimeraClase: new Date().toISOString().split('T')[0],
         alertas: [], contacto: { padreNombre: '', padreTelefono: '', madreNombre: '', madreTelefono: '', emergenciaNombre: '', emergenciaTelefono: '' }
       });
-      setTimeout(() => setNotificacion(null), 3000);
     } catch (error: any) {
       console.error("Error saving student:", error);
       setNotificacion({ t: "Error", d: "No se pudo guardar el gimnasta. " + (error.message || "") });
-      setTimeout(() => setNotificacion(null), 3000);
+    } finally {
+      setIsSavingStudent(false);
     }
   };
 
@@ -1178,7 +1288,11 @@ const App: React.FC = () => {
     }
   };
 
-  const timeIntervals = ["17:00", "17:30", "18:00", "18:30", "19:00", "19:30", "20:00"];
+  const timeIntervals = Array.from({ length: 31 }, (_, i) => {
+    const hour = Math.floor(i / 2) + 7;
+    const minute = i % 2 === 0 ? '00' : '30';
+    return `${hour.toString().padStart(2, '0')}:${minute}`;
+  });
   const filteredAlumnos = alumnos.filter(a => 
     a.grupo === activeGroup?.nombre && 
     (a.nombre.toLowerCase().includes(searchQuery.toLowerCase()) || a.dni.includes(searchQuery))
@@ -1541,6 +1655,16 @@ const App: React.FC = () => {
                   </button>
 
                   <button 
+                    onClick={() => { handleNavigation('AsistenciaStats'); }}
+                    className="glass-card rounded-3xl p-5 border border-white/5 flex flex-col items-center justify-center gap-3 active:scale-95 transition-all"
+                  >
+                    <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center border border-primary/20 shadow-neon-cyan">
+                      <span className="material-icons-outlined text-primary text-2xl">analytics</span>
+                    </div>
+                    <span className="text-xs font-bold text-white text-center">Estadísticas</span>
+                  </button>
+
+                  <button 
                     onClick={() => { handleNavigation('Emergencias'); }}
                     className="glass-card rounded-3xl p-5 border border-white/5 flex flex-col items-center justify-center gap-3 active:scale-95 transition-all"
                   >
@@ -1581,45 +1705,90 @@ const App: React.FC = () => {
                   </button>
                 )}
               </div>
-              <div className="glass-card rounded-[2.5rem] p-6 space-y-6">
-                <div className="flex justify-between items-center px-1">
-                  {['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((day, idx) => {
-                    const id = `${day}-${idx}`;
-                    const isSelected = selectedDays.includes(id);
-                    return (
-                      <button key={id} onClick={() => setSelectedDays(prev => prev.includes(id) ? prev.filter(d => d !== id) : [...prev, id])}
-                        className={`w-11 h-11 rounded-full flex items-center justify-center font-bold text-sm transition-all ${isSelected ? 'border-2 border-primary shadow-neon-cyan text-primary bg-primary/5' : 'bg-antigravity-charcoal text-slate-500'}`}>
-                        {day}
-                      </button>
-                    );
-                  })}
+              <div className="glass-card rounded-[2.5rem] p-6 space-y-8">
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 px-1">
+                    <span className="material-icons-outlined text-primary text-sm">calendar_month</span>
+                    <h4 className="text-[10px] uppercase font-black text-white/50 tracking-[0.2em]">Días de Entrenamiento</h4>
+                  </div>
+                  <div className="flex justify-between items-center px-1">
+                    {[
+                      { id: 'L-0', label: 'Lun' },
+                      { id: 'M-1', label: 'Mar' },
+                      { id: 'M-2', label: 'Mié' },
+                      { id: 'J-3', label: 'Jue' },
+                      { id: 'V-4', label: 'Vie' },
+                      { id: 'S-5', label: 'Sáb' },
+                      { id: 'D-6', label: 'Dom' }
+                    ].map((day) => {
+                      const isSelected = selectedDays.includes(day.id);
+                      return (
+                        <div key={day.id} className="flex flex-col items-center gap-2">
+                          <button 
+                            onClick={() => setSelectedDays(prev => prev.includes(day.id) ? prev.filter(d => d !== day.id) : [...prev, day.id])}
+                            className={`w-11 h-11 rounded-2xl flex items-center justify-center font-black text-sm transition-all duration-300 ${
+                              isSelected 
+                                ? 'bg-primary text-antigravity-black shadow-neon-cyan scale-110' 
+                                : 'bg-white/5 text-white/30 border border-white/5 hover:bg-white/10 hover:text-white/60'
+                            }`}
+                          >
+                            {day.id.split('-')[0]}
+                          </button>
+                          <span className={`text-[8px] font-black uppercase tracking-[0.15em] transition-colors duration-300 ${isSelected ? 'text-primary' : 'text-white/20'}`}>
+                            {day.label}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
 
-                <div className="space-y-4">
-                  <input className="w-full crafted-input"
-                    placeholder="Nombre del Grupo (Ej. Avanzados)" value={newGroupName} onChange={(e) => setNewGroupName(e.target.value)} />
-                  
-                  <input className="w-full crafted-input"
-                    placeholder="Nombre y Apellido del Profesor" value={newCoachName} onChange={(e) => setNewCoachName(e.target.value)} />
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                      <label className="text-[10px] uppercase font-bold text-slate-300 ml-1">Desde</label>
-                      <select value={startTime} onChange={(e) => setStartTime(e.target.value)} className="w-full bg-antigravity-charcoal rounded-2xl px-4 py-3 text-sm text-white appearance-none border border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none">
-                        {timeIntervals.map(t => <option key={t} value={t} className="bg-antigravity-charcoal">{t}</option>)}
-                      </select>
+                <div className="space-y-6">
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 px-1">
+                      <span className="material-icons-outlined text-primary text-sm">badge</span>
+                      <h4 className="text-[10px] uppercase font-black text-white/50 tracking-[0.2em]">Información del Grupo</h4>
                     </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] uppercase font-bold text-slate-300 ml-1">Hasta</label>
-                      <select value={endTime} onChange={(e) => setEndTime(e.target.value)} className="w-full bg-antigravity-charcoal rounded-2xl px-4 py-3 text-sm text-white appearance-none border border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none">
-                        {timeIntervals.map(t => <option key={t} value={t} className="bg-antigravity-charcoal">{t}</option>)}
-                      </select>
+                    <div className="space-y-4">
+                      <input className="w-full crafted-input"
+                        placeholder="Nombre del Grupo (Ej. Avanzados)" value={newGroupName} onChange={(e) => setNewGroupName(e.target.value)} />
+                      
+                      <input className="w-full crafted-input"
+                        placeholder="Nombre y Apellido del Profesor" value={newCoachName} onChange={(e) => setNewCoachName(e.target.value)} />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 px-1">
+                      <span className="material-icons-outlined text-primary text-sm">schedule</span>
+                      <h4 className="text-[10px] uppercase font-black text-white/50 tracking-[0.2em]">Franja Horaria</h4>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <label className="text-[8px] uppercase font-bold text-slate-400 ml-1 tracking-widest">Hora Inicio</label>
+                        <div className="relative">
+                          <select value={startTime} onChange={(e) => setStartTime(e.target.value)} className="w-full bg-antigravity-charcoal rounded-2xl px-4 py-3.5 text-sm text-white appearance-none border border-white/10 focus:border-primary focus:ring-1 focus:ring-primary/50 outline-none transition-all">
+                            {timeIntervals.map(t => <option key={t} value={t} className="bg-antigravity-charcoal">{t}</option>)}
+                          </select>
+                          <span className="material-icons-outlined absolute right-4 top-1/2 -translate-y-1/2 text-white/20 pointer-events-none text-sm">expand_more</span>
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[8px] uppercase font-bold text-slate-400 ml-1 tracking-widest">Hora Fin</label>
+                        <div className="relative">
+                          <select value={endTime} onChange={(e) => setEndTime(e.target.value)} className="w-full bg-antigravity-charcoal rounded-2xl px-4 py-3.5 text-sm text-white appearance-none border border-white/10 focus:border-primary focus:ring-1 focus:ring-primary/50 outline-none transition-all">
+                            {timeIntervals.map(t => <option key={t} value={t} className="bg-antigravity-charcoal">{t}</option>)}
+                          </select>
+                          <span className="material-icons-outlined absolute right-4 top-1/2 -translate-y-1/2 text-white/20 pointer-events-none text-sm">expand_more</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                <button onClick={handleSaveGroup} className="w-full py-4.5 rounded-2xl border border-accent-purple text-accent-purple font-black bg-accent-purple/5 shadow-neon-purple active:scale-[0.98] transition-all uppercase text-[10px] tracking-[0.2em]">
-                  <span>{editingGroup ? 'Actualizar Configuración' : 'Guardar Configuración'}</span>
+                <button onClick={handleSaveGroup} className="w-full py-4.5 rounded-2xl border border-primary text-primary font-black bg-primary/5 shadow-neon-cyan active:scale-[0.98] transition-all uppercase text-[10px] tracking-[0.2em] flex items-center justify-center gap-2">
+                  <span className="material-icons-outlined text-sm">{editingGroup ? 'save' : 'add_circle'}</span>
+                  <span>{editingGroup ? 'Actualizar Configuración' : 'Crear Nuevo Grupo'}</span>
                 </button>
               </div>
             </section>
@@ -1961,20 +2130,31 @@ const App: React.FC = () => {
                   value={newAlumnoForm.dni}
                   onChange={e => setNewAlumnoForm({...newAlumnoForm, dni: e.target.value})}
                 />
-                <div className="grid grid-cols-2 gap-3">
-                  <EditableDropdown 
-                    label="Grupo"
-                    placeholder="Grupo..."
-                    value={newAlumnoForm.grupo}
-                    onChange={val => setNewAlumnoForm({...newAlumnoForm, grupo: val})}
-                    options={grupos.filter(g => userRole === 'Coordinator' || !user?.displayName || g.entrenador === user.displayName)}
-                    onAdd={handleQuickSaveGroup}
-                    onEdit={handleUpdateGroupQuick}
-                    onDelete={(id) => {
-                      const g = grupos.find(x => x.id === id);
-                      if (g) handleDeleteGroup(g);
-                    }}
-                  />
+                <div className="space-y-3">
+                  <label className="text-[10px] uppercase font-black text-white/50 ml-2 tracking-[0.2em]">Grupo</label>
+                  <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                    {grupos.filter(g => userRole === 'Coordinator' || !user?.displayName || g.entrenador === user.displayName).map(g => (
+                      <button 
+                        key={g.id}
+                        onClick={() => setNewAlumnoForm({...newAlumnoForm, grupo: g.nombre})}
+                        className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all border ${
+                          newAlumnoForm.grupo === g.nombre 
+                            ? 'bg-primary text-antigravity-black border-primary shadow-neon-cyan' 
+                            : 'bg-white/5 text-white/70 border-white/10 hover:border-white/20'
+                        }`}
+                      >
+                        {g.nombre}
+                      </button>
+                    ))}
+                    <button 
+                      onClick={() => setVista('Horario')}
+                      className="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap bg-white/5 text-white/30 border border-dashed border-white/10"
+                    >
+                      + Nuevo
+                    </button>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 gap-3">
                   <EditableDropdown 
                     label="Nivel"
                     placeholder="Nivel..."
@@ -2113,20 +2293,31 @@ const App: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <EditableDropdown 
-                      label="Grupo"
-                      placeholder="Grupo..."
-                      value={editingAlumnoData.grupo || ''}
-                      onChange={val => setEditingAlumnoData({...editingAlumnoData, grupo: val})}
-                      options={grupos.filter(g => userRole === 'Coordinator' || !user?.displayName || g.entrenador === user.displayName)}
-                      onAdd={handleQuickSaveGroup}
-                      onEdit={handleUpdateGroupQuick}
-                      onDelete={(id) => {
-                        const g = grupos.find(x => x.id === id);
-                        if (g) handleDeleteGroup(g);
-                      }}
-                    />
+                  <div className="space-y-3">
+                    <label className="text-[10px] uppercase font-black text-white/50 ml-2 tracking-[0.2em]">Grupo</label>
+                    <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                      {grupos.filter(g => userRole === 'Coordinator' || !user?.displayName || g.entrenador === user.displayName).map(g => (
+                        <button 
+                          key={g.id}
+                          onClick={() => setEditingAlumnoData({...editingAlumnoData, grupo: g.nombre})}
+                          className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all border ${
+                            editingAlumnoData.grupo === g.nombre 
+                              ? 'bg-primary text-antigravity-black border-primary shadow-neon-cyan' 
+                              : 'bg-white/5 text-white/70 border-white/10 hover:border-white/20'
+                          }`}
+                        >
+                          {g.nombre}
+                        </button>
+                      ))}
+                      <button 
+                        onClick={() => setVista('Horario')}
+                        className="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap bg-white/5 text-white/30 border border-dashed border-white/10"
+                      >
+                        + Nuevo
+                      </button>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 gap-3">
                     <EditableDropdown 
                       label="Nivel"
                       placeholder="Nivel..."
@@ -2958,9 +3149,13 @@ const App: React.FC = () => {
                   <input type="date" className="w-full crafted-input" value={studentForm.fechaPrimeraClase} onChange={(e) => setStudentForm({...studentForm, fechaPrimeraClase: e.target.value})}/>
                 </div>
               </div>
-              <button onClick={handleSaveStudent} className="w-full py-5 rounded-3xl bg-accent-purple text-white font-black uppercase tracking-[0.3em] text-[10px] shadow-neon-purple active:scale-95 transition-all">
-                Finalizar Alta de Gimnasta
-              </button>
+                  <button 
+                    onClick={handleSaveStudent} 
+                    disabled={isSavingStudent}
+                    className="w-full py-5 rounded-3xl bg-accent-purple text-white font-black uppercase tracking-[0.3em] text-[10px] shadow-neon-purple active:scale-95 transition-all disabled:opacity-50"
+                  >
+                    {isSavingStudent ? 'Guardando...' : 'Finalizar Alta de Gimnasta'}
+                  </button>
             </div>
           </div>
         )}
@@ -2968,37 +3163,45 @@ const App: React.FC = () => {
         {vista === 'ReportePDF' && activeGroup && (
           <div className="page-transition p-8 bg-white text-black min-h-screen">
             <div className="flex items-center justify-between mb-8 print:hidden">
-              <button onClick={() => setVista('AsistenciaLista')} className="text-blue-600 font-bold flex items-center gap-2">
-                <span className="material-icons-outlined">arrow_back</span> Volver
+              <button onClick={() => setVista('AsistenciaLista')} className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 hover:bg-slate-200 transition-all">
+                <span className="material-icons-outlined">arrow_back</span>
               </button>
               
               <div className="flex items-center gap-4">
-                <select 
-                  value={reportMonth} 
-                  onChange={(e) => {
-                    const m = parseInt(e.target.value);
-                    setReportMonth(m);
-                    loadMonthlyReport(activeGroup.nombre, m, reportYear);
-                  }}
-                  className="bg-slate-100 border-2 border-black rounded-lg px-3 py-2 font-bold text-sm"
+                <div className="flex bg-slate-100 p-1 rounded-xl border-2 border-black">
+                  <select 
+                    value={reportMonth} 
+                    onChange={(e) => {
+                      const m = parseInt(e.target.value);
+                      setReportMonth(m);
+                      loadMonthlyReport(activeGroup.nombre, m, reportYear);
+                    }}
+                    className="bg-transparent px-3 py-1.5 font-black text-xs uppercase outline-none"
+                  >
+                    {['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'].map((m, i) => (
+                      <option key={i} value={i}>{m}</option>
+                    ))}
+                  </select>
+                  <select 
+                    value={reportYear} 
+                    onChange={(e) => {
+                      const y = parseInt(e.target.value);
+                      setReportYear(y);
+                      loadMonthlyReport(activeGroup.nombre, reportMonth, y);
+                    }}
+                    className="bg-transparent px-3 py-1.5 font-black text-xs uppercase outline-none border-l-2 border-black"
+                  >
+                    {[2024, 2025, 2026].map(y => (
+                      <option key={y} value={y}>{y}</option>
+                    ))}
+                  </select>
+                </div>
+                <button 
+                  onClick={() => window.print()}
+                  className="bg-black text-white px-6 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest flex items-center gap-2 hover:scale-105 active:scale-95 transition-all"
                 >
-                  {['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'].map((m, i) => (
-                    <option key={i} value={i}>{m}</option>
-                  ))}
-                </select>
-                <select 
-                  value={reportYear} 
-                  onChange={(e) => {
-                    const y = parseInt(e.target.value);
-                    setReportYear(y);
-                    loadMonthlyReport(activeGroup.nombre, reportMonth, y);
-                  }}
-                  className="bg-slate-100 border-2 border-black rounded-lg px-3 py-2 font-bold text-sm"
-                >
-                  {[2024, 2025, 2026].map(y => (
-                    <option key={y} value={y}>{y}</option>
-                  ))}
-                </select>
+                  <span className="material-icons-outlined text-sm">print</span> Imprimir
+                </button>
               </div>
             </div>
 
@@ -3249,20 +3452,50 @@ const App: React.FC = () => {
             </header>
             
             <div className="space-y-6">
-              <div className="glass-card rounded-3xl p-6 border border-white/5 space-y-4">
-                <EditableDropdown 
-                  label="Grupo"
-                  placeholder="Seleccionar Grupo..."
-                  value={claseGrupo}
-                  onChange={setClaseGrupo}
-                  options={grupos.filter(g => userRole === 'Coordinator' || !user?.displayName || g.entrenador === user.displayName)}
-                  onAdd={handleQuickSaveGroup}
-                  onEdit={handleUpdateGroupQuick}
-                  onDelete={(id) => {
-                    const g = grupos.find(x => x.id === id);
-                    if (g) handleDeleteGroup(g);
-                  }}
-                />
+              <div className="space-y-3">
+                <div className="flex justify-between items-center px-2">
+                  <label className="text-[10px] uppercase font-black text-white/50 tracking-[0.2em]">Seleccionar Grupo</label>
+                  <div className="relative">
+                    <span className="material-icons-outlined absolute left-3 top-1/2 -translate-y-1/2 text-white/30 text-xs">search</span>
+                    <input 
+                      type="text" 
+                      placeholder="Filtrar..."
+                      className="bg-white/5 border border-white/10 rounded-full py-1.5 pl-8 pr-4 text-[10px] text-white outline-none focus:border-primary/50 transition-all w-32"
+                      value={groupSearch}
+                      onChange={(e) => setGroupSearch(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  {grupos
+                    .filter(g => userRole === 'Coordinator' || !user?.displayName || g.entrenador === user.displayName)
+                    .filter(g => g.nombre.toLowerCase().includes(groupSearch.toLowerCase()))
+                    .map(g => (
+                    <button 
+                      key={g.id}
+                      onClick={() => setClaseGrupo(g.nombre)}
+                      className={`glass-card p-4 rounded-2xl border transition-all text-left flex flex-col gap-1 ${
+                        claseGrupo === g.nombre 
+                          ? 'border-primary bg-primary/10 shadow-neon-cyan scale-[1.02]' 
+                          : 'border-white/5 bg-white/5 hover:bg-white/10'
+                      }`}
+                    >
+                      <span className={`text-xs font-black uppercase tracking-wider ${claseGrupo === g.nombre ? 'text-primary' : 'text-white/70'}`}>
+                        {g.nombre}
+                      </span>
+                      <span className="text-[8px] text-white/30 font-bold uppercase tracking-widest">
+                        {g.horario}
+                      </span>
+                    </button>
+                  ))}
+                  <button 
+                    onClick={() => setVista('Horario')}
+                    className="glass-card p-4 rounded-2xl border border-dashed border-white/10 bg-white/5 flex flex-col items-center justify-center gap-1 hover:bg-white/10 transition-all"
+                  >
+                    <span className="material-icons-outlined text-white/30 text-lg">add_circle</span>
+                    <span className="text-[8px] text-white/30 font-black uppercase tracking-widest">Nuevo Grupo</span>
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -3505,10 +3738,10 @@ const App: React.FC = () => {
                   </button>
                   <button 
                     onClick={handleAddProfesor}
-                    disabled={!newProfesorName.trim()}
+                    disabled={!newProfesorName.trim() || isSavingProfesor}
                     className="flex-1 py-3 rounded-xl bg-primary text-antigravity-black font-bold text-xs uppercase tracking-wider disabled:opacity-50"
                   >
-                    Guardar
+                    {isSavingProfesor ? 'Guardando...' : 'Guardar'}
                   </button>
                 </div>
               </div>
@@ -3700,6 +3933,162 @@ const App: React.FC = () => {
           </div>
         )}
 
+        {vista === 'AsistenciaStats' && (
+          <div className="px-6 py-8 space-y-8 page-transition pb-24">
+            <header className="flex items-center gap-4">
+              <button onClick={() => setVista('Dashboard')} className="w-10 h-10 rounded-full bg-antigravity-charcoal flex items-center justify-center text-primary border border-white/5 active:scale-90 transition-all">
+                <span className="material-icons-outlined">arrow_back</span>
+              </button>
+              <div>
+                <h2 className="text-2xl font-black text-white uppercase tracking-tighter">Estadísticas</h2>
+                <p className="text-primary text-[10px] font-black uppercase tracking-widest mt-1">Análisis de Asistencia</p>
+              </div>
+            </header>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* AI Analysis Button */}
+              <div className="md:col-span-2">
+                <button 
+                  onClick={handleAIAnalysis}
+                  disabled={isAnalyzing}
+                  className="w-full glass-card rounded-[2rem] p-8 border border-primary/20 bg-primary/5 flex items-center justify-between group hover:bg-primary/10 transition-all"
+                >
+                  <div className="flex items-center gap-6">
+                    <div className="w-16 h-16 bg-primary/20 rounded-2xl flex items-center justify-center border border-primary/30 shadow-neon-cyan group-hover:scale-110 transition-transform">
+                      <span className="material-icons-outlined text-primary text-3xl">{isAnalyzing ? 'sync' : 'psychology'}</span>
+                    </div>
+                    <div className="text-left">
+                      <h3 className="text-xl font-black text-white uppercase tracking-tighter">Análisis con IA</h3>
+                      <p className="text-primary text-[10px] font-black uppercase tracking-widest mt-1">Obtener insights y sugerencias</p>
+                    </div>
+                  </div>
+                  <span className="material-icons-outlined text-primary/50 group-hover:translate-x-2 transition-transform">arrow_forward</span>
+                </button>
+              </div>
+
+              {/* Gráfico de Tendencia */}
+              <div className="glass-card rounded-[2rem] p-6 border border-white/5 space-y-4">
+                <h3 className="text-xs font-black text-white/50 uppercase tracking-widest px-2">Tendencia Mensual</h3>
+                <div className="h-64 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={alumnos.reduce((acc: any[], al) => {
+                      const month = new Date(al.fechaIngreso).toLocaleString('default', { month: 'short' });
+                      const existing = acc.find(i => i.name === month);
+                      if (existing) existing.count++;
+                      else acc.push({ name: month, count: 1 });
+                      return acc;
+                    }, []).slice(-6)}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
+                      <XAxis dataKey="name" stroke="#ffffff40" fontSize={10} tickLine={false} axisLine={false} />
+                      <YAxis stroke="#ffffff40" fontSize={10} tickLine={false} axisLine={false} />
+                      <Tooltip 
+                        contentStyle={{ backgroundColor: '#151619', border: '1px solid #ffffff10', borderRadius: '12px' }}
+                        itemStyle={{ color: '#00F0FF', fontSize: '12px', fontWeight: 'bold' }}
+                      />
+                      <Line type="monotone" dataKey="count" stroke="#00F0FF" strokeWidth={3} dot={{ r: 4, fill: '#00F0FF' }} activeDot={{ r: 6, stroke: '#00F0FF', strokeWidth: 2, fill: '#151619' }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Distribución por Grupo */}
+              <div className="glass-card rounded-[2rem] p-6 border border-white/5 space-y-4">
+                <h3 className="text-xs font-black text-white/50 uppercase tracking-widest px-2">Alumnos por Grupo</h3>
+                <div className="h-64 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={grupos.map(g => ({
+                      name: g.nombre,
+                      alumnos: alumnos.filter(a => a.grupo === g.nombre).length
+                    }))}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
+                      <XAxis dataKey="name" stroke="#ffffff40" fontSize={10} tickLine={false} axisLine={false} />
+                      <YAxis stroke="#ffffff40" fontSize={10} tickLine={false} axisLine={false} />
+                      <Tooltip 
+                        contentStyle={{ backgroundColor: '#151619', border: '1px solid #ffffff10', borderRadius: '12px' }}
+                        cursor={{ fill: '#ffffff05' }}
+                      />
+                      <Bar dataKey="alumnos" fill="#A855F7" radius={[6, 6, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Estado de Pagos */}
+              <div className="glass-card rounded-[2rem] p-6 border border-white/5 space-y-4">
+                <h3 className="text-xs font-black text-white/50 uppercase tracking-widest px-2">Estado de Matrículas</h3>
+                <div className="h-64 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={[
+                          { name: 'Al día', value: alumnos.filter(a => a.estadoPago === 'Al día').length, color: '#10B981' },
+                          { name: 'Pendiente', value: alumnos.filter(a => a.estadoPago === 'Pendiente').length, color: '#F59E0B' },
+                          { name: 'Vencido', value: alumnos.filter(a => a.estadoPago === 'Vencido').length, color: '#EF4444' }
+                        ]}
+                        cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value"
+                      >
+                        {[
+                          { color: '#10B981' },
+                          { color: '#F59E0B' },
+                          { color: '#EF4444' }
+                        ].map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip 
+                        contentStyle={{ backgroundColor: '#151619', border: '1px solid #ffffff10', borderRadius: '12px' }}
+                      />
+                      <Legend verticalAlign="bottom" height={36} iconType="circle" />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Resumen de Asistencia Hoy */}
+              <div className="glass-card rounded-[2rem] p-6 border border-white/5 flex flex-col justify-center items-center text-center space-y-4">
+                <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center border border-primary/20 shadow-neon-cyan">
+                  <span className="material-icons-outlined text-primary text-4xl">how_to_reg</span>
+                </div>
+                <div>
+                  <h4 className="text-3xl font-black text-white">{presentCount}</h4>
+                  <p className="text-[10px] text-primary font-black uppercase tracking-widest mt-1">Presentes Hoy</p>
+                </div>
+                <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
+                  <div className="h-full bg-primary shadow-neon-cyan" style={{ width: `${(presentCount / (alumnos.length || 1)) * 100}%` }}></div>
+                </div>
+                <p className="text-[10px] text-white/40 font-bold uppercase tracking-widest">
+                  {Math.round((presentCount / (alumnos.length || 1)) * 100)}% de la matrícula total
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {aiAnalysis && (
+          <div className="fixed inset-0 z-[110] bg-antigravity-black/95 backdrop-blur-md flex items-center justify-center p-6">
+            <div className="glass-card w-full max-w-2xl rounded-[2.5rem] p-8 border border-white/10 space-y-6 animate-in zoom-in duration-300 max-h-[80vh] overflow-y-auto">
+              <div className="flex justify-between items-center sticky top-0 bg-antigravity-black/80 backdrop-blur-md py-2 z-10">
+                <div className="flex items-center gap-3">
+                  <span className="material-icons-outlined text-primary">psychology</span>
+                  <h3 className="text-xl font-black text-white uppercase tracking-tighter">Insights de IA</h3>
+                </div>
+                <button onClick={() => setAiAnalysis(null)} className="text-white/40 hover:text-white">
+                  <span className="material-icons-outlined">close</span>
+                </button>
+              </div>
+              <div className="prose prose-invert prose-sm max-w-none text-slate-300 leading-relaxed">
+                <Markdown>{aiAnalysis}</Markdown>
+              </div>
+              <button 
+                onClick={() => setAiAnalysis(null)}
+                className="w-full py-4 rounded-2xl bg-primary text-antigravity-black font-black text-[10px] uppercase tracking-widest shadow-neon-cyan active:scale-95 transition-all"
+              >
+                Entendido
+              </button>
+            </div>
+          </div>
+        )}
+
         {isBulkImporting && (
           <div className="fixed inset-0 z-[100] bg-antigravity-black/90 backdrop-blur-sm flex items-center justify-center p-6">
             <div className="glass-card w-full max-w-lg rounded-[2.5rem] p-8 border border-white/10 space-y-6 animate-in zoom-in duration-300">
@@ -3709,11 +4098,27 @@ const App: React.FC = () => {
                   <span className="material-icons-outlined">close</span>
                 </button>
               </div>
-              <div className="bg-primary/5 border border-primary/20 rounded-2xl p-4">
+              <div className="bg-primary/5 border border-primary/20 rounded-2xl p-4 flex flex-col gap-4">
                 <p className="text-[10px] text-primary font-black uppercase tracking-widest leading-relaxed">
-                  Pega los datos desde Excel o Google Sheets. <br/>
+                  Pega los datos desde Excel o sube un archivo CSV. <br/>
                   Formato: <span className="text-white">Nombre, DNI, Grupo, Nivel, Teléfono</span>
                 </p>
+                <div className="flex items-center gap-3">
+                  <input 
+                    type="file" 
+                    accept=".csv" 
+                    onChange={handleCsvImport} 
+                    ref={fileInputRef}
+                    className="hidden"
+                  />
+                  <button 
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex-1 py-3 px-4 rounded-xl bg-white/5 border border-white/10 text-white text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-white/10 transition-all"
+                  >
+                    <span className="material-icons-outlined text-sm">upload_file</span>
+                    Seleccionar CSV
+                  </button>
+                </div>
               </div>
               <textarea 
                 className="w-full h-64 bg-antigravity-charcoal border border-white/10 rounded-2xl p-4 text-xs text-white placeholder:text-white/20 outline-none focus:border-primary/50 transition-all font-mono"
@@ -3742,11 +4147,20 @@ const App: React.FC = () => {
 
       {/* Notificaciones */}
       {notificacion && (
-        <div className="fixed top-14 left-1/2 -translate-x-1/2 z-[100] w-[90%] max-w-[380px] bg-antigravity-charcoal/90 backdrop-blur-2xl text-white p-6 rounded-[2rem] shadow-neon-cyan-strong border border-white/10 flex items-center gap-5 animate-in slide-in-from-top-12 duration-500">
-          <div className="w-14 h-14 bg-primary/20 rounded-2xl flex items-center justify-center border border-primary/30 active-glow">
-            <span className="material-icons-outlined text-primary text-3xl">verified</span>
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[150] w-[90%] max-w-[380px] bg-antigravity-charcoal/95 backdrop-blur-2xl text-white p-5 rounded-[2rem] shadow-neon-cyan-strong border border-white/10 flex items-center gap-4 animate-in slide-in-from-top-12 duration-500">
+          <div className="w-12 h-12 bg-primary/20 rounded-2xl flex items-center justify-center border border-primary/30 active-glow shrink-0">
+            <span className="material-icons-outlined text-primary text-2xl">verified</span>
           </div>
-          <div><p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">{notificacion.t}</p><p className="text-xs text-slate-300 font-medium mt-1 leading-relaxed italic">"{notificacion.d}"</p></div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-primary truncate">{notificacion.t}</p>
+            <p className="text-[11px] text-slate-300 font-medium mt-0.5 leading-tight italic line-clamp-2">"{notificacion.d}"</p>
+          </div>
+          <button 
+            onClick={() => setNotificacion(null)}
+            className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-white/40 hover:text-white transition-colors shrink-0"
+          >
+            <span className="material-icons-outlined text-sm">close</span>
+          </button>
         </div>
       )}
     </div>
