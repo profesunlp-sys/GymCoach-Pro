@@ -159,3 +159,35 @@ export async function analyzeAttendanceStats(stats: any): Promise<string> {
     return "Error al analizar las estadísticas.";
   }
 }
+
+export async function queryKnowledgeBase(query: string, sources: any[]): Promise<string> {
+  try {
+    const ai = getAI();
+    const parts: any[] = [
+      { text: `Eres un asistente experto en gimnasia artística. Responde a la siguiente consulta basándote en los documentos proporcionados: "${query}". Si la información no está en los documentos, indícalo, pero intenta ayudar con tu conocimiento general si es relevante.` }
+    ];
+
+    for (const source of sources) {
+      if (source.type === 'pdf') {
+        parts.push({
+          inlineData: {
+            data: source.content,
+            mimeType: 'application/pdf'
+          }
+        });
+      } else {
+        parts.push({ text: `Documento: ${source.name}\nContenido: ${source.content}` });
+      }
+    }
+
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: { parts },
+    });
+    
+    return response.text || "No se pudo generar una respuesta.";
+  } catch (error: any) {
+    console.error("Error en queryKnowledgeBase:", error);
+    return `Error al consultar la base de conocimientos: ${error.message || error}`;
+  }
+}

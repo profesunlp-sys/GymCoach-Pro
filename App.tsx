@@ -5,8 +5,8 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
   BarChart, Bar, Cell, Legend, PieChart, Pie
 } from 'recharts';
-import { Alumno, Clase, ViewMode, GrupoConfig, AsistenciaRecord, UserRole, Feedback, Skill, SkillStatus, Apparatus } from './types';
-import { processClassAudio, refineClassAnalysis, analyzeAttendanceStats } from './services/geminiService';
+import { Alumno, Clase, ViewMode, GrupoConfig, AsistenciaRecord, UserRole, Feedback, Skill, SkillStatus, Apparatus, Source } from './types';
+import { processClassAudio, refineClassAnalysis, analyzeAttendanceStats, queryKnowledgeBase } from './services/geminiService';
 import { SKILL_TREE, DISCIPLINAS, NIVELES as DEFAULT_NIVELES } from './constants';
 import { db as firestore, auth, googleProvider, COLLECTIONS, getCollectionData, addDocument, updateDocument, deleteDocument, getAttendanceByStudent } from './services/firebase';
 import { collection, query, where, getDocs, addDoc, doc, updateDoc, onSnapshot, orderBy, setDoc } from 'firebase/firestore';
@@ -197,6 +197,53 @@ const App: React.FC = () => {
   const [newSkill, setNewSkill] = useState<Partial<Skill>>({ name: '', status: 'No Iniciado', apparatus: 'Suelo', level: '1' });
   const [editingSkillId, setEditingSkillId] = useState<string | null>(null);
   const [editingSkillData, setEditingSkillData] = useState<Partial<Skill>>({});
+
+  // Knowledge Base State
+  const [sources, setSources] = useState<Source[]>([]);
+  const [kbMessages, setKbMessages] = useState<{role: 'user' | 'model', text: string}[]>([]);
+  const [isKbLoading, setIsKbLoading] = useState(false);
+  const [kbInput, setKbInput] = useState("");
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const base64 = event.target?.result?.toString().split(',')[1];
+      if (base64) {
+        const newSource: Source = {
+          id: Math.random().toString(36).substr(2, 9),
+          name: file.name,
+          type: 'pdf',
+          content: base64,
+          uploadDate: new Date().toISOString()
+        };
+        setSources(prev => [...prev, newSource]);
+        setNotificacion({ t: 'Éxito', d: `Documento "${file.name}" cargado correctamente.` });
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleKbQuery = async () => {
+    if (!kbInput.trim() || isKbLoading) return;
+
+    const userMsg = { role: 'user' as const, text: kbInput };
+    setKbMessages(prev => [...prev, userMsg]);
+    setKbInput("");
+    setIsKbLoading(true);
+
+    try {
+      const response = await queryKnowledgeBase(kbInput, sources);
+      setKbMessages(prev => [...prev, { role: 'model', text: response }]);
+    } catch (error) {
+      console.error("Error querying KB:", error);
+      setKbMessages(prev => [...prev, { role: 'model', text: "Error al consultar la base de conocimientos." }]);
+    } finally {
+      setIsKbLoading(false);
+    }
+  };
 
   // Edit Alumno State
   const [isEditingAlumno, setIsEditingAlumno] = useState(false);
@@ -3021,6 +3068,97 @@ const App: React.FC = () => {
           <CoachAI />
         )}
 
+        {vista === 'KnowledgeBase' && (
+          <div className="px-6 py-8 space-y-8 page-transition pb-32">
+            <header>
+              <h2 className="text-3xl font-black text-white uppercase tracking-tighter">Knowledge Hub</h2>
+              <p className="text-primary text-[10px] font-black uppercase tracking-widest mt-1">Manuales y Reglamentos</p>
+            </header>
+
+            <section className="space-y-4">
+              <div className="flex justify-between items-center px-1">
+                <h3 className="text-white font-bold text-sm uppercase tracking-wider">Fuentes</h3>
+                <label className="cursor-pointer bg-primary/10 text-primary border border-primary/20 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all">
+                  <span className="flex items-center gap-2">
+                    <span className="material-icons-outlined text-sm">add</span>
+                    Cargar PDF
+                  </span>
+                  <input type="file" accept="application/pdf" className="hidden" onChange={handleFileUpload} />
+                </label>
+              </div>
+              
+              <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+                {sources.length > 0 ? sources.map(source => (
+                  <div key={source.id} className="min-w-[160px] glass-card rounded-2xl p-4 border border-white/10 flex flex-col gap-2">
+                    <div className="w-10 h-10 bg-white/5 rounded-xl flex items-center justify-center border border-white/10">
+                      <span className="material-icons-outlined text-primary">description</span>
+                    </div>
+                    <p className="text-xs font-bold text-white truncate">{source.name}</p>
+                    <p className="text-[8px] text-white/40 uppercase tracking-widest">{new Date(source.uploadDate).toLocaleDateString()}</p>
+                    <button 
+                      onClick={() => setSources(prev => prev.filter(s => s.id !== source.id))}
+                      className="text-[8px] text-rose-500 font-black uppercase tracking-widest mt-2 hover:text-rose-400"
+                    >
+                      Eliminar
+                    </button>
+                  </div>
+                )) : (
+                  <div className="w-full py-8 text-center border border-dashed border-white/5 rounded-2xl opacity-30 italic text-xs">
+                    Carga los manuales USAG o de la Federación para empezar.
+                  </div>
+                )}
+              </div>
+            </section>
+
+            <section className="flex-1 flex flex-col gap-4">
+              <h3 className="text-white font-bold text-sm uppercase tracking-wider px-1">Consultar Manuales</h3>
+              <div className="glass-card rounded-3xl border border-white/5 flex flex-col h-[400px] overflow-hidden">
+                <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-hide">
+                  {kbMessages.length === 0 && (
+                    <div className="h-full flex flex-col items-center justify-center text-center space-y-4 opacity-30 px-8">
+                      <span className="material-icons-outlined text-4xl text-primary">psychology</span>
+                      <p className="text-xs italic">Pregunta sobre reglamentos, puntajes o metodologías de los manuales cargados.</p>
+                    </div>
+                  )}
+                  {kbMessages.map((msg, idx) => (
+                    <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                      <div className={`max-w-[85%] p-3 rounded-2xl text-xs leading-relaxed ${msg.role === 'user' ? 'bg-primary text-antigravity-black font-bold rounded-tr-none' : 'bg-white/5 text-slate-300 border border-white/10 rounded-tl-none'}`}>
+                        <Markdown>{msg.text}</Markdown>
+                      </div>
+                    </div>
+                  ))}
+                  {isKbLoading && (
+                    <div className="flex justify-start">
+                      <div className="bg-white/5 p-3 rounded-2xl rounded-tl-none border border-white/10 flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce"></div>
+                        <div className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce [animation-delay:0.2s]"></div>
+                        <div className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce [animation-delay:0.4s]"></div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div className="p-4 border-t border-white/5 bg-black/20 flex gap-2">
+                  <input 
+                    type="text" 
+                    value={kbInput}
+                    onChange={(e) => setKbInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleKbQuery()}
+                    placeholder="¿Cuál es el valor del Flic-Flac en Viga?"
+                    className="flex-1 bg-antigravity-charcoal border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white outline-none focus:border-primary/50 transition-all"
+                  />
+                  <button 
+                    onClick={handleKbQuery}
+                    disabled={!kbInput.trim() || isKbLoading}
+                    className="w-10 h-10 bg-primary text-antigravity-black rounded-xl flex items-center justify-center shadow-neon-cyan active:scale-95 transition-all disabled:opacity-50"
+                  >
+                    <span className="material-icons-outlined">send</span>
+                  </button>
+                </div>
+              </div>
+            </section>
+          </div>
+        )}
+
         {vista === 'Ajustes' && (
           <div className="px-6 py-8 space-y-8 page-transition pb-24">
             <header>
@@ -3952,11 +4090,12 @@ const App: React.FC = () => {
       {vista !== 'ReportePDF' && (
         <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-antigravity-charcoal/80 backdrop-blur-md border-t border-white/5 px-6 pt-4 pb-2 flex justify-between items-center z-50">
           {[
-            { v: 'Dashboard', i: 'grid_view' },
-            { v: 'Alumnos', i: 'group' },
-            { v: userRole === 'Coordinator' ? 'Profesores' : 'Horario', i: userRole === 'Coordinator' ? 'badge' : 'calendar_today' },
-            { v: 'Asistente', i: 'smart_toy' },
-            { v: 'Ajustes', i: 'app_settings_alt' }
+            { v: 'Dashboard', i: 'grid_view', l: 'Inicio' },
+            { v: 'Alumnos', i: 'group', l: 'Gimnastas' },
+            { v: userRole === 'Coordinator' ? 'Profesores' : 'Horario', i: userRole === 'Coordinator' ? 'badge' : 'calendar_today', l: userRole === 'Coordinator' ? 'Staff' : 'Horario' },
+            { v: 'Asistente', i: 'smart_toy', l: 'IA' },
+            { v: 'KnowledgeBase', i: 'book', l: 'Hub' },
+            { v: 'Ajustes', i: 'app_settings_alt', l: 'Ajustes' }
           ].map(item => (
             <button 
               key={item.v} 
@@ -3968,7 +4107,7 @@ const App: React.FC = () => {
             >
               <span className={`material-symbols-outlined text-[26px] font-light ${vista === item.v || (vista === 'AsistenciaLista' && item.v === 'Horario') ? 'neon-glow-cyan' : ''}`}>{item.i}</span>
               <span className={`text-[9px] uppercase tracking-wide ${vista === item.v || (vista === 'AsistenciaLista' && item.v === 'Horario') ? 'font-bold' : 'font-medium'}`}>
-                {item.v === 'Horario' ? (activeGroup ? 'Horario' : 'Horario') : item.v}
+                {item.v === 'Horario' ? (activeGroup ? 'Horario' : 'Horario') : item.l}
               </span>
             </button>
           ))}
