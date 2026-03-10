@@ -3071,8 +3071,8 @@ const App: React.FC = () => {
         {vista === 'KnowledgeBase' && (
           <div className="px-6 py-8 space-y-8 page-transition pb-32">
             <header>
-              <h2 className="text-3xl font-black text-white uppercase tracking-tighter">Knowledge Hub</h2>
-              <p className="text-primary text-[10px] font-black uppercase tracking-widest mt-1">Manuales y Reglamentos</p>
+              <h2 className="text-3xl font-black text-white uppercase tracking-tighter">Centro Técnico</h2>
+              <p className="text-primary text-[10px] font-black uppercase tracking-widest mt-1">Biblioteca de Manuales y Reglamentos</p>
             </header>
 
             <section className="space-y-4">
@@ -4094,7 +4094,7 @@ const App: React.FC = () => {
             { v: 'Alumnos', i: 'group', l: 'Gimnastas' },
             { v: userRole === 'Coordinator' ? 'Profesores' : 'Horario', i: userRole === 'Coordinator' ? 'badge' : 'calendar_today', l: userRole === 'Coordinator' ? 'Staff' : 'Horario' },
             { v: 'Asistente', i: 'smart_toy', l: 'IA' },
-            { v: 'KnowledgeBase', i: 'book', l: 'Hub' },
+            { v: 'KnowledgeBase', i: 'book', l: 'Manuales' },
             { v: 'Ajustes', i: 'app_settings_alt', l: 'Ajustes' }
           ].map(item => (
             <button 
