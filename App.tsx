@@ -842,11 +842,17 @@ const App: React.FC = () => {
   const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
   const [groupSearch, setGroupSearch] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const isInitialAlumnos = useRef(true);
+  const isInitialClases = useRef(true);
 
   useEffect(() => {
     if (!isLoggedIn) return;
 
     const unsubAlumnos = onSnapshot(collection(firestore, COLLECTIONS.ALUMNOS), (snapshot) => {
+      if (isInitialAlumnos.current) {
+        isInitialAlumnos.current = false;
+        return;
+      }
       snapshot.docChanges().forEach((change) => {
         if (change.type === "added" && !snapshot.metadata.hasPendingWrites) {
           const data = change.doc.data() as Alumno;
@@ -856,6 +862,10 @@ const App: React.FC = () => {
     });
 
     const unsubClases = onSnapshot(collection(firestore, COLLECTIONS.CLASES), (snapshot) => {
+      if (isInitialClases.current) {
+        isInitialClases.current = false;
+        return;
+      }
       snapshot.docChanges().forEach((change) => {
         if (change.type === "added" && !snapshot.metadata.hasPendingWrites) {
           const data = change.doc.data() as Clase;
@@ -3711,7 +3721,7 @@ const App: React.FC = () => {
                       type="number" 
                       value={faseInicialDuration} 
                       onChange={(e) => setFaseInicialDuration(e.target.value)}
-                      className="w-8 bg-transparent text-[10px] text-white font-bold outline-none text-center" 
+                      className="w-12 bg-transparent text-[10px] text-white font-bold outline-none text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
                     />
                     <span className="text-[8px] text-white/50 uppercase font-black">min</span>
                   </div>
@@ -3762,7 +3772,7 @@ const App: React.FC = () => {
                       type="number" 
                       value={fasePrincipalDuration} 
                       onChange={(e) => setFasePrincipalDuration(e.target.value)}
-                      className="w-8 bg-transparent text-[10px] text-white font-bold outline-none text-center" 
+                      className="w-12 bg-transparent text-[10px] text-white font-bold outline-none text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
                     />
                     <span className="text-[8px] text-white/50 uppercase font-black">min</span>
                   </div>
@@ -3855,7 +3865,7 @@ const App: React.FC = () => {
                       type="number" 
                       value={faseFinalDuration} 
                       onChange={(e) => setFaseFinalDuration(e.target.value)}
-                      className="w-8 bg-transparent text-[10px] text-white font-bold outline-none text-center" 
+                      className="w-12 bg-transparent text-[10px] text-white font-bold outline-none text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
                     />
                     <span className="text-[8px] text-white/50 uppercase font-black">min</span>
                   </div>
