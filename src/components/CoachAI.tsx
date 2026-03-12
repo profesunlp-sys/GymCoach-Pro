@@ -1,6 +1,7 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { getSearchGroundedAnswer, queryKnowledgeBase } from '../../services/geminiService';
+import { saveFiles, loadFiles, clearFiles } from '../services/storageService';
 
 export const CoachAI = () => {
   const [query, setQuery] = useState('');
@@ -8,6 +9,28 @@ export const CoachAI = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [attachedFiles, setAttachedFiles] = useState<{ name: string, data: string, type: string }[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Cargar archivos al montar el componente
+  useEffect(() => {
+    const init = async () => {
+      try {
+        const stored = await loadFiles();
+        if (stored && stored.length > 0) {
+          setAttachedFiles(stored);
+        }
+      } catch (err: any) {
+        console.error("Error cargando archivos persistentes:", err);
+      }
+    };
+    init();
+  }, []);
+
+  // Guardar archivos cuando cambian
+  useEffect(() => {
+    if (attachedFiles.length > 0) {
+      saveFiles(attachedFiles).catch(err => console.error("Error guardando archivos:", err));
+    }
+  }, [attachedFiles]);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -28,7 +51,11 @@ export const CoachAI = () => {
   };
 
   const removeFile = (index: number) => {
-    setAttachedFiles(prev => prev.filter((_, i) => i !== index));
+    const newFiles = attachedFiles.filter((_, i) => i !== index);
+    setAttachedFiles(newFiles);
+    if (newFiles.length === 0) {
+      clearFiles();
+    }
   };
 
   const handleSearch = async () => {
@@ -141,7 +168,10 @@ export const CoachAI = () => {
               </div>
             ))}
             <button 
-              onClick={() => setAttachedFiles([])}
+              onClick={() => {
+                setAttachedFiles([]);
+                clearFiles();
+              }}
               className="text-[10px] text-rose-500 font-bold uppercase tracking-widest hover:underline ml-2"
             >
               Limpiar Todo
