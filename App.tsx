@@ -37,7 +37,7 @@ const EditableDropdown = ({
 
   return (
     <div className="space-y-1 relative">
-      <label className="text-[10px] uppercase font-bold text-slate-300 ml-1">{label}</label>
+      <label className="text-[10px] uppercase font-bold text-white/90 ml-1">{label}</label>
       <div className="relative group">
         <select 
           value={value} 
@@ -1420,7 +1420,7 @@ const App: React.FC = () => {
 
           <div className="relative py-4">
             <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/10"></div></div>
-            <div className="relative flex justify-center text-[10px] uppercase font-bold tracking-[0.3em]"><span className="bg-antigravity-black px-4 text-white/50 italic">O</span></div>
+            <div className="relative flex justify-center text-[10px] uppercase font-bold tracking-[0.3em]"><span className="bg-antigravity-black px-4 text-white/80 italic">O</span></div>
           </div>
 
           <button onClick={handleLogin} className="w-full py-4.5 bg-white/5 border border-white/10 text-white rounded-full font-bold uppercase text-[10px] tracking-[0.18em] active:scale-95 transition-all hover:bg-white/10 flex items-center justify-center gap-3">
@@ -1499,7 +1499,7 @@ const App: React.FC = () => {
             </div>
             <div className="text-center space-y-2">
               <h3 className="text-xl font-bold text-white">IA necesita aclaración</h3>
-              <p className="text-sm text-slate-400 leading-relaxed">
+              <p className="text-sm text-white/90 leading-relaxed">
                 {pendingAnalysis.question || "No pude entender bien una parte del reporte. ¿Podrías aclararlo?"}
               </p>
               {pendingAnalysis.inconsistencies && pendingAnalysis.inconsistencies.length > 0 && (
@@ -1632,7 +1632,7 @@ const App: React.FC = () => {
                         <h4 className="text-xs font-bold text-white truncate">{g.nombre}</h4>
                         <div className="flex items-end justify-between">
                           <span className={`text-xl font-black ${isTaken ? 'text-primary' : 'text-rose-500'}`}>
-                            {stats.presentes}<span className="text-[10px] text-white/50 mx-1">/</span>{stats.total}
+                            {stats.presentes}<span className="text-[10px] text-white/80 mx-1">/</span>{stats.total}
                           </span>
                           <span className={`text-[8px] font-black uppercase tracking-widest ${isTaken ? 'text-primary/60' : 'text-rose-500/60'}`}>
                             {isTaken ? 'Enviada' : 'Pendiente'}
@@ -1756,7 +1756,7 @@ const App: React.FC = () => {
                       setNewCoachName("");
                       setSelectedDays([]);
                     }}
-                    className="text-[10px] text-slate-400 uppercase font-bold hover:text-white transition-colors"
+                    className="text-[10px] text-white/60 uppercase font-bold hover:text-white transition-colors"
                   >
                     Cancelar Edición
                   </button>
@@ -1791,7 +1791,7 @@ const App: React.FC = () => {
                           >
                             {day.id.split('-')[0]}
                           </button>
-                          <span className={`text-[8px] font-black uppercase tracking-[0.15em] transition-colors duration-300 ${isSelected ? 'text-primary' : 'text-white/50'}`}>
+                          <span className={`text-[8px] font-black uppercase tracking-[0.15em] transition-colors duration-300 ${isSelected ? 'text-primary' : 'text-white/80'}`}>
                             {day.label}
                           </span>
                         </div>
@@ -1822,21 +1822,21 @@ const App: React.FC = () => {
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1">
-                        <label className="text-[8px] uppercase font-bold text-slate-200 ml-1 tracking-widest">Hora Inicio</label>
+                        <label className="text-[8px] uppercase font-bold text-white/90 ml-1 tracking-widest">Hora Inicio</label>
                         <div className="relative">
                           <select value={startTime} onChange={(e) => setStartTime(e.target.value)} className="w-full bg-antigravity-charcoal rounded-2xl px-4 py-3.5 text-sm text-white appearance-none border border-white/10 focus:border-primary focus:ring-1 focus:ring-primary/50 outline-none transition-all">
                             {timeIntervals.map(t => <option key={t} value={t} className="bg-antigravity-charcoal">{t}</option>)}
                           </select>
-                          <span className="material-icons-outlined absolute right-4 top-1/2 -translate-y-1/2 text-white/50 pointer-events-none text-sm">expand_more</span>
+                          <span className="material-icons-outlined absolute right-4 top-1/2 -translate-y-1/2 text-white/80 pointer-events-none text-sm">expand_more</span>
                         </div>
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[8px] uppercase font-bold text-slate-200 ml-1 tracking-widest">Hora Fin</label>
+                        <label className="text-[8px] uppercase font-bold text-white/90 ml-1 tracking-widest">Hora Fin</label>
                         <div className="relative">
                           <select value={endTime} onChange={(e) => setEndTime(e.target.value)} className="w-full bg-antigravity-charcoal rounded-2xl px-4 py-3.5 text-sm text-white appearance-none border border-white/10 focus:border-primary focus:ring-1 focus:ring-primary/50 outline-none transition-all">
                             {timeIntervals.map(t => <option key={t} value={t} className="bg-antigravity-charcoal">{t}</option>)}
                           </select>
-                          <span className="material-icons-outlined absolute right-4 top-1/2 -translate-y-1/2 text-white/50 pointer-events-none text-sm">expand_more</span>
+                          <span className="material-icons-outlined absolute right-4 top-1/2 -translate-y-1/2 text-white/80 pointer-events-none text-sm">expand_more</span>
                         </div>
                       </div>
                     </div>
@@ -1857,7 +1857,7 @@ const App: React.FC = () => {
                   <div className="flex justify-between items-start">
                     <div>
                       <h4 className="font-bold text-white text-lg tracking-tight leading-none">{g.nombre}</h4>
-                      <p className="text-xs text-slate-200 mt-2 font-medium italic">{g.horario}</p>
+                      <p className="text-xs text-white/90 mt-2 font-medium italic">{g.horario}</p>
                       {g.entrenador && <p className="text-[10px] text-primary mt-1 font-bold uppercase tracking-wider">Prof: {g.entrenador}</p>}
                     </div>
                     <div className="flex flex-col items-end gap-2">
@@ -1897,7 +1897,7 @@ const App: React.FC = () => {
                   </button>
                 </div>
               )) : (
-                <div className="p-10 text-center glass-card rounded-[2rem] border-dashed border-slate-700/50 italic text-slate-300 text-xs font-medium">No hay grupos configurados aún.</div>
+                <div className="p-10 text-center glass-card rounded-[2rem] border-dashed border-slate-700/50 italic text-white/80 text-xs font-medium">No hay grupos configurados aún.</div>
               )}
             </section>
           </div>
@@ -1908,7 +1908,7 @@ const App: React.FC = () => {
           <div className="page-transition flex flex-col min-h-screen relative bg-antigravity-black">
             <header className="px-6 py-4 flex flex-col gap-4 bg-antigravity-black sticky top-12 z-40">
               <div className="flex items-center justify-between">
-                <button onClick={() => setVista('Dashboard')} className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 border border-white/20 bg-white/20 border-primary/50 placeholder:text-white/50 text-white">
+                <button onClick={() => setVista('Dashboard')} className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 border border-white/20 bg-white/20 border-primary/50 placeholder:text-white/80 text-white">
                   <span className="material-symbols-outlined text-[20px]">arrow_back_ios_new</span>
                 </button>
                 <h1 className="text-sm font-bold tracking-widest uppercase text-white/80">Asistencia</h1>
@@ -2035,7 +2035,7 @@ const App: React.FC = () => {
                       <div className="flex items-center gap-4">
                         <button 
                           onClick={() => setExpandedAlumnoId(isExpanded ? null : alumno.id!)}
-                          className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-white/50 hover:text-white transition-colors"
+                          className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-white/80 hover:text-white transition-colors"
                         >
                           <span className="material-icons-outlined text-[18px]">{isExpanded ? 'expand_less' : 'expand_more'}</span>
                         </button>
@@ -2338,7 +2338,7 @@ const App: React.FC = () => {
                               <span className="material-icons-outlined text-amber-500 text-[16px] animate-pulse" title="Alerta Médica">warning</span>
                             )}
                           </div>
-                          <p className="text-[10px] text-slate-300 font-medium uppercase tracking-wider">{alumno.grupo} • {alumno.nivel}</p>
+                          <p className="text-[10px] text-white/80 font-medium uppercase tracking-wider">{alumno.grupo} • {alumno.nivel}</p>
                         </div>
                       </div>
                       <button className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/70">
@@ -2780,7 +2780,7 @@ const App: React.FC = () => {
                           <div className="flex items-center justify-between">
                             <div className="flex-1" onClick={() => { setEditingSkillId(skill.id); setEditingSkillData(skill); }}>
                               <h4 className="text-sm font-bold text-white">{skill.name}</h4>
-                              <p className="text-[10px] text-slate-300 font-medium uppercase tracking-wider mt-1">{skill.apparatus} • Nivel {skill.level}</p>
+                              <p className="text-[10px] text-white/80 font-medium uppercase tracking-wider mt-1">{skill.apparatus} • Nivel {skill.level}</p>
                             </div>
                             <div className="flex items-center gap-3">
                               <div className={`px-3 py-1 rounded-lg border text-[9px] font-black uppercase tracking-widest ${
@@ -2802,7 +2802,7 @@ const App: React.FC = () => {
                           
                           {skill.history && skill.history.length > 0 && (
                             <div className="mt-1 pt-3 border-t border-white/5">
-                              <p className="text-[9px] text-slate-300 uppercase tracking-widest mb-2 font-bold">
+                              <p className="text-[9px] text-white/80 uppercase tracking-widest mb-2 font-bold">
                                 Línea de tiempo
                                 {skill.status === 'Dominado' && skill.history.length > 1 && (
                                   <span className="text-emerald-400 ml-1">
@@ -2814,7 +2814,7 @@ const App: React.FC = () => {
                                 {skill.history.map((h, i) => (
                                   <div key={i} className="flex items-center gap-2 text-[10px]">
                                     <span className="w-1.5 h-1.5 rounded-full bg-primary/50"></span>
-                                    <span className="text-slate-200 min-w-[70px]">{new Date(h.date).toLocaleDateString()}</span>
+                                    <span className="text-white/90 min-w-[70px]">{new Date(h.date).toLocaleDateString()}</span>
                                     <span className="text-white/80 font-medium">{h.status}</span>
                                   </div>
                                 ))}
@@ -2843,7 +2843,7 @@ const App: React.FC = () => {
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-[10px] uppercase font-bold text-slate-300 ml-1">Fecha</label>
+                  <label className="text-[10px] uppercase font-bold text-white/90 ml-1">Fecha</label>
                   <input 
                     type="date" 
                     value={planesFilterDate} 
@@ -2852,7 +2852,7 @@ const App: React.FC = () => {
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] uppercase font-bold text-slate-300 ml-1">Profesor</label>
+                  <label className="text-[10px] uppercase font-bold text-white/90 ml-1">Profesor</label>
                   <select 
                     value={planesFilterCoach} 
                     onChange={(e) => setPlanesFilterCoach(e.target.value)} 
@@ -3069,7 +3069,7 @@ const App: React.FC = () => {
             </div>
 
             <div className="p-6 text-center opacity-40">
-              <p className="text-[10px] text-slate-400">En caso de emergencia médica grave, contacte inmediatamente a los servicios de salud locales.</p>
+              <p className="text-[10px] text-white/60">En caso de emergencia médica grave, contacte inmediatamente a los servicios de salud locales.</p>
             </div>
           </div>
         )}
@@ -3132,7 +3132,7 @@ const App: React.FC = () => {
                   )}
                   {kbMessages.map((msg, idx) => (
                     <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                      <div className={`max-w-[85%] p-3 rounded-2xl text-xs leading-relaxed ${msg.role === 'user' ? 'bg-primary text-antigravity-black font-bold rounded-tr-none' : 'bg-white/5 text-slate-300 border border-white/10 rounded-tl-none'}`}>
+                      <div className={`max-w-[85%] p-3 rounded-2xl text-xs leading-relaxed ${msg.role === 'user' ? 'bg-primary text-antigravity-black font-bold rounded-tr-none' : 'bg-white/5 text-white/90 border border-white/10 rounded-tl-none'}`}>
                         <Markdown>{msg.text}</Markdown>
                       </div>
                     </div>
@@ -3186,7 +3186,7 @@ const App: React.FC = () => {
                   </div>
                   <div className="flex-1 overflow-hidden">
                     <p className="text-sm font-bold text-white uppercase tracking-wider truncate">{user?.displayName || (userRole === 'Coordinator' ? 'Coordinador General' : 'Entrenador Pro')}</p>
-                    <p className="text-[10px] text-slate-400 truncate mt-0.5">{user?.email || 'usuario@gymcoach.pro'}</p>
+                    <p className="text-[10px] text-white/60 truncate mt-0.5">{user?.email || 'usuario@gymcoach.pro'}</p>
                   </div>
                 </div>
               </div>
@@ -3245,7 +3245,7 @@ const App: React.FC = () => {
                     <span className="material-icons-outlined text-neon-cyan text-lg">cloud_download</span>
                     <span className="text-xs font-medium text-white">Exportar Copia de Seguridad</span>
                   </div>
-                  <span className="material-icons-outlined text-white/30 text-sm">chevron_right</span>
+                  <span className="material-icons-outlined text-white/60 text-sm">chevron_right</span>
                 </button>
 
                 <div className="relative">
@@ -3283,7 +3283,7 @@ const App: React.FC = () => {
 
             <div className="p-6 text-center opacity-40">
               <p className="text-[9px] font-black uppercase tracking-[0.5em] text-white mb-2">GymCoach Pro v2.0 Cloud</p>
-              <p className="text-[10px] text-slate-400">Desarrollado para la excelencia gimnástica.</p>
+              <p className="text-[10px] text-white/60">Desarrollado para la excelencia gimnástica.</p>
             </div>
           </div>
         )}
@@ -3300,16 +3300,16 @@ const App: React.FC = () => {
                 <h4 className="text-white font-black text-[10px] border-b border-white/5 pb-2 uppercase tracking-[0.3em] opacity-30 italic">Identificación</h4>
                 <div className="space-y-4">
                   <div className="space-y-1">
-                    <label className="text-[10px] uppercase font-bold text-slate-300 ml-1">Nombre y Apellido *</label>
+                    <label className="text-[10px] uppercase font-bold text-white/90 ml-1">Nombre y Apellido *</label>
                     <input className="w-full crafted-input" placeholder="Nombre completo..." value={studentForm.nombre} onChange={(e) => setStudentForm({...studentForm, nombre: e.target.value})}/>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1">
-                      <label className="text-[10px] uppercase font-bold text-slate-300 ml-1">DNI (Opcional)</label>
+                      <label className="text-[10px] uppercase font-bold text-white/90 ml-1">DNI (Opcional)</label>
                       <input className="w-full crafted-input" placeholder="Número..." value={studentForm.dni} onChange={(e) => setStudentForm({...studentForm, dni: e.target.value})}/>
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[10px] uppercase font-bold text-slate-300 ml-1">Fecha Nacimiento *</label>
+                      <label className="text-[10px] uppercase font-bold text-white/90 ml-1">Fecha Nacimiento *</label>
                       <input type="date" className="w-full crafted-input" value={studentForm.fechaNacimiento} onChange={(e) => setStudentForm({...studentForm, fechaNacimiento: e.target.value})}/>
                     </div>
                   </div>
@@ -3320,31 +3320,31 @@ const App: React.FC = () => {
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1">
-                      <label className="text-[10px] uppercase font-bold text-slate-300 ml-1">Nombre del Padre</label>
+                      <label className="text-[10px] uppercase font-bold text-white/90 ml-1">Nombre del Padre</label>
                       <input className="w-full crafted-input" placeholder="Nombre..." value={studentForm.contacto?.padreNombre} onChange={(e) => setStudentForm({...studentForm, contacto: {...(studentForm.contacto || {}), padreNombre: e.target.value}})}/>
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[10px] uppercase font-bold text-slate-300 ml-1">Teléfono Padre</label>
+                      <label className="text-[10px] uppercase font-bold text-white/90 ml-1">Teléfono Padre</label>
                       <input type="tel" className="w-full crafted-input" placeholder="Número..." value={studentForm.contacto?.padreTelefono} onChange={(e) => setStudentForm({...studentForm, contacto: {...(studentForm.contacto || {}), padreTelefono: e.target.value}})}/>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1">
-                      <label className="text-[10px] uppercase font-bold text-slate-300 ml-1">Nombre de la Madre</label>
+                      <label className="text-[10px] uppercase font-bold text-white/90 ml-1">Nombre de la Madre</label>
                       <input className="w-full crafted-input" placeholder="Nombre..." value={studentForm.contacto?.madreNombre} onChange={(e) => setStudentForm({...studentForm, contacto: {...(studentForm.contacto || {}), madreNombre: e.target.value}})}/>
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[10px] uppercase font-bold text-slate-300 ml-1">Teléfono Madre</label>
+                      <label className="text-[10px] uppercase font-bold text-white/90 ml-1">Teléfono Madre</label>
                       <input type="tel" className="w-full crafted-input" placeholder="Número..." value={studentForm.contacto?.madreTelefono} onChange={(e) => setStudentForm({...studentForm, contacto: {...(studentForm.contacto || {}), madreTelefono: e.target.value}})}/>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1">
-                      <label className="text-[10px] uppercase font-bold text-slate-300 ml-1">Contacto Emergencia</label>
+                      <label className="text-[10px] uppercase font-bold text-white/90 ml-1">Contacto Emergencia</label>
                       <input className="w-full crafted-input" placeholder="Nombre..." value={studentForm.contacto?.emergenciaNombre} onChange={(e) => setStudentForm({...studentForm, contacto: {...(studentForm.contacto || {}), emergenciaNombre: e.target.value}})}/>
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[10px] uppercase font-bold text-slate-300 ml-1">Teléfono Emergencia</label>
+                      <label className="text-[10px] uppercase font-bold text-white/90 ml-1">Teléfono Emergencia</label>
                       <input type="tel" className="w-full crafted-input" placeholder="Número..." value={studentForm.contacto?.emergenciaTelefono} onChange={(e) => setStudentForm({...studentForm, contacto: {...(studentForm.contacto || {}), emergenciaTelefono: e.target.value}})}/>
                     </div>
                   </div>
@@ -3353,11 +3353,11 @@ const App: React.FC = () => {
               <div className="space-y-4">
                 <h4 className="text-white font-black text-[10px] border-b border-white/5 pb-2 uppercase tracking-[0.3em] opacity-30 italic">Seguimiento Médico</h4>
                 <div className="space-y-1">
-                  <label className="text-[10px] uppercase font-bold text-slate-300 ml-1">Observaciones de Salud (Opcional)</label>
+                  <label className="text-[10px] uppercase font-bold text-white/90 ml-1">Observaciones de Salud (Opcional)</label>
                   <textarea className="w-full crafted-input h-24" placeholder="Alergias, condiciones médicas..." onChange={(e) => setStudentForm({...studentForm, alertas: [e.target.value]})}/>
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] uppercase font-bold text-slate-300 ml-1">Fecha de Inicio de Actividades</label>
+                  <label className="text-[10px] uppercase font-bold text-white/90 ml-1">Fecha de Inicio de Actividades</label>
                   <input type="date" className="w-full crafted-input" value={studentForm.fechaPrimeraClase} onChange={(e) => setStudentForm({...studentForm, fechaPrimeraClase: e.target.value})}/>
                 </div>
               </div>
@@ -3421,7 +3421,7 @@ const App: React.FC = () => {
               <header className="flex justify-between items-start border-b-4 border-black pb-8">
                 <div className="space-y-2">
                   <h1 className="text-6xl font-black uppercase tracking-tighter leading-none">GymCoach Pro</h1>
-                  <h2 className="text-2xl font-black text-slate-300 uppercase tracking-widest">Planilla Mensual</h2>
+                  <h2 className="text-2xl font-black text-white/90 uppercase tracking-widest">Planilla Mensual</h2>
                 </div>
                 <div className="text-right space-y-1 font-black uppercase text-sm">
                   <p>Grupo: <span className="bg-black text-white px-2 py-0.5">{activeGroup.nombre}</span></p>
@@ -3598,7 +3598,7 @@ const App: React.FC = () => {
                             habilidades.length > 0 && (
                               <div key={aparato} className="bg-white/5 p-3 rounded-xl border border-white/10">
                                 <p className="text-[10px] font-bold text-white/80 mb-2">{aparato}</p>
-                                <ul className="list-disc list-inside text-xs text-slate-300 space-y-1">
+                                <ul className="list-disc list-inside text-xs text-white/90 space-y-1">
                                   {habilidades.map((hab, idx) => (
                                     <li key={idx}>{hab}</li>
                                   ))}
@@ -3631,7 +3631,7 @@ const App: React.FC = () => {
                     <div key={fb.id} className={`p-4 rounded-2xl border ${fb.author === 'Coordinador' ? 'bg-primary/5 border-primary/20 ml-4' : 'bg-white/5 border-white/10 mr-4'}`}>
                       <div className="flex justify-between items-center mb-2">
                         <span className={`text-[9px] font-black uppercase tracking-widest ${fb.author === 'Coordinador' ? 'text-primary' : 'text-white/70'}`}>{fb.author}</span>
-                        <span className="text-[8px] text-white/50">{new Date(fb.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                        <span className="text-[8px] text-white/80">{new Date(fb.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                       </div>
                       <p className="text-xs text-white/80 leading-relaxed italic">"{fb.text}"</p>
                     </div>
@@ -3695,7 +3695,7 @@ const App: React.FC = () => {
                       <span className={`text-xs font-black uppercase tracking-wider ${claseGrupo === g.nombre ? 'text-primary' : 'text-white/90'}`}>
                         {g.nombre}
                       </span>
-                      <span className="text-[8px] text-white/50 font-bold uppercase tracking-widest">
+                      <span className="text-[8px] text-white/80 font-bold uppercase tracking-widest">
                         {g.horario}
                       </span>
                     </button>
@@ -3723,7 +3723,7 @@ const App: React.FC = () => {
                       onChange={(e) => setFaseInicialDuration(e.target.value)}
                       className="w-12 bg-transparent text-[10px] text-white font-bold outline-none text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
                     />
-                    <span className="text-[8px] text-white/50 uppercase font-black">min</span>
+                    <span className="text-[8px] text-white/80 uppercase font-black">min</span>
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -3731,7 +3731,7 @@ const App: React.FC = () => {
                     <button 
                       key={opt}
                       onClick={() => setFaseInicial(prev => prev.includes(opt) ? prev.filter(o => o !== opt) : [...prev, opt])}
-                      className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${faseInicial.includes(opt) ? 'bg-primary text-antigravity-black shadow-neon-cyan' : 'bg-antigravity-charcoal text-slate-400 border border-white/5'}`}
+                      className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${faseInicial.includes(opt) ? 'bg-primary text-antigravity-black shadow-neon-cyan' : 'bg-antigravity-charcoal text-white/70 border border-white/5'}`}
                     >
                       {opt}
                     </button>
@@ -3774,7 +3774,7 @@ const App: React.FC = () => {
                       onChange={(e) => setFasePrincipalDuration(e.target.value)}
                       className="w-12 bg-transparent text-[10px] text-white font-bold outline-none text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
                     />
-                    <span className="text-[8px] text-white/50 uppercase font-black">min</span>
+                    <span className="text-[8px] text-white/80 uppercase font-black">min</span>
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -3782,7 +3782,7 @@ const App: React.FC = () => {
                     <button 
                       key={opt}
                       onClick={() => setFasePrincipal(prev => prev.includes(opt) ? prev.filter(o => o !== opt) : [...prev, opt])}
-                      className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${fasePrincipal.includes(opt) ? 'bg-primary text-antigravity-black shadow-neon-cyan' : 'bg-antigravity-charcoal text-slate-400 border border-white/5'}`}
+                      className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${fasePrincipal.includes(opt) ? 'bg-primary text-antigravity-black shadow-neon-cyan' : 'bg-antigravity-charcoal text-white/70 border border-white/5'}`}
                     >
                       {opt}
                     </button>
@@ -3815,7 +3815,7 @@ const App: React.FC = () => {
 
                 {fasePrincipal.length > 0 && (
                   <div className="mt-6 space-y-4 border-t border-white/10 pt-4">
-                    <label className="text-[10px] uppercase font-bold text-slate-200 ml-1 tracking-widest">Habilidades por Aparato</label>
+                    <label className="text-[10px] uppercase font-bold text-white/90 ml-2 tracking-widest">Habilidades por Aparato</label>
                     {fasePrincipal.map(aparato => (
                       <div key={aparato} className="space-y-2 bg-antigravity-charcoal/50 p-4 rounded-2xl border border-white/5">
                         <p className="text-xs font-bold text-white">{aparato}</p>
@@ -3867,7 +3867,7 @@ const App: React.FC = () => {
                       onChange={(e) => setFaseFinalDuration(e.target.value)}
                       className="w-12 bg-transparent text-[10px] text-white font-bold outline-none text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
                     />
-                    <span className="text-[8px] text-white/50 uppercase font-black">min</span>
+                    <span className="text-[8px] text-white/80 uppercase font-black">min</span>
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -3875,7 +3875,7 @@ const App: React.FC = () => {
                     <button 
                       key={opt}
                       onClick={() => setFaseFinal(prev => prev.includes(opt) ? prev.filter(o => o !== opt) : [...prev, opt])}
-                      className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${faseFinal.includes(opt) ? 'bg-primary text-antigravity-black shadow-neon-cyan' : 'bg-antigravity-charcoal text-slate-400 border border-white/5'}`}
+                      className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${faseFinal.includes(opt) ? 'bg-primary text-antigravity-black shadow-neon-cyan' : 'bg-antigravity-charcoal text-white/70 border border-white/5'}`}
                     >
                       {opt}
                     </button>
@@ -3975,10 +3975,10 @@ const App: React.FC = () => {
                       </div>
                       <div>
                         <h4 className="font-bold text-white text-lg">{profesor}</h4>
-                        <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">{profGrupos.length} Grupos • {profClases.length} Clases</p>
+                        <p className="text-[10px] text-white/70 font-medium uppercase tracking-wider">{profGrupos.length} Grupos • {profClases.length} Clases</p>
                       </div>
                     </div>
-                    <span className="material-icons-outlined text-slate-600">chevron_right</span>
+                    <span className="material-icons-outlined text-white/40">chevron_right</span>
                   </div>
                 );
               })}
@@ -4016,18 +4016,18 @@ const App: React.FC = () => {
                     return profGruposActuales.map(g => (
                       <div key={g.id} className="glass-card rounded-2xl p-4 border border-white/5">
                         <h4 className="font-bold text-white text-sm">{g.nombre}</h4>
-                        <p className="text-[10px] text-slate-200 mt-1">{g.horario}</p>
+                        <p className="text-[10px] text-white/80 mt-1">{g.horario}</p>
                       </div>
                     ));
                   } else if (profGruposHistoricos.length > 0) {
                     return profGruposHistoricos.map((nombre, idx) => (
                       <div key={idx} className="glass-card rounded-2xl p-4 border border-white/5 opacity-70">
                         <h4 className="font-bold text-white text-sm">{nombre}</h4>
-                        <p className="text-[10px] text-slate-400 mt-1">Histórico</p>
+                        <p className="text-[10px] text-white/60 mt-1">Histórico</p>
                       </div>
                     ));
                   } else {
-                    return <p className="text-sm text-slate-400 col-span-2 px-1">No tiene grupos registrados.</p>;
+                    return <p className="text-sm text-white/60 col-span-2 px-1">No tiene grupos registrados.</p>;
                   }
                 })()}
               </div>
@@ -4041,7 +4041,7 @@ const App: React.FC = () => {
                     <div className="flex justify-between items-start">
                       <div>
                         <h4 className="font-bold text-white text-sm">{clase.grupo}</h4>
-                        <p className="text-[10px] text-slate-400">{new Date(clase.fecha).toLocaleDateString()} • {clase.horario}</p>
+                        <p className="text-[10px] text-white/70">{new Date(clase.fecha).toLocaleDateString()} • {clase.horario}</p>
                       </div>
                     </div>
                     
@@ -4049,7 +4049,7 @@ const App: React.FC = () => {
                       <div>
                         <p className="text-[9px] uppercase tracking-widest text-primary font-bold mb-1">Entrada en calor</p>
                         <div className="flex flex-wrap gap-1">
-                          {clase.faseInicial.map((item, i) => <span key={i} className="text-[10px] bg-white/5 text-slate-300 px-2 py-1 rounded-md">{item}</span>)}
+                          {clase.faseInicial.map((item, i) => <span key={i} className="text-[10px] bg-white/5 text-white/90 px-2 py-1 rounded-md">{item}</span>)}
                         </div>
                       </div>
                     )}
@@ -4058,7 +4058,7 @@ const App: React.FC = () => {
                       <div>
                         <p className="text-[9px] uppercase tracking-widest text-primary font-bold mb-1">Fase Principal</p>
                         <div className="flex flex-wrap gap-1">
-                          {clase.fasePrincipal.map((item, i) => <span key={i} className="text-[10px] bg-white/5 text-slate-300 px-2 py-1 rounded-md">{item}</span>)}
+                          {clase.fasePrincipal.map((item, i) => <span key={i} className="text-[10px] bg-white/5 text-white/90 px-2 py-1 rounded-md">{item}</span>)}
                         </div>
                         
                         {clase.habilidadesPorAparato && Object.keys(clase.habilidadesPorAparato).length > 0 && (
@@ -4067,7 +4067,7 @@ const App: React.FC = () => {
                               habilidades.length > 0 && (
                                 <div key={aparato} className="bg-white/5 p-2 rounded-lg border border-white/10">
                                   <p className="text-[9px] font-bold text-white mb-1">{aparato}</p>
-                                  <ul className="list-disc list-inside text-[10px] text-slate-300 space-y-0.5">
+                                  <ul className="list-disc list-inside text-[10px] text-white/90 space-y-0.5">
                                     {habilidades.map((hab, idx) => (
                                       <li key={idx}>{hab}</li>
                                     ))}
@@ -4084,7 +4084,7 @@ const App: React.FC = () => {
                       <div>
                         <p className="text-[9px] uppercase tracking-widest text-primary font-bold mb-1">Fase Final</p>
                         <div className="flex flex-wrap gap-1">
-                          {clase.faseFinal.map((item, i) => <span key={i} className="text-[10px] bg-white/5 text-slate-300 px-2 py-1 rounded-md">{item}</span>)}
+                          {clase.faseFinal.map((item, i) => <span key={i} className="text-[10px] bg-white/5 text-white/90 px-2 py-1 rounded-md">{item}</span>)}
                         </div>
                       </div>
                     )}
@@ -4285,11 +4285,11 @@ const App: React.FC = () => {
                   <span className="material-icons-outlined text-primary">psychology</span>
                   <h3 className="text-xl font-black text-white uppercase tracking-tighter">Insights de IA</h3>
                 </div>
-                <button onClick={() => setAiAnalysis(null)} className="text-white/40 hover:text-white">
+                <button onClick={() => setAiAnalysis(null)} className="text-white/70 hover:text-white">
                   <span className="material-icons-outlined">close</span>
                 </button>
               </div>
-              <div className="prose prose-invert prose-sm max-w-none text-slate-300 leading-relaxed">
+              <div className="prose prose-invert prose-sm max-w-none text-white/90 leading-relaxed">
                 <Markdown>{aiAnalysis}</Markdown>
               </div>
               <button 
@@ -4307,7 +4307,7 @@ const App: React.FC = () => {
             <div className="glass-card w-full max-w-lg rounded-[2.5rem] p-8 border border-white/10 space-y-6 animate-in zoom-in duration-300">
               <div className="flex justify-between items-center">
                 <h3 className="text-xl font-black text-white uppercase tracking-tighter">Importación Masiva</h3>
-                <button onClick={() => setIsBulkImporting(false)} className="text-white/40 hover:text-white">
+                <button onClick={() => setIsBulkImporting(false)} className="text-white/70 hover:text-white">
                   <span className="material-icons-outlined">close</span>
                 </button>
               </div>
@@ -4366,7 +4366,7 @@ const App: React.FC = () => {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-[9px] font-black uppercase tracking-[0.2em] text-primary truncate">{notificacion.t}</p>
-            <p className="text-[11px] text-slate-300 font-medium mt-0.5 leading-tight italic line-clamp-2">"{notificacion.d}"</p>
+            <p className="text-[11px] text-white/90 font-medium mt-0.5 leading-tight italic line-clamp-2">"{notificacion.d}"</p>
           </div>
           <button 
             onClick={() => setNotificacion(null)}

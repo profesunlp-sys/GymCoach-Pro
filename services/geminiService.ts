@@ -164,7 +164,16 @@ export async function queryKnowledgeBase(query: string, sources: any[]): Promise
   try {
     const ai = getAI();
     const parts: any[] = [
-      { text: `Eres un asistente experto en gimnasia artística. Responde a la siguiente consulta basándote en los documentos proporcionados: "${query}". Si la información no está en los documentos, indícalo, pero intenta ayudar con tu conocimiento general si es relevante.` }
+      { text: `Eres un asistente experto en gimnasia artística. Tu tarea es responder a la consulta del usuario basándote EXCLUSIVAMENTE en los documentos proporcionados. 
+      
+      REGLAS CRÍTICAS:
+      1. Responde ÚNICAMENTE usando la información de los documentos adjuntos.
+      2. Si la información necesaria para responder no se encuentra en los documentos, responde exactamente: "Lo siento, no encuentro esa información en los documentos proporcionados."
+      3. NO utilices tu conocimiento general previo.
+      4. NO inventes ni alucines información.
+      5. Cita el nombre del documento si es posible.
+      
+      Consulta: "${query}"` }
     ];
 
     for (const source of sources) {

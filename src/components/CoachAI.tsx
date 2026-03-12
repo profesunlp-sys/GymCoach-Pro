@@ -1,27 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { LiveServerMessage, Modality } from "@google/genai";
+import React, { useState, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { getSearchGroundedAnswer } from '../../services/geminiService';
-import { GoogleGenAI } from "@google/genai";
-
-const getAI = () => {
-  // 1. Intentar obtener de Vercel (import.meta.env)
-  const vercelKey = import.meta.env.VITE_GEMINI_API_KEY;
-  
-  // 2. Intentar obtener de AI Studio (inyectado en window.process)
-  const studioKey = (window as any).process?.env?.GEMINI_API_KEY || (window as any).process?.env?.API_KEY;
-  
-  // 3. Fallback directo (clave proporcionada) para asegurar que funcione en Vercel
-  const fallbackKey = "AIzaSyARdk49hhQgyaspzs9ICK-gVvtBb67rRyE";
-  
-  const apiKey = vercelKey || studioKey || fallbackKey;
-    
-  if (!apiKey || apiKey === "") {
-    throw new Error("Falta la API Key en Vercel. Debes crear una variable llamada exactamente VITE_GEMINI_API_KEY en la configuración de Vercel y volver a desplegar.");
-  }
-  
-  return new GoogleGenAI({ apiKey: apiKey as string });
-};
+import { getSearchGroundedAnswer, queryKnowledgeBase } from '../../services/geminiService';
 
 export const CoachAI = () => {
   const [query, setQuery] = useState('');
@@ -57,31 +36,26 @@ export const CoachAI = () => {
     
     const userMsg = query;
     setQuery('');
+    // No borramos los archivos aquí para permitir múltiples consultas sobre los mismos documentos
     const currentFiles = [...attachedFiles];
-    setAttachedFiles([]);
     
     setMessages(prev => [...prev, { role: 'user', text: userMsg || `Analizando ${currentFiles.length} archivos...` }]);
     setIsLoading(true);
     
     try {
       if (currentFiles.length > 0) {
-        const ai = getAI();
-        const parts: any[] = currentFiles.map(f => ({
-          inlineData: {
-            data: f.data,
-            mimeType: f.type
-          }
+        // Mapeamos los archivos al formato que espera queryKnowledgeBase
+        const sources = currentFiles.map(f => ({
+          name: f.name,
+          content: f.data,
+          type: 'pdf'
         }));
-        parts.push({ text: userMsg || "Resume y analiza estos documentos PDF enfocándote en la gimnasia artística." });
 
-        const response = await ai.models.generateContent({
-          model: "gemini-2.0-flash",
-          contents: [{ parts }]
-        });
+        const answer = await queryKnowledgeBase(userMsg || "Resume estos documentos", sources);
 
         setMessages(prev => [...prev, { 
           role: 'assistant', 
-          text: response.text || "No se pudo generar una respuesta."
+          text: answer
         }]);
       } else {
         const { text, sources } = await getSearchGroundedAnswer(userMsg);
@@ -101,19 +75,30 @@ export const CoachAI = () => {
 
   return (
     <div className="flex flex-col h-full bg-antigravity-black page-transition">
-      <header className="px-6 py-8 pb-4">
-        <h2 className="text-3xl font-black text-white uppercase tracking-tighter">Asistente Coach</h2>
-        <p className="text-primary text-[10px] font-black uppercase tracking-widest mt-1">Búsqueda de Metodologías</p>
+      <header className="px-6 py-8 pb-4 flex justify-between items-center">
+        <div>
+          <h2 className="text-3xl font-black text-white uppercase tracking-tighter">Asistente Coach</h2>
+          <p className="text-primary text-[10px] font-black uppercase tracking-widest mt-1">
+            {attachedFiles.length > 0 ? `Modo Base de Conocimientos (${attachedFiles.length} docs)` : 'Búsqueda de Metodologías'}
+          </p>
+        </div>
+        <button 
+          onClick={() => setMessages([])}
+          className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/60 hover:text-rose-500 transition-all"
+          title="Limpiar Chat"
+        >
+          <span className="material-icons-outlined text-lg">delete_sweep</span>
+        </button>
       </header>
 
       <div className="flex-1 overflow-y-auto px-6 space-y-6 pb-32">
         {messages.map((msg, idx) => (
           <div key={idx} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
-            <div className={`max-w-[85%] rounded-2xl p-4 ${msg.role === 'user' ? 'bg-primary text-antigravity-black rounded-tr-sm' : 'bg-antigravity-charcoal border border-white/10 text-white rounded-tl-sm'}`}>
+            <div className={`max-w-[85%] rounded-2xl p-4 ${msg.role === 'user' ? 'bg-primary text-antigravity-black rounded-tr-sm' : 'bg-antigravity-charcoal border border-white/20 text-white rounded-tl-sm'}`}>
               {msg.role === 'user' ? (
                 <p className="text-sm font-medium">{msg.text}</p>
               ) : (
-                <div className="text-sm prose prose-invert max-w-none prose-p:leading-relaxed prose-a:text-primary">
+                <div className="text-sm prose prose-invert max-w-none prose-p:leading-relaxed prose-a:text-primary prose-p:text-white/90">
                   <ReactMarkdown>{msg.text}</ReactMarkdown>
                 </div>
               )}
@@ -145,16 +130,22 @@ export const CoachAI = () => {
 
       <div className="fixed bottom-[80px] left-1/2 -translate-x-1/2 w-full max-w-[430px] px-6 z-40 space-y-3">
         {attachedFiles.length > 0 && (
-          <div className="flex flex-wrap gap-2 px-2">
+          <div className="flex flex-wrap gap-2 px-2 items-center">
             {attachedFiles.map((file, idx) => (
               <div key={idx} className="bg-primary/10 border border-primary/30 rounded-full px-3 py-1 flex items-center gap-2 animate-in fade-in zoom-in duration-200">
                 <span className="material-icons-outlined text-xs text-primary">picture_as_pdf</span>
-                <span className="text-[10px] text-white/70 truncate max-w-[100px]">{file.name}</span>
-                <button onClick={() => removeFile(idx)} className="text-white/70 hover:text-white">
+                <span className="text-[10px] text-white/90 truncate max-w-[100px]">{file.name}</span>
+                <button onClick={() => removeFile(idx)} className="text-white/80 hover:text-white">
                   <span className="material-icons-outlined text-[14px]">close</span>
                 </button>
               </div>
             ))}
+            <button 
+              onClick={() => setAttachedFiles([])}
+              className="text-[10px] text-rose-500 font-bold uppercase tracking-widest hover:underline ml-2"
+            >
+              Limpiar Todo
+            </button>
           </div>
         )}
         
@@ -182,7 +173,7 @@ export const CoachAI = () => {
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
             placeholder="Preguntar al Coach o sobre PDFs..."
-            className="flex-1 bg-antigravity-charcoal border border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none placeholder:text-white/70 rounded-2xl py-3 px-4 text-sm text-white transition-all"
+            className="flex-1 bg-antigravity-charcoal border border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none placeholder:text-white/50 rounded-2xl py-3 px-4 text-sm text-white transition-all"
             disabled={isLoading}
           />
           
