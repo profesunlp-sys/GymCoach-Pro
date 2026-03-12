@@ -19,8 +19,30 @@ const getAI = () => {
   return new GoogleGenAI({ apiKey: apiKey as string });
 };
 
+async function withRetry<T>(fn: () => Promise<T>, maxRetries = 3, delay = 2000): Promise<T> {
+  let lastError: any;
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await fn();
+    } catch (error: any) {
+      lastError = error;
+      const is503 = error?.message?.includes('503') || error?.status === 503 || JSON.stringify(error).includes('503');
+      const isOverloaded = error?.message?.includes('high demand') || error?.message?.includes('overloaded');
+      
+      if (is503 || isOverloaded) {
+        console.warn(`Gemini API sobrecargada (intento ${i + 1}/${maxRetries}). Reintentando en ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        delay *= 2; // Exponencial backoff
+        continue;
+      }
+      throw error;
+    }
+  }
+  throw lastError;
+}
+
 export async function getDraftMessage(type: 'bienvenida' | 'alerta' | 'felicitacion', studentName: string): Promise<string> {
-  try {
+  return withRetry(async () => {
     const ai = getAI();
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
@@ -29,14 +51,14 @@ export async function getDraftMessage(type: 'bienvenida' | 'alerta' | 'felicitac
       Tono: Empático, motivador y profesional. Máximo 60 palabras.`,
     });
     return response.text || "";
-  } catch (error) {
+  }).catch(error => {
     console.error("Error en getDraftMessage:", error);
     return "Error al generar mensaje.";
-  }
+  });
 }
 
 export async function processClassAudio(audioBase64: string, mimeType: string): Promise<any> {
-  try {
+  return withRetry(async () => {
     const ai = getAI();
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
@@ -80,14 +102,11 @@ export async function processClassAudio(audioBase64: string, mimeType: string): 
     });
     
     return JSON.parse(response.text || "{}");
-  } catch (error) {
-    console.error("Error procesando audio:", error);
-    throw error;
-  }
+  });
 }
 
 export async function refineClassAnalysis(previousData: any, userClarification: string): Promise<any> {
-  try {
+  return withRetry(async () => {
     const ai = getAI();
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
@@ -99,14 +118,11 @@ export async function refineClassAnalysis(previousData: any, userClarification: 
       },
     });
     return JSON.parse(response.text || "{}");
-  } catch (error) {
-    console.error("Error refinando análisis:", error);
-    throw error;
-  }
+  });
 }
 
 export async function analyzeChurnRisk(data: any): Promise<string> {
-  try {
+  return withRetry(async () => {
     const ai = getAI();
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
@@ -114,14 +130,14 @@ export async function analyzeChurnRisk(data: any): Promise<string> {
       Identifica alumnos en riesgo de abandonar el gimnasio y sugiere acciones de retención.`,
     });
     return response.text || "Análisis no disponible.";
-  } catch (error) {
+  }).catch(error => {
     console.error("Error en analyzeChurnRisk:", error);
     return "Error en el análisis de retención.";
-  }
+  });
 }
 
 export async function getSearchGroundedAnswer(query: string): Promise<{ text: string, sources: any[] }> {
-  try {
+  return withRetry(async () => {
     const ai = getAI();
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
@@ -138,14 +154,14 @@ export async function getSearchGroundedAnswer(query: string): Promise<{ text: st
       text: response.text || "No se encontró información.",
       sources
     };
-  } catch (error: any) {
+  }).catch(error => {
     console.error("Error en getSearchGroundedAnswer:", error);
     return { text: `Error al realizar la búsqueda: ${error.message || error}`, sources: [] };
-  }
+  });
 }
 
 export async function analyzeAttendanceStats(stats: any): Promise<string> {
-  try {
+  return withRetry(async () => {
     const ai = getAI();
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
@@ -154,14 +170,14 @@ export async function analyzeAttendanceStats(stats: any): Promise<string> {
       Responde en español, con un tono profesional y directo. Usa markdown para el formato.`,
     });
     return response.text || "Análisis no disponible.";
-  } catch (error) {
+  }).catch(error => {
     console.error("Error en analyzeAttendanceStats:", error);
     return "Error al analizar las estadísticas.";
-  }
+  });
 }
 
 export async function queryKnowledgeBase(query: string, sources: any[]): Promise<string> {
-  try {
+  return withRetry(async () => {
     const ai = getAI();
     const parts: any[] = [
       { text: `Eres un asistente experto en gimnasia artística. Tu tarea es responder a la consulta del usuario basándote EXCLUSIVAMENTE en los documentos proporcionados. 
@@ -190,13 +206,13 @@ export async function queryKnowledgeBase(query: string, sources: any[]): Promise
     }
 
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-flash-latest", // Cambiado a flash-latest para intentar evitar la saturación de gemini-3-flash-preview
       contents: { parts },
     });
     
     return response.text || "No se pudo generar una respuesta.";
-  } catch (error: any) {
+  }).catch(error => {
     console.error("Error en queryKnowledgeBase:", error);
     return `Error al consultar la base de conocimientos: ${error.message || error}`;
-  }
+  });
 }
