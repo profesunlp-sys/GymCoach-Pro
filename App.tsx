@@ -137,6 +137,8 @@ const App: React.FC = () => {
   const [newFeedback, setNewFeedback] = useState("");
   
   const [selectedDisciplina, setSelectedDisciplina] = useState<string>('Todas');
+  const [selectedGrupoFilter, setSelectedGrupoFilter] = useState<string>('Todos');
+  const [selectedNivelFilter, setSelectedNivelFilter] = useState<string>('Todos');
   const [asistenciasClase, setAsistenciasClase] = useState<AsistenciaRecord[]>([]);
   const [isLoadingAsistenciasClase, setIsLoadingAsistenciasClase] = useState(false);
 
@@ -203,6 +205,16 @@ const App: React.FC = () => {
   const [kbMessages, setKbMessages] = useState<{role: 'user' | 'model', text: string}[]>([]);
   const [isKbLoading, setIsKbLoading] = useState(false);
   const [kbInput, setKbInput] = useState("");
+  const [confirmModal, setConfirmModal] = useState<{
+    show: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  } | null>(null);
+
+  const requestConfirmation = (title: string, message: string, onConfirm: () => void) => {
+    setConfirmModal({ show: true, title, message, onConfirm });
+  };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -716,25 +728,29 @@ const App: React.FC = () => {
     if (userRole === 'Coordinator') return;
     if (!grupo.id) return;
     
-    if (window.confirm(`¿Estás seguro de que deseas eliminar el grupo "${grupo.nombre}"? Esta acción no se puede deshacer y podrías perder el acceso a los datos asociados a este grupo.`)) {
-      try {
-        await deleteDocument(COLLECTIONS.GRUPOS, grupo.id);
-        loadData();
-        setNotificacion({ t: "Éxito", d: `Grupo ${grupo.nombre} eliminado.` });
-        if (activeGroup?.id === grupo.id) {
-          setActiveGroup(null);
-          setVista('Dashboard');
+    requestConfirmation(
+      "Eliminar Grupo",
+      `¿Estás seguro de que deseas eliminar el grupo "${grupo.nombre}"? Esta acción no se puede deshacer y podrías perder el acceso a los datos asociados a este grupo.`,
+      async () => {
+        try {
+          await deleteDocument(COLLECTIONS.GRUPOS, grupo.id!);
+          loadData();
+          setNotificacion({ t: "Éxito", d: `Grupo ${grupo.nombre} eliminado.` });
+          if (activeGroup?.id === grupo.id) {
+            setActiveGroup(null);
+            setVista('Dashboard');
+          }
+          if (claseGrupo === grupo.nombre) {
+            setClaseGrupo('');
+          }
+          setTimeout(() => setNotificacion(null), 3000);
+        } catch (error) {
+          console.error("Error deleting group:", error);
+          setNotificacion({ t: "Error", d: "No se pudo eliminar el grupo." });
+          setTimeout(() => setNotificacion(null), 3000);
         }
-        if (claseGrupo === grupo.nombre) {
-          setClaseGrupo('');
-        }
-        setTimeout(() => setNotificacion(null), 3000);
-      } catch (error) {
-        console.error("Error deleting group:", error);
-        setNotificacion({ t: "Error", d: "No se pudo eliminar el grupo." });
-        setTimeout(() => setNotificacion(null), 3000);
       }
-    }
+    );
   };
 
   const handleQuickSaveGroup = async (nombre: string) => {
@@ -773,14 +789,19 @@ const App: React.FC = () => {
   };
 
   const handleDeleteLevel = async (id: string) => {
-    if (!window.confirm("¿Eliminar este nivel?")) return;
-    try {
-      await deleteDocument(COLLECTIONS.NIVELES, id);
-      setNotificacion({ t: "Éxito", d: "Nivel eliminado." });
-      loadData();
-    } catch (error: any) {
-      setNotificacion({ t: "Error", d: error.message });
-    }
+    requestConfirmation(
+      "Eliminar Nivel",
+      "¿Estás seguro de que deseas eliminar este nivel?",
+      async () => {
+        try {
+          await deleteDocument(COLLECTIONS.NIVELES, id);
+          setNotificacion({ t: "Éxito", d: "Nivel eliminado." });
+          loadData();
+        } catch (error: any) {
+          setNotificacion({ t: "Error", d: error.message });
+        }
+      }
+    );
   };
 
   const handleUpdateGroupQuick = async (id: string, nombre: string) => {
@@ -837,6 +858,46 @@ const App: React.FC = () => {
     }
   };
 
+  const handleDeleteProfesor = async (profesorId: string, nombre: string) => {
+    requestConfirmation(
+      "Eliminar Profesor",
+      `¿Estás seguro de que deseas eliminar al profesor "${nombre}"?`,
+      async () => {
+        try {
+          await deleteDocument(COLLECTIONS.PROFESORES, profesorId);
+          setNotificacion({ t: 'Éxito', d: `Profesor ${nombre} eliminado.` });
+          loadData();
+        } catch (error: any) {
+          setNotificacion({ t: 'Error', d: error.message });
+        }
+      }
+    );
+  };
+
+  const clearAlumnosFilters = () => {
+    setSearchQuery('');
+    setSelectedGrupoFilter('Todos');
+    setSelectedNivelFilter('Todos');
+  };
+
+  const handleDeleteClase = async () => {
+    if (!selectedClase || !selectedClase.id) return;
+    requestConfirmation(
+      "Eliminar Clase",
+      `¿Estás seguro de que deseas eliminar el registro de esta clase?`,
+      async () => {
+        try {
+          await deleteDocument(COLLECTIONS.CLASES, selectedClase.id!);
+          setNotificacion({ t: 'Éxito', d: 'Clase eliminada correctamente.' });
+          setVista('HistorialClases');
+          setSelectedClase(null);
+          loadData();
+        } catch (error: any) {
+          setNotificacion({ t: 'Error', d: error.message });
+        }
+      }
+    );
+  };
   const [isBulkImporting, setIsBulkImporting] = useState(false);
   const [bulkImportText, setBulkImportText] = useState("");
   const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
@@ -1168,16 +1229,22 @@ const App: React.FC = () => {
 
   const handleDeleteSkill = async (skillId: string) => {
     if (!selectedAlumno || !selectedAlumno.id) return;
-    if (!confirm("¿Eliminar esta habilidad?")) return;
-    try {
-      const updatedHabilidades = (selectedAlumno.habilidades || []).filter(skill => skill.id !== skillId);
-      await updateDocument(COLLECTIONS.ALUMNOS, selectedAlumno.id, { habilidades: updatedHabilidades });
-      setSelectedAlumno({ ...selectedAlumno, habilidades: updatedHabilidades });
-      loadData();
-    } catch (error) {
-      console.error("Error deleting skill:", error);
-      setNotificacion({ t: "Error", d: "No se pudo eliminar la habilidad." });
-    }
+    requestConfirmation(
+      "Eliminar Habilidad",
+      "¿Estás seguro de que deseas eliminar esta habilidad?",
+      async () => {
+        try {
+          const updatedHabilidades = (selectedAlumno.habilidades || []).filter(skill => skill.id !== skillId);
+          await updateDocument(COLLECTIONS.ALUMNOS, selectedAlumno.id!, { habilidades: updatedHabilidades });
+          setSelectedAlumno({ ...selectedAlumno, habilidades: updatedHabilidades });
+          loadData();
+          setNotificacion({ t: "Éxito", d: "Habilidad eliminada." });
+        } catch (error) {
+          console.error("Error deleting skill:", error);
+          setNotificacion({ t: "Error", d: "No se pudo eliminar la habilidad." });
+        }
+      }
+    );
   };
 
   const handleUpdateAlumno = async () => {
@@ -1196,17 +1263,22 @@ const App: React.FC = () => {
 
   const handleDeleteAlumno = async () => {
     if (!selectedAlumno || !selectedAlumno.id) return;
-    if (!confirm(`¿Estás seguro de eliminar a ${selectedAlumno.nombre}? Esta acción no se puede deshacer.`)) return;
-    try {
-      await deleteDocument(COLLECTIONS.ALUMNOS, selectedAlumno.id);
-      handleNavigation('Alumnos');
-      setSelectedAlumno(null);
-      loadData();
-      setNotificacion({ t: "Gimnasta Eliminado", d: "El registro ha sido borrado." });
-    } catch (error) {
-      console.error("Error deleting student:", error);
-      setNotificacion({ t: "Error", d: "No se pudo eliminar al gimnasta." });
-    }
+    requestConfirmation(
+      "Eliminar Gimnasta",
+      `¿Estás seguro de eliminar a ${selectedAlumno.nombre}? Esta acción no se puede deshacer.`,
+      async () => {
+        try {
+          await deleteDocument(COLLECTIONS.ALUMNOS, selectedAlumno.id!);
+          handleNavigation('Alumnos');
+          setSelectedAlumno(null);
+          loadData();
+          setNotificacion({ t: "Gimnasta Eliminado", d: "El registro ha sido borrado." });
+        } catch (error) {
+          console.error("Error deleting student:", error);
+          setNotificacion({ t: "Error", d: "No se pudo eliminar al gimnasta." });
+        }
+      }
+    );
   };
 
 
@@ -1722,6 +1794,16 @@ const App: React.FC = () => {
                   </button>
 
                   <button 
+                    onClick={() => { handleNavigation('HistorialClases'); }}
+                    className="glass-card rounded-3xl p-5 border border-white/5 flex flex-col items-center justify-center gap-3 active:scale-95 transition-all"
+                  >
+                    <div className="w-12 h-12 bg-indigo-500/10 rounded-2xl flex items-center justify-center border border-indigo-500/20 shadow-neon-purple">
+                      <span className="material-icons-outlined text-indigo-400 text-2xl">history</span>
+                    </div>
+                    <span className="text-xs font-bold text-white text-center">Historial Clases</span>
+                  </button>
+
+                  <button 
                     onClick={() => { handleNavigation('Emergencias'); }}
                     className="glass-card rounded-3xl p-5 border border-white/5 flex flex-col items-center justify-center gap-3 active:scale-95 transition-all"
                   >
@@ -2199,6 +2281,8 @@ const App: React.FC = () => {
                 <p className="text-2xl font-black text-white">
                   {alumnos
                     .filter(a => alumnosFilterMode === 'alerts' ? (a.alertas && a.alertas.length > 0 && a.alertas[0] !== '') : true)
+                    .filter(a => selectedGrupoFilter === 'Todos' || a.grupo === selectedGrupoFilter)
+                    .filter(a => selectedNivelFilter === 'Todos' || a.nivel === selectedNivelFilter)
                     .filter(a => a.nombre.toLowerCase().includes(searchQuery.toLowerCase()) || a.dni.includes(searchQuery))
                     .length}
                 </p>
@@ -2232,6 +2316,42 @@ const App: React.FC = () => {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
+            </div>
+
+            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide items-end">
+              <div className="flex flex-col gap-1">
+                <label className="text-[8px] uppercase font-bold text-white/50 ml-1">Grupo</label>
+                <select 
+                  value={selectedGrupoFilter}
+                  onChange={(e) => setSelectedGrupoFilter(e.target.value)}
+                  className="bg-antigravity-charcoal border border-white/10 rounded-lg px-3 py-1.5 text-[10px] text-white outline-none focus:border-primary transition-all"
+                >
+                  <option value="Todos">Todos los Grupos</option>
+                  {grupos.map(g => (
+                    <option key={g.id} value={g.nombre}>{g.nombre}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-[8px] uppercase font-bold text-white/50 ml-1">Nivel</label>
+                <select 
+                  value={selectedNivelFilter}
+                  onChange={(e) => setSelectedNivelFilter(e.target.value)}
+                  className="bg-antigravity-charcoal border border-white/10 rounded-lg px-3 py-1.5 text-[10px] text-white outline-none focus:border-primary transition-all"
+                >
+                  <option value="Todos">Todos los Niveles</option>
+                  {niveles.map(n => (
+                    <option key={n.id} value={n.nombre}>{n.nombre}</option>
+                  ))}
+                </select>
+              </div>
+              <button 
+                onClick={clearAlumnosFilters}
+                className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-[10px] text-white/60 hover:text-white transition-all h-[26px] flex items-center gap-1"
+              >
+                <span className="material-icons-outlined text-xs">filter_alt_off</span>
+                Limpiar
+              </button>
             </div>
           </div>
 
@@ -2309,6 +2429,8 @@ const App: React.FC = () => {
             <div className="space-y-3">
               {alumnos
                 .filter(a => alumnosFilterMode === 'alerts' ? (a.alertas && a.alertas.length > 0 && a.alertas[0] !== '') : true)
+                .filter(a => selectedGrupoFilter === 'Todos' || a.grupo === selectedGrupoFilter)
+                .filter(a => selectedNivelFilter === 'Todos' || a.nivel === selectedNivelFilter)
                 .filter(a => a.nombre.toLowerCase().includes(searchQuery.toLowerCase()) || a.dni.includes(searchQuery))
                 .map(alumno => {
                   const hasAlerts = alumno.alertas && alumno.alertas.length > 0 && alumno.alertas[0] !== '';
@@ -2347,9 +2469,13 @@ const App: React.FC = () => {
                     </div>
                   );
                 })}
-              {alumnos.filter(a => alumnosFilterMode === 'alerts' ? (a.alertas && a.alertas.length > 0 && a.alertas[0] !== '') : true).length === 0 && (
+              {alumnos.filter(a => alumnosFilterMode === 'alerts' ? (a.alertas && a.alertas.length > 0 && a.alertas[0] !== '') : true)
+                .filter(a => selectedGrupoFilter === 'Todos' || a.grupo === selectedGrupoFilter)
+                .filter(a => selectedNivelFilter === 'Todos' || a.nivel === selectedNivelFilter)
+                .filter(a => a.nombre.toLowerCase().includes(searchQuery.toLowerCase()) || a.dni.includes(searchQuery))
+                .length === 0 && (
                 <div className="py-20 text-center opacity-20 italic text-sm">
-                  {alumnosFilterMode === 'alerts' ? 'No hay gimnastas con alertas médicas.' : 'No hay gimnastas registrados.'}
+                  {alumnosFilterMode === 'alerts' ? 'No hay gimnastas con alertas médicas.' : 'No hay gimnastas que coincidan con los filtros.'}
                 </div>
               )}
             </div>
@@ -3487,14 +3613,22 @@ const App: React.FC = () => {
 
         {vista === 'ClaseDetalle' && selectedClase && (
           <div className="page-transition flex flex-col min-h-screen bg-antigravity-black pb-24">
-            <header className="px-6 py-6 flex items-center gap-4 sticky top-12 bg-antigravity-black z-40">
-              <button onClick={() => setVista('Planes')} className="w-10 h-10 flex items-center justify-center rounded-full bg-antigravity-charcoal border border-white/10 text-white">
-                <span className="material-symbols-outlined text-[20px]">arrow_back_ios_new</span>
-              </button>
-              <div>
-                <h2 className="text-xl font-bold text-white leading-none">{selectedClase.grupo}</h2>
-                <p className="text-xs text-primary mt-1 font-medium">{new Date(selectedClase.fecha).toLocaleDateString()} • {selectedClase.horario}</p>
+            <header className="px-6 py-6 flex items-center justify-between sticky top-12 bg-antigravity-black z-40">
+              <div className="flex items-center gap-4">
+                <button onClick={() => setVista('HistorialClases')} className="w-10 h-10 flex items-center justify-center rounded-full bg-antigravity-charcoal border border-white/10 text-white">
+                  <span className="material-symbols-outlined text-[20px]">arrow_back_ios_new</span>
+                </button>
+                <div>
+                  <h2 className="text-xl font-bold text-white leading-none">{selectedClase.grupo}</h2>
+                  <p className="text-xs text-primary mt-1 font-medium">{new Date(selectedClase.fecha).toLocaleDateString()} • {selectedClase.horario}</p>
+                </div>
               </div>
+              <button 
+                onClick={handleDeleteClase}
+                className="w-10 h-10 rounded-full bg-rose-500/10 text-rose-500 border border-rose-500/20 flex items-center justify-center active:scale-90 transition-all"
+              >
+                <span className="material-icons-outlined text-sm">delete</span>
+              </button>
             </header>
 
             <main className="flex-1 px-6 space-y-8 pb-12">
@@ -3916,6 +4050,70 @@ const App: React.FC = () => {
             </div>
           </div>
         )}
+        {vista === 'HistorialClases' && (
+          <div className="px-6 py-8 space-y-8 page-transition pb-24">
+            <header className="flex items-center gap-4">
+              <button onClick={() => setVista('Dashboard')} className="w-10 h-10 rounded-full bg-antigravity-charcoal flex items-center justify-center text-primary border border-white/5 active:scale-90 transition-all">
+                <span className="material-icons-outlined">arrow_back</span>
+              </button>
+              <div>
+                <h2 className="text-3xl font-black text-white uppercase tracking-tighter">Historial</h2>
+                <p className="text-primary text-[10px] font-black uppercase tracking-widest mt-1">Registro de Clases Pasadas</p>
+              </div>
+            </header>
+
+            <div className="space-y-4">
+              <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                <select 
+                  value={selectedGrupoFilter}
+                  onChange={(e) => setSelectedGrupoFilter(e.target.value)}
+                  className="bg-antigravity-charcoal border border-white/10 rounded-lg px-3 py-1.5 text-[10px] text-white outline-none focus:border-primary transition-all"
+                >
+                  <option value="Todos">Todos los Grupos</option>
+                  {grupos.map(g => (
+                    <option key={g.id} value={g.nombre}>{g.nombre}</option>
+                  ))}
+                </select>
+                <button 
+                  onClick={() => setSelectedGrupoFilter('Todos')}
+                  className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-[10px] text-white/60"
+                >
+                  Limpiar
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                {clases
+                  .filter(c => selectedGrupoFilter === 'Todos' || c.grupo === selectedGrupoFilter)
+                  .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
+                  .map(clase => (
+                    <div 
+                      key={clase.id} 
+                      onClick={() => { setSelectedClase(clase); handleNavigation('ClaseDetalle'); }}
+                      className="glass-card rounded-2xl p-5 border border-white/5 flex items-center justify-between active:scale-95 transition-all cursor-pointer"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center border border-primary/20">
+                          <span className="material-icons-outlined text-primary text-xl">history_edu</span>
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-bold text-white">{clase.grupo}</h4>
+                          <p className="text-[10px] text-slate-500 font-medium">
+                            {new Date(clase.fecha).toLocaleDateString()} • {clase.entrenador}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="material-icons-outlined text-slate-600 text-sm">chevron_right</span>
+                    </div>
+                  ))}
+                {clases.length === 0 && (
+                  <p className="text-center text-white/40 py-10 text-sm italic">No hay clases registradas aún.</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {vista === 'Profesores' && userRole === 'Coordinator' && (
           <div className="px-6 py-8 space-y-8 page-transition pb-24 relative">
             <header className="flex justify-between items-end">
@@ -3960,28 +4158,44 @@ const App: React.FC = () => {
             )}
 
             <div className="space-y-4">
-              {Array.from(new Set([...grupos.map(g => g.entrenador), ...clases.map(c => c.entrenador), ...profesoresList.map(p => p.nombre)])).filter(Boolean).map((profesor, idx) => {
-                const profClases = clases.filter(c => c.entrenador === profesor);
-                const profGrupos = grupos.filter(g => g.entrenador === profesor);
+              {profesoresList.map((prof, idx) => {
+                const profClases = clases.filter(c => c.entrenador === prof.nombre);
+                const profGrupos = grupos.filter(g => g.entrenador === prof.nombre);
                 return (
                   <div 
-                    key={idx} 
-                    onClick={() => { setSelectedProfesor(profesor as string); handleNavigation('ProfesorDetalle'); }}
-                    className="glass-card rounded-3xl p-6 border border-white/5 active:scale-95 transition-all cursor-pointer flex items-center justify-between"
+                    key={prof.id || idx} 
+                    className="glass-card rounded-3xl p-6 border border-white/5 active:scale-95 transition-all flex items-center justify-between group"
                   >
-                    <div className="flex items-center gap-4">
+                    <div 
+                      className="flex items-center gap-4 flex-1 cursor-pointer"
+                      onClick={() => { setSelectedProfesor(prof.nombre); handleNavigation('ProfesorDetalle'); }}
+                    >
                       <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center border border-primary/20">
                         <span className="material-icons-outlined text-primary text-2xl">badge</span>
                       </div>
                       <div>
-                        <h4 className="font-bold text-white text-lg">{profesor}</h4>
+                        <h4 className="font-bold text-white text-lg">{prof.nombre}</h4>
                         <p className="text-[10px] text-white/70 font-medium uppercase tracking-wider">{profGrupos.length} Grupos • {profClases.length} Clases</p>
                       </div>
                     </div>
-                    <span className="material-icons-outlined text-white/40">chevron_right</span>
+                    <div className="flex items-center gap-2">
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteProfesor(prof.id!, prof.nombre);
+                        }}
+                        className="w-8 h-8 rounded-lg bg-rose-500/10 text-rose-500 border border-rose-500/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <span className="material-icons-outlined text-sm">delete</span>
+                      </button>
+                      <span className="material-icons-outlined text-white/40">chevron_right</span>
+                    </div>
                   </div>
                 );
               })}
+              {profesoresList.length === 0 && (
+                <p className="text-center text-white/40 py-10 text-sm italic">No hay profesores registrados.</p>
+              )}
             </div>
 
             <button 
@@ -4357,6 +4571,38 @@ const App: React.FC = () => {
             </div>
           </div>
         )}
+
+      {/* Modal de Confirmación */}
+      {confirmModal && confirmModal.show && (
+        <div className="fixed inset-0 z-[200] bg-antigravity-black/90 backdrop-blur-md flex items-center justify-center p-6">
+          <div className="glass-card w-full max-w-sm rounded-[2.5rem] p-8 border border-white/10 space-y-6 animate-in zoom-in duration-300 shadow-neon-rose">
+            <div className="flex flex-col items-center text-center space-y-4">
+              <div className="w-16 h-16 bg-rose-500/20 rounded-2xl flex items-center justify-center border border-rose-500/30 shadow-neon-rose">
+                <span className="material-icons-outlined text-rose-500 text-3xl">warning</span>
+              </div>
+              <h3 className="text-xl font-black text-white uppercase tracking-tighter">{confirmModal.title}</h3>
+              <p className="text-white/70 text-sm leading-relaxed">{confirmModal.message}</p>
+            </div>
+            <div className="flex gap-3 pt-2">
+              <button 
+                onClick={() => setConfirmModal(null)}
+                className="flex-1 py-4 rounded-2xl border border-white/10 text-white font-bold text-[10px] uppercase tracking-widest active:scale-95 transition-all"
+              >
+                Cancelar
+              </button>
+              <button 
+                onClick={() => {
+                  confirmModal.onConfirm();
+                  setConfirmModal(null);
+                }}
+                className="flex-1 py-4 rounded-2xl bg-rose-500 text-white font-black text-[10px] uppercase tracking-widest shadow-neon-rose active:scale-95 transition-all"
+              >
+                Confirmar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Notificaciones */}
       {notificacion && (
