@@ -1766,7 +1766,7 @@ const App: React.FC = () => {
                 <div className="space-y-4">
                   <div className="flex items-center gap-2 px-1">
                     <span className="material-icons-outlined text-primary text-sm">calendar_month</span>
-                    <h4 className="text-[10px] uppercase font-black text-white/50 tracking-[0.2em]">Días de Entrenamiento</h4>
+                    <h4 className="text-[10px] uppercase font-black text-white/80 tracking-[0.2em]">Días de Entrenamiento</h4>
                   </div>
                   <div className="flex justify-between items-center px-1">
                     {[
@@ -1786,12 +1786,12 @@ const App: React.FC = () => {
                             className={`w-11 h-11 rounded-2xl flex items-center justify-center font-black text-sm transition-all duration-300 ${
                               isSelected 
                                 ? 'bg-primary text-antigravity-black shadow-neon-cyan scale-110' 
-                                : 'bg-white/5 text-white/30 border border-white/5 hover:bg-white/10 hover:text-white/60'
+                                : 'bg-white/5 text-white/60 border border-white/5 hover:bg-white/10 hover:text-white/80'
                             }`}
                           >
                             {day.id.split('-')[0]}
                           </button>
-                          <span className={`text-[8px] font-black uppercase tracking-[0.15em] transition-colors duration-300 ${isSelected ? 'text-primary' : 'text-white/20'}`}>
+                          <span className={`text-[8px] font-black uppercase tracking-[0.15em] transition-colors duration-300 ${isSelected ? 'text-primary' : 'text-white/50'}`}>
                             {day.label}
                           </span>
                         </div>
@@ -1804,7 +1804,7 @@ const App: React.FC = () => {
                   <div className="space-y-4">
                     <div className="flex items-center gap-2 px-1">
                       <span className="material-icons-outlined text-primary text-sm">badge</span>
-                      <h4 className="text-[10px] uppercase font-black text-white/50 tracking-[0.2em]">Información del Grupo</h4>
+                      <h4 className="text-[10px] uppercase font-black text-white/80 tracking-[0.2em]">Información del Grupo</h4>
                     </div>
                     <div className="space-y-4">
                       <input className="w-full crafted-input"
@@ -1818,25 +1818,25 @@ const App: React.FC = () => {
                   <div className="space-y-4">
                     <div className="flex items-center gap-2 px-1">
                       <span className="material-icons-outlined text-primary text-sm">schedule</span>
-                      <h4 className="text-[10px] uppercase font-black text-white/50 tracking-[0.2em]">Franja Horaria</h4>
+                      <h4 className="text-[10px] uppercase font-black text-white/80 tracking-[0.2em]">Franja Horaria</h4>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1">
-                        <label className="text-[8px] uppercase font-bold text-slate-400 ml-1 tracking-widest">Hora Inicio</label>
+                        <label className="text-[8px] uppercase font-bold text-slate-200 ml-1 tracking-widest">Hora Inicio</label>
                         <div className="relative">
                           <select value={startTime} onChange={(e) => setStartTime(e.target.value)} className="w-full bg-antigravity-charcoal rounded-2xl px-4 py-3.5 text-sm text-white appearance-none border border-white/10 focus:border-primary focus:ring-1 focus:ring-primary/50 outline-none transition-all">
                             {timeIntervals.map(t => <option key={t} value={t} className="bg-antigravity-charcoal">{t}</option>)}
                           </select>
-                          <span className="material-icons-outlined absolute right-4 top-1/2 -translate-y-1/2 text-white/20 pointer-events-none text-sm">expand_more</span>
+                          <span className="material-icons-outlined absolute right-4 top-1/2 -translate-y-1/2 text-white/50 pointer-events-none text-sm">expand_more</span>
                         </div>
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[8px] uppercase font-bold text-slate-400 ml-1 tracking-widest">Hora Fin</label>
+                        <label className="text-[8px] uppercase font-bold text-slate-200 ml-1 tracking-widest">Hora Fin</label>
                         <div className="relative">
                           <select value={endTime} onChange={(e) => setEndTime(e.target.value)} className="w-full bg-antigravity-charcoal rounded-2xl px-4 py-3.5 text-sm text-white appearance-none border border-white/10 focus:border-primary focus:ring-1 focus:ring-primary/50 outline-none transition-all">
                             {timeIntervals.map(t => <option key={t} value={t} className="bg-antigravity-charcoal">{t}</option>)}
                           </select>
-                          <span className="material-icons-outlined absolute right-4 top-1/2 -translate-y-1/2 text-white/20 pointer-events-none text-sm">expand_more</span>
+                          <span className="material-icons-outlined absolute right-4 top-1/2 -translate-y-1/2 text-white/50 pointer-events-none text-sm">expand_more</span>
                         </div>
                       </div>
                     </div>
@@ -1897,7 +1897,7 @@ const App: React.FC = () => {
                   </button>
                 </div>
               )) : (
-                <div className="p-10 text-center glass-card rounded-[2rem] border-dashed border-slate-700/50 italic text-slate-500 text-xs font-medium">No hay grupos configurados aún.</div>
+                <div className="p-10 text-center glass-card rounded-[2rem] border-dashed border-slate-700/50 italic text-slate-300 text-xs font-medium">No hay grupos configurados aún.</div>
               )}
             </section>
           </div>
@@ -2225,7 +2225,7 @@ const App: React.FC = () => {
 
           <div className="space-y-4">
             <div className="relative">
-              <span className="material-icons-outlined absolute left-4 top-1/2 -translate-y-1/2 text-white/50">search</span>
+              <span className="material-icons-outlined absolute left-4 top-1/2 -translate-y-1/2 text-white/70">search</span>
               <input 
                 className="w-full crafted-input pl-12"
                 placeholder="Buscar por nombre o DNI..."
@@ -2253,7 +2253,7 @@ const App: React.FC = () => {
                   onChange={e => setNewAlumnoForm({...newAlumnoForm, dni: e.target.value})}
                 />
                 <div className="space-y-3">
-                  <label className="text-[10px] uppercase font-black text-white/50 ml-2 tracking-[0.2em]">Grupo</label>
+                  <label className="text-[10px] uppercase font-black text-white ml-2 tracking-[0.2em]">Grupo</label>
                   <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
                     {grupos.filter(g => userRole === 'Coordinator' || !user?.displayName || g.entrenador === user.displayName).map(g => (
                       <button 
@@ -2262,7 +2262,7 @@ const App: React.FC = () => {
                         className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all border ${
                           newAlumnoForm.grupo === g.nombre 
                             ? 'bg-primary text-antigravity-black border-primary shadow-neon-cyan' 
-                            : 'bg-white/5 text-white/70 border-white/10 hover:border-white/20'
+                            : 'bg-white/5 text-white/80 border-white/10 hover:border-white/20'
                         }`}
                       >
                         {g.nombre}
@@ -2270,7 +2270,7 @@ const App: React.FC = () => {
                     ))}
                     <button 
                       onClick={() => setVista('Horario')}
-                      className="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap bg-white/5 text-white/30 border border-dashed border-white/10"
+                      className="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap bg-white/5 text-white/80 border border-dashed border-white/30"
                     >
                       + Nuevo
                     </button>
@@ -2415,7 +2415,7 @@ const App: React.FC = () => {
                   </div>
 
                   <div className="space-y-3">
-                    <label className="text-[10px] uppercase font-black text-white/50 ml-2 tracking-[0.2em]">Grupo</label>
+                    <label className="text-[10px] uppercase font-black text-white ml-2 tracking-[0.2em]">Grupo</label>
                     <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
                       {grupos.filter(g => userRole === 'Coordinator' || !user?.displayName || g.entrenador === user.displayName).map(g => (
                         <button 
@@ -2424,7 +2424,7 @@ const App: React.FC = () => {
                           className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all border ${
                             editingAlumnoData.grupo === g.nombre 
                               ? 'bg-primary text-antigravity-black border-primary shadow-neon-cyan' 
-                              : 'bg-white/5 text-white/70 border-white/10 hover:border-white/20'
+                              : 'bg-white/5 text-white/80 border-white/10 hover:border-white/20'
                           }`}
                         >
                           {g.nombre}
@@ -2432,7 +2432,7 @@ const App: React.FC = () => {
                       ))}
                       <button 
                         onClick={() => setVista('Horario')}
-                        className="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap bg-white/5 text-white/30 border border-dashed border-white/10"
+                        className="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap bg-white/5 text-white/80 border border-dashed border-white/30"
                       >
                         + Nuevo
                       </button>
@@ -3666,13 +3666,13 @@ const App: React.FC = () => {
             <div className="space-y-6">
               <div className="space-y-3">
                 <div className="flex justify-between items-center px-2">
-                  <label className="text-[10px] uppercase font-black text-white/50 tracking-[0.2em]">Seleccionar Grupo</label>
+                  <label className="text-[10px] uppercase font-black text-white tracking-[0.2em]">Seleccionar Grupo</label>
                   <div className="relative">
-                    <span className="material-icons-outlined absolute left-3 top-1/2 -translate-y-1/2 text-white/30 text-xs">search</span>
+                    <span className="material-icons-outlined absolute left-3 top-1/2 -translate-y-1/2 text-white/80 text-xs">search</span>
                     <input 
                       type="text" 
                       placeholder="Filtrar..."
-                      className="bg-white/5 border border-white/10 rounded-full py-1.5 pl-8 pr-4 text-[10px] text-white outline-none focus:border-primary/50 transition-all w-32"
+                      className="bg-white/5 border border-white/10 rounded-full py-1.5 pl-8 pr-4 text-[10px] text-white placeholder:text-white/60 outline-none focus:border-primary/50 transition-all w-32"
                       value={groupSearch}
                       onChange={(e) => setGroupSearch(e.target.value)}
                     />
@@ -3692,20 +3692,20 @@ const App: React.FC = () => {
                           : 'border-white/5 bg-white/5 hover:bg-white/10'
                       }`}
                     >
-                      <span className={`text-xs font-black uppercase tracking-wider ${claseGrupo === g.nombre ? 'text-primary' : 'text-white/70'}`}>
+                      <span className={`text-xs font-black uppercase tracking-wider ${claseGrupo === g.nombre ? 'text-primary' : 'text-white/90'}`}>
                         {g.nombre}
                       </span>
-                      <span className="text-[8px] text-white/30 font-bold uppercase tracking-widest">
+                      <span className="text-[8px] text-white/50 font-bold uppercase tracking-widest">
                         {g.horario}
                       </span>
                     </button>
                   ))}
                   <button 
                     onClick={() => setVista('Horario')}
-                    className="glass-card p-4 rounded-2xl border border-dashed border-white/10 bg-white/5 flex flex-col items-center justify-center gap-1 hover:bg-white/10 transition-all"
+                    className="glass-card p-4 rounded-2xl border border-dashed border-white/30 bg-white/5 flex flex-col items-center justify-center gap-1 hover:bg-white/10 transition-all"
                   >
-                    <span className="material-icons-outlined text-white/30 text-lg">add_circle</span>
-                    <span className="text-[8px] text-white/30 font-black uppercase tracking-widest">Nuevo Grupo</span>
+                    <span className="material-icons-outlined text-white/80 text-lg">add_circle</span>
+                    <span className="text-[8px] text-white/80 font-black uppercase tracking-widest">Nuevo Grupo</span>
                   </button>
                 </div>
               </div>
@@ -4181,7 +4181,7 @@ const App: React.FC = () => {
 
               {/* Gráfico de Tendencia */}
               <div className="glass-card rounded-[2rem] p-6 border border-white/5 space-y-4">
-                <h3 className="text-xs font-black text-white/50 uppercase tracking-widest px-2">Tendencia Mensual</h3>
+                <h3 className="text-xs font-black text-white/80 uppercase tracking-widest px-2">Tendencia Mensual</h3>
                 <div className="h-64 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={alumnos.reduce((acc: any[], al) => {
@@ -4206,7 +4206,7 @@ const App: React.FC = () => {
 
               {/* Distribución por Grupo */}
               <div className="glass-card rounded-[2rem] p-6 border border-white/5 space-y-4">
-                <h3 className="text-xs font-black text-white/50 uppercase tracking-widest px-2">Alumnos por Grupo</h3>
+                <h3 className="text-xs font-black text-white/80 uppercase tracking-widest px-2">Alumnos por Grupo</h3>
                 <div className="h-64 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={grupos.map(g => ({
@@ -4228,7 +4228,7 @@ const App: React.FC = () => {
 
               {/* Estado de Pagos */}
               <div className="glass-card rounded-[2rem] p-6 border border-white/5 space-y-4">
-                <h3 className="text-xs font-black text-white/50 uppercase tracking-widest px-2">Estado de Matrículas</h3>
+                <h3 className="text-xs font-black text-white/80 uppercase tracking-widest px-2">Estado de Matrículas</h3>
                 <div className="h-64 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
