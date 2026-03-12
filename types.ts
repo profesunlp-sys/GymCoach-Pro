@@ -25,6 +25,7 @@ export interface Skill {
   history?: SkillHistoryEntry[];
   creationDate?: string;
   lastUpdateDate?: string;
+  favorite?: boolean;
 }
 
 export interface ContactoFamilia {
