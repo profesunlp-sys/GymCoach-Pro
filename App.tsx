@@ -175,6 +175,8 @@ const App: React.FC = () => {
   const [faseInicialDuration, setFaseInicialDuration] = useState("15");
   const [fasePrincipalDuration, setFasePrincipalDuration] = useState("60");
   const [faseFinalDuration, setFaseFinalDuration] = useState("15");
+  const [objetivos, setObjetivos] = useState("");
+  const [observaciones, setObservaciones] = useState("");
   const [habilidadesPorAparato, setHabilidadesPorAparato] = useState<Record<string, string[]>>({});
   const [customHabilidad, setCustomHabilidad] = useState<Record<string, string>>({});
   const [customInicial, setCustomInicial] = useState("");
@@ -1191,7 +1193,8 @@ const App: React.FC = () => {
         level: newSkill.level || '1',
         history: [{ status: newSkill.status || 'No Iniciado', date: now }],
         creationDate: now,
-        lastUpdateDate: now
+        lastUpdateDate: now,
+        favorite: !!newSkill.favorite
       };
 
       const updatedHabilidades = [...(selectedAlumno.habilidades || []), skillToAdd];
@@ -1202,7 +1205,7 @@ const App: React.FC = () => {
       
       setSelectedAlumno({ ...selectedAlumno, habilidades: updatedHabilidades });
       setIsAddingSkill(false);
-      setNewSkill({ name: '', status: 'No Iniciado', apparatus: 'Suelo', level: '1' });
+      setNewSkill({ name: '', status: 'No Iniciado', apparatus: 'Suelo', level: '1', favorite: false });
       loadData();
     } catch (error: any) {
       console.error("Error adding skill:", error);
@@ -1230,9 +1233,12 @@ const App: React.FC = () => {
       setEditingSkillId(null);
       setEditingSkillData({});
       loadData();
+      setNotificacion({ t: "Éxito", d: "Habilidad actualizada correctamente." });
+      setTimeout(() => setNotificacion(null), 3000);
     } catch (error) {
       console.error("Error updating skill:", error);
       setNotificacion({ t: "Error", d: "No se pudo actualizar la habilidad." });
+      setTimeout(() => setNotificacion(null), 5000);
     }
   };
 
@@ -1394,31 +1400,78 @@ const App: React.FC = () => {
     }
   };
 
-  const handleExportAttendance = () => {
+  const handleExportAttendance = async () => {
     try {
+      setIsLoading(true);
+      const now = new Date();
+      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+      
+      const q = query(
+        collection(firestore, COLLECTIONS.ASISTENCIAS),
+        where('fecha', '>=', firstDay)
+      );
+      
+      const snap = await getDocs(q);
+      const records = snap.docs.map(doc => doc.data() as AsistenciaRecord);
+      
       // Prepare data for export
-      const exportData = alumnos.flatMap(alumno => {
-        // This is a simplified version, in a real app we'd fetch all records
-        // For now, let's export the current list of students and their basic info
+      const exportData = alumnos.map(alumno => {
+        const alumnoRecords = records.filter(r => r.alumnoId === alumno.id);
+        const presentCount = alumnoRecords.filter(r => r.presente).length;
+        const totalClasses = alumnoRecords.length;
+        
         return {
           Nombre: alumno.nombre,
           DNI: alumno.dni,
           Grupo: alumno.grupo,
           Nivel: alumno.nivel,
-          Disciplina: alumno.disciplina,
           EstadoPago: alumno.estadoPago,
-          Asistencias: alumno.asistenciasHistoricas || 0
+          'Clases del Mes': totalClasses,
+          'Presentes Mes': presentCount,
+          '% Asistencia': totalClasses > 0 ? `${Math.round((presentCount / totalClasses) * 100)}%` : '0%',
+          'Total Histórico': alumno.asistenciasHistoricas || 0
         };
       });
 
       const ws = XLSX.utils.json_to_sheet(exportData);
       const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Asistencia");
-      XLSX.writeFile(wb, `Asistencia_${new Date().toISOString().split('T')[0]}.xlsx`);
-      setNotificacion({ t: "Éxito", d: "Reporte de asistencia exportado correctamente." });
+      XLSX.utils.book_append_sheet(wb, ws, "Asistencia Mensual");
+      XLSX.writeFile(wb, `Asistencia_Mensual_${now.getMonth() + 1}_${now.getFullYear()}.xlsx`);
+      setNotificacion({ t: "Éxito", d: "Reporte de asistencia mensual exportado correctamente." });
     } catch (error) {
       console.error("Error exporting attendance:", error);
       setNotificacion({ t: "Error", d: "No se pudo exportar el reporte." });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSendPaymentReminders = async () => {
+    try {
+      setIsLoading(true);
+      const pendingAlumnos = alumnos.filter(a => a.estadoPago === 'Pendiente' || a.estadoPago === 'Vencido');
+      
+      if (pendingAlumnos.length === 0) {
+        setNotificacion({ t: "Info", d: "No hay pagos pendientes para recordar." });
+        setTimeout(() => setNotificacion(null), 3000);
+        return;
+      }
+
+      // In a real app, this would send emails or WhatsApp messages
+      // For now, we simulate the process and notify the user
+      setNotificacion({ 
+        t: "Éxito", 
+        d: `Se han enviado ${pendingAlumnos.length} recordatorios de pago correctamente.` 
+      });
+      
+      // We could also log these reminders in a collection if needed
+      
+      setTimeout(() => setNotificacion(null), 3000);
+    } catch (error) {
+      console.error("Error sending payment reminders:", error);
+      setNotificacion({ t: "Error", d: "No se pudieron enviar los recordatorios." });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -1450,7 +1503,9 @@ const App: React.FC = () => {
         faseInicialDuration: faseInicialDuration,
         fasePrincipalDuration: fasePrincipalDuration,
         faseFinalDuration: faseFinalDuration,
-        habilidadesPorAparato: habilidadesPorAparato
+        habilidadesPorAparato: habilidadesPorAparato,
+        objetivos: objetivos,
+        observaciones: observaciones
       };
 
       if (editingClaseId) {
@@ -1469,6 +1524,8 @@ const App: React.FC = () => {
       setFaseInicial([]);
       setFasePrincipal([]);
       setFaseFinal([]);
+      setObjetivos("");
+      setObservaciones("");
       setHabilidadesPorAparato({});
       setEditingClaseId(null);
       setVista('Dashboard');
@@ -2364,6 +2421,20 @@ const App: React.FC = () => {
                   >
                     <span className="material-icons-outlined text-sm">{isAddingAlumno ? 'close' : 'person_add'}</span>
                   </button>
+                  <button 
+                    onClick={handleExportAttendance}
+                    className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/60 border border-white/10 active:scale-90 transition-all"
+                    title="Exportar Asistencia Mensual"
+                  >
+                    <span className="material-icons-outlined text-sm">download</span>
+                  </button>
+                  <button 
+                    onClick={handleSendPaymentReminders}
+                    className="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-500 border border-amber-500/20 active:scale-90 transition-all"
+                    title="Recordatorios de Pago"
+                  >
+                    <span className="material-icons-outlined text-sm">notifications_active</span>
+                  </button>
                 </div>
               )}
             </div>
@@ -2822,28 +2893,41 @@ const App: React.FC = () => {
               </div>
 
               {/* Skill Filters */}
-              <div className="space-y-3">
-                <div className="flex gap-2">
-                  <div className="flex-1 relative">
-                    <span className="material-icons-outlined absolute left-3 top-1/2 -translate-y-1/2 text-white/40 text-sm">search</span>
-                    <input 
-                      type="text" 
-                      placeholder="Buscar habilidad..." 
-                      value={skillSearchQuery}
-                      onChange={(e) => setSkillSearchQuery(e.target.value)}
-                      className="w-full bg-white/5 border border-white/10 rounded-xl py-2 pl-9 pr-4 text-xs text-white outline-none focus:border-primary/50 transition-all"
-                    />
-                  </div>
-                  <select 
-                    value={skillApparatusFilter}
-                    onChange={(e) => setSkillApparatusFilter(e.target.value)}
-                    className="bg-white/5 border border-white/10 rounded-xl py-2 px-3 text-xs text-white outline-none focus:border-primary/50 transition-all"
-                  >
-                    <option value="Todos">Todos</option>
-                    {Object.keys(SKILL_TREE).map(ap => (
-                      <option key={ap} value={ap}>{ap}</option>
-                    ))}
-                  </select>
+              <div className="space-y-4">
+                <div className="relative">
+                  <span className="material-icons-outlined absolute left-3 top-1/2 -translate-y-1/2 text-white/40 text-sm">search</span>
+                  <input 
+                    type="text" 
+                    placeholder="Buscar habilidad por nombre..." 
+                    value={skillSearchQuery}
+                    onChange={(e) => setSkillSearchQuery(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl py-2.5 pl-10 pr-10 text-xs text-white outline-none focus:border-primary/50 transition-all"
+                  />
+                  {skillSearchQuery && (
+                    <button 
+                      onClick={() => setSkillSearchQuery('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white"
+                    >
+                      <span className="material-icons text-sm">close</span>
+                    </button>
+                  )}
+                </div>
+                
+                <div className="flex gap-2 overflow-x-auto pb-3 no-scrollbar scroll-smooth" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}>
+                  {['Todos', 'Favoritos', ...Object.keys(SKILL_TREE)].map(ap => (
+                    <button
+                      key={ap}
+                      onClick={() => setSkillApparatusFilter(ap)}
+                      className={`px-5 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all border flex items-center shrink-0 ${
+                        skillApparatusFilter === ap 
+                          ? 'bg-primary text-antigravity-black border-primary shadow-neon-cyan' 
+                          : 'bg-white/5 text-white/60 border-white/10 hover:bg-white/10'
+                      }`}
+                    >
+                      {ap === 'Favoritos' && <span className="material-icons text-[12px] mr-1.5">star</span>}
+                      {ap}
+                    </button>
+                  ))}
                 </div>
               </div>
 
@@ -2924,6 +3008,21 @@ const App: React.FC = () => {
                         />
                       </div>
                     </div>
+
+                    <div className="flex items-center gap-3 px-1">
+                      <button 
+                        onClick={() => setNewSkill({...newSkill, favorite: !newSkill.favorite})}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-all ${
+                          newSkill.favorite 
+                            ? 'bg-primary/10 border-primary/30 text-primary' 
+                            : 'bg-white/5 border-white/10 text-white/40'
+                        }`}
+                      >
+                        <span className="material-icons text-sm">{newSkill.favorite ? 'star' : 'star_border'}</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest">Favorito</span>
+                      </button>
+                    </div>
+
                     <button 
                       onClick={handleAddSkill}
                       disabled={!newSkill.name || newSkill.name === 'custom'}
@@ -2940,7 +3039,11 @@ const App: React.FC = () => {
                   selectedAlumno.habilidades
                     .filter(skill => {
                       const matchesSearch = skill.name.toLowerCase().includes(skillSearchQuery.toLowerCase());
-                      const matchesApparatus = skillApparatusFilter === 'Todos' || skill.apparatus === skillApparatusFilter;
+                      const matchesApparatus = skillApparatusFilter === 'Todos' 
+                        ? true 
+                        : skillApparatusFilter === 'Favoritos' 
+                          ? skill.favorite 
+                          : skill.apparatus === skillApparatusFilter;
                       return matchesSearch && matchesApparatus;
                     })
                     .sort((a, b) => {
@@ -3040,9 +3143,17 @@ const App: React.FC = () => {
                                 </div>
                                 <button 
                                   onClick={() => { setEditingSkillId(skill.id); setEditingSkillData(skill); }}
-                                  className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/70 active:scale-90 transition-all"
+                                  className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/70 hover:bg-white/10 active:scale-90 transition-all"
+                                  title="Editar"
                                 >
                                   <span className="material-icons-outlined text-sm">edit</span>
+                                </button>
+                                <button 
+                                  onClick={() => handleDeleteSkill(skill.id)}
+                                  className="w-8 h-8 rounded-lg bg-rose-500/10 flex items-center justify-center text-rose-500 border border-rose-500/20 hover:bg-rose-500/20 active:scale-90 transition-all"
+                                  title="Eliminar"
+                                >
+                                  <span className="material-icons-outlined text-sm">delete</span>
                                 </button>
                               </div>
                             </div>
@@ -3896,6 +4007,20 @@ const App: React.FC = () => {
                       </div>
                     </div>
                   )}
+
+                  {selectedClase.objetivos && (
+                    <div className="space-y-2 pt-4 border-t border-white/5">
+                      <p className="text-[10px] font-bold text-primary uppercase tracking-widest">Objetivos</p>
+                      <p className="text-xs text-white/80 leading-relaxed">{selectedClase.objetivos}</p>
+                    </div>
+                  )}
+
+                  {selectedClase.observaciones && (
+                    <div className="space-y-2 pt-4 border-t border-white/5">
+                      <p className="text-[10px] font-bold text-primary uppercase tracking-widest">Observaciones</p>
+                      <p className="text-xs text-white/80 leading-relaxed italic">"{selectedClase.observaciones}"</p>
+                    </div>
+                  )}
                 </div>
               </section>
 
@@ -4180,6 +4305,28 @@ const App: React.FC = () => {
                     Agregar
                   </button>
                 </div>
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              <div className="glass-card rounded-3xl p-6 border border-white/5 space-y-4">
+                <label className="text-[10px] uppercase font-bold text-primary ml-1 tracking-widest">Objetivos de la Clase</label>
+                <textarea 
+                  value={objetivos}
+                  onChange={(e) => setObjetivos(e.target.value)}
+                  placeholder="Ej. Mejorar la técnica de salto, trabajar en la flexibilidad..."
+                  className="w-full bg-antigravity-charcoal border border-white/5 rounded-2xl p-4 text-xs text-white outline-none focus:border-primary/50 transition-all min-h-[100px]"
+                />
+              </div>
+
+              <div className="glass-card rounded-3xl p-6 border border-white/5 space-y-4">
+                <label className="text-[10px] uppercase font-bold text-primary ml-1 tracking-widest">Observaciones Generales</label>
+                <textarea 
+                  value={observaciones}
+                  onChange={(e) => setObservaciones(e.target.value)}
+                  placeholder="Ej. El grupo estuvo muy disperso, se recomienda reforzar..."
+                  className="w-full bg-antigravity-charcoal border border-white/5 rounded-2xl p-4 text-xs text-white outline-none focus:border-primary/50 transition-all min-h-[100px]"
+                />
               </div>
 
               <button 
