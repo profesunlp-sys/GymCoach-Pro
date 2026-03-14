@@ -235,19 +235,32 @@ const App: React.FC = () => {
 
     // Limit to 750KB to stay within Firestore 1MB limit after base64 encoding
     if (file.size > 750 * 1024) {
-      setNotificacion({ t: 'Archivo muy grande', d: 'El PDF debe ser menor a 750KB para guardarse en la nube.' });
+      setNotificacion({ t: 'Archivo muy grande', d: 'El archivo debe ser menor a 750KB para guardarse en la nube.' });
+      return;
+    }
+
+    const fileExt = file.name.split('.').pop()?.toLowerCase();
+    let type: 'pdf' | 'doc' | 'docx' | 'text' = 'text';
+    
+    if (fileExt === 'pdf') type = 'pdf';
+    else if (fileExt === 'doc') type = 'doc';
+    else if (fileExt === 'docx') type = 'docx';
+    else if (file.type.includes('text')) type = 'text';
+    else {
+      setNotificacion({ t: 'Formato no soportado', d: 'Solo se permiten PDF, DOC, DOCX o archivos de texto.' });
       return;
     }
 
     const reader = new FileReader();
     reader.onload = async (event) => {
-      const base64 = event.target?.result?.toString().split(',')[1];
-      if (base64) {
+      const result = event.target?.result?.toString();
+      if (result) {
+        const base64 = type === 'text' ? result : result.split(',')[1];
         try {
           setIsLoading(true);
           const newSource: Partial<Source> = {
             name: file.name,
-            type: 'pdf',
+            type: type,
             content: base64,
             uploadDate: new Date().toISOString()
           };
@@ -262,7 +275,12 @@ const App: React.FC = () => {
         }
       }
     };
-    reader.readAsDataURL(file);
+
+    if (type === 'text') {
+      reader.readAsText(file);
+    } else {
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleDeleteSource = async (id: string, name: string) => {
@@ -698,6 +716,12 @@ const App: React.FC = () => {
         setHasNewData(true);
       });
 
+      // Real-time updates for sources
+      const unsubSources = onSnapshot(collection(firestore, COLLECTIONS.SOURCES), (snapshot) => {
+        const s = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Source[];
+        setSources(s);
+      });
+
       // Load emergency info
       const loadEmergency = async () => {
         const config = await getCollectionData(COLLECTIONS.CONFIG);
@@ -716,6 +740,7 @@ const App: React.FC = () => {
       return () => {
         unsubClases();
         unsubAlumnos();
+        unsubSources();
         clearTimeout(timer);
       };
     }
@@ -3510,9 +3535,9 @@ const App: React.FC = () => {
                 <label className="cursor-pointer bg-primary/10 text-primary border border-primary/20 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all">
                   <span className="flex items-center gap-2">
                     <span className="material-icons-outlined text-sm">add</span>
-                    Cargar PDF
+                    Cargar Doc
                   </span>
-                  <input type="file" accept="application/pdf" className="hidden" onChange={handleFileUpload} />
+                  <input type="file" accept="application/pdf,.doc,.docx,text/plain" className="hidden" onChange={handleFileUpload} />
                 </label>
               </div>
               
@@ -3520,7 +3545,10 @@ const App: React.FC = () => {
                 {sources.length > 0 ? sources.map(source => (
                   <div key={source.id} className="min-w-[160px] glass-card rounded-2xl p-4 border border-white/10 flex flex-col gap-2">
                     <div className="w-10 h-10 bg-white/5 rounded-xl flex items-center justify-center border border-white/10">
-                      <span className="material-icons-outlined text-primary">description</span>
+                      <span className="material-icons-outlined text-primary">
+                        {source.type === 'pdf' ? 'picture_as_pdf' : 
+                         (source.type === 'doc' || source.type === 'docx') ? 'article' : 'description'}
+                      </span>
                     </div>
                     <p className="text-xs font-bold text-white truncate">{source.name}</p>
                     <p className="text-[8px] text-white/40 uppercase tracking-widest">{new Date(source.uploadDate).toLocaleDateString()}</p>

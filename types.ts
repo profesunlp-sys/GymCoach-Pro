@@ -109,8 +109,8 @@ export interface Feedback {
 export interface Source {
   id: string;
   name: string;
-  type: 'pdf' | 'text';
-  content: string; // base64 for pdf, plain text for text
+  type: 'pdf' | 'text' | 'doc' | 'docx';
+  content: string; // base64 for pdf/doc/docx, plain text for text
   uploadDate: string;
 }
 

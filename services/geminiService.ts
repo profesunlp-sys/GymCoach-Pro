@@ -193,11 +193,15 @@ export async function queryKnowledgeBase(query: string, sources: any[]): Promise
     ];
 
     for (const source of sources) {
-      if (source.type === 'pdf') {
+      if (source.type === 'pdf' || source.type === 'doc' || source.type === 'docx') {
+        let mimeType = 'application/pdf';
+        if (source.type === 'doc') mimeType = 'application/msword';
+        if (source.type === 'docx') mimeType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+        
         parts.push({
           inlineData: {
             data: source.content,
-            mimeType: 'application/pdf'
+            mimeType: mimeType
           }
         });
       } else {
