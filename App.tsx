@@ -932,17 +932,21 @@ const App: React.FC = () => {
   const handleDeleteClase = async () => {
     if (!selectedClase || !selectedClase.id) return;
     requestConfirmation(
-      "Eliminar Clase",
-      `¿Estás seguro de que deseas eliminar el registro de esta clase?`,
+      "Confirmar Eliminación",
+      `¿Estás seguro de que deseas eliminar permanentemente el registro de esta clase del grupo ${selectedClase.grupo}? Esta acción no se puede deshacer.`,
       async () => {
         try {
+          setIsLoading(true);
           await deleteDocument(COLLECTIONS.CLASES, selectedClase.id!);
-          setNotificacion({ t: 'Éxito', d: 'Clase eliminada correctamente.' });
+          setNotificacion({ t: 'Éxito', d: 'La clase ha sido eliminada correctamente.' });
           setVista('HistorialClases');
           setSelectedClase(null);
-          loadData();
+          await loadData();
         } catch (error: any) {
-          setNotificacion({ t: 'Error', d: error.message });
+          console.error("Error deleting class:", error);
+          setNotificacion({ t: 'Error', d: 'No se pudo eliminar la clase. Inténtalo de nuevo.' });
+        } finally {
+          setIsLoading(false);
         }
       }
     );
