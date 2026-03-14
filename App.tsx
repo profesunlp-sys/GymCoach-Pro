@@ -223,6 +223,8 @@ const App: React.FC = () => {
     onConfirm: () => void;
   } | null>(null);
 
+  const [isFocusMode, setIsFocusMode] = useState(false);
+
   const requestConfirmation = (title: string, message: string, onConfirm: () => void) => {
     setConfirmModal({ show: true, title, message, onConfirm });
   };
@@ -1750,11 +1752,18 @@ const App: React.FC = () => {
                   <span className="material-icons-outlined text-accent-purple">fitness_center</span>
                 </div>
                 <div>
-                  <h1 className="text-xl font-bold text-white leading-none">GymCoach <span className="text-primary">Pro</span></h1>
+                  <h1 className="title-antigravity text-xl leading-none">GymCoach <span className="text-primary">Pro</span></h1>
                   <span className="text-[8px] uppercase tracking-[0.2em] text-primary/60 font-bold">{userRole === 'Coordinator' ? 'Modo Coordinación' : 'Modo Entrenador'}</span>
                 </div>
               </div>
               <div className="flex items-center gap-2">
+                <button 
+                  onClick={() => setIsFocusMode(!isFocusMode)}
+                  className={`w-10 h-10 rounded-full flex items-center justify-center border active:scale-90 transition-all ${isFocusMode ? 'bg-primary text-antigravity-black border-primary shadow-neon-cyan' : 'bg-white/5 text-white/60 border-white/10'}`}
+                  title="Modo Enfoque"
+                >
+                  <span className="material-icons-outlined text-sm">{isFocusMode ? 'visibility_off' : 'visibility'}</span>
+                </button>
                 {user?.email === COORDINATOR_EMAIL && (
                   <button 
                     onClick={() => setUserRole(prev => prev === 'Coordinator' ? 'Coach' : 'Coordinator')}
@@ -1774,6 +1783,14 @@ const App: React.FC = () => {
               </div>
             </header>
 
+            {/* FAB Principal */}
+            <button 
+              onClick={() => setVista('NuevaClase')}
+              className="fixed bottom-28 right-6 w-16 h-16 bg-primary text-antigravity-black rounded-2xl flex items-center justify-center shadow-neon-cyan active:scale-95 transition-all z-[60] group"
+            >
+              <span className="material-icons-outlined text-3xl group-hover:rotate-90 transition-transform">add</span>
+            </button>
+
             <section className="gradient-header rounded-[2.5rem] p-7 relative overflow-hidden shadow-2xl border border-white/10">
               <div className="relative z-10">
                 <h2 className="text-2xl font-bold text-white mb-1 tracking-tight leading-tight">¡Hola {userRole === 'Coordinator' ? 'Coordinador' : (user?.displayName?.split(' ')[0] || 'Entrenador')}!</h2>
@@ -1781,7 +1798,7 @@ const App: React.FC = () => {
                   {userRole === 'Coordinator' ? 'Supervisa el progreso de tus colegas.' : 'Configura tu semana para empezar.'}
                 </p>
                 {userRole === 'Coach' && (
-                  <button onClick={() => handleNavigation('NuevaClase')} className="bg-white text-indigo-800 font-black px-7 py-3.5 rounded-[1.25rem] flex items-center gap-2 shadow-xl text-[11px] uppercase tracking-widest active:scale-95 transition-all">
+                  <button onClick={() => handleNavigation('NuevaClase')} className="btn-primary px-7 py-3.5 flex items-center gap-2">
                     <span className="material-icons-outlined text-sm">add_circle</span> Registrar Clase
                   </button>
                 )}
@@ -1792,7 +1809,9 @@ const App: React.FC = () => {
             {userRole === 'Coordinator' && alertasGlobales.length > 0 && (
               <section className="space-y-4">
                 <div className="flex items-center gap-2 px-1">
-                  <span className="material-icons-outlined text-rose-500 animate-pulse">warning</span>
+                  <div className="alert-icon alert-icon-danger">
+                    <span className="material-icons-outlined text-sm">warning</span>
+                  </div>
                   <h3 className="text-rose-500 font-bold text-lg">Alertas Médicas Críticas</h3>
                 </div>
                 <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
@@ -2387,7 +2406,7 @@ const App: React.FC = () => {
         <div className="px-6 py-8 space-y-8 page-transition pb-24">
           <header className="flex justify-between items-end">
             <div>
-              <h2 className="text-3xl font-black text-white uppercase tracking-tighter">
+              <h2 className="title-antigravity text-3xl">
                 {alumnosFilterMode === 'alerts' ? 'Obs. de Salud' : 'Gimnastas'}
               </h2>
               <p className="text-primary text-[10px] font-black uppercase tracking-widest mt-1">
@@ -2590,7 +2609,9 @@ const App: React.FC = () => {
                           <div className="flex items-center gap-2">
                             <h4 className="text-sm font-bold text-white">{alumno.nombre}</h4>
                             {hasAlerts && (
-                              <span className="material-icons-outlined text-amber-500 text-[16px] animate-pulse" title="Alerta Médica">warning</span>
+                              <div className="alert-icon alert-icon-warning scale-75" title="Alerta Médica">
+                                <span className="material-icons-outlined text-sm">warning</span>
+                              </div>
                             )}
                           </div>
                           <p className="text-[10px] text-white/80 font-medium uppercase tracking-wider">{alumno.grupo} • {alumno.nivel}</p>
@@ -2622,7 +2643,7 @@ const App: React.FC = () => {
                 <span className="material-icons-outlined">arrow_back</span>
               </button>
               <div className="flex-1">
-                <h2 className="text-2xl font-black text-white uppercase tracking-tighter leading-none">{selectedAlumno.nombre}</h2>
+                <h2 className="title-antigravity text-2xl leading-none">{selectedAlumno.nombre}</h2>
                 <p className="text-primary text-[10px] font-black uppercase tracking-widest mt-1">{selectedAlumno.grupo} • {selectedAlumno.nivel}</p>
               </div>
               <button 
@@ -4808,6 +4829,63 @@ const App: React.FC = () => {
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Focus Mode Overlay */}
+        {isFocusMode && (
+          <div className="focus-mode-active">
+            <div className="max-w-4xl mx-auto space-y-12">
+              <header className="flex justify-between items-center border-b border-white/10 pb-6">
+                <div>
+                  <h1 className="title-antigravity text-5xl">Modo Enfoque</h1>
+                  <p className="text-primary text-xs font-black uppercase tracking-[0.3em] mt-2">Concentración Total • {vista}</p>
+                </div>
+                <button 
+                  onClick={() => setIsFocusMode(false)}
+                  className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center text-white border border-white/10 hover:bg-white/10 transition-all"
+                >
+                  <span className="material-icons-outlined">close</span>
+                </button>
+              </header>
+
+              <div className="animate-in fade-in zoom-in duration-500">
+                {/* Render current view content in focus mode */}
+                {vista === 'Dashboard' && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="glass-card p-8 rounded-[2.5rem] border-primary/20">
+                      <h3 className="title-antigravity text-2xl mb-6">Próximas Clases</h3>
+                      {/* Simplified list for focus */}
+                      <div className="space-y-4">
+                        {grupos.slice(0, 3).map(g => (
+                          <div key={g.id} className="flex justify-between items-center p-4 bg-white/5 rounded-2xl">
+                            <span className="font-bold">{g.nombre}</span>
+                            <span className="text-primary font-mono">{g.horario}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="glass-card p-8 rounded-[2.5rem] border-primary/20">
+                      <h3 className="title-antigravity text-2xl mb-6">Alertas Críticas</h3>
+                      <div className="space-y-4">
+                        {alumnos.filter(a => a.alertas?.length > 0).slice(0, 3).map(a => (
+                          <div key={a.id} className="flex items-center gap-4 p-4 bg-rose-500/10 border border-rose-500/20 rounded-2xl">
+                            <span className="material-icons-outlined text-rose-500">warning</span>
+                            <span className="font-bold">{a.nombre}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {vista !== 'Dashboard' && (
+                  <div className="text-center py-24 opacity-50">
+                    <p className="text-xl italic">Modo enfoque optimizado para esta vista próximamente.</p>
+                    <button onClick={() => setIsFocusMode(false)} className="btn-primary mt-8 mx-auto">Volver</button>
+                  </div>
+                )}
               </div>
             </div>
           </div>

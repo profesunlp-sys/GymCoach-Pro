@@ -78,6 +78,30 @@
             .crafted-input:focus {
                 @apply border-neon-blue ring-1 ring-neon-blue/50 shadow-[0_0_15px_rgba(46,91,255,0.2)];
             }
+            .title-antigravity {
+                @apply font-black uppercase tracking-tighter text-white;
+            }
+            .btn-primary {
+                @apply bg-primary text-antigravity-black font-black uppercase tracking-widest px-6 py-3 rounded-2xl shadow-neon-cyan active:scale-95 transition-all flex items-center justify-center gap-2;
+            }
+            .btn-secondary {
+                @apply bg-white/5 border border-white/10 text-white font-bold uppercase tracking-wider px-6 py-3 rounded-2xl hover:bg-white/10 active:scale-95 transition-all flex items-center justify-center gap-2;
+            }
+            .focus-mode-active {
+                @apply fixed inset-0 z-[200] bg-antigravity-black overflow-y-auto p-6 md:p-12;
+            }
+            .alert-icon {
+                @apply w-8 h-8 rounded-full flex items-center justify-center shadow-lg;
+            }
+            .alert-icon-danger {
+                @apply bg-rose-500/20 text-rose-500 border border-rose-500/30;
+            }
+            .alert-icon-warning {
+                @apply bg-amber-500/20 text-amber-500 border border-amber-500/30;
+            }
+            .alert-icon-info {
+                @apply bg-primary/20 text-primary border border-primary/30;
+            }
         }
         body {
             font-family: 'Lexend', sans-serif;
