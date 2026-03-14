@@ -233,22 +233,56 @@ const App: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Limit to 750KB to stay within Firestore 1MB limit after base64 encoding
+    if (file.size > 750 * 1024) {
+      setNotificacion({ t: 'Archivo muy grande', d: 'El PDF debe ser menor a 750KB para guardarse en la nube.' });
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = async (event) => {
       const base64 = event.target?.result?.toString().split(',')[1];
       if (base64) {
-        const newSource: Source = {
-          id: Math.random().toString(36).substr(2, 9),
-          name: file.name,
-          type: 'pdf',
-          content: base64,
-          uploadDate: new Date().toISOString()
-        };
-        setSources(prev => [...prev, newSource]);
-        setNotificacion({ t: 'Éxito', d: `Documento "${file.name}" cargado correctamente.` });
+        try {
+          setIsLoading(true);
+          const newSource: Partial<Source> = {
+            name: file.name,
+            type: 'pdf',
+            content: base64,
+            uploadDate: new Date().toISOString()
+          };
+          await addDocument(COLLECTIONS.SOURCES, newSource);
+          await loadData();
+          setNotificacion({ t: 'Éxito', d: `Documento "${file.name}" cargado correctamente.` });
+        } catch (error) {
+          console.error("Error uploading file:", error);
+          setNotificacion({ t: 'Error', d: 'No se pudo cargar el archivo.' });
+        } finally {
+          setIsLoading(false);
+        }
       }
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleDeleteSource = async (id: string, name: string) => {
+    requestConfirmation(
+      "Eliminar Documento",
+      `¿Estás seguro de que deseas eliminar "${name}" de la base de conocimientos?`,
+      async () => {
+        try {
+          setIsLoading(true);
+          await deleteDocument(COLLECTIONS.SOURCES, id);
+          await loadData();
+          setNotificacion({ t: 'Éxito', d: 'Documento eliminado.' });
+        } catch (error) {
+          console.error("Error deleting source:", error);
+          setNotificacion({ t: 'Error', d: 'No se pudo eliminar el documento.' });
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    );
   };
 
   const handleKbQuery = async () => {
@@ -609,10 +643,12 @@ const App: React.FC = () => {
       const g = await getCollectionData(COLLECTIONS.GRUPOS) as GrupoConfig[];
       const p = await getCollectionData(COLLECTIONS.PROFESORES) as {id?: string, nombre: string}[];
       const n = await getCollectionData(COLLECTIONS.NIVELES) as {id?: string, nombre: string}[];
+      const s = await getCollectionData(COLLECTIONS.SOURCES) as Source[];
       setAlumnos(a);
       setClases(c.sort((x, y) => new Date(y.fecha).getTime() - new Date(x.fecha).getTime()));
       setGrupos(g);
       setProfesoresList(p || []);
+      setSources(s || []);
       setNiveles(n.length > 0 ? n : [
         { nombre: 'Escuela' },
         { nombre: 'Pre-Equipo' },
@@ -3485,7 +3521,7 @@ const App: React.FC = () => {
                     <p className="text-xs font-bold text-white truncate">{source.name}</p>
                     <p className="text-[8px] text-white/40 uppercase tracking-widest">{new Date(source.uploadDate).toLocaleDateString()}</p>
                     <button 
-                      onClick={() => setSources(prev => prev.filter(s => s.id !== source.id))}
+                      onClick={() => handleDeleteSource(source.id!, source.name)}
                       className="text-[8px] text-rose-500 font-black uppercase tracking-widest mt-2 hover:text-rose-400"
                     >
                       Eliminar
