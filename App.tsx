@@ -143,11 +143,15 @@ const App: React.FC = () => {
   const [selectedNivelFilter, setSelectedNivelFilter] = useState<string>('Todos');
   const [asistenciasClase, setAsistenciasClase] = useState<AsistenciaRecord[]>([]);
   const [isLoadingAsistenciasClase, setIsLoadingAsistenciasClase] = useState(false);
+  const [asistenciasGlobales, setAsistenciasGlobales] = useState<Record<string, { presentes: number, total: number }>>({});
+  const [isEditingClase, setIsEditingClase] = useState(false);
+  const [editingClaseId, setEditingClaseId] = useState<string | null>(null);
 
   // Search State
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedAlumnoId, setExpandedAlumnoId] = useState<string | null>(null);
   const [planesFilterDate, setPlanesFilterDate] = useState("");
+  const [comparativeData, setComparativeData] = useState<any[]>([]);
   const [planesFilterCoach, setPlanesFilterCoach] = useState("");
 
   // Add Gymnast/Teacher State
@@ -207,9 +211,6 @@ const App: React.FC = () => {
   // New Skill Filters
   const [skillSearchQuery, setSkillSearchQuery] = useState("");
   const [skillApparatusFilter, setSkillApparatusFilter] = useState<string>("Todos");
-
-  // Edit Class State
-  const [editingClaseId, setEditingClaseId] = useState<string | null>(null);
 
   // Knowledge Base State
   const [sources, setSources] = useState<Source[]>([]);
@@ -549,12 +550,83 @@ const App: React.FC = () => {
 
   const handleLogout = async () => {
     try {
-      await signOut(auth);
-      handleNavigation('Dashboard');
+      await auth.signOut();
+      setIsLoggedIn(false);
+      setUser(null);
+      setVista('Dashboard');
     } catch (error) {
-      console.error("Logout error:", error);
+      console.error("Error logging out:", error);
     }
   };
+
+  const handleEditClase = (clase: Clase) => {
+    setIsEditingClase(true);
+    setEditingClaseId(clase.id || null);
+    setClaseGrupo(clase.grupo);
+    setFaseInicial(clase.faseInicial || []);
+    setFasePrincipal(clase.fasePrincipal || []);
+    setFaseFinal(clase.faseFinal || []);
+    setFaseInicialDuration(clase.faseInicialDuration || "15");
+    setFasePrincipalDuration(clase.fasePrincipalDuration || "45");
+    setFaseFinalDuration(clase.faseFinalDuration || "15");
+    setHabilidadesPorAparato(clase.habilidadesPorAparato || {});
+    setObjetivos(clase.objetivos || "");
+    setObservaciones(clase.observaciones || "");
+    setVista('NuevaClase');
+  };
+
+  const handleExportAttendance = () => {
+    if (clases.length === 0) return;
+    
+    const exportData = clases.map(c => ({
+      Fecha: new Date(c.fecha).toLocaleDateString(),
+      Grupo: c.grupo,
+      Entrenador: c.entrenador,
+      Objetivos: c.objetivos || '',
+      Observaciones: c.observaciones || ''
+    }));
+
+    const csv = Papa.unparse(exportData);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `asistencia_gymcoach_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setNotificacion({ t: 'Éxito', d: 'Archivo CSV exportado correctamente.' });
+  };
+
+  const sendPaymentReminder = (alumno: Alumno) => {
+    const message = `Hola ${alumno.contacto?.padreNombre || alumno.nombre}, te escribimos de GymCoach Pro para recordarte que el pago de la cuota de ${alumno.nombre} se encuentra ${alumno.estadoPago.toLowerCase()}. ¡Muchas gracias!`;
+    const phone = alumno.contacto?.padreTelefono || alumno.contacto?.madreTelefono || alumno.contacto?.familiarTelefono;
+    if (!phone) {
+      setNotificacion({ t: 'Error', d: 'No hay teléfono de contacto registrado.' });
+      return;
+    }
+    const cleanPhone = phone.replace(/\D/g, '');
+    window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`, '_blank');
+  };
+
+  const loadComparativeStats = () => {
+    const data = grupos.map(g => {
+      const stats = asistenciasGlobales[g.nombre] || { presentes: 0, total: 0 };
+      const percentage = stats.total > 0 ? Math.round((stats.presentes / stats.total) * 100) : 0;
+      return {
+        name: g.nombre,
+        asistencia: percentage
+      };
+    });
+    setComparativeData(data);
+  };
+
+  useEffect(() => {
+    if (vista === 'AsistenciaStats') {
+      loadComparativeStats();
+    }
+  }, [vista, asistenciasGlobales]);
 
   const [asistenciasGlobales, setAsistenciasGlobales] = useState<Record<string, { presentes: number, total: number }>>({});
   const [monthlyStats, setMonthlyStats] = useState<Record<string, { attended: number, expected: number }>>({});
@@ -1595,6 +1667,7 @@ const App: React.FC = () => {
       setObservaciones("");
       setHabilidadesPorAparato({});
       setEditingClaseId(null);
+      setIsEditingClase(false);
       setVista('Dashboard');
     } catch (error: any) {
       console.error("Error saving manual class:", error);
@@ -2711,15 +2784,25 @@ const App: React.FC = () => {
                 <h2 className="title-antigravity text-2xl leading-none">{selectedAlumno.nombre}</h2>
                 <p className="text-primary text-[10px] font-black uppercase tracking-widest mt-1">{selectedAlumno.grupo} • {selectedAlumno.nivel}</p>
               </div>
-              <button 
-                onClick={() => {
-                  setEditingAlumnoData(selectedAlumno);
-                  setIsEditingAlumno(!isEditingAlumno);
-                }}
-                className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/60 border border-white/10 active:scale-90 transition-all"
-              >
-                <span className="material-icons-outlined text-sm">{isEditingAlumno ? 'close' : 'edit'}</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={() => {
+                    setEditingAlumnoData(selectedAlumno);
+                    setIsEditingAlumno(!isEditingAlumno);
+                  }}
+                  className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/60 border border-white/10 active:scale-90 transition-all"
+                >
+                  <span className="material-icons-outlined text-sm">{isEditingAlumno ? 'close' : 'edit'}</span>
+                </button>
+                <button 
+                  onClick={() => sendPaymentReminder(selectedAlumno)}
+                  className="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-500 border border-amber-500/20 active:scale-90 transition-all"
+                  title="Enviar Recordatorio de Pago"
+                >
+                  <span className="material-icons-outlined text-sm">notifications_active</span>
+                </button>
+              </div>
+
             </header>
 
             {isEditingAlumno && (
@@ -3946,18 +4029,7 @@ const App: React.FC = () => {
               </div>
               <div className="flex items-center gap-3">
                 <button 
-                  onClick={() => {
-                    setEditingClaseId(selectedClase.id!);
-                    setClaseGrupo(selectedClase.grupo);
-                    setFaseInicial(selectedClase.faseInicial || []);
-                    setFasePrincipal(selectedClase.fasePrincipal || []);
-                    setFaseFinal(selectedClase.faseFinal || []);
-                    setFaseInicialDuration(selectedClase.faseInicialDuration || "15");
-                    setFasePrincipalDuration(selectedClase.fasePrincipalDuration || "60");
-                    setFaseFinalDuration(selectedClase.faseFinalDuration || "15");
-                    setHabilidadesPorAparato(selectedClase.habilidadesPorAparato || {});
-                    setVista('NuevaClase');
-                  }}
+                  onClick={() => handleEditClase(selectedClase)}
                   className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/70 border border-white/10 active:scale-90 transition-all"
                   title="Editar Clase"
                 >
@@ -4145,11 +4217,29 @@ const App: React.FC = () => {
 
         {vista === 'NuevaClase' && (
           <div className="space-y-8 page-transition pt-8 px-6 pb-24">
-            <header className="flex items-center gap-4 mb-8">
-              <button onClick={() => setVista('Dashboard')} className="w-10 h-10 rounded-full bg-antigravity-charcoal flex items-center justify-center text-primary border border-white/5 active:scale-90 transition-all">
-                <span className="material-icons-outlined">arrow_back</span>
-              </button>
-              <h2 className="text-white font-black text-2xl uppercase tracking-tighter">Reporte de Clase</h2>
+            <header className="flex items-center justify-between mb-8">
+              <div className="flex items-center gap-4">
+                <button onClick={() => {
+                  setVista('Dashboard');
+                  setIsEditingClase(false);
+                  setEditingClaseId(null);
+                }} className="w-10 h-10 rounded-full bg-antigravity-charcoal flex items-center justify-center text-primary border border-white/5 active:scale-90 transition-all">
+                  <span className="material-icons-outlined">arrow_back</span>
+                </button>
+                <h2 className="text-white font-black text-2xl uppercase tracking-tighter">{isEditingClase ? 'Editar Clase' : 'Reporte de Clase'}</h2>
+              </div>
+              {isEditingClase && (
+                <button 
+                  onClick={() => {
+                    setVista('Dashboard');
+                    setIsEditingClase(false);
+                    setEditingClaseId(null);
+                  }}
+                  className="px-4 py-2 rounded-xl bg-rose-500/10 text-rose-500 border border-rose-500/20 text-[10px] font-black uppercase tracking-widest"
+                >
+                  Cancelar
+                </button>
+              )}
             </header>
             
             <div className="space-y-6">
@@ -4777,7 +4867,68 @@ const App: React.FC = () => {
                 </button>
               </div>
 
+              {/* Comparativa de Asistencia por Grupo */}
+              <div className="glass-card rounded-[2rem] p-6 border border-white/5 space-y-4 md:col-span-2">
+                <div className="flex justify-between items-center px-2">
+                  <h3 className="text-xs font-black text-white/80 uppercase tracking-widest">Comparativa de Asistencia (%)</h3>
+                  <div className="flex gap-2">
+                    <div className="flex items-center gap-1">
+                      <div className="w-2 h-2 rounded-full bg-primary"></div>
+                      <span className="text-[8px] text-white/50 uppercase font-bold">Asistencia</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="h-80 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={comparativeData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
+                      <XAxis 
+                        dataKey="name" 
+                        stroke="#ffffff40" 
+                        fontSize={10} 
+                        tickLine={false} 
+                        axisLine={false}
+                        interval={0}
+                        angle={-45}
+                        textAnchor="end"
+                        height={60}
+                      />
+                      <YAxis 
+                        stroke="#ffffff40" 
+                        fontSize={10} 
+                        tickLine={false} 
+                        axisLine={false}
+                        domain={[0, 100]}
+                        tickFormatter={(val) => `${val}%`}
+                      />
+                      <Tooltip 
+                        contentStyle={{ backgroundColor: '#151619', border: '1px solid #ffffff10', borderRadius: '12px' }}
+                        cursor={{ fill: '#ffffff05' }}
+                        formatter={(value: any) => [`${Number(value).toFixed(1)}%`, 'Asistencia Promedio']}
+                      />
+                      <Bar dataKey="asistencia" fill="url(#colorAsistencia)" radius={[6, 6, 0, 0]}>
+                        <defs>
+                          <linearGradient id="colorAsistencia" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#00F0FF" stopOpacity={0.8}/>
+                            <stop offset="95%" stopColor="#00F0FF" stopOpacity={0.2}/>
+                          </linearGradient>
+                        </defs>
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 px-2 pt-4 border-t border-white/5">
+                  {comparativeData.slice(0, 4).map((data, i) => (
+                    <div key={i} className="space-y-1">
+                      <p className="text-[8px] text-white/40 uppercase font-bold truncate">{data.name}</p>
+                      <p className="text-lg font-black text-white">{data.asistencia.toFixed(1)}%</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               {/* Gráfico de Tendencia */}
+
               <div className="glass-card rounded-[2rem] p-6 border border-white/5 space-y-4">
                 <h3 className="text-xs font-black text-white/80 uppercase tracking-widest px-2">Tendencia Mensual</h3>
                 <div className="h-64 w-full">
@@ -5072,7 +5223,52 @@ const App: React.FC = () => {
         </div>
       )}
 
+      {/* Bottom Navigation */}
+      <nav className="fixed bottom-0 left-0 right-0 bg-antigravity-black/80 backdrop-blur-xl border-t border-white/5 px-6 py-3 flex justify-between items-center z-50 md:hidden">
+        <button 
+          onClick={() => setVista('Dashboard')}
+          className={`flex flex-col items-center gap-1 transition-all ${vista === 'Dashboard' ? 'text-primary' : 'text-white/40'}`}
+        >
+          <span className="material-icons-outlined text-xl">dashboard</span>
+          <span className="text-[8px] font-black uppercase tracking-widest">Inicio</span>
+        </button>
+        <button 
+          onClick={() => setVista('Clases')}
+          className={`flex flex-col items-center gap-1 transition-all ${vista === 'Clases' ? 'text-primary' : 'text-white/40'}`}
+        >
+          <span className="material-icons-outlined text-xl">history</span>
+          <span className="text-[8px] font-black uppercase tracking-widest">Clases</span>
+        </button>
+        <div className="relative -top-6">
+          <button 
+            onClick={() => {
+              setIsEditingClase(false);
+              setEditingClaseId(null);
+              setVista('NuevaClase');
+            }}
+            className="w-14 h-14 rounded-full bg-primary text-antigravity-black flex items-center justify-center shadow-neon-cyan active:scale-90 transition-all border-4 border-antigravity-black"
+          >
+            <span className="material-icons-outlined text-2xl">add</span>
+          </button>
+        </div>
+        <button 
+          onClick={() => setVista('Alumnos')}
+          className={`flex flex-col items-center gap-1 transition-all ${vista === 'Alumnos' ? 'text-primary' : 'text-white/40'}`}
+        >
+          <span className="material-icons-outlined text-xl">groups</span>
+          <span className="text-[8px] font-black uppercase tracking-widest">Gimnastas</span>
+        </button>
+        <button 
+          onClick={() => setVista('AsistenciaStats')}
+          className={`flex flex-col items-center gap-1 transition-all ${vista === 'AsistenciaStats' ? 'text-primary' : 'text-white/40'}`}
+        >
+          <span className="material-icons-outlined text-xl">analytics</span>
+          <span className="text-[8px] font-black uppercase tracking-widest">Stats</span>
+        </button>
+      </nav>
+
       {/* Notificaciones */}
+
       {notificacion && (
         <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[150] w-[90%] max-w-[380px] bg-antigravity-charcoal/95 backdrop-blur-2xl text-white p-5 rounded-[2rem] shadow-neon-cyan-strong border border-white/10 flex items-center gap-4 animate-in slide-in-from-top-12 duration-500">
           <div className="w-12 h-12 bg-primary/20 rounded-2xl flex items-center justify-center border border-primary/30 active-glow shrink-0">
