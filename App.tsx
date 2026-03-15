@@ -575,7 +575,7 @@ const App: React.FC = () => {
     setVista('NuevaClase');
   };
 
-  const handleExportAttendance = () => {
+  const handleExportClases = () => {
     if (clases.length === 0) return;
     
     const exportData = clases.map(c => ({
@@ -628,7 +628,6 @@ const App: React.FC = () => {
     }
   }, [vista, asistenciasGlobales]);
 
-  const [asistenciasGlobales, setAsistenciasGlobales] = useState<Record<string, { presentes: number, total: number }>>({});
   const [monthlyStats, setMonthlyStats] = useState<Record<string, { attended: number, expected: number }>>({});
   const [reportMonth, setReportMonth] = useState(new Date().getMonth());
   const [reportYear, setReportYear] = useState(new Date().getFullYear());
@@ -1882,6 +1881,169 @@ const App: React.FC = () => {
 
       <main className="flex-1 overflow-y-auto">
         
+        {vista === 'SkillsTree' && (
+          <div className="px-6 py-8 space-y-8 page-transition pb-24">
+            <header className="flex items-center gap-4">
+              <button onClick={() => setVista('CoreModules')} className="w-10 h-10 rounded-full bg-antigravity-charcoal flex items-center justify-center text-primary border border-white/5 active:scale-90 transition-all">
+                <span className="material-icons-outlined">arrow_back</span>
+              </button>
+              <div>
+                <h2 className="text-2xl font-black text-white uppercase tracking-tighter">FIG Skills Tree</h2>
+                <p className="text-primary text-[10px] font-black uppercase tracking-widest mt-1">Árbol de Habilidades</p>
+              </div>
+            </header>
+            <div className="glass-card rounded-[2.5rem] p-12 border border-white/5 text-center space-y-4">
+              <span className="material-icons-outlined text-6xl text-primary/20">account_tree</span>
+              <p className="text-white/40 italic">Módulo FIG Skills Tree en desarrollo.</p>
+            </div>
+          </div>
+        )}
+
+        {vista === 'Finanzas' && (
+          <div className="px-6 py-8 space-y-8 page-transition pb-24">
+            <header className="flex items-center gap-4">
+              <button onClick={() => setVista('CoreModules')} className="w-10 h-10 rounded-full bg-antigravity-charcoal flex items-center justify-center text-primary border border-white/5 active:scale-90 transition-all">
+                <span className="material-icons-outlined">arrow_back</span>
+              </button>
+              <div>
+                <h2 className="text-2xl font-black text-white uppercase tracking-tighter">Financial Control</h2>
+                <p className="text-emerald-400 text-[10px] font-black uppercase tracking-widest mt-1">Gestión Financiera</p>
+              </div>
+            </header>
+            <div className="glass-card rounded-[2.5rem] p-12 border border-white/5 text-center space-y-4">
+              <span className="material-icons-outlined text-6xl text-emerald-500/20">payments</span>
+              <p className="text-white/40 italic">Módulo Financial Control en desarrollo.</p>
+            </div>
+          </div>
+        )}
+
+        {vista === 'Biometria' && (
+          <div className="px-6 py-8 space-y-8 page-transition pb-24">
+            <header className="flex items-center gap-4">
+              <button onClick={() => setVista('CoreModules')} className="w-10 h-10 rounded-full bg-antigravity-charcoal flex items-center justify-center text-primary border border-white/5 active:scale-90 transition-all">
+                <span className="material-icons-outlined">arrow_back</span>
+              </button>
+              <div>
+                <h2 className="text-2xl font-black text-white uppercase tracking-tighter">Biometric Radar</h2>
+                <p className="text-neon-cyan text-[10px] font-black uppercase tracking-widest mt-1">Seguimiento Biométrico</p>
+              </div>
+            </header>
+            <div className="glass-card rounded-[2.5rem] p-12 border border-white/5 text-center space-y-4">
+              <span className="material-icons-outlined text-6xl text-neon-cyan/20">radar</span>
+              <p className="text-white/40 italic">Módulo Biometric Radar en desarrollo.</p>
+            </div>
+          </div>
+        )}
+
+        {vista === 'Staff' && (
+          <div className="px-6 py-8 space-y-8 page-transition pb-24">
+            <header className="flex items-center gap-4">
+              <button onClick={() => setVista('CoreModules')} className="w-10 h-10 rounded-full bg-antigravity-charcoal flex items-center justify-center text-primary border border-white/5 active:scale-90 transition-all">
+                <span className="material-icons-outlined">arrow_back</span>
+              </button>
+              <div>
+                <h2 className="text-2xl font-black text-white uppercase tracking-tighter">AI Staff Management</h2>
+                <p className="text-accent-purple text-[10px] font-black uppercase tracking-widest mt-1">Gestión de Staff</p>
+              </div>
+            </header>
+            <div className="glass-card rounded-[2.5rem] p-12 border border-white/5 text-center space-y-4">
+              <span className="material-icons-outlined text-6xl text-accent-purple/20">badge</span>
+              <p className="text-white/40 italic">Módulo AI Staff Management en desarrollo.</p>
+            </div>
+          </div>
+        )}
+
+        {vista === 'CoreModules' && (
+          <div className="px-6 py-8 space-y-8 page-transition pb-24">
+            <header className="flex items-center gap-4">
+              <button onClick={() => setVista('Dashboard')} className="w-10 h-10 rounded-full bg-antigravity-charcoal flex items-center justify-center text-primary border border-white/5 active:scale-90 transition-all">
+                <span className="material-icons-outlined">arrow_back</span>
+              </button>
+              <div>
+                <h2 className="text-2xl font-black text-white uppercase tracking-tighter">Módulos Core</h2>
+                <p className="text-primary text-[10px] font-black uppercase tracking-widest mt-1">Gestión Integral Pro</p>
+              </div>
+            </header>
+
+            <div className="grid grid-cols-1 gap-6">
+              <button 
+                onClick={() => handleNavigation('SkillsTree')}
+                className="glass-card rounded-[2.5rem] p-8 border border-white/5 flex items-center gap-6 active:scale-95 transition-all text-left relative overflow-hidden group"
+              >
+                <div className="w-16 h-16 bg-primary/10 rounded-3xl flex items-center justify-center border border-primary/20 shadow-neon-cyan shrink-0">
+                  <span className="material-icons-outlined text-primary text-3xl">account_tree</span>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-xl font-black text-white uppercase tracking-tight">FIG Skills Tree</h3>
+                  <p className="text-white/50 text-xs font-medium mt-1">Árbol de habilidades técnicas oficial FIG.</p>
+                </div>
+                <span className="material-icons-outlined text-white/20 group-hover:text-primary transition-colors">chevron_right</span>
+                <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-primary/5 rounded-full blur-2xl"></div>
+              </button>
+
+              <button 
+                onClick={() => handleNavigation('Finanzas')}
+                className="glass-card rounded-[2.5rem] p-8 border border-white/5 flex items-center gap-6 active:scale-95 transition-all text-left relative overflow-hidden group"
+              >
+                <div className="w-16 h-16 bg-emerald-500/10 rounded-3xl flex items-center justify-center border border-emerald-500/20 shadow-neon-emerald shrink-0">
+                  <span className="material-icons-outlined text-emerald-400 text-3xl">payments</span>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-xl font-black text-white uppercase tracking-tight">Financial Control</h3>
+                  <p className="text-white/50 text-xs font-medium mt-1">Gestión de cuotas, becas y estados de pago.</p>
+                </div>
+                <span className="material-icons-outlined text-white/20 group-hover:text-emerald-400 transition-colors">chevron_right</span>
+                <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-emerald-500/5 rounded-full blur-2xl"></div>
+              </button>
+
+              <button 
+                onClick={() => handleNavigation('Biometria')}
+                className="glass-card rounded-[2.5rem] p-8 border border-white/5 flex items-center gap-6 active:scale-95 transition-all text-left relative overflow-hidden group"
+              >
+                <div className="w-16 h-16 bg-neon-cyan/10 rounded-3xl flex items-center justify-center border border-neon-cyan/20 shadow-neon-cyan shrink-0">
+                  <span className="material-icons-outlined text-neon-cyan text-3xl">radar</span>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-xl font-black text-white uppercase tracking-tight">Biometric Radar</h3>
+                  <p className="text-white/50 text-xs font-medium mt-1">Seguimiento de fuerza, flexibilidad y técnica.</p>
+                </div>
+                <span className="material-icons-outlined text-white/20 group-hover:text-neon-cyan transition-colors">chevron_right</span>
+                <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-neon-cyan/5 rounded-full blur-2xl"></div>
+              </button>
+
+              <button 
+                onClick={() => handleNavigation('Staff')}
+                className="glass-card rounded-[2.5rem] p-8 border border-white/5 flex items-center gap-6 active:scale-95 transition-all text-left relative overflow-hidden group"
+              >
+                <div className="w-16 h-16 bg-accent-purple/10 rounded-3xl flex items-center justify-center border border-accent-purple/20 shadow-neon-purple shrink-0">
+                  <span className="material-icons-outlined text-accent-purple text-3xl">badge</span>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-xl font-black text-white uppercase tracking-tight">AI Staff Management</h3>
+                  <p className="text-white/50 text-xs font-medium mt-1">Gestión inteligente del equipo de entrenadores.</p>
+                </div>
+                <span className="material-icons-outlined text-white/20 group-hover:text-accent-purple transition-colors">chevron_right</span>
+                <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-accent-purple/5 rounded-full blur-2xl"></div>
+              </button>
+
+              <button 
+                onClick={() => handleNavigation('KnowledgeBase')}
+                className="glass-card rounded-[2.5rem] p-8 border border-white/5 flex items-center gap-6 active:scale-95 transition-all text-left relative overflow-hidden group"
+              >
+                <div className="w-16 h-16 bg-indigo-500/10 rounded-3xl flex items-center justify-center border border-indigo-500/20 shadow-neon-purple shrink-0">
+                  <span className="material-icons-outlined text-indigo-400 text-3xl">book</span>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-xl font-black text-white uppercase tracking-tight">Manuales y Guías</h3>
+                  <p className="text-white/50 text-xs font-medium mt-1">Base de conocimiento técnica y administrativa.</p>
+                </div>
+                <span className="material-icons-outlined text-white/20 group-hover:text-indigo-400 transition-colors">chevron_right</span>
+                <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-indigo-500/5 rounded-full blur-2xl"></div>
+              </button>
+            </div>
+          </div>
+        )}
+
         {vista === 'Dashboard' && (
           <div className="px-6 space-y-8 page-transition pt-4">
             <header className="flex justify-between items-center">
@@ -1998,6 +2160,51 @@ const App: React.FC = () => {
                 </div>
               </section>
             )}
+
+            <section className="space-y-4">
+              <div className="flex justify-between px-1">
+                <h3 className="text-white font-bold text-lg">Módulos Core</h3>
+                <button onClick={() => setVista('CoreModules')} className="text-primary text-[10px] font-black uppercase tracking-widest">Ver Todos</button>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <button 
+                  onClick={() => setVista('SkillsTree')}
+                  className="glass-card rounded-3xl p-5 border border-white/5 flex flex-col items-center justify-center gap-3 active:scale-95 transition-all"
+                >
+                  <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center border border-primary/20 shadow-neon-cyan">
+                    <span className="material-icons-outlined text-primary text-2xl">account_tree</span>
+                  </div>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-white text-center">Skills Tree</span>
+                </button>
+                <button 
+                  onClick={() => setVista('Finanzas')}
+                  className="glass-card rounded-3xl p-5 border border-white/5 flex flex-col items-center justify-center gap-3 active:scale-95 transition-all"
+                >
+                  <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center border border-emerald-500/20 shadow-neon-emerald">
+                    <span className="material-icons-outlined text-emerald-400 text-2xl">payments</span>
+                  </div>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-white text-center">Finanzas</span>
+                </button>
+                <button 
+                  onClick={() => setVista('Biometria')}
+                  className="glass-card rounded-3xl p-5 border border-white/5 flex flex-col items-center justify-center gap-3 active:scale-95 transition-all"
+                >
+                  <div className="w-12 h-12 bg-neon-cyan/10 rounded-2xl flex items-center justify-center border border-neon-cyan/20 shadow-neon-cyan">
+                    <span className="material-icons-outlined text-neon-cyan text-2xl">radar</span>
+                  </div>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-white text-center">Biometría</span>
+                </button>
+                <button 
+                  onClick={() => setVista('Staff')}
+                  className="glass-card rounded-3xl p-5 border border-white/5 flex flex-col items-center justify-center gap-3 active:scale-95 transition-all"
+                >
+                  <div className="w-12 h-12 bg-accent-purple/10 rounded-2xl flex items-center justify-center border border-accent-purple/20 shadow-neon-purple">
+                    <span className="material-icons-outlined text-accent-purple text-2xl">badge</span>
+                  </div>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-white text-center">Staff</span>
+                </button>
+              </div>
+            </section>
 
             {userRole === 'Coordinator' && (
               <section className="space-y-4">
@@ -4527,6 +4734,13 @@ const App: React.FC = () => {
                 <h2 className="text-3xl font-black text-white uppercase tracking-tighter">Historial</h2>
                 <p className="text-primary text-[10px] font-black uppercase tracking-widest mt-1">Registro de Clases Pasadas</p>
               </div>
+              <button 
+                onClick={handleExportClases}
+                className="ml-auto w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/60 border border-white/10 active:scale-90 transition-all"
+                title="Exportar Historial"
+              >
+                <span className="material-icons-outlined text-sm">download</span>
+              </button>
             </header>
 
             <div className="space-y-4">
@@ -4783,9 +4997,9 @@ const App: React.FC = () => {
           {[
             { v: 'Dashboard', i: 'grid_view', l: 'Inicio' },
             { v: 'Alumnos', i: 'group', l: 'Gimnastas' },
+            { v: 'CoreModules', i: 'apps', l: 'Módulos' },
             { v: userRole === 'Coordinator' ? 'Profesores' : 'Horario', i: userRole === 'Coordinator' ? 'badge' : 'calendar_today', l: userRole === 'Coordinator' ? 'Staff' : 'Horario' },
             { v: 'Asistente', i: 'smart_toy', l: 'IA' },
-            { v: 'KnowledgeBase', i: 'book', l: 'Manuales' },
             { v: 'Ajustes', i: 'app_settings_alt', l: 'Ajustes' }
           ].map(item => (
             <button 
