@@ -3,6 +3,7 @@ import Papa from 'papaparse';
 import Markdown from 'react-markdown';
 import { motion, AnimatePresence } from 'motion/react';
 import * as XLSX from 'xlsx';
+import mammoth from 'mammoth';
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
   BarChart, Bar, Cell, Legend, PieChart, Pie
@@ -252,35 +253,41 @@ const App: React.FC = () => {
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      const result = event.target?.result?.toString();
-      if (result) {
-        const base64 = type === 'text' ? result : result.split(',')[1];
-        try {
-          setIsLoading(true);
-          const newSource: Partial<Source> = {
-            name: file.name,
-            type: type,
-            content: base64,
-            uploadDate: new Date().toISOString()
-          };
-          await addDocument(COLLECTIONS.SOURCES, newSource);
-          await loadData();
-          setNotificacion({ t: 'Éxito', d: `Documento "${file.name}" cargado correctamente.` });
-        } catch (error) {
-          console.error("Error uploading file:", error);
-          setNotificacion({ t: 'Error', d: 'No se pudo cargar el archivo.' });
-        } finally {
-          setIsLoading(false);
-        }
-      }
-    };
+    try {
+      setIsLoading(true);
+      let content = '';
 
-    if (type === 'text') {
-      reader.readAsText(file);
-    } else {
-      reader.readAsDataURL(file);
+      if (type === 'docx') {
+        const arrayBuffer = await file.arrayBuffer();
+        const result = await mammoth.extractRawText({ arrayBuffer });
+        content = result.value;
+        type = 'text'; // Guardamos el texto extraído para que sea compatible con la IA
+      } else if (type === 'text') {
+        content = await file.text();
+      } else {
+        // PDF o DOC (el DOC antiguo es binario y difícil de procesar en cliente, se guarda base64)
+        const base64 = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result?.toString().split(',')[1] || '');
+          reader.readAsDataURL(file);
+        });
+        content = base64;
+      }
+
+      const newSource: Partial<Source> = {
+        name: file.name,
+        type: type,
+        content: content,
+        uploadDate: new Date().toISOString()
+      };
+      await addDocument(COLLECTIONS.SOURCES, newSource);
+      await loadData();
+      setNotificacion({ t: 'Éxito', d: `Documento "${file.name}" cargado correctamente.` });
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      setNotificacion({ t: 'Error', d: 'No se pudo cargar el archivo.' });
+    } finally {
+      setIsLoading(false);
     }
   };
 

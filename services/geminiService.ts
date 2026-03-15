@@ -193,18 +193,16 @@ export async function queryKnowledgeBase(query: string, sources: any[]): Promise
     ];
 
     for (const source of sources) {
-      if (source.type === 'pdf' || source.type === 'doc' || source.type === 'docx') {
-        let mimeType = 'application/pdf';
-        if (source.type === 'doc') mimeType = 'application/msword';
-        if (source.type === 'docx') mimeType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-        
+      if (source.type === 'pdf') {
         parts.push({
           inlineData: {
             data: source.content,
-            mimeType: mimeType
+            mimeType: 'application/pdf'
           }
         });
       } else {
+        // Para texto, docx (ahora extraído a texto) o doc
+        // Enviamos como texto para evitar errores de MIME type no soportado en inlineData
         parts.push({ text: `Documento: ${source.name}\nContenido: ${source.content}` });
       }
     }
