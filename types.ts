@@ -66,6 +66,7 @@ export interface AsistenciaRecord {
   alumnoId: string;
   grupo: string;
   presente: boolean;
+  pago?: boolean;
 }
 
 export interface Clase {
@@ -114,4 +115,4 @@ export interface Source {
   uploadDate: string;
 }
 
-export type ViewMode = 'Dashboard' | 'Horario' | 'Alumnos' | 'Ajustes' | 'NuevaClase' | 'RegistroAlumno' | 'AsistenciaLista' | 'ReportePDF' | 'ClaseDetalle' | 'Planes' | 'AlumnoDetalle' | 'Profesores' | 'ProfesorDetalle' | 'Asistente' | 'Emergencias' | 'AsistenciaStats' | 'KnowledgeBase' | 'HistorialClases' | 'Clases' | 'SkillsTree' | 'Finanzas' | 'Biometria' | 'Staff' | 'CoreModules';
+export type ViewMode = 'Dashboard' | 'Horario' | 'Alumnos' | 'Ajustes' | 'NuevaClase' | 'RegistroAlumno' | 'AsistenciaLista' | 'ReportePDF' | 'ClaseDetalle' | 'Planes' | 'AlumnoDetalle' | 'Profesores' | 'ProfesorDetalle' | 'Asistente' | 'Emergencias' | 'AsistenciaStats' | 'KnowledgeBase' | 'HistorialClases' | 'Clases';

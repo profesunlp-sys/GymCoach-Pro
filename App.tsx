@@ -197,6 +197,7 @@ const App: React.FC = () => {
   const [grupos, setGrupos] = useState<GrupoConfig[]>([]);
   const [niveles, setNiveles] = useState<{id?: string, nombre: string}[]>([]);
   const [asistenciasHoy, setAsistenciasHoy] = useState<Record<string, boolean>>({});
+  const [pagosHoy, setPagosHoy] = useState<Record<string, boolean>>({});
   const [selectedClase, setSelectedClase] = useState<Clase | null>(null);
   const [selectedAlumno, setSelectedAlumno] = useState<Alumno | null>(null);
   const [alumnoAsistencias, setAlumnoAsistencias] = useState<AsistenciaRecord[]>([]);
@@ -830,11 +831,14 @@ const App: React.FC = () => {
         );
         const querySnapshot = await getDocs(q);
         const attMap: Record<string, boolean> = {};
+        const payMap: Record<string, boolean> = {};
         querySnapshot.forEach(doc => {
           const data = doc.data() as AsistenciaRecord;
           attMap[data.alumnoId] = data.presente;
+          payMap[data.alumnoId] = !!data.pago;
         });
         setAsistenciasHoy(attMap);
+        setPagosHoy(payMap);
       }
     } catch (error: any) {
       console.error("Error loading data:", error);
@@ -1371,15 +1375,49 @@ const App: React.FC = () => {
           fecha: today,
           alumnoId: alumnoId,
           grupo: activeGroup?.nombre || 'General',
-          presente: isPresent
+          presente: isPresent,
+          pago: !!pagosHoy[alumnoId]
         });
       }
     } catch (error: any) {
       console.error("Error toggling attendance:", error);
       setNotificacion({ t: "Error", d: error.message || "No se pudo actualizar la asistencia." });
       setTimeout(() => setNotificacion(null), 5000);
-      // Revert optimistic update
       setAsistenciasHoy(prev => ({ ...prev, [alumnoId]: !prev[alumnoId] }));
+    }
+  };
+
+  const togglePayment = async (alumnoId: string) => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const hasPaid = !pagosHoy[alumnoId];
+      
+      setPagosHoy(prev => ({ ...prev, [alumnoId]: hasPaid }));
+
+      const q = query(
+        collection(firestore, COLLECTIONS.ASISTENCIAS),
+        where('fecha', '==', today),
+        where('alumnoId', '==', alumnoId)
+      );
+      const querySnapshot = await getDocs(q);
+
+      if (!querySnapshot.empty) {
+        const docId = querySnapshot.docs[0].id;
+        await updateDocument(COLLECTIONS.ASISTENCIAS, docId, { pago: hasPaid });
+      } else {
+        await addDocument(COLLECTIONS.ASISTENCIAS, {
+          fecha: today,
+          alumnoId: alumnoId,
+          grupo: activeGroup?.nombre || 'General',
+          presente: !!asistenciasHoy[alumnoId],
+          pago: hasPaid
+        });
+      }
+    } catch (error: any) {
+      console.error("Error toggling payment:", error);
+      setNotificacion({ t: "Error", d: error.message || "No se pudo actualizar el pago." });
+      setTimeout(() => setNotificacion(null), 5000);
+      setPagosHoy(prev => ({ ...prev, [alumnoId]: !prev[alumnoId] }));
     }
   };
 
@@ -1969,168 +2007,6 @@ const App: React.FC = () => {
 
       <main className="flex-1 overflow-y-auto">
         
-        {vista === 'SkillsTree' && (
-          <div className="px-6 py-8 space-y-8 page-transition pb-24">
-            <header className="flex items-center gap-4">
-              <button onClick={() => setVista('CoreModules')} className="w-10 h-10 rounded-full bg-antigravity-charcoal flex items-center justify-center text-primary border border-white/5 active:scale-90 transition-all">
-                <span className="material-icons-outlined">arrow_back</span>
-              </button>
-              <div>
-                <h2 className="text-2xl font-black text-white uppercase tracking-tighter">FIG Skills Tree</h2>
-                <p className="text-primary text-[10px] font-black uppercase tracking-widest mt-1">Árbol de Habilidades</p>
-              </div>
-            </header>
-            <div className="glass-card rounded-[2.5rem] p-12 border border-white/5 text-center space-y-4">
-              <span className="material-icons-outlined text-6xl text-primary/20">account_tree</span>
-              <p className="text-white/40 italic">Módulo FIG Skills Tree en desarrollo.</p>
-            </div>
-          </div>
-        )}
-
-        {vista === 'Finanzas' && (
-          <div className="px-6 py-8 space-y-8 page-transition pb-24">
-            <header className="flex items-center gap-4">
-              <button onClick={() => setVista('CoreModules')} className="w-10 h-10 rounded-full bg-antigravity-charcoal flex items-center justify-center text-primary border border-white/5 active:scale-90 transition-all">
-                <span className="material-icons-outlined">arrow_back</span>
-              </button>
-              <div>
-                <h2 className="text-2xl font-black text-white uppercase tracking-tighter">Financial Control</h2>
-                <p className="text-emerald-400 text-[10px] font-black uppercase tracking-widest mt-1">Gestión Financiera</p>
-              </div>
-            </header>
-            <div className="glass-card rounded-[2.5rem] p-12 border border-white/5 text-center space-y-4">
-              <span className="material-icons-outlined text-6xl text-emerald-500/20">payments</span>
-              <p className="text-white/40 italic">Módulo Financial Control en desarrollo.</p>
-            </div>
-          </div>
-        )}
-
-        {vista === 'Biometria' && (
-          <div className="px-6 py-8 space-y-8 page-transition pb-24">
-            <header className="flex items-center gap-4">
-              <button onClick={() => setVista('CoreModules')} className="w-10 h-10 rounded-full bg-antigravity-charcoal flex items-center justify-center text-primary border border-white/5 active:scale-90 transition-all">
-                <span className="material-icons-outlined">arrow_back</span>
-              </button>
-              <div>
-                <h2 className="text-2xl font-black text-white uppercase tracking-tighter">Biometric Radar</h2>
-                <p className="text-neon-cyan text-[10px] font-black uppercase tracking-widest mt-1">Seguimiento Biométrico</p>
-              </div>
-            </header>
-            <div className="glass-card rounded-[2.5rem] p-12 border border-white/5 text-center space-y-4">
-              <span className="material-icons-outlined text-6xl text-neon-cyan/20">radar</span>
-              <p className="text-white/40 italic">Módulo Biometric Radar en desarrollo.</p>
-            </div>
-          </div>
-        )}
-
-        {vista === 'Staff' && (
-          <div className="px-6 py-8 space-y-8 page-transition pb-24">
-            <header className="flex items-center gap-4">
-              <button onClick={() => setVista('CoreModules')} className="w-10 h-10 rounded-full bg-antigravity-charcoal flex items-center justify-center text-primary border border-white/5 active:scale-90 transition-all">
-                <span className="material-icons-outlined">arrow_back</span>
-              </button>
-              <div>
-                <h2 className="text-2xl font-black text-white uppercase tracking-tighter">AI Staff Management</h2>
-                <p className="text-accent-purple text-[10px] font-black uppercase tracking-widest mt-1">Gestión de Staff</p>
-              </div>
-            </header>
-            <div className="glass-card rounded-[2.5rem] p-12 border border-white/5 text-center space-y-4">
-              <span className="material-icons-outlined text-6xl text-accent-purple/20">badge</span>
-              <p className="text-white/40 italic">Módulo AI Staff Management en desarrollo.</p>
-            </div>
-          </div>
-        )}
-
-        {vista === 'CoreModules' && (
-          <div className="px-6 py-8 space-y-8 page-transition pb-24">
-            <header className="flex items-center gap-4">
-              <button onClick={() => setVista('Dashboard')} className="w-10 h-10 rounded-full bg-antigravity-charcoal flex items-center justify-center text-primary border border-white/5 active:scale-90 transition-all">
-                <span className="material-icons-outlined">arrow_back</span>
-              </button>
-              <div>
-                <h2 className="text-2xl font-black text-white uppercase tracking-tighter">Módulos Core</h2>
-                <p className="text-primary text-[10px] font-black uppercase tracking-widest mt-1">Gestión Integral Pro</p>
-              </div>
-            </header>
-
-            <div className="grid grid-cols-1 gap-6">
-              <button 
-                onClick={() => handleNavigation('SkillsTree')}
-                className="glass-card rounded-[2.5rem] p-8 border border-white/5 flex items-center gap-6 active:scale-95 transition-all text-left relative overflow-hidden group"
-              >
-                <div className="w-16 h-16 bg-primary/10 rounded-3xl flex items-center justify-center border border-primary/20 shadow-neon-cyan shrink-0">
-                  <span className="material-icons-outlined text-primary text-3xl">account_tree</span>
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-xl font-black text-white uppercase tracking-tight">FIG Skills Tree</h3>
-                  <p className="text-white/50 text-xs font-medium mt-1">Árbol de habilidades técnicas oficial FIG.</p>
-                </div>
-                <span className="material-icons-outlined text-white/20 group-hover:text-primary transition-colors">chevron_right</span>
-                <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-primary/5 rounded-full blur-2xl"></div>
-              </button>
-
-              <button 
-                onClick={() => handleNavigation('Finanzas')}
-                className="glass-card rounded-[2.5rem] p-8 border border-white/5 flex items-center gap-6 active:scale-95 transition-all text-left relative overflow-hidden group"
-              >
-                <div className="w-16 h-16 bg-emerald-500/10 rounded-3xl flex items-center justify-center border border-emerald-500/20 shadow-neon-emerald shrink-0">
-                  <span className="material-icons-outlined text-emerald-400 text-3xl">payments</span>
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-xl font-black text-white uppercase tracking-tight">Financial Control</h3>
-                  <p className="text-white/50 text-xs font-medium mt-1">Gestión de cuotas, becas y estados de pago.</p>
-                </div>
-                <span className="material-icons-outlined text-white/20 group-hover:text-emerald-400 transition-colors">chevron_right</span>
-                <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-emerald-500/5 rounded-full blur-2xl"></div>
-              </button>
-
-              <button 
-                onClick={() => handleNavigation('Biometria')}
-                className="glass-card rounded-[2.5rem] p-8 border border-white/5 flex items-center gap-6 active:scale-95 transition-all text-left relative overflow-hidden group"
-              >
-                <div className="w-16 h-16 bg-neon-cyan/10 rounded-3xl flex items-center justify-center border border-neon-cyan/20 shadow-neon-cyan shrink-0">
-                  <span className="material-icons-outlined text-neon-cyan text-3xl">radar</span>
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-xl font-black text-white uppercase tracking-tight">Biometric Radar</h3>
-                  <p className="text-white/50 text-xs font-medium mt-1">Seguimiento de fuerza, flexibilidad y técnica.</p>
-                </div>
-                <span className="material-icons-outlined text-white/20 group-hover:text-neon-cyan transition-colors">chevron_right</span>
-                <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-neon-cyan/5 rounded-full blur-2xl"></div>
-              </button>
-
-              <button 
-                onClick={() => handleNavigation('Staff')}
-                className="glass-card rounded-[2.5rem] p-8 border border-white/5 flex items-center gap-6 active:scale-95 transition-all text-left relative overflow-hidden group"
-              >
-                <div className="w-16 h-16 bg-accent-purple/10 rounded-3xl flex items-center justify-center border border-accent-purple/20 shadow-neon-purple shrink-0">
-                  <span className="material-icons-outlined text-accent-purple text-3xl">badge</span>
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-xl font-black text-white uppercase tracking-tight">AI Staff Management</h3>
-                  <p className="text-white/50 text-xs font-medium mt-1">Gestión inteligente del equipo de entrenadores.</p>
-                </div>
-                <span className="material-icons-outlined text-white/20 group-hover:text-accent-purple transition-colors">chevron_right</span>
-                <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-accent-purple/5 rounded-full blur-2xl"></div>
-              </button>
-
-              <button 
-                onClick={() => handleNavigation('KnowledgeBase')}
-                className="glass-card rounded-[2.5rem] p-8 border border-white/5 flex items-center gap-6 active:scale-95 transition-all text-left relative overflow-hidden group"
-              >
-                <div className="w-16 h-16 bg-indigo-500/10 rounded-3xl flex items-center justify-center border border-indigo-500/20 shadow-neon-purple shrink-0">
-                  <span className="material-icons-outlined text-indigo-400 text-3xl">book</span>
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-xl font-black text-white uppercase tracking-tight">Manuales y Guías</h3>
-                  <p className="text-white/50 text-xs font-medium mt-1">Base de conocimiento técnica y administrativa.</p>
-                </div>
-                <span className="material-icons-outlined text-white/20 group-hover:text-indigo-400 transition-colors">chevron_right</span>
-                <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-indigo-500/5 rounded-full blur-2xl"></div>
-              </button>
-            </div>
-          </div>
-        )}
 
         {vista === 'Dashboard' && (
           <div className="px-6 space-y-8 page-transition pt-4">
@@ -2177,25 +2053,11 @@ const App: React.FC = () => {
             {/* FAB Principal */}
             <button 
               onClick={() => setVista('NuevaClase')}
-              className="fixed bottom-28 right-6 w-16 h-16 bg-primary text-antigravity-black rounded-2xl flex items-center justify-center shadow-neon-cyan active:scale-95 transition-all z-[60] group"
+              className="fixed bottom-44 right-6 w-16 h-16 bg-primary text-antigravity-black rounded-2xl flex items-center justify-center shadow-neon-cyan active:scale-95 transition-all z-[60] group"
             >
               <span className="material-icons-outlined text-3xl group-hover:rotate-90 transition-transform">add</span>
             </button>
 
-            <section className="gradient-header rounded-[2.5rem] p-7 relative overflow-hidden shadow-2xl border border-white/10">
-              <div className="relative z-10">
-                <h2 className="text-2xl font-bold text-white mb-1 tracking-tight leading-tight">¡Hola {userRole === 'Coordinator' ? 'Coordinador' : (user?.displayName?.split(' ')[0] || 'Entrenador')}!</h2>
-                <p className="text-indigo-100 text-sm mb-7 font-medium">
-                  {userRole === 'Coordinator' ? 'Supervisa el progreso de tus colegas.' : 'Configura tu semana para empezar.'}
-                </p>
-                {userRole === 'Coach' && (
-                  <Button onClick={() => handleNavigation('NuevaClase')} className="px-7 py-3.5">
-                    <span className="material-icons-outlined text-sm">add_circle</span> Registrar Clase
-                  </Button>
-                )}
-              </div>
-              <div className="absolute -top-12 -right-12 w-48 h-48 bg-white/10 rounded-full blur-3xl"></div>
-            </section>
 
             {userRole === 'Coordinator' && alertasGlobales.length > 0 && (
               <section className="space-y-4">
@@ -2226,7 +2088,7 @@ const App: React.FC = () => {
             {userRole === 'Coordinator' && (
               <section className="space-y-4">
                 <h3 className="text-primary font-bold text-lg active-glow">Estado de Asistencia Hoy</h3>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide -mx-2 px-2">
                   {grupos.map((g) => {
                     const stats = asistenciasGlobales[g.nombre] || { presentes: 0, total: 0 };
                     const isTaken = stats.total > 0 && stats.presentes > 0;
@@ -2234,7 +2096,7 @@ const App: React.FC = () => {
                       <div 
                         key={g.id} 
                         onClick={() => { setActiveGroup(g); setVista('AsistenciaLista'); }}
-                        className="glass-card rounded-3xl p-5 border border-white/5 space-y-3 active:scale-95 transition-all cursor-pointer"
+                        className="min-w-[160px] glass-card rounded-3xl p-5 border border-white/5 space-y-3 active:scale-95 transition-all cursor-pointer"
                       >
                         <h4 className="text-xs font-bold text-white truncate">{g.nombre}</h4>
                         <div className="flex items-end justify-between">
@@ -2254,54 +2116,63 @@ const App: React.FC = () => {
                       </div>
                     );
                   })}
+                  {/* Resumen Total - Added based on screenshot request */}
+                  <div 
+                    onClick={() => setVista('AsistenciaStats')}
+                    className="min-w-[160px] glass-card rounded-3xl p-5 border border-primary/20 bg-primary/5 space-y-3 active:scale-95 transition-all cursor-pointer"
+                  >
+                    <h4 className="text-xs font-bold text-primary truncate">Total General</h4>
+                    <div className="flex items-end justify-between">
+                      <span className="text-xl font-black text-white">
+                        {Object.values(asistenciasGlobales).reduce((a, b) => a + b.presentes, 0)}
+                        <span className="text-[10px] text-white/80 mx-1">/</span>
+                        {Object.values(asistenciasGlobales).reduce((a, b) => a + b.total, 0)}
+                      </span>
+                      <span className="text-[8px] font-black uppercase tracking-widest text-primary">Stats</span>
+                    </div>
+                    <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-primary shadow-neon-cyan" 
+                        style={{ 
+                          width: `${(() => {
+                            const p = Object.values(asistenciasGlobales).reduce((a, b) => a + b.presentes, 0);
+                            const t = Object.values(asistenciasGlobales).reduce((a, b) => a + b.total, 0);
+                            return t > 0 ? (p / t) * 100 : 0;
+                          })()}%` 
+                        }}
+                      ></div>
+                    </div>
+                  </div>
                 </div>
               </section>
             )}
 
-            <section className="space-y-4">
-              <div className="flex justify-between px-1">
-                <h3 className="text-white font-bold text-lg">Módulos Core</h3>
-                <button onClick={() => setVista('CoreModules')} className="text-primary text-[10px] font-black uppercase tracking-widest">Ver Todos</button>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <button 
-                  onClick={() => setVista('SkillsTree')}
-                  className="glass-card rounded-3xl p-5 border border-white/5 flex flex-col items-center justify-center gap-3 active:scale-95 transition-all"
-                >
-                  <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center border border-primary/20 shadow-neon-cyan">
-                    <span className="material-icons-outlined text-primary text-2xl">account_tree</span>
-                  </div>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-white text-center">Skills Tree</span>
-                </button>
-                <button 
-                  onClick={() => setVista('Finanzas')}
-                  className="glass-card rounded-3xl p-5 border border-white/5 flex flex-col items-center justify-center gap-3 active:scale-95 transition-all"
-                >
-                  <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center border border-emerald-500/20 shadow-neon-emerald">
-                    <span className="material-icons-outlined text-emerald-400 text-2xl">payments</span>
-                  </div>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-white text-center">Finanzas</span>
-                </button>
-                <button 
-                  onClick={() => setVista('Biometria')}
-                  className="glass-card rounded-3xl p-5 border border-white/5 flex flex-col items-center justify-center gap-3 active:scale-95 transition-all"
-                >
-                  <div className="w-12 h-12 bg-neon-cyan/10 rounded-2xl flex items-center justify-center border border-neon-cyan/20 shadow-neon-cyan">
-                    <span className="material-icons-outlined text-neon-cyan text-2xl">radar</span>
-                  </div>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-white text-center">Biometría</span>
-                </button>
-                <button 
-                  onClick={() => setVista('Staff')}
-                  className="glass-card rounded-3xl p-5 border border-white/5 flex flex-col items-center justify-center gap-3 active:scale-95 transition-all"
-                >
-                  <div className="w-12 h-12 bg-accent-purple/10 rounded-2xl flex items-center justify-center border border-accent-purple/20 shadow-neon-purple">
-                    <span className="material-icons-outlined text-accent-purple text-2xl">badge</span>
-                  </div>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-white text-center">Staff</span>
-                </button>
-              </div>
-            </section>
+
+            {userRole === 'Coordinator' && (
+              <section className="space-y-4">
+                <div className="flex justify-between px-1"><h3 className="text-white font-bold text-lg">Accesos Rápidos</h3></div>
+                <div className="grid grid-cols-2 gap-4">
+                  <button 
+                    onClick={() => { handleNavigation('Asistente'); }}
+                    className="glass-card rounded-3xl p-5 border border-white/5 flex flex-col items-center justify-center gap-3 active:scale-95 transition-all"
+                  >
+                    <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center border border-primary/20 shadow-neon-cyan">
+                      <span className="material-icons-outlined text-primary text-2xl">smart_toy</span>
+                    </div>
+                    <span className="text-xs font-bold text-white text-center">Asistente Coach AI</span>
+                  </button>
+                  <button 
+                    onClick={() => { handleNavigation('Alumnos'); }}
+                    className="glass-card rounded-3xl p-5 border border-white/5 flex flex-col items-center justify-center gap-3 active:scale-95 transition-all"
+                  >
+                    <div className="w-12 h-12 bg-accent-purple/10 rounded-xl flex items-center justify-center border border-accent-purple/20 shadow-neon-purple">
+                      <span className="material-icons-outlined text-accent-purple text-2xl">group</span>
+                    </div>
+                    <span className="text-xs font-bold text-white text-center">Datos de Alumnos</span>
+                  </button>
+                </div>
+              </section>
+            )}
 
             {userRole === 'Coordinator' && (
               <section className="space-y-4">
@@ -2333,6 +2204,15 @@ const App: React.FC = () => {
               <section className="space-y-4">
                 <div className="flex justify-between px-1"><h3 className="text-white font-bold text-lg">Accesos Rápidos</h3></div>
                 <div className="grid grid-cols-2 gap-4">
+                  <button 
+                    onClick={() => { handleNavigation('Asistente'); }}
+                    className="glass-card rounded-3xl p-5 border border-white/5 flex flex-col items-center justify-center gap-3 active:scale-95 transition-all"
+                  >
+                    <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center border border-primary/20 shadow-neon-cyan">
+                      <span className="material-icons-outlined text-primary text-2xl">smart_toy</span>
+                    </div>
+                    <span className="text-xs font-bold text-white text-center">Asistente Coach AI</span>
+                  </button>
                   <button 
                     onClick={() => { handleNavigation('Horario'); }}
                     className="glass-card rounded-3xl p-5 border border-white/5 flex flex-col items-center justify-center gap-3 active:scale-95 transition-all"
@@ -2695,6 +2575,17 @@ const App: React.FC = () => {
                       </div>
                       
                       <div className="flex items-center gap-4">
+                        {/* Payment Checkbox */}
+                        <div className="flex flex-col items-center gap-1">
+                          <span className="text-[8px] font-bold text-white/50 uppercase tracking-tighter">Pagó</span>
+                          <button 
+                            onClick={() => togglePayment(alumno.id!)}
+                            className={`w-6 h-6 rounded-md border flex items-center justify-center transition-all ${pagosHoy[alumno.id!] ? 'bg-emerald-500 border-emerald-500 text-white' : 'bg-white/5 border-white/20 text-transparent'}`}
+                          >
+                            <span className="material-icons-outlined text-[16px]">check</span>
+                          </button>
+                        </div>
+
                         <button 
                           onClick={() => setExpandedAlumnoId(isExpanded ? null : alumno.id!)}
                           className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-white/80 hover:text-white transition-colors"
@@ -3921,100 +3812,6 @@ const App: React.FC = () => {
           <CoachAI />
         )}
 
-        {vista === 'KnowledgeBase' && (
-          <div className="px-6 py-8 space-y-8 page-transition pb-32">
-            <header>
-              <h2 className="text-3xl font-black text-white uppercase tracking-tighter">Centro Técnico</h2>
-              <p className="text-primary text-[10px] font-black uppercase tracking-widest mt-1">Biblioteca de Manuales y Reglamentos</p>
-            </header>
-
-            <section className="space-y-4">
-              <div className="flex justify-between items-center px-1">
-                <h3 className="text-white font-bold text-sm uppercase tracking-wider">Fuentes</h3>
-                <label className="cursor-pointer bg-primary/10 text-primary border border-primary/20 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all">
-                  <span className="flex items-center gap-2">
-                    <span className="material-icons-outlined text-sm">add</span>
-                    Cargar Doc
-                  </span>
-                  <input type="file" accept="application/pdf,.doc,.docx,text/plain" className="hidden" onChange={handleFileUpload} />
-                </label>
-              </div>
-              
-              <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-                {sources.length > 0 ? sources.map(source => (
-                  <div key={source.id} className="min-w-[160px] glass-card rounded-2xl p-4 border border-white/10 flex flex-col gap-2">
-                    <div className="w-10 h-10 bg-white/5 rounded-xl flex items-center justify-center border border-white/10">
-                      <span className="material-icons-outlined text-primary">
-                        {source.type === 'pdf' ? 'picture_as_pdf' : 
-                         (source.type === 'doc' || source.type === 'docx') ? 'article' : 'description'}
-                      </span>
-                    </div>
-                    <p className="text-xs font-bold text-white truncate">{source.name}</p>
-                    <p className="text-[8px] text-white/40 uppercase tracking-widest">{new Date(source.uploadDate).toLocaleDateString()}</p>
-                    <button 
-                      onClick={() => handleDeleteSource(source.id!, source.name)}
-                      className="text-[8px] text-rose-500 font-black uppercase tracking-widest mt-2 hover:text-rose-400"
-                    >
-                      Eliminar
-                    </button>
-                  </div>
-                )) : (
-                  <div className="w-full py-8 text-center border border-dashed border-white/5 rounded-2xl opacity-30 italic text-xs">
-                    Carga los manuales USAG o de la Federación para empezar.
-                  </div>
-                )}
-              </div>
-            </section>
-
-            <section className="flex-1 flex flex-col gap-4">
-              <h3 className="text-white font-bold text-sm uppercase tracking-wider px-1">Consultar Manuales</h3>
-              <div className="glass-card rounded-3xl border border-white/5 flex flex-col h-[400px] overflow-hidden">
-                <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-hide">
-                  {kbMessages.length === 0 && (
-                    <div className="h-full flex flex-col items-center justify-center text-center space-y-4 opacity-30 px-8">
-                      <span className="material-icons-outlined text-4xl text-primary">psychology</span>
-                      <p className="text-xs italic">Pregunta sobre reglamentos, puntajes o metodologías de los manuales cargados.</p>
-                    </div>
-                  )}
-                  {kbMessages.map((msg, idx) => (
-                    <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                      <div className={`max-w-[85%] p-3 rounded-2xl text-xs leading-relaxed ${msg.role === 'user' ? 'bg-primary text-antigravity-black font-bold rounded-tr-none' : 'bg-white/5 text-white/90 border border-white/10 rounded-tl-none'}`}>
-                        <Markdown>{msg.text}</Markdown>
-                      </div>
-                    </div>
-                  ))}
-                  {isKbLoading && (
-                    <div className="flex justify-start">
-                      <div className="bg-white/5 p-3 rounded-2xl rounded-tl-none border border-white/10 flex items-center gap-2">
-                        <div className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce"></div>
-                        <div className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce [animation-delay:0.2s]"></div>
-                        <div className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce [animation-delay:0.4s]"></div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-                <div className="p-4 border-t border-white/5 bg-black/20 flex gap-2">
-                  <input 
-                    type="text" 
-                    value={kbInput}
-                    onChange={(e) => setKbInput(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleKbQuery()}
-                    placeholder="¿Cuál es el valor del Flic-Flac en Viga?"
-                    className="flex-1 bg-antigravity-charcoal border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white outline-none focus:border-primary/50 transition-all"
-                  />
-                  <button 
-                    onClick={handleKbQuery}
-                    disabled={!kbInput.trim() || isKbLoading}
-                    className="w-10 h-10 bg-primary text-antigravity-black rounded-xl flex items-center justify-center shadow-neon-cyan active:scale-95 transition-all disabled:opacity-50"
-                  >
-                    <span className="material-icons-outlined">send</span>
-                  </button>
-                </div>
-              </div>
-            </section>
-          </div>
-        )}
-
         {vista === 'Ajustes' && (
           <div className="px-6 py-8 space-y-8 page-transition pb-24">
             <header>
@@ -5120,9 +4917,7 @@ const App: React.FC = () => {
           {[
             { v: 'Dashboard', i: 'grid_view', l: 'Inicio' },
             { v: 'Alumnos', i: 'group', l: 'Gimnastas' },
-            { v: 'CoreModules', i: 'apps', l: 'Módulos' },
             { v: userRole === 'Coordinator' ? 'Profesores' : 'Horario', i: userRole === 'Coordinator' ? 'badge' : 'calendar_today', l: userRole === 'Coordinator' ? 'Staff' : 'Horario' },
-            { v: 'Asistente', i: 'smart_toy', l: 'IA' },
             { v: 'Ajustes', i: 'app_settings_alt', l: 'Ajustes' }
           ].map(item => (
             <button 
@@ -5560,20 +5355,7 @@ const App: React.FC = () => {
         </div>
       )}
 
-        {/* AI Floating Action Button */}
-        {vista !== 'Asistente' && (
-          <motion.button
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={() => setVista('Asistente')}
-            className="fixed bottom-24 right-6 w-14 h-14 rounded-full bg-primary text-antigravity-black shadow-neon-cyan flex items-center justify-center z-50 border-4 border-antigravity-black"
-            title="Preguntar al Asistente AI"
-          >
-            <span className="material-icons-outlined text-2xl">smart_toy</span>
-          </motion.button>
-        )}
+        {/* Floating AI Assistant - REMOVED per user request */}
 
       {/* Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 bg-antigravity-black/80 backdrop-blur-xl border-t border-white/5 px-6 py-3 flex justify-between items-center z-50 md:hidden">
