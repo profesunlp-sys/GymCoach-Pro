@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import * as XLSX from 'xlsx';
 import mammoth from 'mammoth';
 import { 
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, 
   BarChart, Bar, Cell, Legend, PieChart, Pie
 } from 'recharts';
 import { Alumno, Clase, ViewMode, GrupoConfig, AsistenciaRecord, UserRole, Feedback, Skill, SkillStatus, Apparatus, Source } from './types';
@@ -15,6 +15,64 @@ import { db as firestore, auth, googleProvider, COLLECTIONS, getCollectionData, 
 import { collection, query, where, getDocs, addDoc, doc, updateDoc, onSnapshot, orderBy, setDoc } from 'firebase/firestore';
 import { signInWithPopup, signOut, onAuthStateChanged, User, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, setPersistence, browserLocalPersistence, browserSessionPersistence } from 'firebase/auth';
 import { CoachAI } from './src/components/CoachAI';
+
+const Tooltip = ({ children, text }: { children: React.ReactNode, text: string }) => {
+  return (
+    <div className="relative group flex items-center">
+      {children}
+      <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 px-2 py-1 bg-antigravity-charcoal border border-white/10 text-[10px] text-white rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 shadow-xl">
+        {text}
+      </div>
+    </div>
+  );
+};
+
+const Button = ({ 
+  children, 
+  onClick, 
+  variant = 'primary', 
+  className = '', 
+  disabled = false,
+  type = 'button',
+  title = ''
+}: { 
+  children: React.ReactNode, 
+  onClick?: () => void, 
+  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'success' | 'warning',
+  className?: string,
+  disabled?: boolean,
+  type?: 'button' | 'submit' | 'reset',
+  title?: string
+}) => {
+  const variants = {
+    primary: 'bg-primary text-antigravity-black shadow-neon-cyan hover:brightness-110',
+    secondary: 'bg-antigravity-charcoal text-white border border-white/10 hover:bg-white/5',
+    outline: 'bg-transparent text-primary border border-primary/30 hover:bg-primary/5',
+    ghost: 'bg-transparent text-white/60 hover:text-white hover:bg-white/5',
+    danger: 'bg-rose-500/10 text-rose-500 border border-rose-500/20 hover:bg-rose-500/20',
+    success: 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 hover:bg-emerald-500/20',
+    warning: 'bg-amber-500/10 text-amber-500 border border-amber-500/20 hover:bg-amber-500/20'
+  };
+
+  const content = (
+    <motion.button
+      type={type}
+      onClick={onClick}
+      disabled={disabled}
+      whileHover={{ scale: disabled ? 1 : 1.02 }}
+      whileTap={{ scale: disabled ? 1 : 0.98 }}
+      className={`px-4 py-2 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${variants[variant]} ${className}`}
+    >
+      {children}
+    </motion.button>
+  );
+
+  if (title) {
+    return <Tooltip text={title}>{content}</Tooltip>;
+  }
+
+  return content;
+};
 
 const EditableDropdown = ({ 
   label, 
@@ -57,42 +115,52 @@ const EditableDropdown = ({
         <div className="absolute right-10 top-1/2 -translate-y-1/2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-antigravity-charcoal px-1">
            {value && (
              <>
-               <button 
-                 type="button"
-                 onClick={() => {
-                   const opt = options.find(o => o.nombre === value);
-                   if (opt?.id) {
-                     const newName = window.prompt(`Editar ${label.toLowerCase()}:`, opt.nombre);
-                     if (newName && newName !== opt.nombre) onEdit(opt.id, newName);
-                   }
-                 }}
-                 className="p-1 text-primary hover:bg-primary/10 rounded transition-colors"
-               >
-                 <span className="material-icons-outlined text-xs">edit</span>
-               </button>
-               <button 
-                 type="button"
-                 onClick={() => {
-                   const opt = options.find(o => o.nombre === value);
-                   if (opt?.id) onDelete(opt.id);
-                 }}
-                 className="p-1 text-rose-500 hover:bg-rose-500/10 rounded transition-colors"
-               >
-                 <span className="material-icons-outlined text-xs">delete</span>
-               </button>
+               <Tooltip text={`Editar ${label.toLowerCase()}`}>
+                 <button 
+                   type="button"
+                   onClick={() => {
+                     const opt = options.find(o => o.nombre === value);
+                     if (opt?.id) {
+                       const newName = window.prompt(`Editar ${label.toLowerCase()}:`, opt.nombre);
+                       if (newName && newName !== opt.nombre) onEdit(opt.id, newName);
+                     }
+                   }}
+                   className="p-1 text-primary hover:bg-primary/10 rounded transition-colors"
+                 >
+                   <span className="material-icons-outlined text-xs">edit</span>
+                 </button>
+               </Tooltip>
+               <Tooltip text={`Eliminar ${label.toLowerCase()}`}>
+                 <button 
+                   type="button"
+                   onClick={() => {
+                     const opt = options.find(o => o.nombre === value);
+                     if (opt?.id) onDelete(opt.id);
+                   }}
+                   className="p-1 text-rose-500 hover:bg-rose-500/10 rounded transition-colors"
+                 >
+                   <span className="material-icons-outlined text-xs">delete</span>
+                 </button>
+               </Tooltip>
              </>
            )}
         </div>
-        <button 
-          type="button"
-          onClick={() => setIsAdding(!isAdding)}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-primary hover:scale-110 transition-transform"
-        >
-          <span className="material-icons-outlined text-sm">{isAdding ? 'close' : 'add'}</span>
-        </button>
+        <Tooltip text={isAdding ? 'Cerrar' : `Añadir ${label.toLowerCase()}`}>
+          <button 
+            type="button"
+            onClick={() => setIsAdding(!isAdding)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-primary hover:scale-110 transition-transform"
+          >
+            <span className="material-icons-outlined text-sm">{isAdding ? 'close' : 'add'}</span>
+          </button>
+        </Tooltip>
       </div>
       {isAdding && (
-        <div className="flex gap-2 mt-2 animate-in slide-in-from-top-1 duration-200">
+        <motion.div 
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex gap-2 mt-2"
+        >
           <input 
             type="text" 
             value={newItem} 
@@ -100,8 +168,7 @@ const EditableDropdown = ({
             placeholder={`Nuevo ${label.toLowerCase()}...`}
             className="flex-1 bg-antigravity-charcoal border border-neon-blue rounded-lg px-3 py-2 text-xs text-white outline-none focus:ring-1 focus:ring-neon-blue/50 transition-all"
           />
-          <button 
-            type="button"
+          <Button 
             onClick={() => {
               if (newItem.trim()) {
                 onAdd(newItem.trim());
@@ -109,11 +176,11 @@ const EditableDropdown = ({
                 setIsAdding(false);
               }
             }}
-            className="px-3 py-2 bg-primary text-antigravity-black rounded-lg text-xs font-bold active:scale-95 transition-all"
+            className="!py-2 !px-4"
           >
-            Añadir
-          </button>
-        </div>
+            Guardar
+          </Button>
+        </motion.div>
       )}
     </div>
   );
@@ -1225,14 +1292,21 @@ const App: React.FC = () => {
   };
 
   const handleSaveStudent = async () => {
-    if (!studentForm.nombre || !studentForm.fechaNacimiento) {
-      setNotificacion({ t: "Error", d: "Nombre y Fecha de Nacimiento son obligatorios." });
+    if (!studentForm.nombre?.trim()) {
+      setNotificacion({ t: "Error", d: "El nombre es obligatorio." });
+      return;
+    }
+    if (!studentForm.dni?.trim()) {
+      setNotificacion({ t: "Error", d: "El DNI es obligatorio." });
+      return;
+    }
+    if (!studentForm.fechaNacimiento) {
+      setNotificacion({ t: "Error", d: "La fecha de nacimiento es obligatoria." });
       return;
     }
 
     setIsSavingStudent(true);
     try {
-      // Calcular edad al 31 de diciembre del año corriente
       const currentYear = new Date().getFullYear();
       const birthDate = new Date(studentForm.fechaNacimiento);
       const ageAtEndOfYear = currentYear - (birthDate.getFullYear() || currentYear);
@@ -1271,6 +1345,7 @@ const App: React.FC = () => {
       setNotificacion({ t: "Error", d: "No se pudo guardar el gimnasta. " + (error.message || "") });
     } finally {
       setIsSavingStudent(false);
+      setTimeout(() => setNotificacion(null), 3000);
     }
   };
 
@@ -1623,6 +1698,12 @@ const App: React.FC = () => {
   const handleSaveManualClass = async () => {
     if (!claseGrupo) {
       setNotificacion({ t: "Error", d: "Debes seleccionar un grupo." });
+      setTimeout(() => setNotificacion(null), 3000);
+      return;
+    }
+
+    if (faseInicial.length === 0 && fasePrincipal.length === 0 && faseFinal.length === 0) {
+      setNotificacion({ t: "Error", d: "La clase debe tener al menos una actividad." });
       setTimeout(() => setNotificacion(null), 3000);
       return;
     }
@@ -2064,29 +2145,32 @@ const App: React.FC = () => {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <button 
+                <Button 
                   onClick={() => setIsFocusMode(!isFocusMode)}
-                  className={`w-10 h-10 rounded-full flex items-center justify-center border active:scale-90 transition-all ${isFocusMode ? 'bg-primary text-antigravity-black border-primary shadow-neon-cyan' : 'bg-white/5 text-white/60 border-white/10'}`}
+                  variant={isFocusMode ? 'primary' : 'secondary'}
+                  className="w-10 h-10 !p-0 rounded-full"
                   title="Modo Enfoque"
                 >
                   <span className="material-icons-outlined text-sm">{isFocusMode ? 'visibility_off' : 'visibility'}</span>
-                </button>
+                </Button>
                 {user?.email === COORDINATOR_EMAIL && (
-                  <button 
+                  <Button 
                     onClick={() => setUserRole(prev => prev === 'Coordinator' ? 'Coach' : 'Coordinator')}
-                    className="w-10 h-10 rounded-full glass-card flex items-center justify-center border border-primary/30 text-primary active:scale-90 transition-all"
+                    variant="outline"
+                    className="w-10 h-10 !p-0 rounded-full"
                     title="Alternar Vista"
                   >
                     <span className="material-icons-outlined text-sm">swap_horiz</span>
-                  </button>
+                  </Button>
                 )}
-                <button 
+                <Button 
                   onClick={handleLogout}
-                  className="w-10 h-10 rounded-full glass-card flex items-center justify-center border border-rose-500/30 text-rose-500 active:scale-90 transition-all"
+                  variant="danger"
+                  className="w-10 h-10 !p-0 rounded-full"
                   title="Cerrar Sesión"
                 >
                   <span className="material-icons-outlined text-sm">logout</span>
-                </button>
+                </Button>
               </div>
             </header>
 
@@ -2105,9 +2189,9 @@ const App: React.FC = () => {
                   {userRole === 'Coordinator' ? 'Supervisa el progreso de tus colegas.' : 'Configura tu semana para empezar.'}
                 </p>
                 {userRole === 'Coach' && (
-                  <button onClick={() => handleNavigation('NuevaClase')} className="btn-primary px-7 py-3.5 flex items-center gap-2">
+                  <Button onClick={() => handleNavigation('NuevaClase')} className="px-7 py-3.5">
                     <span className="material-icons-outlined text-sm">add_circle</span> Registrar Clase
-                  </button>
+                  </Button>
                 )}
               </div>
               <div className="absolute -top-12 -right-12 w-48 h-48 bg-white/10 rounded-full blur-3xl"></div>
@@ -2122,12 +2206,18 @@ const App: React.FC = () => {
                   <h3 className="text-rose-500 font-bold text-lg">Alertas Médicas Críticas</h3>
                 </div>
                 <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
-                  {alertasGlobales.map(gimnasta => (
-                    <div key={gimnasta.id} className="min-w-[200px] bg-rose-500/10 border border-rose-500/20 rounded-2xl p-4 space-y-2">
+                  {alertasGlobales.map((gimnasta, idx) => (
+                    <motion.div 
+                      key={gimnasta.id}
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: idx * 0.1 }}
+                      className="min-w-[200px] bg-rose-500/10 border border-rose-500/20 rounded-2xl p-4 space-y-2"
+                    >
                       <p className="text-white font-bold text-xs truncate">{gimnasta.nombre}</p>
                       <p className="text-[10px] text-rose-200/60 italic line-clamp-2">"{gimnasta.alertas[0]}"</p>
                       <p className="text-[8px] font-black uppercase text-rose-500 tracking-widest">{gimnasta.grupo}</p>
-                    </div>
+                    </motion.div>
                   ))}
                 </div>
               </section>
@@ -2779,33 +2869,42 @@ const App: React.FC = () => {
               </div>
               {alumnosFilterMode === 'all' && (
                 <div className="flex gap-2">
-                  <button 
-                    onClick={() => setIsBulkImporting(true)}
-                    className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/60 border border-white/10 active:scale-90 transition-all"
-                    title="Importación Masiva"
-                  >
-                    <span className="material-icons-outlined text-sm">upload_file</span>
-                  </button>
-                  <button 
-                    onClick={() => setIsAddingAlumno(!isAddingAlumno)}
-                    className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary border border-primary/20 active:scale-90 transition-all"
-                  >
-                    <span className="material-icons-outlined text-sm">{isAddingAlumno ? 'close' : 'person_add'}</span>
-                  </button>
-                  <button 
-                    onClick={handleExportAttendance}
-                    className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/60 border border-white/10 active:scale-90 transition-all"
-                    title="Exportar Asistencia Mensual"
-                  >
-                    <span className="material-icons-outlined text-sm">download</span>
-                  </button>
-                  <button 
-                    onClick={handleSendPaymentReminders}
-                    className="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-500 border border-amber-500/20 active:scale-90 transition-all"
-                    title="Recordatorios de Pago"
-                  >
-                    <span className="material-icons-outlined text-sm">notifications_active</span>
-                  </button>
+                  <Tooltip text="Importación Masiva">
+                    <Button 
+                      onClick={() => setIsBulkImporting(true)}
+                      variant="secondary"
+                      className="w-10 h-10 !p-0 rounded-full"
+                    >
+                      <span className="material-icons-outlined text-sm">upload_file</span>
+                    </Button>
+                  </Tooltip>
+                  <Tooltip text={isAddingAlumno ? 'Cerrar' : 'Nuevo Gimnasta'}>
+                    <Button 
+                      onClick={() => setIsAddingAlumno(!isAddingAlumno)}
+                      variant={isAddingAlumno ? 'danger' : 'primary'}
+                      className="w-10 h-10 !p-0 rounded-full"
+                    >
+                      <span className="material-icons-outlined text-sm">{isAddingAlumno ? 'close' : 'person_add'}</span>
+                    </Button>
+                  </Tooltip>
+                  <Tooltip text="Exportar Asistencia Mensual">
+                    <Button 
+                      onClick={handleExportAttendance}
+                      variant="secondary"
+                      className="w-10 h-10 !p-0 rounded-full"
+                    >
+                      <span className="material-icons-outlined text-sm">download</span>
+                    </Button>
+                  </Tooltip>
+                  <Tooltip text="Recordatorios de Pago">
+                    <Button 
+                      onClick={handleSendPaymentReminders}
+                      variant="warning"
+                      className="w-10 h-10 !p-0 rounded-full"
+                    >
+                      <span className="material-icons-outlined text-sm">notifications_active</span>
+                    </Button>
+                  </Tooltip>
                 </div>
               )}
             </div>
@@ -2936,11 +3035,14 @@ const App: React.FC = () => {
                 .filter(a => selectedGrupoFilter === 'Todos' || a.grupo === selectedGrupoFilter)
                 .filter(a => selectedNivelFilter === 'Todos' || a.nivel === selectedNivelFilter)
                 .filter(a => a.nombre.toLowerCase().includes(searchQuery.toLowerCase()) || a.dni.includes(searchQuery))
-                .map(alumno => {
+                .map((alumno, idx) => {
                   const hasAlerts = alumno.alertas && alumno.alertas.length > 0 && alumno.alertas[0] !== '';
                   return (
-                    <div 
+                    <motion.div 
                       key={alumno.id} 
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: idx * 0.03 }}
                       onClick={async () => { 
                         setSelectedAlumno(alumno); 
                         handleNavigation('AlumnoDetalle'); 
@@ -2972,7 +3074,7 @@ const App: React.FC = () => {
                       <button className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/70">
                         <span className="material-icons-outlined text-sm">chevron_right</span>
                       </button>
-                    </div>
+                    </motion.div>
                   );
                 })}
               {alumnos.filter(a => alumnosFilterMode === 'alerts' ? (a.alertas && a.alertas.length > 0 && a.alertas[0] !== '') : true)
@@ -4433,26 +4535,31 @@ const App: React.FC = () => {
           <div className="space-y-8 page-transition pt-8 px-6 pb-24">
             <header className="flex items-center justify-between mb-8">
               <div className="flex items-center gap-4">
-                <button onClick={() => {
-                  setVista('Dashboard');
-                  setIsEditingClase(false);
-                  setEditingClaseId(null);
-                }} className="w-10 h-10 rounded-full bg-antigravity-charcoal flex items-center justify-center text-primary border border-white/5 active:scale-90 transition-all">
+                <Button 
+                  onClick={() => {
+                    setVista('Dashboard');
+                    setIsEditingClase(false);
+                    setEditingClaseId(null);
+                  }} 
+                  variant="secondary"
+                  className="w-10 h-10 !p-0 rounded-full"
+                >
                   <span className="material-icons-outlined">arrow_back</span>
-                </button>
+                </Button>
                 <h2 className="text-white font-black text-2xl uppercase tracking-tighter">{isEditingClase ? 'Editar Clase' : 'Reporte de Clase'}</h2>
               </div>
               {isEditingClase && (
-                <button 
+                <Button 
                   onClick={() => {
                     setVista('Dashboard');
                     setIsEditingClase(false);
                     setEditingClaseId(null);
                   }}
-                  className="px-4 py-2 rounded-xl bg-rose-500/10 text-rose-500 border border-rose-500/20 text-[10px] font-black uppercase tracking-widest"
+                  variant="danger"
+                  className="px-4 py-2"
                 >
                   Cancelar
-                </button>
+                </Button>
               )}
             </header>
             
@@ -4547,12 +4654,12 @@ const App: React.FC = () => {
                     placeholder="Agregar otra opción..." 
                     className="flex-1 crafted-input !py-2"
                   />
-                  <button 
+                  <Button 
                     onClick={() => { if(customInicial) { setFaseInicial(prev => [...prev, customInicial]); setCustomInicial(""); } }}
-                    className="bg-white/10 text-white px-4 py-2 rounded-xl text-xs font-bold"
+                    className="!py-2 !px-4"
                   >
                     Agregar
-                  </button>
+                  </Button>
                 </div>
               </div>
 
@@ -4734,20 +4841,26 @@ const App: React.FC = () => {
         {vista === 'HistorialClases' && (
           <div className="px-6 py-8 space-y-8 page-transition pb-24">
             <header className="flex items-center gap-4">
-              <button onClick={() => setVista('Dashboard')} className="w-10 h-10 rounded-full bg-antigravity-charcoal flex items-center justify-center text-primary border border-white/5 active:scale-90 transition-all">
+              <Button 
+                onClick={() => setVista('Dashboard')} 
+                variant="secondary"
+                className="w-10 h-10 !p-0 rounded-full"
+              >
                 <span className="material-icons-outlined">arrow_back</span>
-              </button>
+              </Button>
               <div>
                 <h2 className="text-3xl font-black text-white uppercase tracking-tighter">Historial</h2>
                 <p className="text-primary text-[10px] font-black uppercase tracking-widest mt-1">Registro de Clases Pasadas</p>
               </div>
-              <button 
-                onClick={handleExportClases}
-                className="ml-auto w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/60 border border-white/10 active:scale-90 transition-all"
-                title="Exportar Historial"
-              >
-                <span className="material-icons-outlined text-sm">download</span>
-              </button>
+              <Tooltip text="Exportar Historial">
+                <Button 
+                  onClick={handleExportClases}
+                  variant="secondary"
+                  className="ml-auto w-10 h-10 !p-0 rounded-full"
+                >
+                  <span className="material-icons-outlined text-sm">download</span>
+                </Button>
+              </Tooltip>
             </header>
 
             <div className="space-y-4">
@@ -4774,9 +4887,12 @@ const App: React.FC = () => {
                 {clases
                   .filter(c => selectedGrupoFilter === 'Todos' || c.grupo === selectedGrupoFilter)
                   .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
-                  .map(clase => (
-                    <div 
+                  .map((clase, idx) => (
+                    <motion.div 
                       key={clase.id} 
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: idx * 0.05 }}
                       onClick={() => { setSelectedClase(clase); handleNavigation('ClaseDetalle'); }}
                       className="glass-card rounded-2xl p-5 border border-white/5 flex items-center justify-between active:scale-95 transition-all cursor-pointer"
                     >
@@ -4792,7 +4908,7 @@ const App: React.FC = () => {
                         </div>
                       </div>
                       <span className="material-icons-outlined text-slate-600 text-sm">chevron_right</span>
-                    </div>
+                    </motion.div>
                   ))}
                 {clases.length === 0 && (
                   <p className="text-center text-white/40 py-10 text-sm italic">No hay clases registradas aún.</p>
@@ -5122,7 +5238,7 @@ const App: React.FC = () => {
                         domain={[0, 100]}
                         tickFormatter={(val) => `${val}%`}
                       />
-                      <Tooltip 
+                      <RechartsTooltip 
                         contentStyle={{ backgroundColor: '#151619', border: '1px solid #ffffff10', borderRadius: '12px' }}
                         cursor={{ fill: '#ffffff05' }}
                         formatter={(value: any) => [`${Number(value).toFixed(1)}%`, 'Asistencia Promedio']}
@@ -5164,7 +5280,7 @@ const App: React.FC = () => {
                       <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
                       <XAxis dataKey="name" stroke="#ffffff40" fontSize={10} tickLine={false} axisLine={false} />
                       <YAxis stroke="#ffffff40" fontSize={10} tickLine={false} axisLine={false} />
-                      <Tooltip 
+                      <RechartsTooltip 
                         contentStyle={{ backgroundColor: '#151619', border: '1px solid #ffffff10', borderRadius: '12px' }}
                         itemStyle={{ color: '#00F0FF', fontSize: '12px', fontWeight: 'bold' }}
                       />
@@ -5186,7 +5302,7 @@ const App: React.FC = () => {
                       <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
                       <XAxis dataKey="name" stroke="#ffffff40" fontSize={10} tickLine={false} axisLine={false} />
                       <YAxis stroke="#ffffff40" fontSize={10} tickLine={false} axisLine={false} />
-                      <Tooltip 
+                      <RechartsTooltip 
                         contentStyle={{ backgroundColor: '#151619', border: '1px solid #ffffff10', borderRadius: '12px' }}
                         cursor={{ fill: '#ffffff05' }}
                       />
@@ -5218,7 +5334,7 @@ const App: React.FC = () => {
                           <Cell key={`cell-${index}`} fill={entry.color} />
                         ))}
                       </Pie>
-                      <Tooltip 
+                      <RechartsTooltip 
                         contentStyle={{ backgroundColor: '#151619', border: '1px solid #ffffff10', borderRadius: '12px' }}
                       />
                       <Legend verticalAlign="bottom" height={36} iconType="circle" />
@@ -5261,7 +5377,7 @@ const App: React.FC = () => {
                       <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
                       <XAxis dataKey="name" stroke="#ffffff40" fontSize={10} tickLine={false} axisLine={false} />
                       <YAxis stroke="#ffffff40" fontSize={10} tickLine={false} axisLine={false} />
-                      <Tooltip 
+                      <RechartsTooltip 
                         contentStyle={{ backgroundColor: '#151619', border: '1px solid #ffffff10', borderRadius: '12px' }}
                         cursor={{ fill: '#ffffff05' }}
                       />
@@ -5443,6 +5559,21 @@ const App: React.FC = () => {
           </div>
         </div>
       )}
+
+        {/* AI Floating Action Button */}
+        {vista !== 'Asistente' && (
+          <motion.button
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={() => setVista('Asistente')}
+            className="fixed bottom-24 right-6 w-14 h-14 rounded-full bg-primary text-antigravity-black shadow-neon-cyan flex items-center justify-center z-50 border-4 border-antigravity-black"
+            title="Preguntar al Asistente AI"
+          >
+            <span className="material-icons-outlined text-2xl">smart_toy</span>
+          </motion.button>
+        )}
 
       {/* Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 bg-antigravity-black/80 backdrop-blur-xl border-t border-white/5 px-6 py-3 flex justify-between items-center z-50 md:hidden">
