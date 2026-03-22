@@ -194,16 +194,46 @@ export async function queryKnowledgeBase(query: string, sources: any[]): Promise
 
     for (const source of sources) {
       if (source.type === 'pdf') {
+        let base64Data = source.content;
+        
+        // Si el contenido es una URL (de Firebase Storage), lo descargamos en vivo
+        if (source.content.startsWith('http')) {
+          try {
+            const response = await fetch(source.content);
+            const blob = await response.blob();
+            base64Data = await new Promise<string>((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onloadend = () => {
+                const result = reader.result as string;
+                resolve(result.split(',')[1]); // Extraer solo la parte base64
+              };
+              reader.onerror = reject;
+              reader.readAsDataURL(blob);
+            });
+          } catch (error) {
+            console.error(`Error al descargar PDF ${source.name} desde Storage:`, error);
+            parts.push({ text: `Documento ${source.name} no se pudo cargar por un error de red.` });
+            continue;
+          }
+        }
+
         parts.push({
           inlineData: {
-            data: source.content,
+            data: base64Data,
             mimeType: 'application/pdf'
           }
         });
+      } else if (source.type === 'doc' || source.type === 'docx') {
+        console.warn(`El formato Word no está soportado vía Base64. Saltando: ${source.name}`);
       } else {
-        // Para texto, docx (ahora extraído a texto) o doc
-        // Enviamos como texto para evitar errores de MIME type no soportado en inlineData
-        parts.push({ text: `Documento: ${source.name}\nContenido: ${source.content}` });
+        // Truncar contenido para no exceder las 200,000 letras/tokens (1 MB max aprox)
+        const charLimit = 200000; 
+        let safeContent = source.content;
+        if (safeContent.length > charLimit) {
+            safeContent = safeContent.substring(0, charLimit);
+            console.warn(`Documento ${source.name} truncado para evitar error 429 de límite de tokens.`);
+        }
+        parts.push({ text: `Documento: ${source.name}\nContenido: ${safeContent}` });
       }
     }
 

@@ -4927,10 +4927,9 @@ const App: React.FC = () => {
           {[
             { v: 'Dashboard', i: 'grid_view', l: 'Inicio' },
             { v: 'Alumnos', i: 'group', l: 'Gimnastas' },
-            { v: userRole === 'Coordinator' ? 'Profesores' : 'Horario', i: userRole === 'Coordinator' ? 'badge' : 'calendar_today', l: userRole === 'Coordinator' ? 'Staff' : 'Horario' },
+            { v: 'Clases', i: 'history', l: 'Clases' },
             { v: 'Asistente', i: 'smart_toy', l: 'IA' },
-            { v: 'KnowledgeBase', i: 'book', l: 'Manuales' },
-            { v: 'Ajustes', i: 'app_settings_alt', l: 'Ajustes' }
+            { v: 'KnowledgeBase', i: 'book', l: 'Manuales' }
           ].map(item => (
             <button 
               key={item.v} 
@@ -5369,45 +5368,25 @@ const App: React.FC = () => {
 
       {/* Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 bg-antigravity-black/80 backdrop-blur-xl border-t border-white/5 px-6 py-3 flex justify-between items-center z-50 md:hidden">
-        <button 
-          onClick={() => setVista('Dashboard')}
-          className={`flex flex-col items-center gap-1 transition-all ${vista === 'Dashboard' ? 'text-primary' : 'text-white/40'}`}
-        >
+        <button onClick={() => setVista('Dashboard')} className={`flex flex-col items-center gap-1 transition-all ${vista === 'Dashboard' ? 'text-primary' : 'text-white/40'}`}>
           <span className="material-icons-outlined text-xl">dashboard</span>
           <span className="text-[8px] font-black uppercase tracking-widest">Inicio</span>
         </button>
-        <button 
-          onClick={() => setVista('Clases')}
-          className={`flex flex-col items-center gap-1 transition-all ${vista === 'Clases' ? 'text-primary' : 'text-white/40'}`}
-        >
-          <span className="material-icons-outlined text-xl">history</span>
-          <span className="text-[8px] font-black uppercase tracking-widest">Clases</span>
-        </button>
-        <div className="relative -top-6">
-          <button 
-            onClick={() => {
-              setIsEditingClase(false);
-              setEditingClaseId(null);
-              setVista('NuevaClase');
-            }}
-            className="w-14 h-14 rounded-full bg-primary text-antigravity-black flex items-center justify-center shadow-neon-cyan active:scale-90 transition-all border-4 border-antigravity-black"
-          >
-            <span className="material-icons-outlined text-2xl">add</span>
-          </button>
-        </div>
-        <button 
-          onClick={() => setVista('Alumnos')}
-          className={`flex flex-col items-center gap-1 transition-all ${vista === 'Alumnos' ? 'text-primary' : 'text-white/40'}`}
-        >
+        <button onClick={() => { setAlumnosFilterMode('all'); setVista('Alumnos'); }} className={`flex flex-col items-center gap-1 transition-all ${vista === 'Alumnos' ? 'text-primary' : 'text-white/40'}`}>
           <span className="material-icons-outlined text-xl">groups</span>
           <span className="text-[8px] font-black uppercase tracking-widest">Gimnastas</span>
         </button>
-        <button 
-          onClick={() => setVista('AsistenciaStats')}
-          className={`flex flex-col items-center gap-1 transition-all ${vista === 'AsistenciaStats' ? 'text-primary' : 'text-white/40'}`}
-        >
-          <span className="material-icons-outlined text-xl">analytics</span>
-          <span className="text-[8px] font-black uppercase tracking-widest">Estadísticas</span>
+        <button onClick={() => setVista('Clases')} className={`flex flex-col items-center gap-1 transition-all ${vista === 'Clases' ? 'text-primary' : 'text-white/40'}`}>
+          <span className="material-icons-outlined text-xl">history</span>
+          <span className="text-[8px] font-black uppercase tracking-widest">Clases</span>
+        </button>
+        <button onClick={() => setVista('Asistente')} className={`flex flex-col items-center gap-1 transition-all ${vista === 'Asistente' ? 'text-primary' : 'text-white/40'}`}>
+          <span className="material-icons-outlined text-[22px]">smart_toy</span>
+          <span className="text-[8px] font-black uppercase tracking-widest">IA</span>
+        </button>
+        <button onClick={() => setVista('KnowledgeBase')} className={`flex flex-col items-center gap-1 transition-all ${vista === 'KnowledgeBase' ? 'text-primary' : 'text-white/40'}`}>
+          <span className="material-icons-outlined text-[22px]">book</span>
+          <span className="text-[8px] font-black uppercase tracking-widest">Manuales</span>
         </button>
       </nav>
 
