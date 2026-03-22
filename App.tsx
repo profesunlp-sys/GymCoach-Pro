@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import Papa from 'papaparse';
 import Markdown from 'react-markdown';
 import { motion, AnimatePresence } from 'motion/react';
@@ -14,7 +14,19 @@ import { SKILL_TREE, DISCIPLINAS, NIVELES as DEFAULT_NIVELES } from './constants
 import { db as firestore, auth, googleProvider, COLLECTIONS, getCollectionData, addDocument, updateDocument, deleteDocument, getAttendanceByStudent } from './services/firebase';
 import { collection, query, where, getDocs, addDoc, doc, updateDoc, onSnapshot, orderBy, setDoc } from 'firebase/firestore';
 import { signInWithPopup, signOut, onAuthStateChanged, User, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, setPersistence, browserLocalPersistence, browserSessionPersistence } from 'firebase/auth';
-import { CoachAI } from './src/components/CoachAI';
+// Lazy loaded components
+const CoachAI = lazy(() => import('./src/components/CoachAI').then(module => ({ default: module.CoachAI })));
+const Staff = lazy(() => import('./src/components/Staff').then(module => ({ default: module.Staff })));
+const Finanzas = lazy(() => import('./src/components/Finanzas').then(module => ({ default: module.Finanzas })));
+const Manuales = lazy(() => import('./src/components/Manuales').then(module => ({ default: module.Manuales })));
+const Habilidades = lazy(() => import('./src/components/Habilidades').then(module => ({ default: module.Habilidades })));
+
+const LoadingFallback = () => (
+  <div className="flex flex-col items-center justify-center p-20 space-y-4">
+    <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin shadow-neon-cyan"></div>
+    <p className="text-primary text-[10px] font-black uppercase tracking-[0.3em] animate-pulse">Cargando Módulo...</p>
+  </div>
+);
 
 const Tooltip = ({ children, text }: { children: React.ReactNode, text: string }) => {
   return (
@@ -3268,393 +3280,45 @@ const App: React.FC = () => {
                 </button>
               </div>
 
-              {/* Skill Filters */}
-              <div className="space-y-4">
-                <div className="relative">
-                  <span className="material-icons-outlined absolute left-3 top-1/2 -translate-y-1/2 text-white/40 text-sm">search</span>
-                  <input 
-                    type="text" 
-                    placeholder="Buscar habilidad por nombre..." 
-                    value={skillSearchQuery}
-                    onChange={(e) => setSkillSearchQuery(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl py-2.5 pl-10 pr-10 text-xs text-white outline-none focus:border-primary/50 transition-all"
-                  />
-                  {skillSearchQuery && (
-                    <button 
-                      onClick={() => setSkillSearchQuery('')}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white"
-                    >
-                      <span className="material-icons text-sm">close</span>
-                    </button>
-                  )}
-                </div>
-                
-                <div className="flex gap-2 overflow-x-auto pb-3 no-scrollbar scroll-smooth" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}>
-                  {['Todos', 'Favoritos', ...Object.keys(SKILL_TREE)].map(ap => (
-                    <button
-                      key={ap}
-                      onClick={() => setSkillApparatusFilter(ap)}
-                      className={`px-5 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all border flex items-center shrink-0 ${
-                        skillApparatusFilter === ap 
-                          ? 'bg-primary text-antigravity-black border-primary shadow-neon-cyan' 
-                          : 'bg-white/5 text-white/60 border-white/10 hover:bg-white/10'
-                      }`}
-                    >
-                      {ap === 'Favoritos' && <span className="material-icons text-[12px] mr-1.5">star</span>}
-                      {ap}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <AnimatePresence mode="wait">
-                {isAddingSkill && (
-                  <motion.div 
-                    initial={{ opacity: 0, y: -20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                    className="glass-card rounded-2xl p-5 border border-primary/30 space-y-4 shadow-neon-cyan"
-                  >
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-white/70 uppercase tracking-widest ml-1">Aparato</label>
-                      <select 
-                        className="w-full crafted-input"
-                        value={newSkill.apparatus}
-                        onChange={(e) => setNewSkill({...newSkill, apparatus: e.target.value as Apparatus, name: ''})}
-                      >
-                        {Object.keys(SKILL_TREE).map(ap => (
-                          <option key={ap} value={ap}>{ap}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-white/70 uppercase tracking-widest ml-1">Habilidad (IFG Tree)</label>
-                      <select 
-                        className="w-full crafted-input"
-                        value={newSkill.name}
-                        onChange={(e) => {
-                          const selectedSkill = SKILL_TREE[newSkill.apparatus as Apparatus]?.find(s => s.name === e.target.value);
-                          setNewSkill({
-                            ...newSkill, 
-                            name: e.target.value,
-                            level: selectedSkill?.difficulty || '1'
-                          });
-                        }}
-                      >
-                        <option value="">Seleccionar habilidad...</option>
-                        {SKILL_TREE[newSkill.apparatus as Apparatus]?.map(s => (
-                          <option key={s.name} value={s.name}>{s.name} ({s.difficulty})</option>
-                        ))}
-                        <option value="custom">-- Otra habilidad --</option>
-                      </select>
-                    </div>
-
-                    {newSkill.name === 'custom' && (
-                      <input 
-                        type="text" 
-                        placeholder="Nombre de la habilidad personalizada"
-                        className="w-full crafted-input"
-                        onChange={(e) => setNewSkill({...newSkill, name: e.target.value})}
-                      />
-                    )}
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-white/70 uppercase tracking-widest ml-1">Estado</label>
-                        <select 
-                          className="w-full crafted-input"
-                          value={newSkill.status}
-                          onChange={(e) => setNewSkill({...newSkill, status: e.target.value as SkillStatus})}
-                        >
-                          <option value="No Iniciado">No Iniciado</option>
-                          <option value="En Proceso">En Proceso</option>
-                          <option value="Dominado">Dominado</option>
-                          <option value="Elite">Elite</option>
-                        </select>
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-white/70 uppercase tracking-widest ml-1">Dificultad IFG</label>
-                        <input 
-                          type="text" 
-                          placeholder="Nivel/Dificultad"
-                          className="w-full crafted-input"
-                          value={newSkill.level}
-                          onChange={(e) => setNewSkill({...newSkill, level: e.target.value})}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-3 px-1">
-                      <button 
-                        onClick={() => setNewSkill({...newSkill, favorite: !newSkill.favorite})}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-all ${
-                          newSkill.favorite 
-                            ? 'bg-primary/10 border-primary/30 text-primary' 
-                            : 'bg-white/5 border-white/10 text-white/40'
-                        }`}
-                      >
-                        <span className="material-icons text-sm">{newSkill.favorite ? 'star' : 'star_border'}</span>
-                        <span className="text-[10px] font-black uppercase tracking-widest">Favorito</span>
-                      </button>
-                    </div>
-
-                    <button 
-                      onClick={handleAddSkill}
-                      disabled={!newSkill.name || newSkill.name === 'custom'}
-                      className="w-full py-3 rounded-xl bg-primary text-antigravity-black font-black uppercase text-[10px] tracking-widest active:scale-95 transition-all disabled:opacity-50 shadow-neon-cyan"
-                    >
-                      Guardar Habilidad
-                    </button>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              <div className="space-y-3">
-                {selectedAlumno.habilidades && selectedAlumno.habilidades.length > 0 ? (
-                  selectedAlumno.habilidades
-                    .filter(skill => {
-                      const matchesSearch = skill.name.toLowerCase().includes(skillSearchQuery.toLowerCase());
-                      const matchesApparatus = skillApparatusFilter === 'Todos' 
-                        ? true 
-                        : skillApparatusFilter === 'Favoritos' 
-                          ? skill.favorite 
-                          : skill.apparatus === skillApparatusFilter;
-                      return matchesSearch && matchesApparatus;
-                    })
-                    .sort((a, b) => {
-                      if (a.favorite && !b.favorite) return -1;
-                      if (!a.favorite && b.favorite) return 1;
-                      return 0;
-                    })
-                    .map(skill => (
-                      <motion.div 
-                        layout
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        key={skill.id} 
-                        className={`glass-card rounded-2xl p-4 border transition-all ${skill.favorite ? 'border-primary/40 bg-primary/5' : 'border-white/5'}`}
-                      >
-                        {editingSkillId === skill.id ? (
-                          <div className="space-y-4">
-                            <input 
-                              type="text" 
-                              placeholder="Nombre de la habilidad"
-                              className="w-full bg-antigravity-charcoal border rounded-xl py-3 px-4 text-sm text-white transition-all border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
-                              value={editingSkillData.name || ''}
-                              onChange={(e) => setEditingSkillData({...editingSkillData, name: e.target.value})}
-                            />
-                            <div className="grid grid-cols-2 gap-3">
-                              <input 
-                                list="apparatus-list"
-                                placeholder="Aparato"
-                                className="bg-antigravity-charcoal border rounded-xl py-3 px-4 text-sm text-white transition-all border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
-                                value={editingSkillData.apparatus || ''}
-                                onChange={(e) => setEditingSkillData({...editingSkillData, apparatus: e.target.value as Apparatus})}
-                              />
-                              <input 
-                                list="status-list"
-                                placeholder="Estado"
-                                className="bg-antigravity-charcoal border rounded-xl py-3 px-4 text-sm text-white transition-all border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
-                                value={editingSkillData.status || ''}
-                                onChange={(e) => setEditingSkillData({...editingSkillData, status: e.target.value as SkillStatus})}
-                              />
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <label className="text-xs text-white/60 font-medium">Nivel:</label>
-                              <input 
-                                type="text" 
-                                placeholder="Ej. 1, E2, USAG 3"
-                                className="flex-1 bg-antigravity-charcoal border rounded-xl py-2 px-3 text-sm text-white transition-all border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
-                                value={editingSkillData.level || ''}
-                                onChange={(e) => setEditingSkillData({...editingSkillData, level: e.target.value})}
-                              />
-                            </div>
-                            <div className="flex gap-2 pt-2">
-                              <button 
-                                onClick={() => handleDeleteSkill(skill.id)}
-                                className="py-3 px-4 rounded-xl border border-red-500/30 text-red-400 font-bold text-xs uppercase tracking-wider bg-red-500/10"
-                              >
-                                <span className="material-icons-outlined text-sm">delete</span>
-                              </button>
-                              <button 
-                                onClick={() => { setEditingSkillId(null); setEditingSkillData({}); }}
-                                className="flex-1 py-3 rounded-xl border border-white/10 text-white font-bold text-xs uppercase tracking-wider"
-                              >
-                                Cancelar
-                              </button>
-                              <button 
-                                onClick={handleUpdateSkill}
-                                disabled={!editingSkillData.name?.trim()}
-                                className="flex-1 py-3 rounded-xl bg-primary text-antigravity-black font-bold text-xs uppercase tracking-wider disabled:opacity-50"
-                              >
-                                Guardar
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="flex flex-col gap-3">
-                            <div className="flex items-center justify-between">
-                              <div className="flex-1" onClick={() => { setEditingSkillId(skill.id); setEditingSkillData(skill); }}>
-                                <div className="flex items-center gap-2">
-                                  <h4 className="text-sm font-bold text-white">{skill.name}</h4>
-                                  {skill.favorite && <span className="material-icons text-primary text-xs">star</span>}
-                                </div>
-                                <p className="text-[10px] text-white/80 font-medium uppercase tracking-wider mt-1">{skill.apparatus} • Nivel {skill.level}</p>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <button 
-                                  onClick={(e) => { e.stopPropagation(); toggleFavoriteSkill(skill.id); }}
-                                  className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${skill.favorite ? 'text-primary' : 'text-white/30 hover:text-white/50'}`}
-                                >
-                                  <span className="material-icons-outlined text-sm">{skill.favorite ? 'star' : 'star_border'}</span>
-                                </button>
-                                <div className={`px-3 py-1 rounded-lg border text-[9px] font-black uppercase tracking-widest ${
-                                  skill.status === 'Dominado' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
-                                  skill.status === 'En Proceso' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
-                                  skill.status === 'Elite' ? 'bg-accent-purple/10 text-accent-purple border-accent-purple/20' :
-                                  'bg-white/5 text-white/70 border-white/10'
-                                }`}>
-                                  {skill.status}
-                                </div>
-                                <button 
-                                  onClick={() => { setEditingSkillId(skill.id); setEditingSkillData(skill); }}
-                                  className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/70 hover:bg-white/10 active:scale-90 transition-all"
-                                  title="Editar"
-                                >
-                                  <span className="material-icons-outlined text-sm">edit</span>
-                                </button>
-                                <button 
-                                  onClick={() => handleDeleteSkill(skill.id)}
-                                  className="w-8 h-8 rounded-lg bg-rose-500/10 flex items-center justify-center text-rose-500 border border-rose-500/20 hover:bg-rose-500/20 active:scale-90 transition-all"
-                                  title="Eliminar"
-                                >
-                                  <span className="material-icons-outlined text-sm">delete</span>
-                                </button>
-                              </div>
-                            </div>
-                            
-                            {skill.history && skill.history.length > 0 && (
-                              <div className="mt-1 pt-3 border-t border-white/5">
-                                <p className="text-[9px] text-white/80 uppercase tracking-widest mb-2 font-bold">
-                                  Línea de tiempo
-                                  {skill.status === 'Dominado' && skill.history.length > 1 && (
-                                    <span className="text-emerald-400 ml-1">
-                                      (Logrado en {Math.ceil(Math.abs(new Date(skill.history[skill.history.length - 1].date).getTime() - new Date(skill.history[0].date).getTime()) / (1000 * 60 * 60 * 24))} días)
-                                    </span>
-                                  )}
-                                </p>
-                                <div className="flex flex-col gap-1.5">
-                                  {skill.history.map((h, i) => (
-                                    <div key={i} className="flex items-center gap-2 text-[10px]">
-                                      <span className="w-1.5 h-1.5 rounded-full bg-primary/50"></span>
-                                      <span className="text-white/90 min-w-[70px]">{new Date(h.date).toLocaleDateString()}</span>
-                                      <span className="text-white/80 font-medium">{h.status}</span>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </motion.div>
-                    ))
-                ) : (
-                  <div className="py-10 text-center opacity-20 italic text-sm">No hay habilidades registradas.</div>
-                )}
-              </div>
+              <Suspense fallback={<LoadingFallback />}>
+                <Habilidades 
+                  selectedAlumno={selectedAlumno}
+                  isAddingSkill={isAddingSkill}
+                  setIsAddingSkill={setIsAddingSkill}
+                  skillSearchQuery={skillSearchQuery}
+                  setSkillSearchQuery={setSkillSearchQuery}
+                  skillApparatusFilter={skillApparatusFilter}
+                  setSkillApparatusFilter={setSkillApparatusFilter}
+                  SKILL_TREE={SKILL_TREE}
+                  newSkill={newSkill}
+                  setNewSkill={setNewSkill}
+                  handleAddSkill={handleAddSkill}
+                  editingSkillId={editingSkillId}
+                  setEditingSkillId={setEditingSkillId}
+                  editingSkillData={editingSkillData}
+                  setEditingSkillData={setEditingSkillData}
+                  handleUpdateSkill={handleUpdateSkill}
+                  handleDeleteSkill={handleDeleteSkill}
+                  toggleFavoriteSkill={toggleFavoriteSkill}
+                />
+              </Suspense>
             </section>
           </div>
         )}
 
-        {vista === 'Planes' && (
-          <div className="px-6 py-8 space-y-8 page-transition pb-24">
-            <header>
-              <h2 className="text-3xl font-black text-white uppercase tracking-tighter">Planes de Trabajo</h2>
-              <p className="text-primary text-[10px] font-black uppercase tracking-widest mt-1">Historial Técnico de Clases</p>
-            </header>
-
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-[10px] uppercase font-bold text-white/90 ml-1">Fecha</label>
-                  <input 
-                    type="date" 
-                    value={planesFilterDate} 
-                    onChange={(e) => setPlanesFilterDate(e.target.value)} 
-                    className="w-full bg-antigravity-charcoal border rounded-2xl px-4 py-3 text-sm text-white border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] uppercase font-bold text-white/90 ml-1">Profesor</label>
-                  <select 
-                    value={planesFilterCoach} 
-                    onChange={(e) => setPlanesFilterCoach(e.target.value)} 
-                    className="w-full bg-antigravity-charcoal border rounded-2xl px-4 py-3 text-sm text-white appearance-none border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
-                  >
-                    <option value="">Todos</option>
-                    {Array.from(new Set(clases.map(c => c.entrenador))).filter(Boolean).map(prof => (
-                      <option key={prof} value={prof}>{prof}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              
-              <div className="flex justify-end">
-                {(planesFilterDate || planesFilterCoach) && (
-                  <button 
-                    onClick={() => { setPlanesFilterDate(""); setPlanesFilterCoach(""); }}
-                    className="text-[10px] text-primary font-bold uppercase tracking-widest"
-                  >
-                    Limpiar Filtros
-                  </button>
-                )}
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              {clases
-                .filter(clase => {
-                  if (planesFilterDate && !clase.fecha.startsWith(planesFilterDate)) return false;
-                  if (planesFilterCoach && clase.entrenador !== planesFilterCoach) return false;
-                  return true;
-                })
-                .map((clase) => (
-                <div 
-                  key={clase.id} 
-                  onClick={() => { setSelectedClase(clase); setVista('ClaseDetalle'); }}
-                  className="glass-card rounded-3xl p-6 border border-white/5 space-y-4 active:scale-95 transition-all cursor-pointer"
-                >
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h4 className="text-lg font-bold text-white leading-none">{clase.grupo}</h4>
-                      <p className="text-[10px] text-primary font-bold uppercase tracking-widest mt-2">{new Date(clase.fecha).toLocaleDateString()} • {clase.entrenador}</p>
-                    </div>
-                    <div className="w-10 h-10 bg-white/5 rounded-xl flex items-center justify-center border border-white/10">
-                      <span className="material-icons-outlined text-white/70 text-sm">description</span>
-                    </div>
-                  </div>
-                  
-                  <div className="flex flex-wrap gap-2">
-                    {clase.apparatusUsed?.slice(0, 2).map((ap, i) => (
-                      <span key={i} className="text-[8px] font-black uppercase tracking-widest px-2 py-1 bg-primary/10 text-primary rounded-md border border-primary/20">{ap}</span>
-                    ))}
-                    {clase.skillsCovered && clase.skillsCovered.length > 0 && (
-                      <span className="text-[8px] font-black uppercase tracking-widest px-2 py-1 bg-accent-purple/10 text-accent-purple rounded-md border border-accent-purple/20">+{clase.skillsCovered.length} Habilidades</span>
-                    )}
-                  </div>
-                </div>
-              ))}
-              {clases.filter(clase => {
-                  if (planesFilterDate && !clase.fecha.startsWith(planesFilterDate)) return false;
-                  if (planesFilterCoach && clase.entrenador !== planesFilterCoach) return false;
-                  return true;
-                }).length === 0 && (
-                <div className="py-20 text-center opacity-20 italic text-sm">No hay planes registrados que coincidan con los filtros.</div>
-              )}
-            </div>
-          </div>
-        )}
+        <Suspense fallback={<LoadingFallback />}>
+          {vista === 'Planes' && (
+            <Manuales 
+              clases={clases}
+              planesFilterDate={planesFilterDate}
+              setPlanesFilterDate={setPlanesFilterDate}
+              planesFilterCoach={planesFilterCoach}
+              setPlanesFilterCoach={setPlanesFilterCoach}
+              setSelectedClase={setSelectedClase}
+              setVista={setVista}
+            />
+          )}
+        </Suspense>
 
         {vista === 'Emergencias' && (
           <div className="px-6 py-8 space-y-8 page-transition pb-24">
@@ -3808,9 +3472,11 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {vista === 'Asistente' && (
-          <CoachAI />
-        )}
+        <Suspense fallback={<LoadingFallback />}>
+          {vista === 'Asistente' && (
+            <CoachAI />
+          )}
+        </Suspense>
 
         {vista === 'Ajustes' && (
           <div className="px-6 py-8 space-y-8 page-transition pb-24">
@@ -4715,98 +4381,25 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {vista === 'Profesores' && userRole === 'Coordinator' && (
-          <div className="px-6 py-8 space-y-8 page-transition pb-24 relative">
-            <header className="flex justify-between items-end">
-              <div>
-                <h2 className="text-3xl font-black text-white uppercase tracking-tighter">Profesores</h2>
-                <p className="text-primary text-[10px] font-black uppercase tracking-widest mt-1">Staff de Entrenamiento</p>
-              </div>
-              <button 
-                onClick={() => setIsAddingProfesor(!isAddingProfesor)}
-                className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary border border-primary/20 active:scale-90 transition-all"
-              >
-                <span className="material-icons-outlined text-sm">{isAddingProfesor ? 'close' : 'person_add'}</span>
-              </button>
-            </header>
-            
-            {isAddingProfesor && (
-              <div className="glass-card rounded-2xl p-5 border border-primary/30 space-y-4 shadow-neon-cyan">
-                <h3 className="text-white font-bold text-sm uppercase tracking-wider">Nuevo Profesor</h3>
-                <input 
-                  type="text" 
-                  placeholder="Nombre completo" 
-                  className="w-full bg-antigravity-charcoal border rounded-xl px-4 py-3 text-sm text-white border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
-                  value={newProfesorName}
-                  onChange={e => setNewProfesorName(e.target.value)}
-                />
-                <div className="flex gap-2 pt-2">
-                  <button 
-                    onClick={() => setIsAddingProfesor(false)}
-                    className="flex-1 py-3 rounded-xl border border-white/10 text-white font-bold text-xs uppercase tracking-wider"
-                  >
-                    Cancelar
-                  </button>
-                  <button 
-                    onClick={handleAddProfesor}
-                    disabled={!newProfesorName.trim() || isSavingProfesor}
-                    className="flex-1 py-3 rounded-xl bg-primary text-antigravity-black font-bold text-xs uppercase tracking-wider disabled:opacity-50"
-                  >
-                    {isSavingProfesor ? 'Guardando...' : 'Guardar'}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            <div className="space-y-4">
-              {profesoresList.map((prof, idx) => {
-                const profClases = clases.filter(c => c.entrenador === prof.nombre);
-                const profGrupos = grupos.filter(g => g.entrenador === prof.nombre);
-                return (
-                  <div 
-                    key={prof.id || idx} 
-                    className="glass-card rounded-3xl p-6 border border-white/5 active:scale-95 transition-all flex items-center justify-between group"
-                  >
-                    <div 
-                      className="flex items-center gap-4 flex-1 cursor-pointer"
-                      onClick={() => { setSelectedProfesor(prof.nombre); handleNavigation('ProfesorDetalle'); }}
-                    >
-                      <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center border border-primary/20">
-                        <span className="material-icons-outlined text-primary text-2xl">badge</span>
-                      </div>
-                      <div>
-                        <h4 className="font-bold text-white text-lg">{prof.nombre}</h4>
-                        <p className="text-[10px] text-white/70 font-medium uppercase tracking-wider">{profGrupos.length} Grupos • {profClases.length} Clases</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteProfesor(prof.id!, prof.nombre);
-                        }}
-                        className="w-8 h-8 rounded-lg bg-rose-500/10 text-rose-500 border border-rose-500/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <span className="material-icons-outlined text-sm">delete</span>
-                      </button>
-                      <span className="material-icons-outlined text-white/40">chevron_right</span>
-                    </div>
-                  </div>
-                );
-              })}
-              {profesoresList.length === 0 && (
-                <p className="text-center text-white/40 py-10 text-sm italic">No hay profesores registrados.</p>
-              )}
-            </div>
-
-            <button 
-              onClick={() => setIsAddingProfesor(true)}
-              className="absolute bottom-28 right-6 w-16 h-16 bg-neon-blue text-white rounded-2xl flex items-center justify-center neon-fab-blue active:scale-95 transition-all z-30"
-            >
-              <span className="material-symbols-outlined text-[32px] font-light">person_add</span>
-            </button>
-          </div>
-        )}
+        <Suspense fallback={<LoadingFallback />}>
+          {vista === 'Profesores' && userRole === 'Coordinator' && (
+            <Staff 
+              userRole={userRole}
+              isAddingProfesor={isAddingProfesor}
+              newProfesorName={newProfesorName}
+              isSavingProfesor={isSavingProfesor}
+              profesoresList={profesoresList}
+              clases={clases}
+              grupos={grupos}
+              setIsAddingProfesor={setIsAddingProfesor}
+              setNewProfesorName={setNewProfesorName}
+              handleAddProfesor={handleAddProfesor}
+              setSelectedProfesor={setSelectedProfesor}
+              handleNavigation={handleNavigation}
+              handleDeleteProfesor={handleDeleteProfesor}
+            />
+          )}
+        </Suspense>
 
         {vista === 'ProfesorDetalle' && selectedProfesor && (
           <div className="px-6 py-8 space-y-8 page-transition pb-24">
@@ -4959,231 +4552,21 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {vista === 'AsistenciaStats' && (
-          <div className="px-6 py-8 space-y-8 page-transition pb-24">
-            <header className="flex items-center gap-4">
-              <button onClick={() => setVista('Dashboard')} className="w-10 h-10 rounded-full bg-antigravity-charcoal flex items-center justify-center text-primary border border-white/5 active:scale-90 transition-all">
-                <span className="material-icons-outlined">arrow_back</span>
-              </button>
-              <div>
-                <h2 className="text-2xl font-black text-white uppercase tracking-tighter">Estadísticas</h2>
-                <p className="text-primary text-[10px] font-black uppercase tracking-widest mt-1">Análisis de Asistencia</p>
-              </div>
-              <button 
-                onClick={handleExportAttendance}
-                className="ml-auto w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-400 border border-emerald-500/20 active:scale-90 transition-all"
-                title="Exportar Excel"
-              >
-                <span className="material-icons-outlined">download</span>
-              </button>
-            </header>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* AI Analysis Button */}
-              <div className="md:col-span-2">
-                <button 
-                  onClick={handleAIAnalysis}
-                  disabled={isAnalyzing}
-                  className="w-full glass-card rounded-[2rem] p-8 border border-primary/20 bg-primary/5 flex items-center justify-between group hover:bg-primary/10 transition-all"
-                >
-                  <div className="flex items-center gap-6">
-                    <div className="w-16 h-16 bg-primary/20 rounded-2xl flex items-center justify-center border border-primary/30 shadow-neon-cyan group-hover:scale-110 transition-transform">
-                      <span className="material-icons-outlined text-primary text-3xl">{isAnalyzing ? 'sync' : 'psychology'}</span>
-                    </div>
-                    <div className="text-left">
-                      <h3 className="text-xl font-black text-white uppercase tracking-tighter">Análisis con IA</h3>
-                      <p className="text-primary text-[10px] font-black uppercase tracking-widest mt-1">Obtener insights y sugerencias</p>
-                    </div>
-                  </div>
-                  <span className="material-icons-outlined text-primary/50 group-hover:translate-x-2 transition-transform">arrow_forward</span>
-                </button>
-              </div>
-
-              {/* Comparativa de Asistencia por Grupo */}
-              <div className="glass-card rounded-[2rem] p-6 border border-white/5 space-y-4 md:col-span-2">
-                <div className="flex justify-between items-center px-2">
-                  <h3 className="text-xs font-black text-white/80 uppercase tracking-widest">Comparativa de Asistencia (%)</h3>
-                  <div className="flex gap-2">
-                    <div className="flex items-center gap-1">
-                      <div className="w-2 h-2 rounded-full bg-primary"></div>
-                      <span className="text-[8px] text-white/50 uppercase font-bold">Asistencia</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="h-80 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={comparativeData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
-                      <XAxis 
-                        dataKey="name" 
-                        stroke="#ffffff40" 
-                        fontSize={10} 
-                        tickLine={false} 
-                        axisLine={false}
-                        interval={0}
-                        angle={-45}
-                        textAnchor="end"
-                        height={60}
-                      />
-                      <YAxis 
-                        stroke="#ffffff40" 
-                        fontSize={10} 
-                        tickLine={false} 
-                        axisLine={false}
-                        domain={[0, 100]}
-                        tickFormatter={(val) => `${val}%`}
-                      />
-                      <RechartsTooltip 
-                        contentStyle={{ backgroundColor: '#151619', border: '1px solid #ffffff10', borderRadius: '12px' }}
-                        cursor={{ fill: '#ffffff05' }}
-                        formatter={(value: any) => [`${Number(value).toFixed(1)}%`, 'Asistencia Promedio']}
-                      />
-                      <Bar dataKey="asistencia" fill="url(#colorAsistencia)" radius={[6, 6, 0, 0]}>
-                        <defs>
-                          <linearGradient id="colorAsistencia" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#00F0FF" stopOpacity={0.8}/>
-                            <stop offset="95%" stopColor="#00F0FF" stopOpacity={0.2}/>
-                          </linearGradient>
-                        </defs>
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 px-2 pt-4 border-t border-white/5">
-                  {comparativeData.slice(0, 4).map((data, i) => (
-                    <div key={i} className="space-y-1">
-                      <p className="text-[8px] text-white/40 uppercase font-bold truncate">{data.name}</p>
-                      <p className="text-lg font-black text-white">{data.asistencia.toFixed(1)}%</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Gráfico de Tendencia */}
-
-              <div className="glass-card rounded-[2rem] p-6 border border-white/5 space-y-4">
-                <h3 className="text-xs font-black text-white/80 uppercase tracking-widest px-2">Tendencia Mensual</h3>
-                <div className="h-64 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={alumnos.reduce((acc: any[], al) => {
-                      const month = new Date(al.fechaIngreso).toLocaleString('default', { month: 'short' });
-                      const existing = acc.find(i => i.name === month);
-                      if (existing) existing.count++;
-                      else acc.push({ name: month, count: 1 });
-                      return acc;
-                    }, []).slice(-6)}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
-                      <XAxis dataKey="name" stroke="#ffffff40" fontSize={10} tickLine={false} axisLine={false} />
-                      <YAxis stroke="#ffffff40" fontSize={10} tickLine={false} axisLine={false} />
-                      <RechartsTooltip 
-                        contentStyle={{ backgroundColor: '#151619', border: '1px solid #ffffff10', borderRadius: '12px' }}
-                        itemStyle={{ color: '#00F0FF', fontSize: '12px', fontWeight: 'bold' }}
-                      />
-                      <Line type="monotone" dataKey="count" stroke="#00F0FF" strokeWidth={3} dot={{ r: 4, fill: '#00F0FF' }} activeDot={{ r: 6, stroke: '#00F0FF', strokeWidth: 2, fill: '#151619' }} />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-
-              {/* Distribución por Grupo */}
-              <div className="glass-card rounded-[2rem] p-6 border border-white/5 space-y-4">
-                <h3 className="text-xs font-black text-white/80 uppercase tracking-widest px-2">Alumnos por Grupo</h3>
-                <div className="h-64 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={grupos.map(g => ({
-                      name: g.nombre,
-                      alumnos: alumnos.filter(a => a.grupo === g.nombre).length
-                    }))}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
-                      <XAxis dataKey="name" stroke="#ffffff40" fontSize={10} tickLine={false} axisLine={false} />
-                      <YAxis stroke="#ffffff40" fontSize={10} tickLine={false} axisLine={false} />
-                      <RechartsTooltip 
-                        contentStyle={{ backgroundColor: '#151619', border: '1px solid #ffffff10', borderRadius: '12px' }}
-                        cursor={{ fill: '#ffffff05' }}
-                      />
-                      <Bar dataKey="alumnos" fill="#A855F7" radius={[6, 6, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-
-              {/* Estado de Pagos */}
-              <div className="glass-card rounded-[2rem] p-6 border border-white/5 space-y-4">
-                <h3 className="text-xs font-black text-white/80 uppercase tracking-widest px-2">Estado de Matrículas</h3>
-                <div className="h-64 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={[
-                          { name: 'Al día', value: alumnos.filter(a => a.estadoPago === 'Al día').length, color: '#10B981' },
-                          { name: 'Pendiente', value: alumnos.filter(a => a.estadoPago === 'Pendiente').length, color: '#F59E0B' },
-                          { name: 'Vencido', value: alumnos.filter(a => a.estadoPago === 'Vencido').length, color: '#EF4444' }
-                        ]}
-                        cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value"
-                      >
-                        {[
-                          { color: '#10B981' },
-                          { color: '#F59E0B' },
-                          { color: '#EF4444' }
-                        ].map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <RechartsTooltip 
-                        contentStyle={{ backgroundColor: '#151619', border: '1px solid #ffffff10', borderRadius: '12px' }}
-                      />
-                      <Legend verticalAlign="bottom" height={36} iconType="circle" />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-
-              {/* Resumen de Asistencia Hoy */}
-              <div className="glass-card rounded-[2rem] p-6 border border-white/5 flex flex-col justify-center items-center text-center space-y-4">
-                <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center border border-primary/20 shadow-neon-cyan">
-                  <span className="material-icons-outlined text-primary text-4xl">how_to_reg</span>
-                </div>
-                <div>
-                  <h4 className="text-3xl font-black text-white">{presentCount}</h4>
-                  <p className="text-[10px] text-primary font-black uppercase tracking-widest mt-1">Presentes Hoy</p>
-                </div>
-                <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
-                  <div className="h-full bg-primary shadow-neon-cyan" style={{ width: `${(presentCount / (alumnos.length || 1)) * 100}%` }}></div>
-                </div>
-                <p className="text-[10px] text-white/40 font-bold uppercase tracking-widest">
-                  {Math.round((presentCount / (alumnos.length || 1)) * 100)}% de la matrícula total
-                </p>
-              </div>
-
-              {/* Progreso por Grupo */}
-              <div className="glass-card rounded-[2rem] p-6 border border-white/5 space-y-4 md:col-span-2">
-                <h3 className="text-xs font-black text-white/80 uppercase tracking-widest px-2">Progreso Técnico por Grupo (Habilidades Dominadas)</h3>
-                <div className="h-64 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={grupos.map(g => {
-                      const groupAlumnos = alumnos.filter(a => a.grupo === g.nombre);
-                      const totalSkills = groupAlumnos.reduce((sum, a) => sum + (a.habilidades?.filter(s => s.status === 'Dominado' || s.status === 'Elite').length || 0), 0);
-                      const avgSkills = groupAlumnos.length > 0 ? (totalSkills / groupAlumnos.length).toFixed(1) : 0;
-                      return {
-                        name: g.nombre,
-                        avg: parseFloat(avgSkills as string)
-                      };
-                    })}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
-                      <XAxis dataKey="name" stroke="#ffffff40" fontSize={10} tickLine={false} axisLine={false} />
-                      <YAxis stroke="#ffffff40" fontSize={10} tickLine={false} axisLine={false} />
-                      <RechartsTooltip 
-                        contentStyle={{ backgroundColor: '#151619', border: '1px solid #ffffff10', borderRadius: '12px' }}
-                        cursor={{ fill: '#ffffff05' }}
-                      />
-                      <Bar dataKey="avg" fill="#00F0FF" radius={[6, 6, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        <Suspense fallback={<LoadingFallback />}>
+          {vista === 'AsistenciaStats' && (
+            <Finanzas 
+              vista={vista}
+              setVista={setVista}
+              handleExportAttendance={handleExportAttendance}
+              handleAIAnalysis={handleAIAnalysis}
+              isAnalyzing={isAnalyzing}
+              comparativeData={comparativeData}
+              alumnos={alumnos}
+              grupos={grupos}
+              presentCount={presentCount}
+            />
+          )}
+        </Suspense>
 
         {/* Focus Mode Overlay */}
         {isFocusMode && (
