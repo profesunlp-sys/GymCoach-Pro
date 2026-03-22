@@ -37,11 +37,16 @@ export const CoachAI = () => {
     if (!files) return;
 
     Array.from(files).forEach(file => {
-      if (file.type !== 'application/pdf') {
-        alert('Solo se permiten archivos PDF');
+      if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || file.name.endsWith('.docx')) {
+        alert('Las imágenes dentro del documento no serán leídas por el asistente, solo el texto.');
+      } else if (file.type !== 'application/pdf') {
+        alert('El archivo es demasiado grande o no se pudo leer. Por favor probá con un PDF más pequeño.');
         return;
       }
       const reader = new FileReader();
+      reader.onerror = () => {
+        alert('El archivo es demasiado grande o no se pudo leer. Por favor probá con un PDF más pequeño.');
+      };
       reader.onload = (event) => {
         const base64 = (event.target?.result as string).split(',')[1];
         setAttachedFiles(prev => [...prev, { name: file.name, data: base64, type: file.type }]);
@@ -94,7 +99,7 @@ export const CoachAI = () => {
       }
     } catch (error: any) {
       console.error("Error en búsqueda:", error);
-      setMessages(prev => [...prev, { role: 'assistant', text: `Error al realizar la búsqueda: ${error.message || error}` }]);
+      setMessages(prev => [...prev, { role: 'assistant', text: 'El asistente no está disponible en este momento. Por favor intentá de nuevo en unos minutos.' }]);
     } finally {
       setIsLoading(false);
     }
