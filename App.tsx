@@ -2110,11 +2110,11 @@ const App: React.FC = () => {
 
             {userRole === 'Coach' && (
               <section className="space-y-4">
-                <div className="flex justify-between px-1"><h3 className="text-white font-bold text-lg">Accesos Rápidos</h3></div>
+                <div className="flex flex-col px-1"><h3 className="text-white font-bold text-lg">Accesos Rápidos</h3><p className="text-[10px] text-white/50 mt-1">Empezá por Lista de Asistencia para registrar la clase de hoy.</p></div>
                 <div className="grid grid-cols-2 gap-4">
                   <button 
                     onClick={() => { handleNavigation('ListasDeAsistencia'); }}
-                    className="glass-card rounded-3xl p-5 border border-white/5 flex flex-col items-center justify-center gap-3 active:scale-95 transition-all"
+                    className="glass-card rounded-3xl p-5 border-2 border-neon-cyan flex flex-col items-center justify-center gap-3 active:scale-95 transition-all shadow-[0_0_15px_rgba(0,240,255,0.3)]"
                   >
                     <div className="w-12 h-12 bg-neon-cyan/10 rounded-2xl flex items-center justify-center border border-neon-cyan/20 shadow-neon-cyan">
                       <span className="material-icons-outlined text-neon-cyan text-2xl">fact_check</span>
@@ -2129,7 +2129,7 @@ const App: React.FC = () => {
                     <div className="w-12 h-12 bg-accent-purple/10 rounded-2xl flex items-center justify-center border border-accent-purple/20 shadow-neon-purple">
                       <span className="material-icons-outlined text-accent-purple text-2xl">group</span>
                     </div>
-                    <span className="text-xs font-bold text-white text-center">Datos de Alumnos</span>
+                    <span className="text-xs font-bold text-white text-center flex flex-col items-center gap-1">Datos de Alumnos<span className="text-[9px] text-white/50 font-medium mt-1">Ver gimnastas</span></span>
                   </button>
 
                   <button 
@@ -2139,7 +2139,7 @@ const App: React.FC = () => {
                     <div className="w-12 h-12 bg-rose-500/10 rounded-2xl flex items-center justify-center border border-rose-500/20 shadow-neon-rose">
                       <span className="material-icons-outlined text-rose-500 text-2xl">medical_services</span>
                     </div>
-                    <span className="text-xs font-bold text-white text-center">Obs. de Salud</span>
+                    <span className="text-xs font-bold text-white text-center flex flex-col items-center gap-1">Obs. de Salud<span className="text-[9px] text-white/50 font-medium mt-1">Registro médico</span></span>
                   </button>
 
                   <button 
@@ -2149,7 +2149,7 @@ const App: React.FC = () => {
                     <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center border border-primary/20 shadow-neon-cyan">
                       <span className="material-icons-outlined text-primary text-2xl">analytics</span>
                     </div>
-                    <span className="text-xs font-bold text-white text-center">Estadísticas</span>
+                    <span className="text-xs font-bold text-white text-center flex flex-col items-center gap-1">Estadísticas<span className="text-[9px] text-white/50 font-medium mt-1">Ver reportes</span></span>
                   </button>
 
                   <button 
@@ -2159,7 +2159,7 @@ const App: React.FC = () => {
                     <div className="w-12 h-12 bg-indigo-500/10 rounded-2xl flex items-center justify-center border border-indigo-500/20 shadow-neon-purple">
                       <span className="material-icons-outlined text-indigo-400 text-2xl">history</span>
                     </div>
-                    <span className="text-xs font-bold text-white text-center">Historial Clases</span>
+                    <span className="text-xs font-bold text-white text-center flex flex-col items-center gap-1">Historial Clases<span className="text-[9px] text-white/50 font-medium mt-1">Clases anteriores</span></span>
                   </button>
 
                   <button 
@@ -2169,7 +2169,7 @@ const App: React.FC = () => {
                     <div className="w-12 h-12 bg-amber-500/10 rounded-2xl flex items-center justify-center border border-amber-500/20 shadow-neon-amber">
                       <span className="material-icons-outlined text-amber-500 text-2xl">emergency</span>
                     </div>
-                    <span className="text-xs font-bold text-white text-center">Emergencias</span>
+                    <span className="text-xs font-bold text-white text-center">Contactos de Emergencia</span>
                   </button>
                 </div>
               </section>
@@ -2185,10 +2185,12 @@ const App: React.FC = () => {
             </header>
 
             <section className="space-y-4">
-              <div className="flex justify-between items-center">
-                <h3 className="text-accent-purple font-bold text-lg active-glow">
-                  {editingGroup ? 'Editar Grupo' : 'Configuración de Horario'}
-                </h3>
+              <div className="flex flex-col items-start">
+                <div className="flex justify-between w-full items-center">
+                  <h3 className="text-accent-purple font-bold text-2xl active-glow">
+                    {editingGroup ? 'Editar Grupo' : 'Crear Nuevo Grupo'}
+                  </h3></div>
+                  <p className="text-[10px] text-white/60 mt-2">Completá estos datos para crear un grupo nuevo. Solo necesitás hacerlo una vez por grupo.</p>
                 {editingGroup && (
                   <button 
                     onClick={() => {
@@ -2292,7 +2294,7 @@ const App: React.FC = () => {
             </section>
 
             <section className="space-y-4">
-              <div className="flex justify-between px-1"><h3 className="text-white font-bold text-lg">Mis Grupos</h3></div>
+              <div className="flex justify-between px-1"><h3 className="text-white font-bold text-2xl">Mis Grupos</h3></div>
               {grupos.length > 0 ? grupos.map((g, idx) => (
                 <div key={idx} className="glass-card rounded-[1.5rem] p-6 space-y-5 border border-white/5">
                   <div className="flex justify-between items-start">
@@ -2302,7 +2304,7 @@ const App: React.FC = () => {
                       {g.entrenador && <p className="text-[10px] text-primary mt-1 font-bold uppercase tracking-wider">Prof: {g.entrenador}</p>}
                     </div>
                     <div className="flex flex-col items-end gap-2">
-                      <div className="bg-primary/10 text-primary text-[10px] font-black px-3 py-1.5 rounded-lg border border-primary/20 tracking-wider shadow-neon-cyan uppercase">Active</div>
+                      <div className="bg-primary/10 text-primary text-[10px] font-black px-3 py-1.5 rounded-lg border border-primary/20 tracking-wider shadow-neon-cyan uppercase">Activo</div>
                       <div className="flex gap-2">
                         <button 
                           onClick={(e) => { 
@@ -2318,17 +2320,17 @@ const App: React.FC = () => {
                             }
                             window.scrollTo({ top: 0, behavior: 'smooth' });
                           }}
-                          className="text-primary bg-primary/10 p-2 rounded-lg border border-primary/20 hover:bg-primary/20 transition-all flex items-center justify-center"
+                          className="text-primary bg-primary/10 p-4 rounded-xl border border-primary/20 hover:bg-primary/20 transition-all flex items-center justify-center"
                           title="Editar grupo"
                         >
-                          <span className="material-icons-outlined text-[16px]">edit</span>
+                          <span className="material-icons-outlined text-[24px]">edit</span>
                         </button>
                         <button 
                           onClick={(e) => { e.stopPropagation(); handleDeleteGroup(g); }}
-                          className="text-rose-500 bg-rose-500/10 p-2 rounded-lg border border-rose-500/20 hover:bg-rose-500/20 transition-all flex items-center justify-center"
+                          className="text-rose-500 bg-rose-500/10 p-4 rounded-xl border border-rose-500/20 hover:bg-rose-500/20 transition-all flex items-center justify-center"
                           title="Eliminar grupo"
                         >
-                          <span className="material-icons-outlined text-[16px]">delete</span>
+                          <span className="material-icons-outlined text-[24px]">delete</span>
                         </button>
                       </div>
                     </div>
@@ -2690,7 +2692,7 @@ const App: React.FC = () => {
                 {alumnosFilterMode === 'alerts' ? 'Obs. de Salud' : 'Gimnastas'}
               </h2>
               <p className="text-primary text-[10px] font-black uppercase tracking-widest mt-1">
-                {alumnosFilterMode === 'alerts' ? 'Gimnastas con Alertas Médicas' : `Base de Datos ${userRole === 'Coordinator' ? 'Global' : 'del Grupo'}`}
+                {alumnosFilterMode === 'alerts' ? 'Gimnastas con Alertas Médicas' : 'Tus alumnas registradas'}
               </p>
             </div>
             <div className="flex items-center gap-4">
@@ -2779,7 +2781,7 @@ const App: React.FC = () => {
               </div>
               <button 
                 onClick={clearAlumnosFilters}
-                className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-[10px] text-white/60 hover:text-white transition-all h-[26px] flex items-center gap-1"
+                className="bg-white/5 border border-white/10 rounded-xl px-5 py-3 text-xs text-white/80 hover:text-white transition-all flex items-center gap-2 shadow-sm"
               >
                 <span className="material-icons-outlined text-xs">filter_alt_off</span>
                 Limpiar
@@ -3915,7 +3917,7 @@ const App: React.FC = () => {
                 >
                   <div className="flex items-center gap-3">
                     <span className="material-icons-outlined text-neon-cyan text-lg">cloud_download</span>
-                    <span className="text-xs font-medium text-white">Exportar Copia de Seguridad</span>
+                    <div className="flex flex-col items-start"><span className="text-xs font-medium text-white">Guardar mis datos</span><span className="text-[9px] text-white/50 font-normal mt-0.5">Guardá una copia de toda tu información.</span></div>
                   </div>
                   <span className="material-icons-outlined text-white/60 text-sm">chevron_right</span>
                 </button>
@@ -3934,7 +3936,7 @@ const App: React.FC = () => {
                   >
                     <div className="flex items-center gap-3">
                       <span className="material-icons-outlined text-primary text-lg">cloud_upload</span>
-                      <span className="text-xs font-medium text-white">Importar Copia de Seguridad</span>
+                      <div className="flex flex-col items-start"><span className="text-xs font-medium text-white">Recuperar mis datos</span><span className="text-[9px] text-white/50 font-normal mt-0.5">Restaurá información guardada anteriormente.</span></div>
                     </div>
                     <span className="material-icons-outlined text-white/60 text-sm">chevron_right</span>
                   </label>
@@ -3954,8 +3956,8 @@ const App: React.FC = () => {
             </div>
 
             <div className="p-6 text-center opacity-40">
-              <p className="text-[9px] font-black uppercase tracking-[0.5em] text-white mb-2">GymCoach Pro v2.0 Cloud</p>
-              <p className="text-[10px] text-white/60">Desarrollado para la excelencia gimnástica.</p>
+              
+              
             </div>
           </div>
         )}
@@ -5405,7 +5407,7 @@ const App: React.FC = () => {
           className={`flex flex-col items-center gap-1 transition-all ${vista === 'AsistenciaStats' ? 'text-primary' : 'text-white/40'}`}
         >
           <span className="material-icons-outlined text-xl">analytics</span>
-          <span className="text-[8px] font-black uppercase tracking-widest">Stats</span>
+          <span className="text-[8px] font-black uppercase tracking-widest">Estadísticas</span>
         </button>
       </nav>
 
