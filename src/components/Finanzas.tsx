@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, Tooltip as RechartsTooltip, Bar, LineChart, Line, PieChart, Pie, Cell, Legend } from 'recharts';
-import { Alumno, GrupoConfig, ViewMode } from '../types';
+import { Alumno, GrupoConfig, ViewMode } from '../../types';
 
 interface FinanzasProps {
   vista: ViewMode;

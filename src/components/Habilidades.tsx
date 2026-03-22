@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Alumno, Skill, SkillStatus, Apparatus } from '../types';
+import { Alumno, Skill, SkillStatus, Apparatus } from '../../types';
 
 interface HabilidadesProps {
   selectedAlumno: Alumno;

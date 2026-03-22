@@ -1,8 +1,8 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Button } from './Button';
-import { Clase, GrupoConfig, ViewMode } from '../types';
+import { Button } from '../../App';
+import { Clase, GrupoConfig, ViewMode } from '../../types';
 
 interface StaffProps {
   userRole: string;
