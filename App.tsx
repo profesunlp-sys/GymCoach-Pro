@@ -1998,26 +1998,29 @@ const App: React.FC = () => {
               <div className="flex items-center gap-2">
                 <button 
                   onClick={() => setIsFocusMode(!isFocusMode)}
-                  className={`w-10 h-10 rounded-full flex items-center justify-center border active:scale-90 transition-all ${isFocusMode ? 'bg-primary text-antigravity-black border-primary shadow-neon-cyan' : 'bg-white/5 text-white/60 border-white/10'}`}
+                  className={`px-3 h-10 rounded-2xl flex items-center justify-center gap-2 border active:scale-90 transition-all ${isFocusMode ? 'bg-primary text-antigravity-black border-primary shadow-neon-cyan' : 'bg-white/5 text-white/60 border-white/10'}`}
                   title="Modo Enfoque"
                 >
                   <span className="material-icons-outlined text-sm">{isFocusMode ? 'visibility_off' : 'visibility'}</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest hidden xs:block">{isFocusMode ? 'Ver Todo' : 'Foco'}</span>
                 </button>
                 {user?.email === COORDINATOR_EMAIL && (
                   <button 
                     onClick={() => setUserRole(prev => prev === 'Coordinator' ? 'Coach' : 'Coordinator')}
-                    className="w-10 h-10 rounded-full glass-card flex items-center justify-center border border-primary/30 text-primary active:scale-90 transition-all"
+                    className="px-3 h-10 rounded-2xl glass-card flex items-center justify-center gap-2 border border-primary/30 text-primary active:scale-90 transition-all"
                     title="Alternar Vista"
                   >
                     <span className="material-icons-outlined text-sm">swap_horiz</span>
+                    <span className="text-[10px] font-black uppercase tracking-widest hidden xs:block">Vista</span>
                   </button>
                 )}
                 <button 
                   onClick={handleLogout}
-                  className="w-10 h-10 rounded-full glass-card flex items-center justify-center border border-rose-500/30 text-rose-500 active:scale-90 transition-all"
+                  className="px-3 h-10 rounded-2xl glass-card flex items-center justify-center gap-2 border border-rose-500/30 text-rose-500 active:scale-90 transition-all"
                   title="Cerrar Sesión"
                 >
                   <span className="material-icons-outlined text-sm">logout</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest hidden xs:block">Salir</span>
                 </button>
               </div>
             </header>
@@ -2220,14 +2223,13 @@ const App: React.FC = () => {
                           </div>
                           <button 
                             onClick={() => {
-                              // Podríamos filtrar el historial de clases por este profesor
-                              setVista('HistorialClases');
-                              // Agregar lógica de filtro si fuera necesario en el futuro
+                              setPlanesFilterCoach(prof.nombre);
+                              setVista('Planes');
                             }}
                             className="p-3 rounded-2xl border border-primary/20 bg-primary/5 flex flex-col items-center justify-center gap-1 active:scale-95 transition-all"
                           >
                             <span className="material-icons-outlined text-primary text-xl">visibility</span>
-                            <span className="text-[8px] uppercase tracking-tighter text-primary font-black text-center">Ver Todas</span>
+                            <span className="text-[8px] uppercase tracking-tighter text-primary font-black text-center">Detalles</span>
                           </button>
                         </div>
                       </div>
@@ -2281,16 +2283,26 @@ const App: React.FC = () => {
 
             {userRole === 'Coach' && (
               <section className="space-y-4">
-                <div className="flex flex-col px-1"><h3 className="text-white font-bold text-lg">Accesos Rápidos</h3><p className="text-[10px] text-white/50 mt-1">Empezá por Lista de Asistencia para registrar la clase de hoy.</p></div>
+                <div className="flex flex-col px-1 border-l-2 border-primary/30 pl-4">
+                  <h3 className="text-white font-black text-lg uppercase tracking-tighter">Accesos Rápidos</h3>
+                  <p className="text-[10px] text-white/50 mt-1 font-medium">¿Por dónde empezar? Tocá <span className="text-primary font-bold italic">Lista de Asistencia</span> para registrar la clase de hoy.</p>
+                </div>
                 <div className="grid grid-cols-2 gap-4">
                   <button 
                     onClick={() => { handleNavigation('ListasDeAsistencia'); }}
-                    className="glass-card rounded-3xl p-5 border-2 border-neon-cyan flex flex-col items-center justify-center gap-3 active:scale-95 transition-all shadow-[0_0_15px_rgba(0,240,255,0.3)]"
+                    className="col-span-2 glass-card rounded-[2.5rem] p-8 border-2 border-primary flex items-center justify-between active:scale-95 transition-all shadow-neon-cyan group overflow-hidden relative"
                   >
-                    <div className="w-12 h-12 bg-neon-cyan/10 rounded-2xl flex items-center justify-center border border-neon-cyan/20 shadow-neon-cyan">
-                      <span className="material-icons-outlined text-neon-cyan text-2xl">fact_check</span>
+                    <div className="relative z-10 flex items-center gap-6">
+                      <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center border border-primary/20 shadow-neon-cyan">
+                        <span className="material-icons-outlined text-primary text-4xl">fact_check</span>
+                      </div>
+                      <div className="text-left">
+                        <span className="text-xl font-black text-white uppercase tracking-tighter block leading-none">Lista de Asistencia</span>
+                        <span className="text-[10px] text-primary font-bold uppercase tracking-widest mt-2 block opacity-80 italic">Iniciar Registro de Clase</span>
+                      </div>
                     </div>
-                    <span className="text-xs font-bold text-white text-center">Lista de Asistencia</span>
+                    <span className="material-icons-outlined text-primary text-3xl opacity-30 group-hover:translate-x-2 transition-transform relative z-10">arrow_forward</span>
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl -mr-16 -mt-16"></div>
                   </button>
                   
                   <button 
@@ -2300,7 +2312,7 @@ const App: React.FC = () => {
                     <div className="w-12 h-12 bg-accent-purple/10 rounded-2xl flex items-center justify-center border border-accent-purple/20 shadow-neon-purple">
                       <span className="material-icons-outlined text-accent-purple text-2xl">group</span>
                     </div>
-                    <span className="text-xs font-bold text-white text-center flex flex-col items-center gap-1">Datos de Alumnos<span className="text-[9px] text-white/50 font-medium mt-1">Ver gimnastas</span></span>
+                    <span className="text-xs font-bold text-white text-center flex flex-col items-center gap-1">Gimnastas<span className="text-[9px] text-white/50 font-medium mt-1">Fichas técnicas</span></span>
                   </button>
 
                   <button 
@@ -2310,7 +2322,7 @@ const App: React.FC = () => {
                     <div className="w-12 h-12 bg-rose-500/10 rounded-2xl flex items-center justify-center border border-rose-500/20 shadow-neon-rose">
                       <span className="material-icons-outlined text-rose-500 text-2xl">medical_services</span>
                     </div>
-                    <span className="text-xs font-bold text-white text-center flex flex-col items-center gap-1">Obs. de Salud<span className="text-[9px] text-white/50 font-medium mt-1">Registro médico</span></span>
+                    <span className="text-xs font-bold text-white text-center flex flex-col items-center gap-1">Observaciones<span className="text-[9px] text-white/50 font-medium mt-1">Salud y alertas</span></span>
                   </button>
 
                   <button 
@@ -2320,7 +2332,7 @@ const App: React.FC = () => {
                     <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center border border-primary/20 shadow-neon-cyan">
                       <span className="material-icons-outlined text-primary text-2xl">analytics</span>
                     </div>
-                    <span className="text-xs font-bold text-white text-center flex flex-col items-center gap-1">Estadísticas<span className="text-[9px] text-white/50 font-medium mt-1">Ver reportes</span></span>
+                    <span className="text-xs font-bold text-white text-center flex flex-col items-center gap-1">Reportes<span className="text-[9px] text-white/50 font-medium mt-1">Estadísticas</span></span>
                   </button>
 
                   <button 
@@ -2330,17 +2342,22 @@ const App: React.FC = () => {
                     <div className="w-12 h-12 bg-indigo-500/10 rounded-2xl flex items-center justify-center border border-indigo-500/20 shadow-neon-purple">
                       <span className="material-icons-outlined text-indigo-400 text-2xl">history</span>
                     </div>
-                    <span className="text-xs font-bold text-white text-center flex flex-col items-center gap-1">Historial Clases<span className="text-[9px] text-white/50 font-medium mt-1">Clases anteriores</span></span>
+                    <span className="text-xs font-bold text-white text-center flex flex-col items-center gap-1">Historial<span className="text-[9px] text-white/50 font-medium mt-1">Clases pasadas</span></span>
                   </button>
 
                   <button 
                     onClick={() => { handleNavigation('Emergencias'); }}
-                    className="glass-card rounded-3xl p-5 border border-white/5 flex flex-col items-center justify-center gap-3 active:scale-95 transition-all"
+                    className="glass-card rounded-3xl p-5 border border-white/5 flex flex-col items-center justify-center gap-3 active:scale-95 transition-all col-span-2 mt-2"
                   >
-                    <div className="w-12 h-12 bg-amber-500/10 rounded-2xl flex items-center justify-center border border-amber-500/20 shadow-neon-amber">
-                      <span className="material-icons-outlined text-amber-500 text-2xl">emergency</span>
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-amber-500/10 rounded-2xl flex items-center justify-center border border-amber-500/20 shadow-neon-amber">
+                        <span className="material-icons-outlined text-amber-500 text-2xl">contact_phone</span>
+                      </div>
+                      <div className="text-left">
+                        <span className="text-sm font-bold text-white block">S.O.S - Contactos de Urgencia</span>
+                        <span className="text-[9px] text-white/50 font-medium italic block mt-0.5">Llamada rápida a familiares y médicos</span>
+                      </div>
                     </div>
-                    <span className="text-xs font-bold text-white text-center">Contactos de Emergencia</span>
                   </button>
                 </div>
               </section>
@@ -3771,8 +3788,8 @@ const App: React.FC = () => {
                 <span className="material-icons-outlined">arrow_back</span>
               </button>
               <div>
-                <h2 className="text-3xl font-black text-white uppercase tracking-tighter">Emergencias</h2>
-                <p className="text-rose-500 text-[10px] font-black uppercase tracking-widest mt-1">Contacto Médico de Urgencia</p>
+                <h2 className="text-3xl font-black text-white uppercase tracking-tighter">Contactos de Urgencia</h2>
+                <p className="text-rose-500 text-[10px] font-black uppercase tracking-widest mt-1">Llamada inmediata a familiares y médicos</p>
               </div>
             </header>
 
@@ -4565,20 +4582,18 @@ const App: React.FC = () => {
                 }} className="w-10 h-10 rounded-full bg-antigravity-charcoal flex items-center justify-center text-primary border border-white/5 active:scale-90 transition-all">
                   <span className="material-icons-outlined">arrow_back</span>
                 </button>
-                <h2 className="text-white font-black text-2xl uppercase tracking-tighter">{isEditingClase ? 'Editar Clase' : 'Reporte de Clase'}</h2>
+                <div>
+                  <h2 className="text-white font-black text-2xl uppercase tracking-tighter leading-none">{isEditingClase ? 'Editar Clase' : 'Reporte de Clase'}</h2>
+                  <p className="text-primary text-[8px] font-black uppercase tracking-widest mt-1 italic">Paso a paso o por voz</p>
+                </div>
               </div>
-              {isEditingClase && (
-                <button 
-                  onClick={() => {
-                    setVista('Dashboard');
-                    setIsEditingClase(false);
-                    setEditingClaseId(null);
-                  }}
-                  className="px-4 py-2 rounded-xl bg-rose-500/10 text-rose-500 border border-rose-500/20 text-[10px] font-black uppercase tracking-widest"
-                >
-                  Cancelar
-                </button>
-              )}
+              <button 
+                onClick={() => setVista('Asistente')}
+                className="flex items-center gap-2 px-4 py-2 bg-primary/10 border border-primary/30 text-primary rounded-2xl active:scale-95 transition-all"
+              >
+                <span className="material-icons-outlined text-sm">psychology</span>
+                <span className="text-[10px] font-black uppercase tracking-widest">IA por Voz</span>
+              </button>
             </header>
             
             <div className="space-y-6">
@@ -5561,27 +5576,22 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-antigravity-black/80 backdrop-blur-xl border-t border-white/5 px-6 py-3 flex justify-between items-center z-50 md:hidden">
+      <nav className="fixed bottom-0 left-0 right-0 bg-antigravity-black/80 backdrop-blur-xl border-t border-white/5 px-6 py-3 flex justify-between items-center z-50 md:hidden pb-safe">
         <button onClick={() => setVista('Dashboard')} className={`flex flex-col items-center gap-1 transition-all ${vista === 'Dashboard' ? 'text-primary' : 'text-white/40'}`}>
-          <span className="material-icons-outlined text-xl">dashboard</span>
-          <span className="text-[8px] font-black uppercase tracking-widest">Inicio</span>
+          <span className="material-icons-outlined text-xl">home</span>
+          <span className="text-[10px] font-black uppercase tracking-widest">Inicio</span>
         </button>
         <button onClick={() => { setAlumnosFilterMode('all'); setVista('Alumnos'); }} className={`flex flex-col items-center gap-1 transition-all ${vista === 'Alumnos' ? 'text-primary' : 'text-white/40'}`}>
           <span className="material-icons-outlined text-xl">groups</span>
-          <span className="text-[8px] font-black uppercase tracking-widest">Gimnastas</span>
+          <span className="text-[10px] font-black uppercase tracking-widest">Alumnos</span>
         </button>
         <button onClick={() => setVista('Clases')} className={`flex flex-col items-center gap-1 transition-all ${vista === 'Clases' ? 'text-primary' : 'text-white/40'}`}>
-          <span className="material-icons-outlined text-xl">history</span>
-          <span className="text-[8px] font-black uppercase tracking-widest">Clases</span>
+          <span className="material-icons-outlined text-xl">history_edu</span>
+          <span className="text-[10px] font-black uppercase tracking-widest">Clases</span>
         </button>
-        <button onClick={() => setVista('Asistente')} className={`flex flex-col items-center gap-1 transition-all ${vista === 'Asistente' ? 'text-primary' : 'text-white/40'}`}>
-          <span className="material-icons-outlined text-[22px]">smart_toy</span>
-          <span className="text-[8px] font-black uppercase tracking-widest">IA</span>
-        </button>
-        <button onClick={() => setVista('KnowledgeBase')} className={`flex flex-col items-center gap-1 transition-all ${vista === 'KnowledgeBase' ? 'text-primary' : 'text-white/40'}`}>
-          <span className="material-icons-outlined text-[22px]">book</span>
-          <span className="text-[8px] font-black uppercase tracking-widest">Manuales</span>
+        <button onClick={() => setVista('Ajustes')} className={`flex flex-col items-center gap-1 transition-all ${vista === 'Ajustes' ? 'text-primary' : 'text-white/40'}`}>
+          <span className="material-icons-outlined text-xl">person</span>
+          <span className="text-[10px] font-black uppercase tracking-widest">Perfil</span>
         </button>
       </nav>
 
