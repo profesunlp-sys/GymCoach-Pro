@@ -1387,14 +1387,32 @@ const App: React.FC = () => {
 
   const handleAddFeedback = async () => {
     if (!newFeedback.trim() || !selectedClase?.id) return;
+    const urgentCb = document.getElementById('urgentFeedback') as HTMLInputElement;
+    const isUrgent = urgentCb ? urgentCb.checked : false;
     try {
       await addDocument(COLLECTIONS.FEEDBACK, {
         claseId: selectedClase.id,
         author: userRole === 'Coordinator' ? 'Coordinador' : 'Profesor',
         text: newFeedback,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        ...(isUrgent && { isUrgent: true })
       });
+      
+      if (userRole === 'Coordinator') {
+        await updateDocument(COLLECTIONS.CLASES, selectedClase.id, {
+          hasCoordinatorFeedback: true,
+          ...(isUrgent && { hasUrgentFeedback: true })
+        });
+        
+        const clIdx = clases.findIndex(c => c.id === selectedClase.id);
+        if(clIdx > -1) {
+          clases[clIdx].hasCoordinatorFeedback = true;
+          if (isUrgent) clases[clIdx].hasUrgentFeedback = true;
+        }
+      }
+      
       setNewFeedback("");
+      if (urgentCb) urgentCb.checked = false;
     } catch (error: any) {
       console.error("Error adding feedback:", error);
       setNotificacion({ t: "Error", d: error.message || "No se pudo guardar el comentario." });
@@ -2027,22 +2045,82 @@ const App: React.FC = () => {
               <div className="absolute -top-12 -right-12 w-48 h-48 bg-white/10 rounded-full blur-3xl"></div>
             </section>
 
-            {userRole === 'Coordinator' && alertasGlobales.length > 0 && (
+            {userRole === 'Coordinator' && (
+              <section className="space-y-4">
+                <h3 className="text-white font-bold text-lg active-glow">Resumen Ejecutivo</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="glass-card rounded-2xl p-4 border border-white/5 flex flex-col items-center justify-center text-center">
+                    <span className="text-3xl font-black text-primary">{alumnos.length}</span>
+                    <span className="text-[9px] uppercase tracking-widest text-white/60 font-bold mt-1">Alumnos</span>
+                  </div>
+                  <div className="glass-card rounded-2xl p-4 border border-white/5 flex flex-col items-center justify-center text-center">
+                    <span className="text-3xl font-black text-neon-blue">{grupos.length}</span>
+                    <span className="text-[9px] uppercase tracking-widest text-white/60 font-bold mt-1">Grupos</span>
+                  </div>
+                  <div className="glass-card rounded-2xl p-4 border border-white/5 flex flex-col items-center justify-center text-center">
+                    <span className="text-3xl font-black text-accent-purple">{clases.filter(c => new Date(c.fecha).toLocaleDateString() === new Date().toLocaleDateString()).length}</span>
+                    <span className="text-[9px] uppercase tracking-widest text-white/60 font-bold mt-1">Clases Hoy</span>
+                  </div>
+                  <div className="glass-card rounded-2xl p-4 border border-white/5 flex flex-col items-center justify-center text-center">
+                    <span className="text-3xl font-black text-emerald-400">{profesoresList.length}</span>
+                    <span className="text-[9px] uppercase tracking-widest text-white/60 font-bold mt-1">Profesores</span>
+                  </div>
+                </div>
+              </section>
+            )}
+
+            {userRole === 'Coordinator' && (
               <section className="space-y-4">
                 <div className="flex items-center gap-2 px-1">
                   <div className="alert-icon alert-icon-danger">
                     <span className="material-icons-outlined text-sm">warning</span>
                   </div>
-                  <h3 className="text-rose-500 font-bold text-lg">Alertas Médicas Críticas</h3>
+                  <h3 className="text-rose-500 font-bold text-lg">Alertas Prioritarias</h3>
                 </div>
                 <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
-                  {alertasGlobales.map(gimnasta => (
-                    <div key={gimnasta.id} className="min-w-[200px] bg-rose-500/10 border border-rose-500/20 rounded-2xl p-4 space-y-2">
-                      <p className="text-white font-bold text-xs truncate">{gimnasta.nombre}</p>
-                      <p className="text-[10px] text-rose-200/60 italic line-clamp-2">"{gimnasta.alertas[0]}"</p>
-                      <p className="text-[8px] font-black uppercase text-rose-500 tracking-widest">{gimnasta.grupo}</p>
+                  {alumnos.filter(a => a.estadoPago === 'Vencido').map(a => (
+                    <div key={`pago-${a.id}`} className="min-w-[220px] bg-rose-500/10 border border-rose-500/20 rounded-2xl p-4 space-y-2 shrink-0">
+                      <div className="flex justify-between items-start">
+                        <p className="text-white font-bold text-xs truncate max-w-[130px]">{a.nombre}</p>
+                        <span className="bg-rose-500 text-white text-[8px] px-2 py-0.5 rounded font-bold uppercase tracking-wider">Deuda</span>
+                      </div>
+                      <p className="text-[10px] text-white/70 italic">Pago vencido.</p>
+                      <p className="text-[8px] font-black uppercase text-rose-500 tracking-widest">{a.grupo || 'Sin grupo'}</p>
                     </div>
                   ))}
+                  {alertasGlobales.map(gimnasta => (
+                    <div key={`med-${gimnasta.id}`} className="min-w-[220px] bg-rose-500/10 border border-rose-500/20 rounded-2xl p-4 space-y-2 shrink-0">
+                      <div className="flex justify-between items-start">
+                        <p className="text-white font-bold text-xs truncate max-w-[130px]">{gimnasta.nombre}</p>
+                        <span className="bg-amber-500 text-black text-[8px] px-2 py-0.5 rounded font-bold uppercase tracking-wider">Médica</span>
+                      </div>
+                      <p className="text-[10px] text-rose-200/60 italic line-clamp-2">"{gimnasta.alertas[0]}"</p>
+                      <p className="text-[8px] font-black uppercase text-rose-500 tracking-widest">{gimnasta.grupo || 'Sin grupo'}</p>
+                    </div>
+                  ))}
+                  {grupos.filter(g => {
+                    const oneWeekAgo = new Date();
+                    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+                    return !clases.some(c => c.grupo === g.nombre && new Date(c.fecha) >= oneWeekAgo);
+                  }).map(g => (
+                    <div key={`inact-${g.id}`} className="min-w-[220px] bg-rose-500/10 border border-rose-500/20 rounded-2xl p-4 space-y-2 shrink-0">
+                      <div className="flex justify-between items-start">
+                        <p className="text-white font-bold text-xs truncate max-w-[130px]">{g.nombre}</p>
+                        <span className="bg-rose-500 text-white text-[8px] px-2 py-0.5 rounded font-bold uppercase tracking-wider">Inactivo</span>
+                      </div>
+                      <p className="text-[10px] text-rose-200/60 italic">Sin clases esta semana.</p>
+                      <p className="text-[8px] font-black uppercase text-rose-500 tracking-widest">Prof: {g.entrenador || 'N/A'}</p>
+                    </div>
+                  ))}
+                  {alumnos.filter(a => a.estadoPago === 'Vencido').length === 0 && alertasGlobales.length === 0 && grupos.filter(g => {
+                    const oneWeekAgo = new Date();
+                    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+                    return !clases.some(c => c.grupo === g.nombre && new Date(c.fecha) >= oneWeekAgo);
+                  }).length === 0 && (
+                    <div className="w-full bg-primary/5 border border-primary/20 rounded-2xl p-4 text-center">
+                      <p className="text-primary text-[10px] font-bold uppercase tracking-widest">No hay alertas.</p>
+                    </div>
+                  )}
                 </div>
               </section>
             )}
@@ -2050,60 +2128,34 @@ const App: React.FC = () => {
             {userRole === 'Coordinator' && (
               <section className="space-y-4">
                 <h3 className="text-primary font-bold text-lg active-glow">Estado de Asistencia Hoy</h3>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4">
                   {grupos.map((g) => {
                     const stats = asistenciasGlobales[g.nombre] || { presentes: 0, total: 0 };
                     const isTaken = stats.total > 0 && stats.presentes > 0;
                     return (
                       <div 
-                        key={g.id} 
+                        key={`asis-${g.id}`} 
                         onClick={() => { setActiveGroup(g); setVista('AsistenciaLista'); }}
-                        className="glass-card rounded-3xl p-5 border border-white/5 space-y-3 active:scale-95 transition-all cursor-pointer"
+                        className="glass-card rounded-3xl p-5 border border-white/5 active:scale-95 transition-all cursor-pointer flex items-center justify-between"
                       >
-                        <h4 className="text-xs font-bold text-white truncate">{g.nombre}</h4>
-                        <div className="flex items-end justify-between">
+                        <div>
+                          <h4 className="text-sm font-bold text-white truncate flex items-center gap-2">
+                            {g.nombre}
+                            {isTaken && <span className="material-icons-outlined text-primary text-[14px]">check_circle</span>}
+                          </h4>
+                          <p className="text-[10px] text-white/50 uppercase tracking-widest mt-1">Prof: {g.entrenador || 'Sin asignar'}</p>
+                        </div>
+                        <div className="flex flex-col items-end">
                           <span className={`text-xl font-black ${isTaken ? 'text-primary' : 'text-rose-500'}`}>
                             {stats.presentes}<span className="text-[10px] text-white/80 mx-1">/</span>{stats.total}
                           </span>
-                          <span className={`text-[8px] font-black uppercase tracking-widest ${isTaken ? 'text-primary/60' : 'text-rose-500/60'}`}>
-                            {isTaken ? 'Enviada' : 'Pendiente'}
+                          <span className={`text-[8px] font-black uppercase tracking-widest mt-1 ${isTaken ? 'text-primary' : 'text-rose-500'}`}>
+                            {isTaken ? 'Completado' : 'Pendiente'}
                           </span>
-                        </div>
-                        <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
-                          <div 
-                            className={`h-full transition-all duration-1000 ${isTaken ? 'bg-primary shadow-neon-cyan' : 'bg-rose-500'}`} 
-                            style={{ width: `${stats.total > 0 ? (stats.presentes / stats.total) * 100 : 0}%` }}
-                          ></div>
                         </div>
                       </div>
                     );
                   })}
-                </div>
-              </section>
-            )}
-
-            {userRole === 'Coordinator' && (
-              <section className="space-y-4">
-                <div className="flex justify-between px-1"><h3 className="text-white font-bold text-lg">Actividad Reciente</h3></div>
-                <div className="space-y-3">
-                  {clases.slice(0, 5).map((clase) => (
-                    <div 
-                      key={clase.id} 
-                      onClick={() => { setSelectedClase(clase); handleNavigation('ClaseDetalle'); }}
-                      className="glass-card rounded-2xl p-4 border border-white/5 flex items-center justify-between active:scale-95 transition-all cursor-pointer"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center border border-primary/20">
-                          <span className="material-icons-outlined text-primary text-xl">history_edu</span>
-                        </div>
-                        <div>
-                          <h4 className="text-sm font-bold text-white">{clase.grupo}</h4>
-                          <p className="text-[10px] text-slate-500 font-medium">{new Date(clase.fecha).toLocaleDateString()} • {clase.entrenador}</p>
-                        </div>
-                      </div>
-                      <span className="material-icons-outlined text-slate-600 text-sm">chevron_right</span>
-                    </div>
-                  ))}
                 </div>
               </section>
             )}
@@ -4333,26 +4385,50 @@ const App: React.FC = () => {
                 <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white/60 italic">Feedback del Coordinador</h3>
                 <div className="space-y-4">
                   {feedbacks.map((fb) => (
-                    <div key={fb.id} className={`p-4 rounded-2xl border ${fb.author === 'Coordinador' ? 'bg-primary/5 border-primary/20 ml-4' : 'bg-white/5 border-white/10 mr-4'}`}>
-                      <div className="flex justify-between items-center mb-2">
-                        <span className={`text-[9px] font-black uppercase tracking-widest ${fb.author === 'Coordinador' ? 'text-primary' : 'text-white/70'}`}>{fb.author}</span>
-                        <span className="text-[8px] text-white/80">{new Date(fb.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                    <div key={fb.id} className={`p-5 rounded-2xl border ${fb.author === 'Coordinador' ? 'bg-primary/10 border-primary/30 ml-8' : 'bg-white/5 border-white/10 mr-8'} relative shadow-lg`}>
+                      {fb.isUrgent && (
+                        <div className="absolute -top-3 -right-3 w-7 h-7 bg-rose-500 rounded-full flex items-center justify-center shadow-[0_0_10px_rgba(244,63,94,0.5)] border-2 border-antigravity-black">
+                          <span className="material-icons-outlined text-white text-[14px]">priority_high</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between items-center mb-3 border-b border-white/10 pb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="material-icons-outlined text-sm">{fb.author === 'Coordinador' ? 'admin_panel_settings' : 'sports'}</span>
+                          <span className={`text-[9px] font-black uppercase tracking-widest ${fb.author === 'Coordinador' ? 'text-primary' : 'text-white/70'}`}>{fb.author}</span>
+                        </div>
+                        <span className="text-[8px] text-white/60 uppercase font-bold">{new Date(fb.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                       </div>
-                      <p className="text-xs text-white/80 leading-relaxed italic">"{fb.text}"</p>
+                      <p className="text-sm text-white/90 leading-relaxed">"{fb.text}"</p>
                     </div>
                   ))}
                 </div>
 
-                <div className="flex gap-3 mt-6">
-                  <input 
-                    className="flex-1 crafted-input !py-3.5 !text-xs"
-                    placeholder="Escribir feedback..."
-                    value={newFeedback}
-                    onChange={(e) => setNewFeedback(e.target.value)}
-                  />
-                  <button onClick={handleAddFeedback} className="w-12 h-12 bg-primary rounded-2xl flex items-center justify-center text-antigravity-black shadow-neon-cyan active:scale-95 transition-all">
-                    <span className="material-icons-outlined">send</span>
-                  </button>
+                <div className="flex flex-col gap-3 mt-6 bg-white/5 p-4 rounded-3xl border border-white/10">
+                  {userRole === 'Coordinator' && (
+                    <div className="flex gap-3 items-center px-1 mb-1">
+                       <label className="flex items-center gap-2 cursor-pointer">
+                          <input type="checkbox" id="urgentFeedback" className="hidden" onChange={(e) => {
+                            const box = document.getElementById('urgentBoxInfo');
+                            if (!box) return;
+                            box.className = e.target.checked ? 'w-5 h-5 rounded border border-rose-500 flex items-center justify-center bg-rose-500' : 'w-5 h-5 rounded border border-white/30 flex items-center justify-center transition-all';
+                            box.innerHTML = e.target.checked ? '<span class="material-icons-outlined text-white text-[12px]">check</span>' : '';
+                          }} />
+                          <div className="w-5 h-5 rounded border border-white/30 flex items-center justify-center transition-all" id="urgentBoxInfo"></div>
+                          <span className="text-[10px] uppercase font-bold text-rose-500 tracking-wider">Marcar como Urgente</span>
+                       </label>
+                    </div>
+                  )}
+                  <div className="flex gap-3">
+                    <input 
+                      className="flex-1 crafted-input !py-3.5 !text-xs"
+                      placeholder="Escribir feedback..."
+                      value={newFeedback}
+                      onChange={(e) => setNewFeedback(e.target.value)}
+                    />
+                    <button onClick={handleAddFeedback} className="w-12 h-12 bg-primary rounded-2xl flex items-center justify-center text-antigravity-black shadow-neon-cyan active:scale-95 transition-all">
+                      <span className="material-icons-outlined">send</span>
+                    </button>
+                  </div>
                 </div>
               </section>
             </main>

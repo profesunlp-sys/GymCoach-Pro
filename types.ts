@@ -86,6 +86,8 @@ export interface Clase {
   warmup?: string[]; // Legacy
   apparatusUsed?: string[]; // Legacy
   skillsCovered?: string[]; // Legacy
+  hasCoordinatorFeedback?: boolean;
+  hasUrgentFeedback?: boolean;
 }
 
 export interface GrupoConfig {
@@ -104,6 +106,7 @@ export interface Feedback {
   author: string;
   text: string;
   timestamp: string;
+  isUrgent?: boolean;
 }
 
 export interface Source {
