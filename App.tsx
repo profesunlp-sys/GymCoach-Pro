@@ -2032,9 +2032,14 @@ const App: React.FC = () => {
 
             <section className="gradient-header rounded-[2.5rem] p-7 relative overflow-hidden shadow-2xl border border-white/10">
               <div className="relative z-10">
-                <h2 className="text-2xl font-bold text-white mb-1 tracking-tight leading-tight">¡Hola {userRole === 'Coordinator' ? 'Coordinador' : (user?.displayName?.split(' ')[0] || 'Entrenador')}!</h2>
-                <p className="text-indigo-100 text-sm mb-7 font-medium">
-                  {userRole === 'Coordinator' ? 'Supervisa el progreso de tus colegas.' : 'Configura tu semana para empezar.'}
+                <div className="flex items-center gap-2 mb-2">
+                   <span className="bg-white/20 text-white text-[8px] font-black px-2 py-0.5 rounded uppercase tracking-[0.2em]">Antigravity Gym Pro</span>
+                </div>
+                <h2 className="text-3xl font-black text-white mb-1 tracking-tighter leading-tight uppercase flex items-center gap-3">
+                   {userRole === 'Coordinator' ? 'Centro de Control' : `¡Hola ${user?.displayName?.split(' ')[0] || 'Entrenador'}!`}
+                </h2>
+                <p className="text-indigo-100 text-[10px] mb-7 font-black uppercase tracking-widest opacity-80">
+                  {userRole === 'Coordinator' ? 'Monitor de Desempeño y Asistencia Global' : 'Configura tu semana y empeza a entrenar.'}
                 </p>
                 {userRole === 'Coach' && (
                   <button onClick={() => handleNavigation('NuevaClase')} className="btn-primary px-7 py-3.5 flex items-center gap-2">
@@ -2047,23 +2052,33 @@ const App: React.FC = () => {
 
             {userRole === 'Coordinator' && (
               <section className="space-y-4">
-                <h3 className="text-white font-bold text-lg active-glow">Resumen Ejecutivo</h3>
+                <div className="flex items-center justify-between px-1">
+                  <h3 className="text-white font-black text-lg uppercase tracking-tighter active-glow">Resumen Ejecutivo</h3>
+                  <div className="flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-full">
+                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981] animate-pulse"></div>
+                    <span className="text-[8px] font-black text-emerald-500 uppercase tracking-widest">En Vivo</span>
+                  </div>
+                </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="glass-card rounded-2xl p-4 border border-white/5 flex flex-col items-center justify-center text-center">
-                    <span className="text-3xl font-black text-primary">{alumnos.length}</span>
-                    <span className="text-[9px] uppercase tracking-widest text-white/60 font-bold mt-1">Alumnos</span>
+                  <div className="glass-card rounded-3xl p-5 border border-white/5 flex flex-col items-center justify-center text-center relative overflow-hidden group hover:border-primary/30 transition-all">
+                    <span className="material-icons-outlined text-primary/10 text-5xl absolute -right-2 -bottom-2 group-hover:scale-110 transition-transform">groups</span>
+                    <span className="text-3xl font-black text-primary relative z-10">{alumnos.length}</span>
+                    <span className="text-[9px] uppercase tracking-[0.2em] text-white/40 font-black mt-1 relative z-10">Alumnos</span>
                   </div>
-                  <div className="glass-card rounded-2xl p-4 border border-white/5 flex flex-col items-center justify-center text-center">
-                    <span className="text-3xl font-black text-neon-blue">{grupos.length}</span>
-                    <span className="text-[9px] uppercase tracking-widest text-white/60 font-bold mt-1">Grupos</span>
+                  <div className="glass-card rounded-3xl p-5 border border-white/5 flex flex-col items-center justify-center text-center relative overflow-hidden group hover:border-neon-blue/30 transition-all">
+                    <span className="material-icons-outlined text-neon-blue/10 text-5xl absolute -right-2 -bottom-2 group-hover:scale-110 transition-transform">calendar_today</span>
+                    <span className="text-3xl font-black text-neon-blue relative z-10">{grupos.length}</span>
+                    <span className="text-[9px] uppercase tracking-[0.2em] text-white/40 font-black mt-1 relative z-10">Grupos</span>
                   </div>
-                  <div className="glass-card rounded-2xl p-4 border border-white/5 flex flex-col items-center justify-center text-center">
-                    <span className="text-3xl font-black text-accent-purple">{clases.filter(c => new Date(c.fecha).toLocaleDateString() === new Date().toLocaleDateString()).length}</span>
-                    <span className="text-[9px] uppercase tracking-widest text-white/60 font-bold mt-1">Clases Hoy</span>
+                  <div className="glass-card rounded-3xl p-5 border border-white/5 flex flex-col items-center justify-center text-center relative overflow-hidden group hover:border-accent-purple/30 transition-all">
+                    <span className="material-icons-outlined text-accent-purple/10 text-5xl absolute -right-2 -bottom-2 group-hover:scale-110 transition-transform">history_edu</span>
+                    <span className="text-3xl font-black text-accent-purple relative z-10">{clases.filter(c => new Date(c.fecha).toLocaleDateString() === new Date().toLocaleDateString()).length}</span>
+                    <span className="text-[9px] uppercase tracking-[0.2em] text-white/40 font-black mt-1 relative z-10">Clases Hoy</span>
                   </div>
-                  <div className="glass-card rounded-2xl p-4 border border-white/5 flex flex-col items-center justify-center text-center">
-                    <span className="text-3xl font-black text-emerald-400">{profesoresList.length}</span>
-                    <span className="text-[9px] uppercase tracking-widest text-white/60 font-bold mt-1">Profesores</span>
+                  <div className="glass-card rounded-3xl p-5 border border-white/5 flex flex-col items-center justify-center text-center relative overflow-hidden group hover:border-emerald-400/30 transition-all">
+                    <span className="material-icons-outlined text-emerald-400/10 text-5xl absolute -right-2 -bottom-2 group-hover:scale-110 transition-transform">badge</span>
+                    <span className="text-3xl font-black text-emerald-400 relative z-10">{profesoresList.length}</span>
+                    <span className="text-[9px] uppercase tracking-[0.2em] text-white/40 font-black mt-1 relative z-10">Profesores</span>
                   </div>
                 </div>
               </section>
@@ -2152,6 +2167,110 @@ const App: React.FC = () => {
                           <span className={`text-[8px] font-black uppercase tracking-widest mt-1 ${isTaken ? 'text-primary' : 'text-rose-500'}`}>
                             {isTaken ? 'Completado' : 'Pendiente'}
                           </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
+
+            {userRole === 'Coordinator' && (
+              <section className="space-y-6">
+                <div className="flex items-center justify-between px-1">
+                  <h3 className="text-white font-black text-lg uppercase tracking-tighter active-glow">Desempeño Docente</h3>
+                  <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Panel Ejecutivo</span>
+                </div>
+                <div className="grid grid-cols-1 gap-4">
+                  {profesoresList.length > 0 ? profesoresList.map((prof) => {
+                    const profClases = clases.filter(c => c.entrenador === prof.nombre);
+                    const pendingFeedback = profClases.filter(c => !c.hasCoordinatorFeedback).length;
+                    const urgentNeeded = profClases.filter(c => c.hasUrgentFeedback).length;
+                    
+                    return (
+                      <div key={prof.id} className="glass-card rounded-[2rem] p-5 border border-white/5 space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden">
+                              <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(prof.nombre)}&background=random`} alt="" className="w-full h-full object-cover" />
+                            </div>
+                            <div className="overflow-hidden">
+                              <h4 className="text-sm font-bold text-white leading-none truncate">{prof.nombre}</h4>
+                              <p className="text-[10px] text-white/50 uppercase tracking-widest mt-1 truncate">{prof.especialidad || 'Profesor de Gimnasia'}</p>
+                            </div>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <span className="text-xl font-black text-primary">{profClases.length}</span>
+                            <p className="text-[8px] text-white/40 uppercase font-black tracking-widest">Clases</p>
+                          </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-3 gap-3 pt-2">
+                          <div className={`p-3 rounded-2xl border ${pendingFeedback > 0 ? 'bg-amber-500/5 border-amber-500/20' : 'bg-emerald-500/5 border-emerald-500/20'} flex flex-col items-center justify-center gap-1`}>
+                            <span className={`text-base font-black ${pendingFeedback > 0 ? 'text-amber-500' : 'text-emerald-400'}`}>
+                              {pendingFeedback}
+                            </span>
+                            <span className="text-[8px] uppercase tracking-tighter text-white/60 font-medium text-center">Sin Feedback</span>
+                          </div>
+                          <div className={`p-3 rounded-2xl border ${urgentNeeded > 0 ? 'bg-rose-500/5 border-rose-500/20' : 'bg-white/5 border-white/10'} flex flex-col items-center justify-center gap-1`}>
+                            <span className={`text-base font-black ${urgentNeeded > 0 ? 'text-rose-500' : 'text-white/40'}`}>
+                              {urgentNeeded}
+                            </span>
+                            <span className="text-[8px] uppercase tracking-tighter text-white/60 font-medium text-center">Urgentes</span>
+                          </div>
+                          <button 
+                            onClick={() => {
+                              // Podríamos filtrar el historial de clases por este profesor
+                              setVista('HistorialClases');
+                              // Agregar lógica de filtro si fuera necesario en el futuro
+                            }}
+                            className="p-3 rounded-2xl border border-primary/20 bg-primary/5 flex flex-col items-center justify-center gap-1 active:scale-95 transition-all"
+                          >
+                            <span className="material-icons-outlined text-primary text-xl">visibility</span>
+                            <span className="text-[8px] uppercase tracking-tighter text-primary font-black text-center">Ver Todas</span>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  }) : (
+                    <div className="p-8 text-center glass-card rounded-[2rem] border-dashed border-white/10 opacity-40">
+                      <p className="text-xs italic">Cargando lista de profesionales...</p>
+                    </div>
+                  )}
+                </div>
+              </section>
+            )}
+
+            {userRole === 'Coordinator' && (
+              <section className="space-y-4">
+                <div className="flex items-center justify-between px-1">
+                  <h3 className="text-white font-black text-lg uppercase tracking-tighter active-glow">Auditoría de Clases</h3>
+                  <button onClick={() => setVista('HistorialClases')} className="text-[10px] font-bold text-primary uppercase tracking-widest">Ver Historial</button>
+                </div>
+                <div className="space-y-3">
+                  {clases.slice(0, 5).map((clase) => {
+                    const date = new Date(clase.fecha);
+                    const isNew = !clase.hasCoordinatorFeedback;
+                    return (
+                      <div 
+                        key={clase.id} 
+                        onClick={() => { setSelectedClase(clase); setVista('ClaseDetalle'); }}
+                        className={`glass-card rounded-[1.5rem] p-4 border border-white/5 flex items-center justify-between active:scale-95 transition-all cursor-pointer ${isNew ? 'ring-1 ring-primary/30 bg-primary/5' : ''}`}
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isNew ? 'bg-primary/20 text-primary' : 'bg-white/5 text-white/30'}`}>
+                            <span className="material-symbols-outlined text-xl">{isNew ? 'assignment_late' : 'assignment_turned_in'}</span>
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-bold text-white leading-none">{clase.grupo}</h4>
+                            <p className="text-[10px] text-white/40 mt-1 uppercase tracking-widest">{date.toLocaleDateString()} • {clase.entrenador}</p>
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-end gap-1">
+                          {clase.hasUrgentFeedback && (
+                            <span className="bg-rose-500 text-white text-[8px] font-black px-2 py-0.5 rounded uppercase tracking-widest animate-pulse">Urgente</span>
+                          )}
+                          <span className="material-icons-outlined text-white/20">chevron_right</span>
                         </div>
                       </div>
                     );
