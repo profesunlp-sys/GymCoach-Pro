@@ -176,75 +176,61 @@ export async function analyzeAttendanceStats(stats: any): Promise<string> {
   });
 }
 
-export async function queryKnowledgeBase(query: string, sources: any[]): Promise<string> {
+export async function queryUnifiedAssistant(query: string, sources: any[]): Promise<{ text: string, sources: any[] }> {
   return withRetry(async () => {
     const ai = getAI();
-    const parts: any[] = [
-      { text: `Eres un asistente experto en gimnasia artística. Tu tarea es responder a la consulta del usuario basándote EXCLUSIVAMENTE en los documentos proporcionados. 
-      
-      REGLAS CRÍTICAS:
-      1. Responde ÚNICAMENTE usando la información de los documentos adjuntos.
-      2. Si la información necesaria para responder no se encuentra en los documentos, responde exactamente: "Lo siento, no encuentro esa información en los documentos proporcionados."
-      3. NO utilices tu conocimiento general previo.
-      4. NO inventes ni alucines información.
-      5. Cita el nombre del documento si es posible.
-      
-      Consulta: "${query}"` }
-    ];
-
-    for (const source of sources) {
-      if (source.type === 'pdf') {
-        let base64Data = source.content;
-        
-        // Si el contenido es una URL (de Firebase Storage), lo descargamos en vivo
-        if (source.content.startsWith('http')) {
-          try {
-            const response = await fetch(source.content);
-            const blob = await response.blob();
-            base64Data = await new Promise<string>((resolve, reject) => {
-              const reader = new FileReader();
-              reader.onloadend = () => {
-                const result = reader.result as string;
-                resolve(result.split(',')[1]); // Extraer solo la parte base64
-              };
-              reader.onerror = reject;
-              reader.readAsDataURL(blob);
-            });
-          } catch (error) {
-            console.error(`Error al descargar PDF ${source.name} desde Storage:`, error);
-            parts.push({ text: `Documento ${source.name} no se pudo cargar por un error de red.` });
-            continue;
-          }
-        }
-
-        parts.push({
-          inlineData: {
-            data: base64Data,
-            mimeType: 'application/pdf'
-          }
-        });
-      } else if (source.type === 'doc' || source.type === 'docx') {
-        console.warn(`El formato Word no está soportado vía Base64. Saltando: ${source.name}`);
-      } else {
-        // Truncar contenido para no exceder las 200,000 letras/tokens (1 MB max aprox)
-        const charLimit = 200000; 
-        let safeContent = source.content;
-        if (safeContent.length > charLimit) {
-            safeContent = safeContent.substring(0, charLimit);
-            console.warn(`Documento ${source.name} truncado para evitar error 429 de límite de tokens.`);
-        }
-        parts.push({ text: `Documento: ${source.name}\nContenido: ${safeContent}` });
-      }
+    
+    // 1. Construir el contexto de conocimiento interno
+    let internalKnowledgeContext = "";
+    const activeSources = sources.filter(s => s.content && s.content.length > 0);
+    
+    if (activeSources.length > 0) {
+      internalKnowledgeContext = "BIBLIOTECA TÉCNICA (DOCUMENTOS OFICIALES SUBIDOS):\n";
+      activeSources.forEach(s => {
+        internalKnowledgeContext += `--- INICIO DOCUMENTO: "${s.name}" ---\n${s.content}\n--- FIN DOCUMENTO: "${s.name}" ---\n\n`;
+      });
+    } else {
+      return { 
+        text: "No hay manuales o reglamentos cargados en la Biblioteca Técnica. Por favor, sube archivos PDF o texto en la sección de Biblioteca para poder consultarme.", 
+        sources: [] 
+      };
     }
 
-    const response = await ai.models.generateContent({
-      model: "gemini-flash-latest", // Cambiado a flash-latest para intentar evitar la saturación de gemini-3-flash-preview
-      contents: { parts },
-    });
+    const systemPrompt = `Eres el "Consultor Técnico de Biblioteca" de GymCoach Pro. Tu función es estrictamente analítica y basada en evidencias.
+
+    REGLAS DE ORO:
+    1. SOLO DOCUMENTOS INTERNOS: Responde ÚNICAMENTE utilizando la información presente en la BIBLIOTECA TÉCNICA proporcionada arriba.
+    2. SI NO ESTÁ, DI QUE NO ESTÁ: Si la consulta del usuario (ej. niveles específicos, ejercicios, series) NO figura en los documentos cargados, responde exactamente: "Lo siento, esa información no se encuentra en los manuales actuales de tu Biblioteca Técnica."
+    3. PROHIBIDO INVENTAR: No utilices conocimiento externo, ni internet, ni menciones otras federaciones si no están en los textos provistos. Evita alucinaciones a toda costa.
+    4. CITAS OBLIGATORIAS: Indica siempre de qué manual o página (si está disponible) extrajiste la respuesta.
+    5. TONO: Profesional, seco, preciso y puramente técnico.`;
+
+    const userQuery = `BIBLIOTECA TÉCNICA PROPORCIONADA:
+    ${internalKnowledgeContext}
     
-    return response.text || "No se pudo generar una respuesta.";
+    CONSULTA DEL ENTRENADOR: "${query}"`;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-2.0-flash", 
+      contents: [{ role: "user", parts: [{ text: systemPrompt + "\n\n" + userQuery }] }],
+      config: {
+        temperature: 0.0, // Mínima creatividad para máxima adherencia al texto
+      },
+    });
+
+    // Detectar fuentes citadas
+    const internalSourcesUsed = activeSources
+      .filter(s => response.text?.toLowerCase().includes(s.name.toLowerCase()) || 
+                   (s.name.toLowerCase().includes('nivel e') && query.toLowerCase().includes('nivel e')))
+      .map(s => ({ title: s.name, uri: '#' }));
+
+    return {
+      text: response.text || "No se encontró información relevante en la biblioteca.",
+      sources: internalSourcesUsed
+    };
   }).catch(error => {
-    console.error("Error en queryKnowledgeBase:", error);
-    return `Error al consultar la base de conocimientos: ${error.message || error}`;
+    console.error("Error en queryUnifiedAssistant:", error);
+    return { text: `Error de conexión con el sistema de análisis técnico.`, sources: [] };
   });
 }
+

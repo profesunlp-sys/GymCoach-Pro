@@ -8,10 +8,10 @@ import {
   BarChart, Bar, Cell, Legend, PieChart, Pie
 } from 'recharts';
 import { Alumno, Clase, ViewMode, GrupoConfig, AsistenciaRecord, UserRole, Feedback, Skill, SkillStatus, Apparatus, Source } from './types';
-import { processClassAudio, refineClassAnalysis, analyzeAttendanceStats, queryKnowledgeBase } from './services/geminiService';
+import { processClassAudio, refineClassAnalysis, analyzeAttendanceStats, queryUnifiedAssistant } from './services/geminiService';
 import { SKILL_TREE, DISCIPLINAS, NIVELES as DEFAULT_NIVELES } from './constants';
 import { db as firestore, auth, googleProvider, storage, COLLECTIONS, getCollectionData, addDocument, updateDocument, deleteDocument, getAttendanceByStudent } from './services/firebase';
-import { collection, query, where, getDocs, addDoc, doc, updateDoc, onSnapshot, orderBy, setDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, doc, updateDoc, onSnapshot, orderBy, setDoc, limit } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { signInWithPopup, signOut, onAuthStateChanged, User, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, setPersistence, browserLocalPersistence, browserSessionPersistence } from 'firebase/auth';
 import { CoachAI } from './src/components/CoachAI';
@@ -231,6 +231,8 @@ const App: React.FC = () => {
     message: string;
     onConfirm: () => void;
   } | null>(null);
+  const [kbActiveTab, setKbActiveTab] = useState<'chat' | 'files'>('chat');
+  const [showProfDetalleInDashboard, setShowProfDetalleInDashboard] = useState(false);
 
   const [isFocusMode, setIsFocusMode] = useState(false);
 
@@ -387,24 +389,7 @@ const App: React.FC = () => {
     );
   };
 
-  const handleKbQuery = async () => {
-    if (!kbInput.trim() || isKbLoading) return;
 
-    const userMsg = { role: 'user' as const, text: kbInput };
-    setKbMessages(prev => [...prev, userMsg]);
-    setKbInput("");
-    setIsKbLoading(true);
-
-    try {
-      const response = await queryKnowledgeBase(kbInput, sources);
-      setKbMessages(prev => [...prev, { role: 'model', text: response }]);
-    } catch (error) {
-      console.error("Error querying KB:", error);
-      setKbMessages(prev => [...prev, { role: 'model', text: "Error al consultar la base de conocimientos." }]);
-    } finally {
-      setIsKbLoading(false);
-    }
-  };
 
   // Edit Alumno State
   const [isEditingAlumno, setIsEditingAlumno] = useState(false);
@@ -1977,391 +1962,304 @@ const App: React.FC = () => {
         <div className="flex items-center gap-1.5 text-white">
           <span className="material-symbols-outlined text-[18px]">signal_cellular_alt</span>
           <span className="material-symbols-outlined text-[18px]">wifi</span>
-          <span className="material-symbols-outlined text-[18px]">battery_very_low</span>
+          <span className="material-symbols-outlined text-[18px]">battery_full</span>
         </div>
       </div>
 
-      <main className="flex-1 overflow-y-auto">
-        
+      <main className="flex-1 overflow-y-auto no-scrollbar">
         {vista === 'Dashboard' && (
-          <div className="px-6 space-y-8 page-transition pt-4">
-            <header className="flex justify-between items-center">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-accent-purple/20 rounded-xl flex items-center justify-center border border-accent-purple/30 shadow-neon-purple">
-                  <span className="material-icons-outlined text-accent-purple">fitness_center</span>
-                </div>
-                <div>
-                  <h1 className="title-antigravity text-xl leading-none">GymCoach <span className="text-primary">Pro</span></h1>
-                  <span className="text-[8px] uppercase tracking-[0.2em] text-primary/60 font-bold">{userRole === 'Coordinator' ? 'Modo Coordinación' : 'Modo Entrenador'}</span>
-                </div>
+          <div className="space-y-12 page-transition pt-12 px-6 pb-24">
+            <header className="flex justify-between items-start mb-4">
+              <div className="space-y-2">
+                <h1 className="title-antigravity text-4xl leading-none">GymCoach Pro</h1>
+                <p className="text-primary text-[10px] font-black uppercase tracking-[0.3em] mt-1">
+                  {userRole === 'Coordinator' ? 'Panel Ejecutivo de Gestión' : 'Área de Trabajo Personal'}
+                </p>
               </div>
-              <div className="flex items-center gap-2">
-                <button 
-                  onClick={() => setIsFocusMode(!isFocusMode)}
-                  className={`px-3 h-10 rounded-2xl flex items-center justify-center gap-2 border active:scale-90 transition-all ${isFocusMode ? 'bg-primary text-antigravity-black border-primary shadow-neon-cyan' : 'bg-white/5 text-white/60 border-white/10'}`}
-                  title="Modo Enfoque"
-                >
-                  <span className="material-icons-outlined text-sm">{isFocusMode ? 'visibility_off' : 'visibility'}</span>
-                  <span className="text-[10px] font-black uppercase tracking-widest hidden xs:block">{isFocusMode ? 'Ver Todo' : 'Foco'}</span>
-                </button>
-                {user?.email === COORDINATOR_EMAIL && (
-                  <button 
-                    onClick={() => setUserRole(prev => prev === 'Coordinator' ? 'Coach' : 'Coordinator')}
-                    className="px-3 h-10 rounded-2xl glass-card flex items-center justify-center gap-2 border border-primary/30 text-primary active:scale-90 transition-all"
-                    title="Alternar Vista"
-                  >
-                    <span className="material-icons-outlined text-sm">swap_horiz</span>
-                    <span className="text-[10px] font-black uppercase tracking-widest hidden xs:block">Vista</span>
-                  </button>
-                )}
-                <button 
-                  onClick={handleLogout}
-                  className="px-3 h-10 rounded-2xl glass-card flex items-center justify-center gap-2 border border-rose-500/30 text-rose-500 active:scale-90 transition-all"
-                  title="Cerrar Sesión"
-                >
-                  <span className="material-icons-outlined text-sm">logout</span>
-                  <span className="text-[10px] font-black uppercase tracking-widest hidden xs:block">Salir</span>
-                </button>
+              <div className="flex items-center gap-3">
+                 {userRole === 'Coordinator' && (
+                   <div className="flex items-center gap-2 px-3 py-1.5 bg-rose-500/10 border border-rose-500/20 rounded-xl">
+                      <span className="material-icons text-[14px] text-rose-500 animate-pulse">admin_panel_settings</span>
+                      <span className="text-[10px] font-black text-rose-500 uppercase tracking-widest">Admin</span>
+                   </div>
+                 )}
+                 <button onClick={() => setVista('Ajustes')} className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center border border-white/10 active:scale-95 transition-all group overflow-hidden relative">
+                    <img src={user?.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.displayName || 'User')}&background=random`} alt="" className="w-full h-full object-cover opacity-80" />
+                 </button>
               </div>
             </header>
 
-            {/* FAB Principal */}
-            <button 
-              onClick={() => setVista('NuevaClase')}
-              className="fixed bottom-28 right-6 w-16 h-16 bg-primary text-antigravity-black rounded-2xl flex items-center justify-center shadow-neon-cyan active:scale-95 transition-all z-[60] group"
-            >
-              <span className="material-icons-outlined text-3xl group-hover:rotate-90 transition-transform">add</span>
-            </button>
-
-            <section className="gradient-header rounded-[2.5rem] p-7 relative overflow-hidden shadow-2xl border border-white/10">
-              <div className="relative z-10">
-                <div className="flex items-center gap-2 mb-2">
-                   <span className="bg-white/20 text-white text-[8px] font-black px-2 py-0.5 rounded uppercase tracking-[0.2em]">Antigravity Gym Pro</span>
-                </div>
-                <h2 className="text-3xl font-black text-white mb-1 tracking-tighter leading-tight uppercase flex items-center gap-3">
-                   {userRole === 'Coordinator' ? 'Centro de Control' : `¡Hola ${user?.displayName?.split(' ')[0] || 'Entrenador'}!`}
-                </h2>
-                <p className="text-indigo-100 text-[10px] mb-7 font-black uppercase tracking-widest opacity-80">
-                  {userRole === 'Coordinator' ? 'Monitor de Desempeño y Asistencia Global' : 'Configura tu semana y empeza a entrenar.'}
-                </p>
-                {userRole === 'Coach' && (
-                  <button onClick={() => handleNavigation('NuevaClase')} className="btn-primary px-7 py-3.5 flex items-center gap-2">
-                    <span className="material-icons-outlined text-sm">add_circle</span> Registrar Clase
-                  </button>
-                )}
-              </div>
-              <div className="absolute -top-12 -right-12 w-48 h-48 bg-white/10 rounded-full blur-3xl"></div>
-            </section>
-
             {userRole === 'Coordinator' && (
-              <section className="space-y-4">
-                <div className="flex items-center justify-between px-1">
-                  <h3 className="text-white font-black text-lg uppercase tracking-tighter active-glow">Resumen Ejecutivo</h3>
-                  <div className="flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-full">
-                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981] animate-pulse"></div>
-                    <span className="text-[8px] font-black text-emerald-500 uppercase tracking-widest">En Vivo</span>
-                  </div>
-                </div>
+              <section className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                {/* Métricas Globales */}
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="glass-card rounded-3xl p-5 border border-white/5 flex flex-col items-center justify-center text-center relative overflow-hidden group hover:border-primary/30 transition-all">
-                    <span className="material-icons-outlined text-primary/10 text-5xl absolute -right-2 -bottom-2 group-hover:scale-110 transition-transform">groups</span>
-                    <span className="text-3xl font-black text-primary relative z-10">{alumnos.length}</span>
-                    <span className="text-[9px] uppercase tracking-[0.2em] text-white/40 font-black mt-1 relative z-10">Alumnos</span>
+                  <div className="glass-card rounded-[2rem] p-5 border border-white/5 flex flex-col justify-between">
+                    <span className="text-[9px] font-bold text-white/40 uppercase tracking-widest px-1">Total Alumnos</span>
+                    <div className="flex items-end justify-between mt-4 px-1">
+                      <span className="text-3xl font-black text-white leading-none">{alumnos.length}</span>
+                      <span className="material-icons-outlined text-primary text-xl">group</span>
+                    </div>
                   </div>
-                  <div className="glass-card rounded-3xl p-5 border border-white/5 flex flex-col items-center justify-center text-center relative overflow-hidden group hover:border-neon-blue/30 transition-all">
-                    <span className="material-icons-outlined text-neon-blue/10 text-5xl absolute -right-2 -bottom-2 group-hover:scale-110 transition-transform">calendar_today</span>
-                    <span className="text-3xl font-black text-neon-blue relative z-10">{grupos.length}</span>
-                    <span className="text-[9px] uppercase tracking-[0.2em] text-white/40 font-black mt-1 relative z-10">Grupos</span>
-                  </div>
-                  <div className="glass-card rounded-3xl p-5 border border-white/5 flex flex-col items-center justify-center text-center relative overflow-hidden group hover:border-accent-purple/30 transition-all">
-                    <span className="material-icons-outlined text-accent-purple/10 text-5xl absolute -right-2 -bottom-2 group-hover:scale-110 transition-transform">history_edu</span>
-                    <span className="text-3xl font-black text-accent-purple relative z-10">{clases.filter(c => new Date(c.fecha).toLocaleDateString() === new Date().toLocaleDateString()).length}</span>
-                    <span className="text-[9px] uppercase tracking-[0.2em] text-white/40 font-black mt-1 relative z-10">Clases Hoy</span>
-                  </div>
-                  <div className="glass-card rounded-3xl p-5 border border-white/5 flex flex-col items-center justify-center text-center relative overflow-hidden group hover:border-emerald-400/30 transition-all">
-                    <span className="material-icons-outlined text-emerald-400/10 text-5xl absolute -right-2 -bottom-2 group-hover:scale-110 transition-transform">badge</span>
-                    <span className="text-3xl font-black text-emerald-400 relative z-10">{profesoresList.length}</span>
-                    <span className="text-[9px] uppercase tracking-[0.2em] text-white/40 font-black mt-1 relative z-10">Profesores</span>
+                  <div className="glass-card rounded-[2rem] p-5 border border-white/5 flex flex-col justify-between">
+                    <span className="text-[9px] font-bold text-white/40 uppercase tracking-widest px-1">Clases Hoy</span>
+                    <div className="flex items-end justify-between mt-4 px-1">
+                      <span className="text-3xl font-black text-white leading-none">{clases.filter(c => c.fecha.startsWith(new Date().toISOString().split('T')[0])).length}</span>
+                      <span className="material-icons-outlined text-accent-cyan text-xl">event_available</span>
+                    </div>
                   </div>
                 </div>
-              </section>
-            )}
 
-            {userRole === 'Coordinator' && (
-              <section className="space-y-4">
-                <div className="flex items-center gap-2 px-1">
-                  <div className="alert-icon alert-icon-danger">
-                    <span className="material-icons-outlined text-sm">warning</span>
-                  </div>
-                  <h3 className="text-rose-500 font-bold text-lg">Alertas Prioritarias</h3>
-                </div>
-                <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
-                  {alumnos.filter(a => a.estadoPago === 'Vencido').map(a => (
-                    <div key={`pago-${a.id}`} className="min-w-[220px] bg-rose-500/10 border border-rose-500/20 rounded-2xl p-4 space-y-2 shrink-0">
-                      <div className="flex justify-between items-start">
-                        <p className="text-white font-bold text-xs truncate max-w-[130px]">{a.nombre}</p>
-                        <span className="bg-rose-500 text-white text-[8px] px-2 py-0.5 rounded font-bold uppercase tracking-wider">Deuda</span>
-                      </div>
-                      <p className="text-[10px] text-white/70 italic">Pago vencido.</p>
-                      <p className="text-[8px] font-black uppercase text-rose-500 tracking-widest">{a.grupo || 'Sin grupo'}</p>
-                    </div>
-                  ))}
-                  {alertasGlobales.map(gimnasta => (
-                    <div key={`med-${gimnasta.id}`} className="min-w-[220px] bg-rose-500/10 border border-rose-500/20 rounded-2xl p-4 space-y-2 shrink-0">
-                      <div className="flex justify-between items-start">
-                        <p className="text-white font-bold text-xs truncate max-w-[130px]">{gimnasta.nombre}</p>
-                        <span className="bg-amber-500 text-black text-[8px] px-2 py-0.5 rounded font-bold uppercase tracking-wider">Médica</span>
-                      </div>
-                      <p className="text-[10px] text-rose-200/60 italic line-clamp-2">"{gimnasta.alertas[0]}"</p>
-                      <p className="text-[8px] font-black uppercase text-rose-500 tracking-widest">{gimnasta.grupo || 'Sin grupo'}</p>
-                    </div>
-                  ))}
-                  {grupos.filter(g => {
-                    const oneWeekAgo = new Date();
-                    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-                    return !clases.some(c => c.grupo === g.nombre && new Date(c.fecha) >= oneWeekAgo);
-                  }).map(g => (
-                    <div key={`inact-${g.id}`} className="min-w-[220px] bg-rose-500/10 border border-rose-500/20 rounded-2xl p-4 space-y-2 shrink-0">
-                      <div className="flex justify-between items-start">
-                        <p className="text-white font-bold text-xs truncate max-w-[130px]">{g.nombre}</p>
-                        <span className="bg-rose-500 text-white text-[8px] px-2 py-0.5 rounded font-bold uppercase tracking-wider">Inactivo</span>
-                      </div>
-                      <p className="text-[10px] text-rose-200/60 italic">Sin clases esta semana.</p>
-                      <p className="text-[8px] font-black uppercase text-rose-500 tracking-widest">Prof: {g.entrenador || 'N/A'}</p>
-                    </div>
-                  ))}
-                  {alumnos.filter(a => a.estadoPago === 'Vencido').length === 0 && alertasGlobales.length === 0 && grupos.filter(g => {
-                    const oneWeekAgo = new Date();
-                    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-                    return !clases.some(c => c.grupo === g.nombre && new Date(c.fecha) >= oneWeekAgo);
-                  }).length === 0 && (
-                    <div className="w-full bg-primary/5 border border-primary/20 rounded-2xl p-4 text-center">
-                      <p className="text-primary text-[10px] font-bold uppercase tracking-widest">No hay alertas.</p>
-                    </div>
-                  )}
-                </div>
-              </section>
-            )}
-
-            {userRole === 'Coordinator' && (
-              <section className="space-y-4">
-                <h3 className="text-primary font-bold text-lg active-glow">Estado de Asistencia Hoy</h3>
-                <div className="grid grid-cols-1 gap-4">
-                  {grupos.map((g) => {
-                    const stats = asistenciasGlobales[g.nombre] || { presentes: 0, total: 0 };
-                    const isTaken = stats.total > 0 && stats.presentes > 0;
-                    return (
-                      <div 
-                        key={`asis-${g.id}`} 
-                        onClick={() => { setActiveGroup(g); setVista('AsistenciaLista'); }}
-                        className="glass-card rounded-3xl p-5 border border-white/5 active:scale-95 transition-all cursor-pointer flex items-center justify-between"
-                      >
+                {/* Alertas de Gestión */}
+                <div className="space-y-4">
+                  <h3 className="text-white/70 font-bold text-[10px] uppercase tracking-[0.3em] px-2 italic">Alertas de Gestión</h3>
+                  <div className="grid grid-cols-1 gap-3">
+                    <div className="p-5 glass-card rounded-3xl border border-rose-500/20 bg-rose-500/5 flex items-center justify-between group active:scale-95 transition-all">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 bg-rose-500/20 rounded-xl flex items-center justify-center border border-rose-500/30">
+                          <span className="material-icons-outlined text-rose-500 text-xl">health_and_safety</span>
+                        </div>
                         <div>
-                          <h4 className="text-sm font-bold text-white truncate flex items-center gap-2">
-                            {g.nombre}
-                            {isTaken && <span className="material-icons-outlined text-primary text-[14px]">check_circle</span>}
-                          </h4>
-                          <p className="text-[10px] text-white/50 uppercase tracking-widest mt-1">Prof: {g.entrenador || 'Sin asignar'}</p>
-                        </div>
-                        <div className="flex flex-col items-end">
-                          <span className={`text-xl font-black ${isTaken ? 'text-primary' : 'text-rose-500'}`}>
-                            {stats.presentes}<span className="text-[10px] text-white/80 mx-1">/</span>{stats.total}
-                          </span>
-                          <span className={`text-[8px] font-black uppercase tracking-widest mt-1 ${isTaken ? 'text-primary' : 'text-rose-500'}`}>
-                            {isTaken ? 'Completado' : 'Pendiente'}
-                          </span>
+                          <p className="text-xs font-bold text-white uppercase tracking-wider">Alertas Médicas</p>
+                          <p className="text-[9px] text-white/50 font-medium">Hay {alumnos.filter(a => a.alertas && a.alertas.length > 0 && a.alertas[0] !== '').length} casos a revisar.</p>
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
-              </section>
-            )}
+                      <button onClick={() => { setAlumnosFilterMode('alerts'); setVista('Alumnos'); }} className="px-3 py-1.5 bg-rose-500 text-white rounded-lg text-[10px] font-black uppercase tracking-widest">Revisar</button>
+                    </div>
 
-            {userRole === 'Coordinator' && (
-              <section className="space-y-6">
-                <div className="flex items-center justify-between px-1">
-                  <h3 className="text-white font-black text-lg uppercase tracking-tighter active-glow">Desempeño Docente</h3>
-                  <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Panel Ejecutivo</span>
+                    <div className="p-5 glass-card rounded-3xl border border-amber-500/20 bg-amber-500/5 flex items-center justify-between group active:scale-95 transition-all">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 bg-amber-500/20 rounded-xl flex items-center justify-center border border-amber-500/30">
+                          <span className="material-icons-outlined text-amber-500 text-xl">assignment_late</span>
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-white uppercase tracking-wider">Feedback Pendiente</p>
+                          <p className="text-[9px] text-white/50 font-medium">{clases.filter(c => !c.hasCoordinatorFeedback).length} reportes para revisar.</p>
+                        </div>
+                      </div>
+                      <button onClick={() => { const el = document.getElementById('auditoria-section'); el?.scrollIntoView({behavior: 'smooth'}); }} className="px-3 py-1.5 bg-amber-500 text-white rounded-lg text-[10px] font-black uppercase tracking-widest">Ver</button>
+                    </div>
+                  </div>
                 </div>
-                <div className="grid grid-cols-1 gap-4">
-                  {profesoresList.length > 0 ? profesoresList.map((prof) => {
-                    const profClases = clases.filter(c => c.entrenador === prof.nombre);
-                    const pendingFeedback = profClases.filter(c => !c.hasCoordinatorFeedback).length;
-                    const urgentNeeded = profClases.filter(c => c.hasUrgentFeedback).length;
-                    
-                    return (
-                      <div key={prof.id} className="glass-card rounded-[2rem] p-5 border border-white/5 space-y-4">
-                        <div className="flex items-center justify-between">
+
+                {/* Desempeño Docente / Staff */}
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between px-1">
+                    <h3 className="text-white/70 font-bold text-[10px] uppercase tracking-[0.3em] italic">Staff Profesional</h3>
+                    <button onClick={() => setVista('Profesores')} className="text-[9px] font-bold text-primary uppercase tracking-widest flex items-center gap-1.5">
+                      Ver Staff <span className="material-icons text-[14px]">chevron_right</span>
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 gap-4">
+                    {profesoresList.slice(0, 3).map((prof) => {
+                      const profClases = clases.filter(c => c.entrenador === prof.nombre);
+                      const pendingFeedback = profClases.filter(c => !c.hasCoordinatorFeedback).length;
+                      
+                      return (
+                        <div key={prof.id} className="glass-card rounded-[2rem] p-5 border border-white/5 space-y-4 hover:border-primary/20 transition-colors">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                              <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden">
+                                <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(prof.nombre)}&background=random`} alt="" className="w-full h-full object-cover" />
+                              </div>
+                              <div className="overflow-hidden">
+                                <h4 className="text-sm font-bold text-white leading-none truncate">{prof.nombre}</h4>
+                                <p className="text-[10px] text-white/50 uppercase tracking-widest mt-1 truncate">Profesor de Gimnasia</p>
+                              </div>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <span className="text-xl font-black text-primary">{profClases.length}</span>
+                              <p className="text-[8px] text-white/40 uppercase font-black tracking-widest">Clases</p>
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center justify-between pt-2 border-t border-white/5">
+                            <div className="flex items-center gap-4">
+                               <div className="flex flex-col">
+                                  <span className={`text-xs font-black ${pendingFeedback > 0 ? 'text-amber-500' : 'text-emerald-400'}`}>{pendingFeedback}</span>
+                                  <span className="text-[7px] uppercase font-bold text-white/40">Sin Devolver</span>
+                               </div>
+                               <div className="w-px h-6 bg-white/5"></div>
+                               <div className="flex flex-col">
+                                  <span className="text-xs font-black text-white">95%</span>
+                                  <span className="text-[7px] uppercase font-bold text-white/40">Efectividad</span>
+                               </div>
+                            </div>
+                            <button 
+                              onClick={() => { setSelectedProfesor(prof.nombre); setVista('ProfesorDetalle'); }}
+                              className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-[9px] font-black text-white uppercase tracking-widest hover:bg-primary hover:text-antigravity-black transition-all"
+                            >
+                              Detalle
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Auditoría de Clases */}
+                <div id="auditoria-section" className="space-y-6">
+                  <div className="flex items-center justify-between px-1">
+                    <h3 className="text-white/70 font-bold text-[10px] uppercase tracking-[0.3em] italic">Auditoría de Clases</h3>
+                    <button onClick={() => setVista('HistorialClases')} className="text-[9px] font-bold text-primary uppercase tracking-widest flex items-center gap-1.5">
+                      Ver Todo <span className="material-icons text-[14px]">chevron_right</span>
+                    </button>
+                  </div>
+                  <div className="space-y-3">
+                    {clases.slice(0, 5).map((clase) => {
+                      const date = new Date(clase.fecha);
+                      const isNew = !clase.hasCoordinatorFeedback;
+                      return (
+                        <div 
+                          key={clase.id} 
+                          onClick={() => { setSelectedClase(clase); setVista('ClaseDetalle'); }}
+                          className={`glass-card rounded-[1.5rem] p-4 border border-white/5 flex items-center justify-between active:scale-95 transition-all cursor-pointer ${isNew ? 'ring-1 ring-primary/30 bg-primary/5 shadow-neon-cyan/10' : ''}`}
+                        >
                           <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden">
-                              <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(prof.nombre)}&background=random`} alt="" className="w-full h-full object-cover" />
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isNew ? 'bg-primary/20 text-primary animate-pulse' : 'bg-white/5 text-white/30'}`}>
+                              <span className="material-symbols-outlined text-xl">{isNew ? 'assignment_late' : 'assignment_turned_in'}</span>
                             </div>
                             <div className="overflow-hidden">
-                              <h4 className="text-sm font-bold text-white leading-none truncate">{prof.nombre}</h4>
-                              <p className="text-[10px] text-white/50 uppercase tracking-widest mt-1 truncate">{prof.especialidad || 'Profesor de Gimnasia'}</p>
+                              <h4 className="text-sm font-bold text-white leading-none truncate">{clase.grupo}</h4>
+                              <p className="text-[10px] text-white/40 mt-1 uppercase tracking-widest font-black italic">{date.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })} • {clase.entrenador}</p>
                             </div>
                           </div>
-                          <div className="text-right shrink-0">
-                            <span className="text-xl font-black text-primary">{profClases.length}</span>
-                            <p className="text-[8px] text-white/40 uppercase font-black tracking-widest">Clases</p>
+                          <div className="flex items-center gap-2">
+                             {clase.hasUrgentFeedback && (
+                                <span className="w-2 h-2 bg-rose-500 rounded-full animate-ping"></span>
+                             )}
+                            <span className="material-icons text-white/20">chevron_right</span>
                           </div>
                         </div>
-                        
-                        <div className="grid grid-cols-3 gap-3 pt-2">
-                          <div className={`p-3 rounded-2xl border ${pendingFeedback > 0 ? 'bg-amber-500/5 border-amber-500/20' : 'bg-emerald-500/5 border-emerald-500/20'} flex flex-col items-center justify-center gap-1`}>
-                            <span className={`text-base font-black ${pendingFeedback > 0 ? 'text-amber-500' : 'text-emerald-400'}`}>
-                              {pendingFeedback}
-                            </span>
-                            <span className="text-[8px] uppercase tracking-tighter text-white/60 font-medium text-center">Sin Feedback</span>
-                          </div>
-                          <div className={`p-3 rounded-2xl border ${urgentNeeded > 0 ? 'bg-rose-500/5 border-rose-500/20' : 'bg-white/5 border-white/10'} flex flex-col items-center justify-center gap-1`}>
-                            <span className={`text-base font-black ${urgentNeeded > 0 ? 'text-rose-500' : 'text-white/40'}`}>
-                              {urgentNeeded}
-                            </span>
-                            <span className="text-[8px] uppercase tracking-tighter text-white/60 font-medium text-center">Urgentes</span>
-                          </div>
-                          <button 
-                            onClick={() => {
-                              setPlanesFilterCoach(prof.nombre);
-                              setVista('Planes');
-                            }}
-                            className="p-3 rounded-2xl border border-primary/20 bg-primary/5 flex flex-col items-center justify-center gap-1 active:scale-95 transition-all"
-                          >
-                            <span className="material-icons-outlined text-primary text-xl">visibility</span>
-                            <span className="text-[8px] uppercase tracking-tighter text-primary font-black text-center">Detalles</span>
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  }) : (
-                    <div className="p-8 text-center glass-card rounded-[2rem] border-dashed border-white/10 opacity-40">
-                      <p className="text-xs italic">Cargando lista de profesionales...</p>
-                    </div>
-                  )}
+                      );
+                    })}
+                  </div>
                 </div>
-              </section>
-            )}
 
-            {userRole === 'Coordinator' && (
-              <section className="space-y-4">
-                <div className="flex items-center justify-between px-1">
-                  <h3 className="text-white font-black text-lg uppercase tracking-tighter active-glow">Auditoría de Clases</h3>
-                  <button onClick={() => setVista('HistorialClases')} className="text-[10px] font-bold text-primary uppercase tracking-widest">Ver Historial</button>
-                </div>
-                <div className="space-y-3">
-                  {clases.slice(0, 5).map((clase) => {
-                    const date = new Date(clase.fecha);
-                    const isNew = !clase.hasCoordinatorFeedback;
-                    return (
-                      <div 
-                        key={clase.id} 
-                        onClick={() => { setSelectedClase(clase); setVista('ClaseDetalle'); }}
-                        className={`glass-card rounded-[1.5rem] p-4 border border-white/5 flex items-center justify-between active:scale-95 transition-all cursor-pointer ${isNew ? 'ring-1 ring-primary/30 bg-primary/5' : ''}`}
-                      >
-                        <div className="flex items-center gap-4">
-                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isNew ? 'bg-primary/20 text-primary' : 'bg-white/5 text-white/30'}`}>
-                            <span className="material-symbols-outlined text-xl">{isNew ? 'assignment_late' : 'assignment_turned_in'}</span>
-                          </div>
+                {/* Estado de Asistencia Hoy */}
+                <div className="space-y-4">
+                  <h3 className="text-white/70 font-bold text-[10px] uppercase tracking-[0.3em] px-2 italic">Asistencia por Grupo</h3>
+                  <div className="grid grid-cols-1 gap-3">
+                    {grupos.map((g) => {
+                      const stats = asistenciasGlobales[g.nombre] || { presentes: 0, total: 0 };
+                      const isTaken = stats.total > 0 && stats.presentes > 0;
+                      return (
+                        <div 
+                          key={`asis-dash-${g.id}`} 
+                          onClick={() => { setActiveGroup(g); setVista('AsistenciaLista'); }}
+                          className="glass-card rounded-[1.5rem] p-5 border border-white/5 active:scale-95 transition-all cursor-pointer flex items-center justify-between hover:bg-white/5"
+                        >
                           <div>
-                            <h4 className="text-sm font-bold text-white leading-none">{clase.grupo}</h4>
-                            <p className="text-[10px] text-white/40 mt-1 uppercase tracking-widest">{date.toLocaleDateString()} • {clase.entrenador}</p>
+                            <p className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                              {g.nombre}
+                              {isTaken && <span className="material-icons text-primary text-[14px]">check_circle</span>}
+                            </p>
+                            <p className="text-[9px] text-white/40 font-bold uppercase tracking-widest mt-1 italic">Prof: {g.entrenador || 'Sin asignar'}</p>
+                          </div>
+                          <div className="text-right">
+                            <div className="flex items-end justify-end gap-1">
+                               <span className={`text-xl font-black ${isTaken ? 'text-primary' : 'text-rose-500/60'}`}>{stats.presentes}</span>
+                               <span className="text-[10px] text-white/20 font-black mb-1">/ {stats.total}</span>
+                            </div>
+                            <p className={`text-[7px] font-black uppercase tracking-widest mt-0.5 ${isTaken ? 'text-primary' : 'text-rose-500/40 text-rose-500 animate-pulse'}`}>
+                              {isTaken ? 'Completado' : 'Pendiente'}
+                            </p>
                           </div>
                         </div>
-                        <div className="flex flex-col items-end gap-1">
-                          {clase.hasUrgentFeedback && (
-                            <span className="bg-rose-500 text-white text-[8px] font-black px-2 py-0.5 rounded uppercase tracking-widest animate-pulse">Urgente</span>
-                          )}
-                          <span className="material-icons-outlined text-white/20">chevron_right</span>
-                        </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
+
               </section>
             )}
 
             {userRole === 'Coach' && (
-              <section className="space-y-4">
-                <div className="flex flex-col px-1 border-l-2 border-primary/30 pl-4">
-                  <h3 className="text-white font-black text-lg uppercase tracking-tighter">Accesos Rápidos</h3>
-                  <p className="text-[10px] text-white/50 mt-1 font-medium">¿Por dónde empezar? Tocá <span className="text-primary font-bold italic">Lista de Asistencia</span> para registrar la clase de hoy.</p>
+              <section className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                {/* Accesos Rápidos Coach */}
+                <div className="flex flex-col gap-6">
+                  <button 
+                    onClick={() => setVista('NuevaClase')}
+                    className="glass-card rounded-[2.5rem] p-10 border border-primary/20 bg-primary/5 flex flex-col items-center justify-center text-center group active:scale-95 transition-all shadow-neon-cyan/20 overflow-hidden relative"
+                  >
+                    <div className="absolute -top-10 -left-10 w-32 h-32 bg-primary/5 rounded-full blur-3xl group-hover:scale-150 transition-transform"></div>
+                    <div className="relative z-10 w-20 h-20 bg-primary/20 rounded-3xl flex items-center justify-center border border-primary/30 shadow-neon-cyan group-hover:scale-110 transition-transform">
+                      <span className="material-icons text-primary text-5xl">edit_note</span>
+                    </div>
+                    <div className="mt-8 relative z-10">
+                       <h3 className="text-2xl font-black text-white uppercase tracking-tighter">Registrar Clase</h3>
+                       <p className="text-primary text-[10px] font-black uppercase tracking-widest mt-2 opacity-80 italic">Cargar reporte técnico de hoy</p>
+                    </div>
+                  </button>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <button 
+                      onClick={() => { setAlumnosFilterMode('all'); setVista('Alumnos'); }}
+                      className="glass-card rounded-[2.5rem] p-7 border border-white/5 bg-white/5 flex flex-col items-center justify-center text-center group active:scale-95 transition-all"
+                    >
+                      <div className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center border border-white/10 group-hover:text-primary transition-colors">
+                        <span className="material-icons-outlined text-2xl">group</span>
+                      </div>
+                      <p className="text-[10px] font-black text-white/90 uppercase tracking-widest mt-4">Mis Alumnos</p>
+                    </button>
+                    <button 
+                      onClick={() => setVista('AsistenciaStats')}
+                      className="glass-card rounded-[2.5rem] p-7 border border-white/5 bg-white/5 flex flex-col items-center justify-center text-center group active:scale-95 transition-all"
+                    >
+                      <div className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center border border-white/10 group-hover:text-primary transition-colors">
+                        <span className="material-icons-outlined text-2xl">insights</span>
+                      </div>
+                      <p className="text-[10px] font-black text-white/90 uppercase tracking-widest mt-4">Estadísticas</p>
+                    </button>
+                  </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <button 
-                    onClick={() => { handleNavigation('ListasDeAsistencia'); }}
-                    className="col-span-2 glass-card rounded-[2.5rem] p-8 border-2 border-primary flex items-center justify-between active:scale-95 transition-all shadow-neon-cyan group overflow-hidden relative"
-                  >
-                    <div className="relative z-10 flex items-center gap-6">
-                      <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center border border-primary/20 shadow-neon-cyan">
-                        <span className="material-icons-outlined text-primary text-4xl">fact_check</span>
-                      </div>
-                      <div className="text-left">
-                        <span className="text-xl font-black text-white uppercase tracking-tighter block leading-none">Lista de Asistencia</span>
-                        <span className="text-[10px] text-primary font-bold uppercase tracking-widest mt-2 block opacity-80 italic">Iniciar Registro de Clase</span>
-                      </div>
-                    </div>
-                    <span className="material-icons-outlined text-primary text-3xl opacity-30 group-hover:translate-x-2 transition-transform relative z-10">arrow_forward</span>
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl -mr-16 -mt-16"></div>
-                  </button>
-                  
-                  <button 
-                    onClick={() => { setAlumnosFilterMode('all'); handleNavigation('Alumnos'); }}
-                    className="glass-card rounded-3xl p-5 border border-white/5 flex flex-col items-center justify-center gap-3 active:scale-95 transition-all"
-                  >
-                    <div className="w-12 h-12 bg-accent-purple/10 rounded-2xl flex items-center justify-center border border-accent-purple/20 shadow-neon-purple">
-                      <span className="material-icons-outlined text-accent-purple text-2xl">group</span>
-                    </div>
-                    <span className="text-xs font-bold text-white text-center flex flex-col items-center gap-1">Gimnastas<span className="text-[9px] text-white/50 font-medium mt-1">Fichas técnicas</span></span>
-                  </button>
 
-                  <button 
-                    onClick={() => { setAlumnosFilterMode('alerts'); handleNavigation('Alumnos'); }}
-                    className="glass-card rounded-3xl p-5 border border-white/5 flex flex-col items-center justify-center gap-3 active:scale-95 transition-all"
-                  >
-                    <div className="w-12 h-12 bg-rose-500/10 rounded-2xl flex items-center justify-center border border-rose-500/20 shadow-neon-rose">
-                      <span className="material-icons-outlined text-rose-500 text-2xl">medical_services</span>
-                    </div>
-                    <span className="text-xs font-bold text-white text-center flex flex-col items-center gap-1">Observaciones<span className="text-[9px] text-white/50 font-medium mt-1">Salud y alertas</span></span>
-                  </button>
-
-                  <button 
-                    onClick={() => { handleNavigation('AsistenciaStats'); }}
-                    className="glass-card rounded-3xl p-5 border border-white/5 flex flex-col items-center justify-center gap-3 active:scale-95 transition-all"
-                  >
-                    <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center border border-primary/20 shadow-neon-cyan">
-                      <span className="material-icons-outlined text-primary text-2xl">analytics</span>
-                    </div>
-                    <span className="text-xs font-bold text-white text-center flex flex-col items-center gap-1">Reportes<span className="text-[9px] text-white/50 font-medium mt-1">Estadísticas</span></span>
-                  </button>
-
-                  <button 
-                    onClick={() => { handleNavigation('HistorialClases'); }}
-                    className="glass-card rounded-3xl p-5 border border-white/5 flex flex-col items-center justify-center gap-3 active:scale-95 transition-all"
-                  >
-                    <div className="w-12 h-12 bg-indigo-500/10 rounded-2xl flex items-center justify-center border border-indigo-500/20 shadow-neon-purple">
-                      <span className="material-icons-outlined text-indigo-400 text-2xl">history</span>
-                    </div>
-                    <span className="text-xs font-bold text-white text-center flex flex-col items-center gap-1">Historial<span className="text-[9px] text-white/50 font-medium mt-1">Clases pasadas</span></span>
-                  </button>
-
-                  <button 
-                    onClick={() => { handleNavigation('Emergencias'); }}
-                    className="glass-card rounded-3xl p-5 border border-white/5 flex flex-col items-center justify-center gap-3 active:scale-95 transition-all col-span-2 mt-2"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-amber-500/10 rounded-2xl flex items-center justify-center border border-amber-500/20 shadow-neon-amber">
-                        <span className="material-icons-outlined text-amber-500 text-2xl">contact_phone</span>
-                      </div>
-                      <div className="text-left">
-                        <span className="text-sm font-bold text-white block">S.O.S - Contactos de Urgencia</span>
-                        <span className="text-[9px] text-white/50 font-medium italic block mt-0.5">Llamada rápida a familiares y médicos</span>
-                      </div>
-                    </div>
-                  </button>
+                {/* Grupos a cargo del Coach */}
+                <div className="space-y-4">
+                  <h3 className="text-white/70 font-bold text-[10px] uppercase tracking-[0.3em] px-2 italic">Mis Grupos hoy</h3>
+                  <div className="grid grid-cols-1 gap-3">
+                    {grupos
+                      .filter(g => !user?.displayName || g.entrenador === user.displayName)
+                      .map(g => (
+                      <button 
+                        key={g.id}
+                        onClick={() => { setActiveGroup(g); setVista('AsistenciaLista'); }}
+                        className="p-5 glass-card rounded-3xl border border-white/5 bg-white/5 flex items-center justify-between group active:scale-95 transition-all border-l-4 border-l-primary/30 hover:bg-white/10"
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 bg-white/5 rounded-xl flex items-center justify-center border border-white/10 group-hover:border-primary/50 transition-colors">
+                            <span className="material-symbols-outlined text-[20px] font-light">category</span>
+                          </div>
+                          <div className="text-left">
+                            <p className="text-sm font-bold text-white uppercase tracking-wider">{g.nombre}</p>
+                            <p className="text-[9px] text-white/50 font-bold uppercase tracking-widest mt-0.5">{g.horario}</p>
+                          </div>
+                        </div>
+                        <span className="material-icons text-white/40 group-hover:text-primary transition-colors">chevron_right</span>
+                      </button>
+                    ))}
+                    {grupos.filter(g => !user?.displayName || g.entrenador === user.displayName).length === 0 && (
+                       <p className="text-center text-white/20 py-10 text-[10px] uppercase font-black tracking-widest italic">No tienes grupos asignados.</p>
+                    )}
+                  </div>
                 </div>
               </section>
             )}
+            
+            {/* CTA Centro Técnico (Común para todos) */}
+            <section className="space-y-4 pt-12">
+               <div className="p-8 glass-card rounded-[3rem] border border-accent-purple/30 bg-accent-purple/5 relative overflow-hidden group">
+                  <div className="absolute -top-10 -right-10 w-40 h-40 bg-accent-purple/10 rounded-full blur-3xl group-hover:scale-150 transition-transform"></div>
+                  <div className="relative z-10 flex flex-col items-center text-center">
+                     <div className="w-16 h-16 bg-accent-purple/20 rounded-2xl flex items-center justify-center border border-accent-purple/30 mb-6 shadow-neon-purple active-glow">
+                        <span className="material-icons text-accent-purple text-3xl">psychology</span>
+                     </div>
+                     <h3 className="text-2xl font-black text-white uppercase tracking-tighter">Centro Técnico</h3>
+                     <p className="text-[10px] text-white/60 uppercase font-black tracking-[0.2em] mt-2 mb-8 max-w-[200px]">Consulta manuales de nivel y reglamentos con IA especializado.</p>
+                     <button onClick={() => setVista('Asistente')} className="w-full py-5 rounded-2xl bg-accent-purple text-white font-black uppercase text-[11px] tracking-[0.3em] shadow-neon-purple active:scale-95 transition-all">Acceder a la Biblioteca</button>
+                  </div>
+               </div>
+            </section>
           </div>
         )}
 
@@ -2658,11 +2556,11 @@ const App: React.FC = () => {
                 Agregar Gimnasta
               </button>
               <button 
-                onClick={handleAIAnalysis}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-accent-purple/10 border border-accent-purple/20 text-accent-purple text-[10px] font-black uppercase tracking-widest whitespace-nowrap active:scale-95 transition-all"
+                onClick={() => handleNavigation('Asistente')}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary/10 border border-primary/20 text-primary text-[10px] font-black uppercase tracking-widest whitespace-nowrap active:scale-95 transition-all"
               >
-                <span className="material-icons-outlined text-sm">psychology</span>
-                Asistente IA
+                <span className="material-icons-outlined text-sm">local_library</span>
+                Biblioteca Técnica
               </button>
               <button 
                 onClick={() => {
@@ -3934,100 +3832,91 @@ const App: React.FC = () => {
         )}
 
         {vista === 'Asistente' && (
-          <CoachAI />
-        )}
+          <div className="flex flex-col h-full overflow-hidden page-transition">
+            <div className="px-6 pt-12 pb-4 flex items-center justify-between shrink-0">
+               <div>
+                  <h2 className="title-antigravity text-3xl leading-none">Centro Técnico</h2>
+                  <p className="text-primary text-[10px] font-black uppercase tracking-[0.3em] mt-1 italic">Conocimiento Centralizado</p>
+               </div>
+               <button onClick={() => setVista('Dashboard')} className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white/40 hover:text-white active:scale-90 transition-all">
+                 <span className="material-icons-outlined">close</span>
+               </button>
+            </div>
 
-        {vista === 'KnowledgeBase' && (
-          <div className="px-6 py-8 space-y-8 page-transition pb-32">
-            <header>
-              <h2 className="text-3xl font-black text-white uppercase tracking-tighter">Centro Técnico</h2>
-              <p className="text-primary text-[10px] font-black uppercase tracking-widest mt-1">Biblioteca de Manuales y Reglamentos</p>
-            </header>
-
-            <section className="space-y-4">
-              <div className="flex justify-between items-center px-1">
-                <h3 className="text-white font-bold text-sm uppercase tracking-wider">Fuentes</h3>
-                <label className="cursor-pointer bg-primary/10 text-primary border border-primary/20 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all">
-                  <span className="flex items-center gap-2">
-                    <span className="material-icons-outlined text-sm">add</span>
-                    Subir PDF/Doc
-                  </span>
-                  <input type="file" accept="application/pdf,.docx,text/plain" className="hidden" onChange={handleFileUpload} />
-                </label>
-              </div>
-              
-              <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-                {sources.length > 0 ? sources.map(source => (
-                  <div key={source.id} className="min-w-[160px] glass-card rounded-2xl p-4 border border-white/10 flex flex-col gap-2">
-                    <div className="w-10 h-10 bg-white/5 rounded-xl flex items-center justify-center border border-white/10">
-                      <span className="material-icons-outlined text-primary">
-                        {source.type === 'pdf' ? 'picture_as_pdf' : 
-                         (source.type === 'doc' || source.type === 'docx') ? 'article' : 'description'}
-                      </span>
-                    </div>
-                    <p className="text-xs font-bold text-white truncate">{source.name}</p>
-                    <p className="text-[8px] text-white/40 uppercase tracking-widest">{new Date(source.uploadDate).toLocaleDateString()}</p>
-                    <button 
-                      onClick={() => handleDeleteSource(source.id!, source.name)}
-                      className="text-[8px] text-rose-500 font-black uppercase tracking-widest mt-2 hover:text-rose-400"
-                    >
-                      Eliminar
-                    </button>
-                  </div>
-                )) : (
-                  <div className="w-full py-8 text-center border border-dashed border-white/5 rounded-2xl opacity-30 italic text-xs">
-                    Carga los manuales USAG o de la Federación para empezar.
-                  </div>
-                )}
-              </div>
-            </section>
-
-            <section className="flex-1 flex flex-col gap-4">
-              <h3 className="text-white font-bold text-sm uppercase tracking-wider px-1">Consultar Manuales</h3>
-              <div className="glass-card rounded-3xl border border-white/5 flex flex-col h-[400px] overflow-hidden">
-                <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-hide">
-                  {kbMessages.length === 0 && (
-                    <div className="h-full flex flex-col items-center justify-center text-center space-y-4 opacity-30 px-8">
-                      <span className="material-icons-outlined text-4xl text-primary">psychology</span>
-                      <p className="text-xs italic">Pregunta sobre reglamentos, puntajes o metodologías de los manuales cargados.</p>
-                    </div>
-                  )}
-                  {kbMessages.map((msg, idx) => (
-                    <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                      <div className={`max-w-[85%] p-3 rounded-2xl text-xs leading-relaxed ${msg.role === 'user' ? 'bg-primary text-antigravity-black font-bold rounded-tr-none' : 'bg-white/5 text-white/90 border border-white/10 rounded-tl-none'}`}>
-                        <Markdown>{msg.text}</Markdown>
+            <div className="flex-1 overflow-hidden">
+               <div className="h-full px-6 overflow-y-auto space-y-10 pb-32 no-scrollbar">
+                  {/* Biblioteca Técnica Section */}
+                  <section className="space-y-6 pt-4">
+                    <div className="flex justify-between items-center px-1">
+                      <div className="space-y-1">
+                        <h3 className="text-white font-black text-[12px] uppercase tracking-[0.2em]">Biblioteca Técnica</h3>
+                        <p className="text-[9px] text-white/40 font-bold uppercase tracking-widest">Manuales y Reglamentos Cargados</p>
                       </div>
+                      <label className="cursor-pointer bg-primary/10 text-primary border border-primary/20 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all flex items-center gap-2 shadow-neon-cyan/10">
+                        <span className="material-icons-outlined text-sm">add_circle</span>
+                        Subir Manual
+                        <input type="file" accept="application/pdf,.docx,text/plain" className="hidden" onChange={handleFileUpload} />
+                      </label>
                     </div>
-                  ))}
-                  {isKbLoading && (
-                    <div className="flex justify-start">
-                      <div className="bg-white/5 p-3 rounded-2xl rounded-tl-none border border-white/10 flex items-center gap-2">
-                        <div className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce"></div>
-                        <div className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce [animation-delay:0.2s]"></div>
-                        <div className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce [animation-delay:0.4s]"></div>
-                      </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      {sources.length > 0 ? sources.map(source => (
+                        <div key={source.id} className="glass-card rounded-[1.5rem] p-4 border border-white/5 flex flex-col gap-3 relative group overflow-hidden hover:border-primary/30 transition-all">
+                          <div className="w-10 h-10 bg-white/5 rounded-xl flex items-center justify-center border border-white/10 group-hover:scale-110 transition-transform">
+                            <span className="material-icons-outlined text-primary text-xl">
+                              {source.type === 'pdf' ? 'picture_as_pdf' : 'article'}
+                            </span>
+                          </div>
+                          <div>
+                             <p className="text-[10px] font-bold text-white truncate max-w-full">{source.name}</p>
+                             <p className="text-[8px] text-white/30 uppercase tracking-[0.2em] mt-1">{new Date(source.uploadDate).toLocaleDateString()}</p>
+                          </div>
+                          <button 
+                            onClick={() => handleDeleteSource(source.id!, source.name)}
+                            className="absolute top-2 right-2 w-8 h-8 rounded-full bg-rose-500/10 text-rose-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity border border-rose-500/20"
+                          >
+                            <span className="material-icons-outlined text-xs">delete</span>
+                          </button>
+                        </div>
+                      )) : (
+                        <div className="col-span-2 py-12 text-center border-2 border-dashed border-white/10 rounded-[2rem] bg-white/[0.02]">
+                          <span className="material-icons-outlined text-4xl text-white/10 mb-4 block">library_books</span>
+                          <p className="text-[10px] uppercase font-black text-white/30 tracking-widest">No hay manuales en la biblioteca</p>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-                <div className="p-4 border-t border-white/5 bg-black/20 flex gap-2">
-                  <input 
-                    type="text" 
-                    value={kbInput}
-                    onChange={(e) => setKbInput(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleKbQuery()}
-                    placeholder="¿Cuál es el valor del Flic-Flac en Viga?"
-                    className="flex-1 bg-antigravity-charcoal border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white outline-none focus:border-primary/50 transition-all"
-                  />
-                  <button 
-                    onClick={handleKbQuery}
-                    disabled={!kbInput.trim() || isKbLoading}
-                    className="w-10 h-10 bg-primary text-antigravity-black rounded-xl flex items-center justify-center shadow-neon-cyan active:scale-95 transition-all disabled:opacity-50"
-                  >
-                    <span className="material-icons-outlined">send</span>
-                  </button>
-                </div>
-              </div>
-            </section>
+                    
+                    <div className="p-5 bg-amber-500/5 rounded-2xl border border-amber-500/10 flex gap-4 items-start">
+                      <span className="material-icons-outlined text-amber-500 text-lg">info</span>
+                      <p className="text-[10px] text-white/60 font-medium leading-relaxed italic">
+                        <span className="font-bold text-amber-500">IMPORTANTE:</span> Las respuestas de la IA se basan <span className="text-white">exclusivamente</span> en estos documentos. Por favor, suba reglamentos de GAF, GAM o Trampolín para consultas específicas.
+                      </p>
+                    </div>
+                  </section>
+
+                  {/* Chat con Asistente Section */}
+                  <section className="space-y-6">
+                    <div className="space-y-1 px-1">
+                       <h3 className="text-white font-black text-[12px] uppercase tracking-[0.2em]">Chat con Asistente</h3>
+                       <p className="text-[9px] text-white/40 font-bold uppercase tracking-widest">Consulta Técnica Inteligente</p>
+                    </div>
+                    
+                    <div className="glass-card rounded-[2rem] border border-white/5 overflow-hidden h-[500px] flex flex-col">
+                       {sources.length === 0 ? (
+                         <div className="flex-1 flex flex-col items-center justify-center text-center p-10 space-y-4 opacity-50">
+                           <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center border border-white/10 mb-2">
+                             <span className="material-symbols-outlined text-4xl font-light">psychology_alt</span>
+                           </div>
+                           <p className="text-xs text-white font-bold uppercase tracking-widest">Brain Inactivo</p>
+                           <p className="text-[10px] text-white/60 leading-relaxed italic max-w-[200px]">Carga al menos un manual PDF o DOCX en la biblioteca para que el asistente pueda responder tus consultas.</p>
+                         </div>
+                       ) : (
+                         <CoachAI sources={sources} />
+                       )}
+                    </div>
+                  </section>
+               </div>
+            </div>
           </div>
         )}
 
@@ -5131,15 +5020,13 @@ const App: React.FC = () => {
         )}
       </main>
 
-      {/* Navegación Inferior (Refined for Antigravity) */}
-      {vista !== 'ReportePDF' && (
-        <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-antigravity-charcoal/80 backdrop-blur-md border-t border-white/5 px-6 pt-4 pb-2 flex justify-between items-center z-50">
+        <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-antigravity-charcoal/80 backdrop-blur-md border-t border-white/5 px-6 pt-4 pb-2 flex justify-between items-center z-50 rounded-t-[2.5rem] shadow-2xl">
           {[
             { v: 'Dashboard', i: 'grid_view', l: 'Inicio' },
             { v: 'Alumnos', i: 'group', l: 'Gimnastas' },
-            { v: 'Clases', i: 'history', l: 'Clases' },
-            { v: 'Asistente', i: 'smart_toy', l: 'IA' },
-            { v: 'KnowledgeBase', i: 'book', l: 'Manuales' }
+            { v: 'Clases', i: 'history_edu', l: 'Clases' },
+            { v: 'Asistente', i: 'psychology', l: 'Manuales' },
+            { v: 'Ajustes', i: 'person', l: 'Perfil' }
           ].map(item => (
             <button 
               key={item.v} 
@@ -5147,16 +5034,15 @@ const App: React.FC = () => {
                 if (item.v === 'Alumnos') setAlumnosFilterMode('all');
                 handleNavigation(item.v as ViewMode);
               }} 
-              className={`flex flex-col items-center gap-1.5 transition-all flex-1 ${vista === item.v || (vista === 'AsistenciaLista' && item.v === 'Horario') ? 'text-neon-cyan active-glow' : 'text-white/60 hover:text-white'}`}
+              className={`flex flex-col items-center gap-1.5 transition-all flex-1 ${vista === item.v ? 'text-primary active-glow' : 'text-white/40 hover:text-white'}`}
             >
-              <span className={`material-symbols-outlined text-[26px] font-light ${vista === item.v || (vista === 'AsistenciaLista' && item.v === 'Horario') ? 'neon-glow-cyan' : ''}`}>{item.i}</span>
-              <span className={`text-[9px] uppercase tracking-wide ${vista === item.v || (vista === 'AsistenciaLista' && item.v === 'Horario') ? 'font-bold' : 'font-medium'}`}>
-                {item.v === 'Horario' ? (activeGroup ? 'Horario' : 'Horario') : item.l}
+              <span className={`material-symbols-outlined text-[24px] font-light ${vista === item.v ? 'neon-glow-cyan' : ''}`}>{item.i}</span>
+              <span className={`text-[8px] uppercase tracking-widest font-black mt-1`}>
+                {item.l}
               </span>
             </button>
           ))}
         </nav>
-      )}
 
       {/* Safe Area Indicator */}
       {vista !== 'ReportePDF' && (
@@ -5576,24 +5462,7 @@ const App: React.FC = () => {
         </div>
       )}
 
-      <nav className="fixed bottom-0 left-0 right-0 bg-antigravity-black/80 backdrop-blur-xl border-t border-white/5 px-6 py-3 flex justify-between items-center z-50 md:hidden pb-safe">
-        <button onClick={() => setVista('Dashboard')} className={`flex flex-col items-center gap-1 transition-all ${vista === 'Dashboard' ? 'text-primary' : 'text-white/40'}`}>
-          <span className="material-icons-outlined text-xl">home</span>
-          <span className="text-[10px] font-black uppercase tracking-widest">Inicio</span>
-        </button>
-        <button onClick={() => { setAlumnosFilterMode('all'); setVista('Alumnos'); }} className={`flex flex-col items-center gap-1 transition-all ${vista === 'Alumnos' ? 'text-primary' : 'text-white/40'}`}>
-          <span className="material-icons-outlined text-xl">groups</span>
-          <span className="text-[10px] font-black uppercase tracking-widest">Alumnos</span>
-        </button>
-        <button onClick={() => setVista('Clases')} className={`flex flex-col items-center gap-1 transition-all ${vista === 'Clases' ? 'text-primary' : 'text-white/40'}`}>
-          <span className="material-icons-outlined text-xl">history_edu</span>
-          <span className="text-[10px] font-black uppercase tracking-widest">Clases</span>
-        </button>
-        <button onClick={() => setVista('Ajustes')} className={`flex flex-col items-center gap-1 transition-all ${vista === 'Ajustes' ? 'text-primary' : 'text-white/40'}`}>
-          <span className="material-icons-outlined text-xl">person</span>
-          <span className="text-[10px] font-black uppercase tracking-widest">Perfil</span>
-        </button>
-      </nav>
+      {/* Notificaciones se activan sobre la navegación */}
 
       {/* Notificaciones */}
 
