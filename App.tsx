@@ -2217,7 +2217,7 @@ const App: React.FC = () => {
           />
         )}
 
-        {(vista === 'AsistenciaLista' || vista === 'AsistenciaStats' || vista === 'ReporteGrupal' || vista === 'TendenciasHabilidades') && (
+        {vista === 'AsistenciaLista' && (
           <Asistencia 
             vista={vista}
             setVista={setVista}
@@ -2275,7 +2275,7 @@ const App: React.FC = () => {
           />
         )}
 
-        {(vista === 'Clases' || vista === 'NuevaClase') && (
+        {(vista === 'Clases' || vista === 'NuevaClase' || vista === 'ClaseDetalle' || vista === 'HistorialClases') && (
           <Clases 
             vista={vista}
             setVista={setVista}
@@ -2332,7 +2332,7 @@ const App: React.FC = () => {
           />
         )}
 
-        {(vista === 'Alumnos' || vista === 'RegistroAlumno' || vista === 'AlumnoDetalle' || vista === 'Habilidades') && (
+        {(vista === 'Alumnos' || vista === 'RegistroAlumno' || vista === 'AlumnoDetalle') && (
           <Alumnos 
             vista={vista}
             setVista={setVista}
@@ -2404,7 +2404,7 @@ const App: React.FC = () => {
           />
         )}
 
-        {(vista === 'Finanzas' || vista === 'AsistenciaStats' || vista === 'ReporteGrupal' || vista === 'TendenciasHabilidades') && (
+        {(vista === 'AsistenciaStats' || vista === 'ReporteGrupal' || vista === 'TendenciasHabilidades' || vista === 'ReportePDF') && (
           <Reportes 
             vista={vista}
             setVista={setVista}

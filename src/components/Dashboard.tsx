@@ -215,7 +215,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     <p className="text-white font-bold text-sm">{alumnosConPagosVencidos.length} Pagos Vencidos</p>
                     <p className="text-[10px] text-white/60">Requiere seguimiento administrativo</p>
                   </div>
-                  <Button variant="outline" className="h-8 px-3 text-[10px]" onClick={() => setVista('Finanzas')}>Ver</Button>
+                  <Button variant="outline" className="h-8 px-3 text-[10px]" onClick={() => setVista('Alumnos')}>Ver</Button>
                 </div>
               )}
               

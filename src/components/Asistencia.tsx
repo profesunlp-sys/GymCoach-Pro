@@ -2,7 +2,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Alumno, GrupoConfig, ViewMode, AsistenciaRecord, Clase } from '../../types';
-import { Reportes as AsistenciaStats } from './Reportes';
 
 interface AsistenciaProps {
   vista: ViewMode;
@@ -115,23 +114,6 @@ export const Asistencia: React.FC<AsistenciaProps> = ({
   handleExportGroupAttendance,
   handleExportAllAttendance
 }) => {
-  if (vista === 'AsistenciaStats' || vista === 'ReporteGrupal' || vista === 'TendenciasHabilidades') {
-    return (
-      <AsistenciaStats 
-        vista={vista}
-        setVista={setVista}
-        handleExportAttendance={handleExportAttendance}
-        handleAIAnalysis={handleAIAnalysis}
-        isAnalyzing={isAnalyzing}
-        comparativeData={comparativeData}
-        alumnos={alumnos}
-        grupos={grupos}
-        clases={clases}
-        asistencias={asistencias}
-      />
-    );
-  }
-
   if (vista === 'RegistroAlumno' && activeGroup) {
     return (
       <div className="space-y-8 page-transition pb-12 px-6 pt-4 bg-antigravity-black min-h-screen">
@@ -516,17 +498,10 @@ export const Asistencia: React.FC<AsistenciaProps> = ({
                   <div className="grid grid-cols-2 gap-3">
                     <button 
                       onClick={() => handleNavigation('AlumnoDetalle')}
-                      className="flex items-center justify-center gap-2 py-3 rounded-xl bg-white/5 border border-white/10 text-white/80 text-[10px] font-bold uppercase tracking-widest hover:bg-white/10 transition-all"
+                      className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-white/5 border border-white/10 text-white/80 text-[10px] font-bold uppercase tracking-widest hover:bg-white/10 transition-all"
                     >
                       <span className="material-icons-outlined text-sm">visibility</span>
                       Ver Perfil
-                    </button>
-                    <button 
-                      onClick={() => handleNavigation('Habilidades')}
-                      className="flex items-center justify-center gap-2 py-3 rounded-xl bg-primary/10 border border-primary/20 text-primary text-[10px] font-bold uppercase tracking-widest hover:bg-primary/20 transition-all"
-                    >
-                      <span className="material-icons-outlined text-sm">star</span>
-                      Habilidades
                     </button>
                   </div>
                 </div>

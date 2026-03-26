@@ -4,14 +4,14 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
   LineChart, Line, AreaChart, Area, PieChart, Pie, Cell, Legend
 } from 'recharts';
-import { Alumno, Clase, GrupoConfig } from '../../types';
+import { Alumno, Clase, GrupoConfig, ViewMode } from '../../types';
 
 interface ReportesProps {
   alumnos: Alumno[];
   clases: Clase[];
   grupos: GrupoConfig[];
-  vista: 'AsistenciaStats' | 'ReporteGrupal' | 'TendenciasHabilidades' | 'Finanzas';
-  setVista?: (vista: any) => void;
+  vista: ViewMode;
+  setVista: (vista: ViewMode) => void;
   handleExportAttendance?: (mes: number, anio: number) => void;
   handleAIAnalysis?: () => void;
   isAnalyzing?: boolean;
@@ -19,7 +19,7 @@ interface ReportesProps {
   asistencias?: any[];
 }
 
-export const Reportes: React.FC<ReportesProps> = ({ alumnos, clases, grupos, vista }) => {
+export const Reportes: React.FC<ReportesProps> = ({ alumnos, clases, grupos, vista, setVista }) => {
   const [selectedGrupo, setSelectedGrupo] = useState<string>(grupos[0]?.nombre || '');
 
   // Stats for AsistenciaStats (General Dashboard)
@@ -151,7 +151,16 @@ export const Reportes: React.FC<ReportesProps> = ({ alumnos, clases, grupos, vis
           <div className="glass-card p-6 rounded-3xl border border-white/5 space-y-6">
             <div className="flex justify-between items-center">
               <h4 className="text-sm font-black text-white uppercase tracking-widest">Tendencia de Asistencia</h4>
-              <span className="text-[10px] font-bold text-white/40 uppercase">Últimos 7 días</span>
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => setVista?.('ReportePDF')}
+                  className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-[9px] font-black text-white uppercase tracking-widest hover:bg-white/10 transition-all flex items-center gap-2"
+                >
+                  <span className="material-icons-outlined text-sm">picture_as_pdf</span>
+                  Generar PDF
+                </button>
+                <span className="text-[10px] font-bold text-white/40 uppercase">Últimos 7 días</span>
+              </div>
             </div>
             <div className="h-64 w-full">
               <ResponsiveContainer width="100%" height="100%">
@@ -278,6 +287,90 @@ export const Reportes: React.FC<ReportesProps> = ({ alumnos, clases, grupos, vis
               </div>
             </div>
           </div>
+        </div>
+      )}
+      {/* View: ReportePDF */}
+      {vista === 'ReportePDF' && (
+        <div className="space-y-8 bg-white p-12 rounded-[2rem] text-black min-h-[800px] shadow-2xl border border-gray-200 relative">
+          <button 
+            onClick={() => setVista?.('AsistenciaStats')}
+            className="absolute top-4 right-4 w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 hover:text-black transition-colors print:hidden"
+          >
+            <span className="material-icons-outlined">close</span>
+          </button>
+          <header className="flex justify-between items-start border-b-2 border-black pb-8">
+            <div>
+              <h1 className="text-4xl font-black uppercase tracking-tighter">GymCoach Pro</h1>
+              <p className="text-sm font-bold uppercase tracking-widest text-gray-500">Reporte de Desempeño y Asistencia</p>
+            </div>
+            <div className="text-right">
+              <p className="text-xs font-bold uppercase text-gray-400">Fecha de Emisión</p>
+              <p className="text-sm font-black">{new Date().toLocaleDateString('es-ES')}</p>
+            </div>
+          </header>
+
+          <div className="grid grid-cols-2 gap-12 py-8">
+            <section className="space-y-4">
+              <h3 className="text-xs font-black uppercase tracking-widest border-b border-gray-200 pb-2">Resumen General</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-[10px] font-bold uppercase text-gray-400">Total Alumnos</p>
+                  <p className="text-2xl font-black">{generalStats.totalAlumnos}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold uppercase text-gray-400">Asistencia Promedio</p>
+                  <p className="text-2xl font-black">88%</p>
+                </div>
+              </div>
+            </section>
+            <section className="space-y-4">
+              <h3 className="text-xs font-black uppercase tracking-widest border-b border-gray-200 pb-2">Estado de Matrícula</h3>
+              <div className="space-y-2">
+                <div className="flex justify-between text-xs">
+                  <span className="font-medium">Al día</span>
+                  <span className="font-black">{generalStats.alumnosActivos}</span>
+                </div>
+                <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                  <div className="h-full bg-black" style={{ width: `${(generalStats.alumnosActivos / generalStats.totalAlumnos) * 100}%` }}></div>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <section className="space-y-6 py-8">
+            <h3 className="text-xs font-black uppercase tracking-widest border-b border-gray-200 pb-2">Distribución de Habilidades</h3>
+            <div className="grid grid-cols-3 gap-8">
+              {skillTrends.slice(-3).map((trend, i) => (
+                <div key={i} className="border border-gray-100 p-4 rounded-xl space-y-3">
+                  <p className="text-[10px] font-bold uppercase text-gray-400">{trend.month}</p>
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-[10px]">
+                      <span>Básico</span>
+                      <span className="font-bold">{trend.basico}</span>
+                    </div>
+                    <div className="flex justify-between text-[10px]">
+                      <span>Intermedio</span>
+                      <span className="font-bold">{trend.intermedio}</span>
+                    </div>
+                    <div className="flex justify-between text-[10px]">
+                      <span>Avanzado</span>
+                      <span className="font-bold">{trend.avanzado}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <footer className="mt-auto pt-12 border-t border-gray-100 flex justify-between items-end">
+            <div className="space-y-1">
+              <p className="text-[8px] font-bold uppercase text-gray-400">Generado por</p>
+              <p className="text-[10px] font-black uppercase">GymCoach Pro Intelligence System</p>
+            </div>
+            <div className="w-24 h-24 bg-gray-50 rounded-xl flex items-center justify-center border border-gray-100">
+              <span className="text-[8px] font-black uppercase text-gray-300">QR CODE</span>
+            </div>
+          </footer>
         </div>
       )}
     </div>
