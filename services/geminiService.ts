@@ -176,61 +176,45 @@ export async function analyzeAttendanceStats(stats: any): Promise<string> {
   });
 }
 
-export async function queryUnifiedAssistant(query: string, sources: any[]): Promise<{ text: string, sources: any[] }> {
+export async function queryKnowledgeBase(query: string, sources: any[]): Promise<string> {
   return withRetry(async () => {
     const ai = getAI();
-    
-    // 1. Construir el contexto de conocimiento interno
-    let internalKnowledgeContext = "";
-    const activeSources = sources.filter(s => s.content && s.content.length > 0);
-    
-    if (activeSources.length > 0) {
-      internalKnowledgeContext = "BIBLIOTECA TÉCNICA (DOCUMENTOS OFICIALES SUBIDOS):\n";
-      activeSources.forEach(s => {
-        internalKnowledgeContext += `--- INICIO DOCUMENTO: "${s.name}" ---\n${s.content}\n--- FIN DOCUMENTO: "${s.name}" ---\n\n`;
-      });
-    } else {
-      return { 
-        text: "No hay manuales o reglamentos cargados en la Biblioteca Técnica. Por favor, sube archivos PDF o texto en la sección de Biblioteca para poder consultarme.", 
-        sources: [] 
-      };
+    const parts: any[] = [
+      { text: `Eres un asistente experto en gimnasia artística. Tu tarea es responder a la consulta del usuario basándote EXCLUSIVAMENTE en los documentos proporcionados. 
+      
+      REGLAS CRÍTICAS:
+      1. Responde ÚNICAMENTE usando la información de los documentos adjuntos.
+      2. Si la información necesaria para responder no se encuentra en los documentos, responde exactamente: "Lo siento, no encuentro esa información en los documentos proporcionados."
+      3. NO utilices tu conocimiento general previo.
+      4. NO inventes ni alucines información.
+      5. Cita el nombre del documento si es posible.
+      
+      Consulta: "${query}"` }
+    ];
+
+    for (const source of sources) {
+      if (source.type === 'pdf') {
+        parts.push({
+          inlineData: {
+            data: source.content,
+            mimeType: 'application/pdf'
+          }
+        });
+      } else {
+        // Para texto, docx (ahora extraído a texto) o doc
+        // Enviamos como texto para evitar errores de MIME type no soportado en inlineData
+        parts.push({ text: `Documento: ${source.name}\nContenido: ${source.content}` });
+      }
     }
 
-    const systemPrompt = `Eres el "Consultor Técnico de Biblioteca" de GymCoach Pro. Tu función es estrictamente analítica y basada en evidencias.
-
-    REGLAS DE ORO:
-    1. SOLO DOCUMENTOS INTERNOS: Responde ÚNICAMENTE utilizando la información presente en la BIBLIOTECA TÉCNICA proporcionada arriba.
-    2. SI NO ESTÁ, DI QUE NO ESTÁ: Si la consulta del usuario (ej. niveles específicos, ejercicios, series) NO figura en los documentos cargados, responde exactamente: "Lo siento, esa información no se encuentra en los manuales actuales de tu Biblioteca Técnica."
-    3. PROHIBIDO INVENTAR: No utilices conocimiento externo, ni internet, ni menciones otras federaciones si no están en los textos provistos. Evita alucinaciones a toda costa.
-    4. CITAS OBLIGATORIAS: Indica siempre de qué manual o página (si está disponible) extrajiste la respuesta.
-    5. TONO: Profesional, seco, preciso y puramente técnico.`;
-
-    const userQuery = `BIBLIOTECA TÉCNICA PROPORCIONADA:
-    ${internalKnowledgeContext}
-    
-    CONSULTA DEL ENTRENADOR: "${query}"`;
-
     const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash", 
-      contents: [{ role: "user", parts: [{ text: systemPrompt + "\n\n" + userQuery }] }],
-      config: {
-        temperature: 0.0, // Mínima creatividad para máxima adherencia al texto
-      },
+      model: "gemini-flash-latest", // Cambiado a flash-latest para intentar evitar la saturación de gemini-3-flash-preview
+      contents: { parts },
     });
-
-    // Detectar fuentes citadas
-    const internalSourcesUsed = activeSources
-      .filter(s => response.text?.toLowerCase().includes(s.name.toLowerCase()) || 
-                   (s.name.toLowerCase().includes('nivel e') && query.toLowerCase().includes('nivel e')))
-      .map(s => ({ title: s.name, uri: '#' }));
-
-    return {
-      text: response.text || "No se encontró información relevante en la biblioteca.",
-      sources: internalSourcesUsed
-    };
+    
+    return response.text || "No se pudo generar una respuesta.";
   }).catch(error => {
-    console.error("Error en queryUnifiedAssistant:", error);
-    return { text: `Error de conexión con el sistema de análisis técnico.`, sources: [] };
+    console.error("Error en queryKnowledgeBase:", error);
+    return `Error al consultar la base de conocimientos: ${error.message || error}`;
   });
 }
-

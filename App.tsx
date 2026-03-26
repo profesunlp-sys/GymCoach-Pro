@@ -1,27 +1,95 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import Papa from 'papaparse';
 import Markdown from 'react-markdown';
 import { motion, AnimatePresence } from 'motion/react';
 import * as XLSX from 'xlsx';
+import mammoth from 'mammoth';
 import { 
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, 
   BarChart, Bar, Cell, Legend, PieChart, Pie
 } from 'recharts';
 import { Alumno, Clase, ViewMode, GrupoConfig, AsistenciaRecord, UserRole, Feedback, Skill, SkillStatus, Apparatus, Source } from './types';
-import { processClassAudio, refineClassAnalysis, analyzeAttendanceStats, queryUnifiedAssistant } from './services/geminiService';
+import { processClassAudio, refineClassAnalysis, analyzeAttendanceStats, queryKnowledgeBase } from './services/geminiService';
 import { SKILL_TREE, DISCIPLINAS, NIVELES as DEFAULT_NIVELES } from './constants';
-import { db as firestore, auth, googleProvider, storage, COLLECTIONS, getCollectionData, addDocument, updateDocument, deleteDocument, getAttendanceByStudent } from './services/firebase';
-import { collection, query, where, getDocs, addDoc, doc, updateDoc, onSnapshot, orderBy, setDoc, limit } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { db as firestore, auth, googleProvider, COLLECTIONS, getCollectionData, addDocument, updateDocument, deleteDocument, getAttendanceByStudent } from './services/firebase';
+import { collection, query, where, getDocs, addDoc, doc, updateDoc, onSnapshot, orderBy, setDoc } from 'firebase/firestore';
 import { signInWithPopup, signOut, onAuthStateChanged, User, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, setPersistence, browserLocalPersistence, browserSessionPersistence } from 'firebase/auth';
-import { CoachAI } from './src/components/CoachAI';
-import * as pdfjsLib from 'pdfjs-dist';
+// Lazy loaded components
+const Dashboard = lazy(() => import('./src/components/Dashboard').then(module => ({ default: module.Dashboard })));
+const CoachAI = lazy(() => import('./src/components/CoachAI').then(module => ({ default: module.CoachAI })));
+const Staff = lazy(() => import('./src/components/Staff').then(module => ({ default: module.Staff })));
+const Finanzas = lazy(() => import('./src/components/Finanzas').then(module => ({ default: module.Finanzas })));
+const Manuales = lazy(() => import('./src/components/Manuales').then(module => ({ default: module.Manuales })));
+const Habilidades = lazy(() => import('./src/components/Habilidades').then(module => ({ default: module.Habilidades })));
+const Grupos = lazy(() => import('./src/components/Grupos').then(module => ({ default: module.Grupos })));
+const Asistencia = lazy(() => import('./src/components/Asistencia').then(module => ({ default: module.Asistencia })));
+const Clases = lazy(() => import('./src/components/Clases').then(module => ({ default: module.Clases })));
+const Alumnos = lazy(() => import('./src/components/Alumnos'));
 
-// Cargar el worker dinámicamente desde los módulos locales para evitar bloqueos en el navegador
-import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
-pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
+const LoadingFallback = () => (
+  <div className="flex flex-col items-center justify-center p-20 space-y-4">
+    <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin shadow-neon-cyan"></div>
+    <p className="text-primary text-[10px] font-black uppercase tracking-[0.3em] animate-pulse">Cargando Módulo...</p>
+  </div>
+);
 
-import * as mammoth from 'mammoth';
+const Tooltip = ({ children, text }: { children: React.ReactNode, text: string }) => {
+  return (
+    <div className="relative group flex items-center">
+      {children}
+      <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 px-2 py-1 bg-antigravity-charcoal border border-white/10 text-[10px] text-white rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 shadow-xl">
+        {text}
+      </div>
+    </div>
+  );
+};
+
+export const Button = ({ 
+  children, 
+  onClick, 
+  variant = 'primary', 
+  className = '', 
+  disabled = false,
+  type = 'button',
+  title = ''
+}: { 
+  children: React.ReactNode, 
+  onClick?: () => void, 
+  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'success' | 'warning',
+  className?: string,
+  disabled?: boolean,
+  type?: 'button' | 'submit' | 'reset',
+  title?: string
+}) => {
+  const variants = {
+    primary: 'bg-primary text-antigravity-black shadow-neon-cyan hover:brightness-110',
+    secondary: 'bg-antigravity-charcoal text-white border border-white/10 hover:bg-white/5',
+    outline: 'bg-transparent text-primary border border-primary/30 hover:bg-primary/5',
+    ghost: 'bg-transparent text-white/60 hover:text-white hover:bg-white/5',
+    danger: 'bg-rose-500/10 text-rose-500 border border-rose-500/20 hover:bg-rose-500/20',
+    success: 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 hover:bg-emerald-500/20',
+    warning: 'bg-amber-500/10 text-amber-500 border border-amber-500/20 hover:bg-amber-500/20'
+  };
+
+  const content = (
+    <motion.button
+      type={type}
+      onClick={onClick}
+      disabled={disabled}
+      whileHover={{ scale: disabled ? 1 : 1.02 }}
+      whileTap={{ scale: disabled ? 1 : 0.98 }}
+      className={`px-4 py-2 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${variants[variant]} ${className}`}
+    >
+      {children}
+    </motion.button>
+  );
+
+  if (title) {
+    return <Tooltip text={title}>{content}</Tooltip>;
+  }
+
+  return content;
+};
 
 const EditableDropdown = ({ 
   label, 
@@ -64,42 +132,52 @@ const EditableDropdown = ({
         <div className="absolute right-10 top-1/2 -translate-y-1/2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-antigravity-charcoal px-1">
            {value && (
              <>
-               <button 
-                 type="button"
-                 onClick={() => {
-                   const opt = options.find(o => o.nombre === value);
-                   if (opt?.id) {
-                     const newName = window.prompt(`Editar ${label.toLowerCase()}:`, opt.nombre);
-                     if (newName && newName !== opt.nombre) onEdit(opt.id, newName);
-                   }
-                 }}
-                 className="p-1 text-primary hover:bg-primary/10 rounded transition-colors"
-               >
-                 <span className="material-icons-outlined text-xs">edit</span>
-               </button>
-               <button 
-                 type="button"
-                 onClick={() => {
-                   const opt = options.find(o => o.nombre === value);
-                   if (opt?.id) onDelete(opt.id);
-                 }}
-                 className="p-1 text-rose-500 hover:bg-rose-500/10 rounded transition-colors"
-               >
-                 <span className="material-icons-outlined text-xs">delete</span>
-               </button>
+               <Tooltip text={`Editar ${label.toLowerCase()}`}>
+                 <button 
+                   type="button"
+                   onClick={() => {
+                     const opt = options.find(o => o.nombre === value);
+                     if (opt?.id) {
+                       const newName = window.prompt(`Editar ${label.toLowerCase()}:`, opt.nombre);
+                       if (newName && newName !== opt.nombre) onEdit(opt.id, newName);
+                     }
+                   }}
+                   className="p-1 text-primary hover:bg-primary/10 rounded transition-colors"
+                 >
+                   <span className="material-icons-outlined text-xs">edit</span>
+                 </button>
+               </Tooltip>
+               <Tooltip text={`Eliminar ${label.toLowerCase()}`}>
+                 <button 
+                   type="button"
+                   onClick={() => {
+                     const opt = options.find(o => o.nombre === value);
+                     if (opt?.id) onDelete(opt.id);
+                   }}
+                   className="p-1 text-rose-500 hover:bg-rose-500/10 rounded transition-colors"
+                 >
+                   <span className="material-icons-outlined text-xs">delete</span>
+                 </button>
+               </Tooltip>
              </>
            )}
         </div>
-        <button 
-          type="button"
-          onClick={() => setIsAdding(!isAdding)}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-primary hover:scale-110 transition-transform"
-        >
-          <span className="material-icons-outlined text-sm">{isAdding ? 'close' : 'add'}</span>
-        </button>
+        <Tooltip text={isAdding ? 'Cerrar' : `Añadir ${label.toLowerCase()}`}>
+          <button 
+            type="button"
+            onClick={() => setIsAdding(!isAdding)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-primary hover:scale-110 transition-transform"
+          >
+            <span className="material-icons-outlined text-sm">{isAdding ? 'close' : 'add'}</span>
+          </button>
+        </Tooltip>
       </div>
       {isAdding && (
-        <div className="flex gap-2 mt-2 animate-in slide-in-from-top-1 duration-200">
+        <motion.div 
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex gap-2 mt-2"
+        >
           <input 
             type="text" 
             value={newItem} 
@@ -107,8 +185,7 @@ const EditableDropdown = ({
             placeholder={`Nuevo ${label.toLowerCase()}...`}
             className="flex-1 bg-antigravity-charcoal border border-neon-blue rounded-lg px-3 py-2 text-xs text-white outline-none focus:ring-1 focus:ring-neon-blue/50 transition-all"
           />
-          <button 
-            type="button"
+          <Button 
             onClick={() => {
               if (newItem.trim()) {
                 onAdd(newItem.trim());
@@ -116,11 +193,11 @@ const EditableDropdown = ({
                 setIsAdding(false);
               }
             }}
-            className="px-3 py-2 bg-primary text-antigravity-black rounded-lg text-xs font-bold active:scale-95 transition-all"
+            className="!py-2 !px-4"
           >
-            Añadir
-          </button>
-        </div>
+            Guardar
+          </Button>
+        </motion.div>
       )}
     </div>
   );
@@ -131,12 +208,15 @@ const App: React.FC = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userRole, setUserRole] = useState<UserRole>('Coach');
   const [vista, setVista] = useState<ViewMode>('Dashboard');
+  const [showMoreOptions, setShowMoreOptions] = useState(false);
+  const [registrationStep, setRegistrationStep] = useState(1);
   const [alumnosFilterMode, setAlumnosFilterMode] = useState<'all' | 'alerts'>('all');
   const [alumnos, setAlumnos] = useState<Alumno[]>([]);
   const [clases, setClases] = useState<Clase[]>([]);
   const [grupos, setGrupos] = useState<GrupoConfig[]>([]);
   const [niveles, setNiveles] = useState<{id?: string, nombre: string}[]>([]);
   const [asistenciasHoy, setAsistenciasHoy] = useState<Record<string, boolean>>({});
+  const [pagosHoy, setPagosHoy] = useState<Record<string, boolean>>({});
   const [selectedClase, setSelectedClase] = useState<Clase | null>(null);
   const [selectedAlumno, setSelectedAlumno] = useState<Alumno | null>(null);
   const [alumnoAsistencias, setAlumnoAsistencias] = useState<AsistenciaRecord[]>([]);
@@ -231,8 +311,6 @@ const App: React.FC = () => {
     message: string;
     onConfirm: () => void;
   } | null>(null);
-  const [kbActiveTab, setKbActiveTab] = useState<'chat' | 'files'>('chat');
-  const [showProfDetalleInDashboard, setShowProfDetalleInDashboard] = useState(false);
 
   const [isFocusMode, setIsFocusMode] = useState(false);
 
@@ -244,123 +322,59 @@ const App: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Limit to 750KB to stay within Firestore 1MB limit after base64 encoding
+    if (file.size > 750 * 1024) {
+      setNotificacion({ t: 'Archivo muy grande', d: 'El archivo debe ser menor a 750KB para guardarse en la nube.' });
+      return;
+    }
+
     const fileExt = file.name.split('.').pop()?.toLowerCase();
     let type: 'pdf' | 'doc' | 'docx' | 'text' = 'text';
     
     if (fileExt === 'pdf') type = 'pdf';
+    else if (fileExt === 'doc') type = 'doc';
     else if (fileExt === 'docx') type = 'docx';
-    else if (fileExt === 'doc') {
-      setNotificacion({ t: 'Formato Word antiguo no soportado', d: 'El formato .doc es muy antiguo. Por favor guarda tu archivo como .docx o .pdf antes de subirlo.' });
-      return;
-    }
     else if (file.type.includes('text')) type = 'text';
     else {
-      setNotificacion({ t: 'Formato no soportado', d: 'Solo se permiten archivos PDF, Word modernos (.docx) o texto estricto (.txt).' });
+      setNotificacion({ t: 'Formato no soportado', d: 'Solo se permiten PDF, DOC, DOCX o archivos de texto.' });
       return;
     }
 
-    if (type === 'text') {
-      if (file.size > 750 * 1024) {
-        setNotificacion({ t: 'Archivo de texto muy grande', d: 'Los archivos .txt deben pesar menos de 750KB. Los PDFs no tienen límite.' });
-        return;
-      }
-      const reader = new FileReader();
-      reader.onload = async (event) => {
-        const result = event.target?.result?.toString();
-        if (result) {
-          try {
-            setIsLoading(true);
-            const newSource: Partial<Source> = {
-              name: file.name,
-              type: type,
-              content: result,
-              storagePath: '',
-              uploadDate: new Date().toISOString()
-            };
-            await addDocument(COLLECTIONS.SOURCES, newSource);
-            await loadData();
-            setNotificacion({ t: 'Éxito', d: `Documento "${file.name}" cargado correctamente.` });
-          } catch (error) {
-            console.error("Error uploading file:", error);
-            setNotificacion({ t: 'Error', d: 'No se pudo cargar el archivo de texto.' });
-          } finally {
-            setIsLoading(false);
-          }
-        }
-      };
-      reader.readAsText(file);
-    } else if (type === 'pdf') {
-      try {
-        setIsLoading(true);
-        setNotificacion({ t: 'Procesando PDF...', d: `Extrayendo texto de ${file.name}. Esto puede tardar varios segundos dependiendo del tamaño.` });
-        
-        const arrayBuffer = await file.arrayBuffer();
-        const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
-        let fullText = "";
-        
-        for (let i = 1; i <= pdf.numPages; i++) {
-            const page = await pdf.getPage(i);
-            const textContent = await page.getTextContent();
-            const pageText = textContent.items.map((item: any) => item.str).join(" ");
-            fullText += pageText + "\n";
-        }
-        
-        // Comprimir espacios en blanco y saltos de línea repetidos para ahorrar espacio
-        fullText = fullText.replace(/\s+/g, ' ').trim();
+    try {
+      setIsLoading(true);
+      let content = '';
 
-        if (fullText.length === 0) {
-          throw new Error("No se pudo extraer texto del PDF (podría ser un PDF basado en imágenes escaneadas).");
-        }
-
-        const newSource: Partial<Source> = {
-          name: file.name,
-          type: 'text', // A partir de ahora, lo tratamos como puro conocimiento teórico
-          content: fullText,
-          storagePath: '',
-          uploadDate: new Date().toISOString()
-        };
-        
-        await addDocument(COLLECTIONS.SOURCES, newSource);
-        await loadData();
-        setNotificacion({ t: 'Éxito', d: `¡Comprimido exitosamente! Todo el conocimiento de "${file.name}" ya está en el cerebro de GymCoach.` });
-      } catch (error: any) {
-        console.error("Error extrayendo texto del PDF:", error);
-        setNotificacion({ t: 'Error', d: error.message || 'Hubo un error al extraer el texto del PDF.' });
-      } finally {
-        setIsLoading(false);
-      }
-    } else if (type === 'docx') {
-      try {
-        setIsLoading(true);
-        setNotificacion({ t: 'Procesando Word...', d: `Extrayendo texto de ${file.name}.` });
-        
+      if (type === 'docx') {
         const arrayBuffer = await file.arrayBuffer();
         const result = await mammoth.extractRawText({ arrayBuffer });
-        
-        let fullText = result.value || "";
-        fullText = fullText.replace(/\s+/g, ' ').trim();
-
-        if (fullText.length === 0) {
-          throw new Error("No se pudo extraer texto del documento de Word, es posible que esté vacío o no sea un documento válido.");
-        }
-
-        const newSource: Partial<Source> = {
-          name: file.name,
-          type: 'text',
-          content: fullText,
-          storagePath: '',
-          uploadDate: new Date().toISOString()
-        };
-        
-        await addDocument(COLLECTIONS.SOURCES, newSource);
-        await loadData();
-        setNotificacion({ t: 'Éxito', d: `¡Documento "${file.name}" cargado exitosamente! Todo el conocimiento ya está en la base.` });
-      } catch (error: any) {
-        console.error("Error extrayendo texto del Word:", error);
-        setNotificacion({ t: 'Error', d: error.message || 'Hubo un error al extraer el texto del archivo de Word.' });
-      } finally {
-        setIsLoading(false);
+        content = result.value;
+        type = 'text'; // Guardamos el texto extraído para que sea compatible con la IA
+      } else if (type === 'text') {
+        content = await file.text();
+      } else {
+        // PDF o DOC (el DOC antiguo es binario y difícil de procesar en cliente, se guarda base64)
+        const base64 = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result?.toString().split(',')[1] || '');
+          reader.readAsDataURL(file);
+        });
+        content = base64;
       }
+
+      const newSource: Partial<Source> = {
+        name: file.name,
+        type: type,
+        content: content,
+        uploadDate: new Date().toISOString()
+      };
+      await addDocument(COLLECTIONS.SOURCES, newSource);
+      await loadData();
+      setNotificacion({ t: 'Éxito', d: `Documento "${file.name}" cargado correctamente.` });
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      setNotificacion({ t: 'Error', d: 'No se pudo cargar el archivo.' });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -371,11 +385,6 @@ const App: React.FC = () => {
       async () => {
         try {
           setIsLoading(true);
-          const sourceToDelete = sources.find(s => s.id === id);
-          if (sourceToDelete && sourceToDelete.storagePath) {
-             const fileRef = ref(storage, sourceToDelete.storagePath);
-             await deleteObject(fileRef).catch(e => console.error("Error ignored deleting from storage:", e));
-          }
           await deleteDocument(COLLECTIONS.SOURCES, id);
           await loadData();
           setNotificacion({ t: 'Éxito', d: 'Documento eliminado.' });
@@ -389,7 +398,24 @@ const App: React.FC = () => {
     );
   };
 
+  const handleKbQuery = async () => {
+    if (!kbInput.trim() || isKbLoading) return;
 
+    const userMsg = { role: 'user' as const, text: kbInput };
+    setKbMessages(prev => [...prev, userMsg]);
+    setKbInput("");
+    setIsKbLoading(true);
+
+    try {
+      const response = await queryKnowledgeBase(kbInput, sources);
+      setKbMessages(prev => [...prev, { role: 'model', text: response }]);
+    } catch (error) {
+      console.error("Error querying KB:", error);
+      setKbMessages(prev => [...prev, { role: 'model', text: "Error al consultar la base de conocimientos." }]);
+    } finally {
+      setIsKbLoading(false);
+    }
+  };
 
   // Edit Alumno State
   const [isEditingAlumno, setIsEditingAlumno] = useState(false);
@@ -418,7 +444,7 @@ const App: React.FC = () => {
 
   const checkUnsavedChanges = () => {
     if (vista === 'NuevaClase') {
-      return claseGrupo !== '' || faseInicial.length > 0 || fasePrincipal.length > 0 || faseFinal.length > 0;
+      return claseGrupo !== '' || faseInicial.length > 0 || fasePrincipal.length > 0 || faseFinal.length > 0 || objetivos !== '' || observaciones !== '' || Object.keys(habilidadesPorAparato).length > 0;
     }
     if (vista === 'RegistroAlumno') {
       return studentForm.nombre !== '' || studentForm.dni !== '' || (studentForm.alertas && studentForm.alertas.length > 0 && studentForm.alertas[0] !== '');
@@ -457,6 +483,19 @@ const App: React.FC = () => {
         setFaseInicial([]);
         setFasePrincipal([]);
         setFaseFinal([]);
+        setFaseInicialDuration("15");
+        setFasePrincipalDuration("60");
+        setFaseFinalDuration("15");
+        setObjetivos("");
+        setObservaciones("");
+        setHabilidadesPorAparato({});
+        setCustomHabilidad({});
+        setCustomInicial("");
+        setCustomPrincipal("");
+        setCustomFinal("");
+        setRegistrationStep(1);
+        setIsEditingClase(false);
+        setEditingClaseId(null);
       } else if (vista === 'RegistroAlumno') {
         setStudentForm({ nombre: '', dni: '', fechaNacimiento: '', fechaPrimeraClase: new Date().toISOString().split('T')[0], alertas: [] });
       } else if (vista === 'Alumnos') {
@@ -640,10 +679,11 @@ const App: React.FC = () => {
     setHabilidadesPorAparato(clase.habilidadesPorAparato || {});
     setObjetivos(clase.objetivos || "");
     setObservaciones(clase.observaciones || "");
+    setRegistrationStep(1);
     setVista('NuevaClase');
   };
 
-  const handleExportClasses = () => {
+  const handleExportClases = () => {
     if (clases.length === 0) return;
     
     const exportData = clases.map(c => ({
@@ -696,7 +736,6 @@ const App: React.FC = () => {
     }
   }, [vista, asistenciasGlobales]);
 
-// Duplicate definition removed
   const [monthlyStats, setMonthlyStats] = useState<Record<string, { attended: number, expected: number }>>({});
   const [reportMonth, setReportMonth] = useState(new Date().getMonth());
   const [reportYear, setReportYear] = useState(new Date().getFullYear());
@@ -825,11 +864,14 @@ const App: React.FC = () => {
         );
         const querySnapshot = await getDocs(q);
         const attMap: Record<string, boolean> = {};
+        const payMap: Record<string, boolean> = {};
         querySnapshot.forEach(doc => {
           const data = doc.data() as AsistenciaRecord;
           attMap[data.alumnoId] = data.presente;
+          payMap[data.alumnoId] = !!data.pago;
         });
         setAsistenciasHoy(attMap);
+        setPagosHoy(payMap);
       }
     } catch (error: any) {
       console.error("Error loading data:", error);
@@ -1094,15 +1136,15 @@ const App: React.FC = () => {
     setSelectedNivelFilter('Todos');
   };
 
-  const handleDeleteClase = async () => {
-    if (!selectedClase || !selectedClase.id) return;
+  const handleDeleteClase = async (clase: Clase) => {
+    if (!clase || !clase.id) return;
     requestConfirmation(
       "Confirmar Eliminación",
-      `¿Estás seguro de que deseas eliminar permanentemente el registro de esta clase del grupo ${selectedClase.grupo}? Esta acción no se puede deshacer.`,
+      `¿Estás seguro de que deseas eliminar permanentemente el registro de esta clase del grupo ${clase.grupo}? Esta acción no se puede deshacer.`,
       async () => {
         try {
           setIsLoading(true);
-          await deleteDocument(COLLECTIONS.CLASES, selectedClase.id!);
+          await deleteDocument(COLLECTIONS.CLASES, clase.id!);
           setNotificacion({ t: 'Éxito', d: 'La clase ha sido eliminada correctamente.' });
           setVista('HistorialClases');
           setSelectedClase(null);
@@ -1112,6 +1154,78 @@ const App: React.FC = () => {
           setNotificacion({ t: 'Error', d: 'No se pudo eliminar la clase. Inténtalo de nuevo.' });
         } finally {
           setIsLoading(false);
+        }
+      }
+    );
+  };
+
+  const handleDeleteAsistencia = async (asistencia: AsistenciaRecord) => {
+    if (!asistencia || !asistencia.id) return;
+    requestConfirmation(
+      "Eliminar Registro de Asistencia",
+      `¿Estás seguro de que deseas eliminar este registro de asistencia?`,
+      async () => {
+        try {
+          setIsLoading(true);
+          await deleteDocument(COLLECTIONS.ASISTENCIAS, asistencia.id!);
+          setNotificacion({ t: 'Éxito', d: 'Registro eliminado correctamente.' });
+          await loadData();
+        } catch (error: any) {
+          console.error("Error deleting attendance:", error);
+          setNotificacion({ t: 'Error', d: 'No se pudo eliminar el registro.' });
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    );
+  };
+
+  const handleEditAsistencia = async (asistencia: AsistenciaRecord) => {
+    console.log("Edit attendance:", asistencia);
+    // This could be expanded to open a modal for editing
+  };
+
+  const handleDeleteStudent = async (id: string) => {
+    const student = alumnos.find(a => a.id === id);
+    if (!student) return;
+    requestConfirmation(
+      "Eliminar Gimnasta",
+      `¿Estás seguro de eliminar a ${student.nombre}? Esta acción no se puede deshacer.`,
+      async () => {
+        try {
+          await deleteDocument(COLLECTIONS.ALUMNOS, id);
+          handleNavigation('Alumnos');
+          setSelectedAlumno(null);
+          loadData();
+          setNotificacion({ t: "Gimnasta Eliminado", d: "El registro ha sido borrado." });
+        } catch (error) {
+          console.error("Error deleting student:", error);
+          setNotificacion({ t: "Error", d: "No se pudo eliminar al gimnasta." });
+        }
+      }
+    );
+  };
+
+  const handleSaveSkill = async () => {
+    if (editingSkillId) {
+      await handleUpdateSkill();
+    } else {
+      await handleAddSkill();
+    }
+  };
+
+  const handleDeleteFeedback = async (id: string) => {
+    requestConfirmation(
+      "Eliminar Comentario",
+      "¿Estás seguro de que deseas eliminar este comentario?",
+      async () => {
+        try {
+          await deleteDocument(COLLECTIONS.FEEDBACK, id);
+          setNotificacion({ t: "Éxito", d: "Comentario eliminado." });
+          // Feedback is usually loaded in real-time or re-fetched
+        } catch (error) {
+          console.error("Error deleting feedback:", error);
+          setNotificacion({ t: "Error", d: "No se pudo eliminar el comentario." });
         }
       }
     );
@@ -1287,14 +1401,21 @@ const App: React.FC = () => {
   };
 
   const handleSaveStudent = async () => {
-    if (!studentForm.nombre || !studentForm.fechaNacimiento) {
-      setNotificacion({ t: "Error", d: "Nombre y Fecha de Nacimiento son obligatorios." });
+    if (!studentForm.nombre?.trim()) {
+      setNotificacion({ t: "Error", d: "El nombre es obligatorio." });
+      return;
+    }
+    if (!studentForm.dni?.trim()) {
+      setNotificacion({ t: "Error", d: "El DNI es obligatorio." });
+      return;
+    }
+    if (!studentForm.fechaNacimiento) {
+      setNotificacion({ t: "Error", d: "La fecha de nacimiento es obligatoria." });
       return;
     }
 
     setIsSavingStudent(true);
     try {
-      // Calcular edad al 31 de diciembre del año corriente
       const currentYear = new Date().getFullYear();
       const birthDate = new Date(studentForm.fechaNacimiento);
       const ageAtEndOfYear = currentYear - (birthDate.getFullYear() || currentYear);
@@ -1333,6 +1454,7 @@ const App: React.FC = () => {
       setNotificacion({ t: "Error", d: "No se pudo guardar el gimnasta. " + (error.message || "") });
     } finally {
       setIsSavingStudent(false);
+      setTimeout(() => setNotificacion(null), 3000);
     }
   };
 
@@ -1358,46 +1480,62 @@ const App: React.FC = () => {
           fecha: today,
           alumnoId: alumnoId,
           grupo: activeGroup?.nombre || 'General',
-          presente: isPresent
+          presente: isPresent,
+          pago: !!pagosHoy[alumnoId]
         });
       }
     } catch (error: any) {
       console.error("Error toggling attendance:", error);
       setNotificacion({ t: "Error", d: error.message || "No se pudo actualizar la asistencia." });
       setTimeout(() => setNotificacion(null), 5000);
-      // Revert optimistic update
       setAsistenciasHoy(prev => ({ ...prev, [alumnoId]: !prev[alumnoId] }));
+    }
+  };
+
+  const togglePayment = async (alumnoId: string) => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const hasPaid = !pagosHoy[alumnoId];
+      
+      setPagosHoy(prev => ({ ...prev, [alumnoId]: hasPaid }));
+
+      const q = query(
+        collection(firestore, COLLECTIONS.ASISTENCIAS),
+        where('fecha', '==', today),
+        where('alumnoId', '==', alumnoId)
+      );
+      const querySnapshot = await getDocs(q);
+
+      if (!querySnapshot.empty) {
+        const docId = querySnapshot.docs[0].id;
+        await updateDocument(COLLECTIONS.ASISTENCIAS, docId, { pago: hasPaid });
+      } else {
+        await addDocument(COLLECTIONS.ASISTENCIAS, {
+          fecha: today,
+          alumnoId: alumnoId,
+          grupo: activeGroup?.nombre || 'General',
+          presente: !!asistenciasHoy[alumnoId],
+          pago: hasPaid
+        });
+      }
+    } catch (error: any) {
+      console.error("Error toggling payment:", error);
+      setNotificacion({ t: "Error", d: error.message || "No se pudo actualizar el pago." });
+      setTimeout(() => setNotificacion(null), 5000);
+      setPagosHoy(prev => ({ ...prev, [alumnoId]: !prev[alumnoId] }));
     }
   };
 
   const handleAddFeedback = async () => {
     if (!newFeedback.trim() || !selectedClase?.id) return;
-    const urgentCb = document.getElementById('urgentFeedback') as HTMLInputElement;
-    const isUrgent = urgentCb ? urgentCb.checked : false;
     try {
       await addDocument(COLLECTIONS.FEEDBACK, {
         claseId: selectedClase.id,
         author: userRole === 'Coordinator' ? 'Coordinador' : 'Profesor',
         text: newFeedback,
-        timestamp: new Date().toISOString(),
-        ...(isUrgent && { isUrgent: true })
+        timestamp: new Date().toISOString()
       });
-      
-      if (userRole === 'Coordinator') {
-        await updateDocument(COLLECTIONS.CLASES, selectedClase.id, {
-          hasCoordinatorFeedback: true,
-          ...(isUrgent && { hasUrgentFeedback: true })
-        });
-        
-        const clIdx = clases.findIndex(c => c.id === selectedClase.id);
-        if(clIdx > -1) {
-          clases[clIdx].hasCoordinatorFeedback = true;
-          if (isUrgent) clases[clIdx].hasUrgentFeedback = true;
-        }
-      }
-      
       setNewFeedback("");
-      if (urgentCb) urgentCb.checked = false;
     } catch (error: any) {
       console.error("Error adding feedback:", error);
       setNotificacion({ t: "Error", d: error.message || "No se pudo guardar el comentario." });
@@ -1501,25 +1639,6 @@ const App: React.FC = () => {
     }
   };
 
-  const handleDeleteAlumno = async () => {
-    if (!selectedAlumno || !selectedAlumno.id) return;
-    requestConfirmation(
-      "Eliminar Gimnasta",
-      `¿Estás seguro de eliminar a ${selectedAlumno.nombre}? Esta acción no se puede deshacer.`,
-      async () => {
-        try {
-          await deleteDocument(COLLECTIONS.ALUMNOS, selectedAlumno.id!);
-          handleNavigation('Alumnos');
-          setSelectedAlumno(null);
-          loadData();
-          setNotificacion({ t: "Gimnasta Eliminado", d: "El registro ha sido borrado." });
-        } catch (error) {
-          console.error("Error deleting student:", error);
-          setNotificacion({ t: "Error", d: "No se pudo eliminar al gimnasta." });
-        }
-      }
-    );
-  };
 
 
   const startRecording = async () => {
@@ -1707,10 +1826,17 @@ const App: React.FC = () => {
       return;
     }
 
+    if (faseInicial.length === 0 && fasePrincipal.length === 0 && faseFinal.length === 0) {
+      setNotificacion({ t: "Error", d: "La clase debe tener al menos una actividad." });
+      setTimeout(() => setNotificacion(null), 3000);
+      return;
+    }
+
     let finalGroupName = claseGrupo;
     let finalCoachName = user?.displayName || 'Coach Pro';
 
     try {
+      setIsLoading(true);
       // Find existing group to get its coach
       const existingGroup = grupos.find(g => g.nombre === claseGrupo);
       if (existingGroup && existingGroup.entrenador) {
@@ -1749,9 +1875,17 @@ const App: React.FC = () => {
       setFaseInicial([]);
       setFasePrincipal([]);
       setFaseFinal([]);
+      setFaseInicialDuration("15");
+      setFasePrincipalDuration("60");
+      setFaseFinalDuration("15");
       setObjetivos("");
       setObservaciones("");
       setHabilidadesPorAparato({});
+      setCustomHabilidad({});
+      setCustomInicial("");
+      setCustomPrincipal("");
+      setCustomFinal("");
+      setRegistrationStep(1);
       setEditingClaseId(null);
       setIsEditingClase(false);
       setVista('Dashboard');
@@ -1759,6 +1893,8 @@ const App: React.FC = () => {
       console.error("Error saving manual class:", error);
       setNotificacion({ t: "Error", d: error.message || "No se pudo guardar la clase." });
       setTimeout(() => setNotificacion(null), 5000);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -1962,1722 +2098,231 @@ const App: React.FC = () => {
         <div className="flex items-center gap-1.5 text-white">
           <span className="material-symbols-outlined text-[18px]">signal_cellular_alt</span>
           <span className="material-symbols-outlined text-[18px]">wifi</span>
-          <span className="material-symbols-outlined text-[18px]">battery_full</span>
+          <span className="material-symbols-outlined text-[18px]">battery_very_low</span>
         </div>
       </div>
 
-      <main className="flex-1 overflow-y-auto no-scrollbar">
+      <main className="flex-1 overflow-y-auto">
+        
+
         {vista === 'Dashboard' && (
-          <div className="space-y-12 page-transition pt-12 px-6 pb-24">
-            <header className="flex justify-between items-start mb-4">
-              <div className="space-y-2">
-                <h1 className="title-antigravity text-4xl leading-none">GymCoach Pro</h1>
-                <p className="text-primary text-[10px] font-black uppercase tracking-[0.3em] mt-1">
-                  {userRole === 'Coordinator' ? 'Panel Ejecutivo de Gestión' : 'Área de Trabajo Personal'}
-                </p>
-              </div>
-              <div className="flex items-center gap-3">
-                 {userRole === 'Coordinator' && (
-                   <div className="flex items-center gap-2 px-3 py-1.5 bg-rose-500/10 border border-rose-500/20 rounded-xl">
-                      <span className="material-icons text-[14px] text-rose-500 animate-pulse">admin_panel_settings</span>
-                      <span className="text-[10px] font-black text-rose-500 uppercase tracking-widest">Admin</span>
-                   </div>
-                 )}
-                 <button onClick={() => setVista('Ajustes')} className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center border border-white/10 active:scale-95 transition-all group overflow-hidden relative">
-                    <img src={user?.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.displayName || 'User')}&background=random`} alt="" className="w-full h-full object-cover opacity-80" />
-                 </button>
-              </div>
-            </header>
-
-            {userRole === 'Coordinator' && (
-              <section className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                {/* Métricas Globales */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="glass-card rounded-[2rem] p-5 border border-white/5 flex flex-col justify-between">
-                    <span className="text-[9px] font-bold text-white/40 uppercase tracking-widest px-1">Total Alumnos</span>
-                    <div className="flex items-end justify-between mt-4 px-1">
-                      <span className="text-3xl font-black text-white leading-none">{alumnos.length}</span>
-                      <span className="material-icons-outlined text-primary text-xl">group</span>
-                    </div>
-                  </div>
-                  <div className="glass-card rounded-[2rem] p-5 border border-white/5 flex flex-col justify-between">
-                    <span className="text-[9px] font-bold text-white/40 uppercase tracking-widest px-1">Clases Hoy</span>
-                    <div className="flex items-end justify-between mt-4 px-1">
-                      <span className="text-3xl font-black text-white leading-none">{clases.filter(c => c.fecha.startsWith(new Date().toISOString().split('T')[0])).length}</span>
-                      <span className="material-icons-outlined text-accent-cyan text-xl">event_available</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Alertas de Gestión */}
-                <div className="space-y-4">
-                  <h3 className="text-white/70 font-bold text-[10px] uppercase tracking-[0.3em] px-2 italic">Alertas de Gestión</h3>
-                  <div className="grid grid-cols-1 gap-3">
-                    <div className="p-5 glass-card rounded-3xl border border-rose-500/20 bg-rose-500/5 flex items-center justify-between group active:scale-95 transition-all">
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 bg-rose-500/20 rounded-xl flex items-center justify-center border border-rose-500/30">
-                          <span className="material-icons-outlined text-rose-500 text-xl">health_and_safety</span>
-                        </div>
-                        <div>
-                          <p className="text-xs font-bold text-white uppercase tracking-wider">Alertas Médicas</p>
-                          <p className="text-[9px] text-white/50 font-medium">Hay {alumnos.filter(a => a.alertas && a.alertas.length > 0 && a.alertas[0] !== '').length} casos a revisar.</p>
-                        </div>
-                      </div>
-                      <button onClick={() => { setAlumnosFilterMode('alerts'); setVista('Alumnos'); }} className="px-3 py-1.5 bg-rose-500 text-white rounded-lg text-[10px] font-black uppercase tracking-widest">Revisar</button>
-                    </div>
-
-                    <div className="p-5 glass-card rounded-3xl border border-amber-500/20 bg-amber-500/5 flex items-center justify-between group active:scale-95 transition-all">
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 bg-amber-500/20 rounded-xl flex items-center justify-center border border-amber-500/30">
-                          <span className="material-icons-outlined text-amber-500 text-xl">assignment_late</span>
-                        </div>
-                        <div>
-                          <p className="text-xs font-bold text-white uppercase tracking-wider">Feedback Pendiente</p>
-                          <p className="text-[9px] text-white/50 font-medium">{clases.filter(c => !c.hasCoordinatorFeedback).length} reportes para revisar.</p>
-                        </div>
-                      </div>
-                      <button onClick={() => { const el = document.getElementById('auditoria-section'); el?.scrollIntoView({behavior: 'smooth'}); }} className="px-3 py-1.5 bg-amber-500 text-white rounded-lg text-[10px] font-black uppercase tracking-widest">Ver</button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Desempeño Docente / Staff */}
-                <div className="space-y-6">
-                  <div className="flex items-center justify-between px-1">
-                    <h3 className="text-white/70 font-bold text-[10px] uppercase tracking-[0.3em] italic">Staff Profesional</h3>
-                    <button onClick={() => setVista('Profesores')} className="text-[9px] font-bold text-primary uppercase tracking-widest flex items-center gap-1.5">
-                      Ver Staff <span className="material-icons text-[14px]">chevron_right</span>
-                    </button>
-                  </div>
-                  <div className="grid grid-cols-1 gap-4">
-                    {profesoresList.slice(0, 3).map((prof) => {
-                      const profClases = clases.filter(c => c.entrenador === prof.nombre);
-                      const pendingFeedback = profClases.filter(c => !c.hasCoordinatorFeedback).length;
-                      
-                      return (
-                        <div key={prof.id} className="glass-card rounded-[2rem] p-5 border border-white/5 space-y-4 hover:border-primary/20 transition-colors">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                              <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden">
-                                <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(prof.nombre)}&background=random`} alt="" className="w-full h-full object-cover" />
-                              </div>
-                              <div className="overflow-hidden">
-                                <h4 className="text-sm font-bold text-white leading-none truncate">{prof.nombre}</h4>
-                                <p className="text-[10px] text-white/50 uppercase tracking-widest mt-1 truncate">Profesor de Gimnasia</p>
-                              </div>
-                            </div>
-                            <div className="text-right shrink-0">
-                              <span className="text-xl font-black text-primary">{profClases.length}</span>
-                              <p className="text-[8px] text-white/40 uppercase font-black tracking-widest">Clases</p>
-                            </div>
-                          </div>
-                          
-                          <div className="flex items-center justify-between pt-2 border-t border-white/5">
-                            <div className="flex items-center gap-4">
-                               <div className="flex flex-col">
-                                  <span className={`text-xs font-black ${pendingFeedback > 0 ? 'text-amber-500' : 'text-emerald-400'}`}>{pendingFeedback}</span>
-                                  <span className="text-[7px] uppercase font-bold text-white/40">Sin Devolver</span>
-                               </div>
-                               <div className="w-px h-6 bg-white/5"></div>
-                               <div className="flex flex-col">
-                                  <span className="text-xs font-black text-white">95%</span>
-                                  <span className="text-[7px] uppercase font-bold text-white/40">Efectividad</span>
-                               </div>
-                            </div>
-                            <button 
-                              onClick={() => { setSelectedProfesor(prof.nombre); setVista('ProfesorDetalle'); }}
-                              className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-[9px] font-black text-white uppercase tracking-widest hover:bg-primary hover:text-antigravity-black transition-all"
-                            >
-                              Detalle
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Auditoría de Clases */}
-                <div id="auditoria-section" className="space-y-6">
-                  <div className="flex items-center justify-between px-1">
-                    <h3 className="text-white/70 font-bold text-[10px] uppercase tracking-[0.3em] italic">Auditoría de Clases</h3>
-                    <button onClick={() => setVista('HistorialClases')} className="text-[9px] font-bold text-primary uppercase tracking-widest flex items-center gap-1.5">
-                      Ver Todo <span className="material-icons text-[14px]">chevron_right</span>
-                    </button>
-                  </div>
-                  <div className="space-y-3">
-                    {clases.slice(0, 5).map((clase) => {
-                      const date = new Date(clase.fecha);
-                      const isNew = !clase.hasCoordinatorFeedback;
-                      return (
-                        <div 
-                          key={clase.id} 
-                          onClick={() => { setSelectedClase(clase); setVista('ClaseDetalle'); }}
-                          className={`glass-card rounded-[1.5rem] p-4 border border-white/5 flex items-center justify-between active:scale-95 transition-all cursor-pointer ${isNew ? 'ring-1 ring-primary/30 bg-primary/5 shadow-neon-cyan/10' : ''}`}
-                        >
-                          <div className="flex items-center gap-4">
-                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isNew ? 'bg-primary/20 text-primary animate-pulse' : 'bg-white/5 text-white/30'}`}>
-                              <span className="material-symbols-outlined text-xl">{isNew ? 'assignment_late' : 'assignment_turned_in'}</span>
-                            </div>
-                            <div className="overflow-hidden">
-                              <h4 className="text-sm font-bold text-white leading-none truncate">{clase.grupo}</h4>
-                              <p className="text-[10px] text-white/40 mt-1 uppercase tracking-widest font-black italic">{date.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })} • {clase.entrenador}</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                             {clase.hasUrgentFeedback && (
-                                <span className="w-2 h-2 bg-rose-500 rounded-full animate-ping"></span>
-                             )}
-                            <span className="material-icons text-white/20">chevron_right</span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Estado de Asistencia Hoy */}
-                <div className="space-y-4">
-                  <h3 className="text-white/70 font-bold text-[10px] uppercase tracking-[0.3em] px-2 italic">Asistencia por Grupo</h3>
-                  <div className="grid grid-cols-1 gap-3">
-                    {grupos.map((g) => {
-                      const stats = asistenciasGlobales[g.nombre] || { presentes: 0, total: 0 };
-                      const isTaken = stats.total > 0 && stats.presentes > 0;
-                      return (
-                        <div 
-                          key={`asis-dash-${g.id}`} 
-                          onClick={() => { setActiveGroup(g); setVista('AsistenciaLista'); }}
-                          className="glass-card rounded-[1.5rem] p-5 border border-white/5 active:scale-95 transition-all cursor-pointer flex items-center justify-between hover:bg-white/5"
-                        >
-                          <div>
-                            <p className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                              {g.nombre}
-                              {isTaken && <span className="material-icons text-primary text-[14px]">check_circle</span>}
-                            </p>
-                            <p className="text-[9px] text-white/40 font-bold uppercase tracking-widest mt-1 italic">Prof: {g.entrenador || 'Sin asignar'}</p>
-                          </div>
-                          <div className="text-right">
-                            <div className="flex items-end justify-end gap-1">
-                               <span className={`text-xl font-black ${isTaken ? 'text-primary' : 'text-rose-500/60'}`}>{stats.presentes}</span>
-                               <span className="text-[10px] text-white/20 font-black mb-1">/ {stats.total}</span>
-                            </div>
-                            <p className={`text-[7px] font-black uppercase tracking-widest mt-0.5 ${isTaken ? 'text-primary' : 'text-rose-500/40 text-rose-500 animate-pulse'}`}>
-                              {isTaken ? 'Completado' : 'Pendiente'}
-                            </p>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-              </section>
-            )}
-
-            {userRole === 'Coach' && (
-              <section className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                {/* Accesos Rápidos Coach */}
-                <div className="flex flex-col gap-6">
-                  <button 
-                    onClick={() => setVista('NuevaClase')}
-                    className="glass-card rounded-[2.5rem] p-10 border border-primary/20 bg-primary/5 flex flex-col items-center justify-center text-center group active:scale-95 transition-all shadow-neon-cyan/20 overflow-hidden relative"
-                  >
-                    <div className="absolute -top-10 -left-10 w-32 h-32 bg-primary/5 rounded-full blur-3xl group-hover:scale-150 transition-transform"></div>
-                    <div className="relative z-10 w-20 h-20 bg-primary/20 rounded-3xl flex items-center justify-center border border-primary/30 shadow-neon-cyan group-hover:scale-110 transition-transform">
-                      <span className="material-icons text-primary text-5xl">edit_note</span>
-                    </div>
-                    <div className="mt-8 relative z-10">
-                       <h3 className="text-2xl font-black text-white uppercase tracking-tighter">Registrar Clase</h3>
-                       <p className="text-primary text-[10px] font-black uppercase tracking-widest mt-2 opacity-80 italic">Cargar reporte técnico de hoy</p>
-                    </div>
-                  </button>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <button 
-                      onClick={() => { setAlumnosFilterMode('all'); setVista('Alumnos'); }}
-                      className="glass-card rounded-[2.5rem] p-7 border border-white/5 bg-white/5 flex flex-col items-center justify-center text-center group active:scale-95 transition-all"
-                    >
-                      <div className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center border border-white/10 group-hover:text-primary transition-colors">
-                        <span className="material-icons-outlined text-2xl">group</span>
-                      </div>
-                      <p className="text-[10px] font-black text-white/90 uppercase tracking-widest mt-4">Mis Alumnos</p>
-                    </button>
-                    <button 
-                      onClick={() => setVista('AsistenciaStats')}
-                      className="glass-card rounded-[2.5rem] p-7 border border-white/5 bg-white/5 flex flex-col items-center justify-center text-center group active:scale-95 transition-all"
-                    >
-                      <div className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center border border-white/10 group-hover:text-primary transition-colors">
-                        <span className="material-icons-outlined text-2xl">insights</span>
-                      </div>
-                      <p className="text-[10px] font-black text-white/90 uppercase tracking-widest mt-4">Estadísticas</p>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Grupos a cargo del Coach */}
-                <div className="space-y-4">
-                  <h3 className="text-white/70 font-bold text-[10px] uppercase tracking-[0.3em] px-2 italic">Mis Grupos hoy</h3>
-                  <div className="grid grid-cols-1 gap-3">
-                    {grupos
-                      .filter(g => !user?.displayName || g.entrenador === user.displayName)
-                      .map(g => (
-                      <button 
-                        key={g.id}
-                        onClick={() => { setActiveGroup(g); setVista('AsistenciaLista'); }}
-                        className="p-5 glass-card rounded-3xl border border-white/5 bg-white/5 flex items-center justify-between group active:scale-95 transition-all border-l-4 border-l-primary/30 hover:bg-white/10"
-                      >
-                        <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 bg-white/5 rounded-xl flex items-center justify-center border border-white/10 group-hover:border-primary/50 transition-colors">
-                            <span className="material-symbols-outlined text-[20px] font-light">category</span>
-                          </div>
-                          <div className="text-left">
-                            <p className="text-sm font-bold text-white uppercase tracking-wider">{g.nombre}</p>
-                            <p className="text-[9px] text-white/50 font-bold uppercase tracking-widest mt-0.5">{g.horario}</p>
-                          </div>
-                        </div>
-                        <span className="material-icons text-white/40 group-hover:text-primary transition-colors">chevron_right</span>
-                      </button>
-                    ))}
-                    {grupos.filter(g => !user?.displayName || g.entrenador === user.displayName).length === 0 && (
-                       <p className="text-center text-white/20 py-10 text-[10px] uppercase font-black tracking-widest italic">No tienes grupos asignados.</p>
-                    )}
-                  </div>
-                </div>
-              </section>
-            )}
-            
-            {/* CTA Centro Técnico (Común para todos) */}
-            <section className="space-y-4 pt-12">
-               <div className="p-8 glass-card rounded-[3rem] border border-accent-purple/30 bg-accent-purple/5 relative overflow-hidden group">
-                  <div className="absolute -top-10 -right-10 w-40 h-40 bg-accent-purple/10 rounded-full blur-3xl group-hover:scale-150 transition-transform"></div>
-                  <div className="relative z-10 flex flex-col items-center text-center">
-                     <div className="w-16 h-16 bg-accent-purple/20 rounded-2xl flex items-center justify-center border border-accent-purple/30 mb-6 shadow-neon-purple active-glow">
-                        <span className="material-icons text-accent-purple text-3xl">psychology</span>
-                     </div>
-                     <h3 className="text-2xl font-black text-white uppercase tracking-tighter">Centro Técnico</h3>
-                     <p className="text-[10px] text-white/60 uppercase font-black tracking-[0.2em] mt-2 mb-8 max-w-[200px]">Consulta manuales de nivel y reglamentos con IA especializado.</p>
-                     <button onClick={() => setVista('Asistente')} className="w-full py-5 rounded-2xl bg-accent-purple text-white font-black uppercase text-[11px] tracking-[0.3em] shadow-neon-purple active:scale-95 transition-all">Acceder a la Biblioteca</button>
-                  </div>
-               </div>
-            </section>
-          </div>
+          <Suspense fallback={<LoadingFallback />}>
+            <Dashboard 
+              userRole={userRole}
+              user={user}
+              grupos={grupos}
+              alumnos={alumnos}
+              clases={clases}
+              profesoresList={profesoresList}
+              setVista={setVista}
+              handleNavigation={handleNavigation}
+              handleLogout={handleLogout}
+              isFocusMode={isFocusMode}
+              setIsFocusMode={setIsFocusMode}
+              showMoreOptions={showMoreOptions}
+              setShowMoreOptions={setShowMoreOptions}
+              alertasGlobales={alertasGlobales}
+              asistenciasGlobales={asistenciasGlobales}
+              setActiveGroup={setActiveGroup}
+              setRegistrationStep={setRegistrationStep}
+              setUserRole={setUserRole}
+              COORDINATOR_EMAIL={COORDINATOR_EMAIL}
+            />
+          </Suspense>
         )}
 
-        {vista === 'Horario' && (
-          <div className="px-6 py-8 space-y-8 page-transition">
-            <header>
-              <h2 className="text-3xl font-black text-white uppercase tracking-tighter">Horarios y Grupos</h2>
-              <p className="text-primary text-[10px] font-black uppercase tracking-widest mt-1">Gestión de Clases</p>
-            </header>
+        <Suspense fallback={<LoadingFallback />}>
+          <Grupos 
+            vista={vista}
+            setVista={setVista}
+            editingGroup={editingGroup}
+            setEditingGroup={setEditingGroup}
+            newGroupName={newGroupName}
+            setNewGroupName={setNewGroupName}
+            newCoachName={newCoachName}
+            setNewCoachName={setNewCoachName}
+            selectedDays={selectedDays}
+            setSelectedDays={setSelectedDays}
+            startTime={startTime}
+            setStartTime={setStartTime}
+            endTime={endTime}
+            setEndTime={setEndTime}
+            timeIntervals={timeIntervals}
+            handleSaveGroup={handleSaveGroup}
+            grupos={grupos}
+            handleDeleteGroup={handleDeleteGroup}
+            setActiveGroup={setActiveGroup}
+          />
+          <Asistencia 
+            vista={vista}
+            setVista={setVista}
+            activeGroup={activeGroup}
+            setActiveGroup={setActiveGroup}
+            alumnos={alumnos}
+            asistencias={asistencias}
+            handleToggleAsistencia={toggleAttendance}
+            handleTogglePago={togglePayment}
+            clases={clases}
+            setSelectedClase={setSelectedClase}
+            handleDeleteClase={handleDeleteClase}
+            handleExportAttendance={handleExportAttendance}
+            handleExportGroupAttendance={handleExportGroupAttendance}
+            handleExportAllAttendance={handleExportAllAttendance}
+            handleAIAnalysis={handleAIAnalysis}
+            isAnalyzing={isAnalyzing}
+            comparativeData={comparativeData}
+            grupos={grupos}
+            presentCount={presentCount}
+            handleDeleteAsistencia={handleDeleteAsistencia}
+            handleEditAsistencia={handleEditAsistencia}
+          />
+          <Clases 
+            vista={vista}
+            setVista={setVista}
+            registrationStep={registrationStep}
+            setRegistrationStep={setRegistrationStep}
+            grupos={grupos}
+            claseGrupo={claseGrupo}
+            setClaseGrupo={setClaseGrupo}
+            faseInicial={faseInicial}
+            setFaseInicial={setFaseInicial}
+            fasePrincipal={fasePrincipal}
+            setFasePrincipal={setFasePrincipal}
+            faseFinal={faseFinal}
+            setFaseFinal={setFaseFinal}
+            faseInicialDuration={faseInicialDuration}
+            setFaseInicialDuration={setFaseInicialDuration}
+            fasePrincipalDuration={fasePrincipalDuration}
+            setFasePrincipalDuration={setFasePrincipalDuration}
+            faseFinalDuration={faseFinalDuration}
+            setFaseFinalDuration={setFaseFinalDuration}
+            claseObjetivos={objetivos}
+            setClaseObjetivos={setObjetivos}
+            claseObservaciones={observaciones}
+            setClaseObservaciones={setObservaciones}
+            habilidadesPorAparato={habilidadesPorAparato}
+            setHabilidadesPorAparato={setHabilidadesPorAparato}
+            customHabilidad={customHabilidad}
+            setCustomHabilidad={setCustomHabilidad}
+            customInicial={customInicial}
+            setCustomInicial={setCustomInicial}
+            customFinal={customFinal}
+            setCustomFinal={setCustomFinal}
+            isEditingClase={isEditingClase}
+            setIsEditingClase={setIsEditingClase}
+            editingClaseId={editingClaseId}
+            setEditingClaseId={setEditingClaseId}
+            handleSaveManualClass={handleSaveManualClass}
+            clases={clases}
+            selectedClase={selectedClase}
+            setSelectedClase={setSelectedClase}
+            handleDeleteClase={handleDeleteClase}
+            handleEditClase={handleEditClase}
+            handleNavigation={handleNavigation}
+            setNotificacion={setNotificacion}
+            userRole={userRole}
+            user={user}
+            planesFilterDate={planesFilterDate}
+            setPlanesFilterDate={setPlanesFilterDate}
+            planesFilterCoach={planesFilterCoach}
+            setPlanesFilterCoach={setPlanesFilterCoach}
+          />
+          <Alumnos 
+            vista={vista}
+            setVista={setVista}
+            alumnos={alumnos}
+            grupos={grupos}
+            niveles={niveles}
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            selectedGrupoFilter={selectedGrupoFilter}
+            setSelectedGrupoFilter={setSelectedGrupoFilter}
+            selectedNivelFilter={selectedNivelFilter}
+            setSelectedNivelFilter={setSelectedNivelFilter}
+            alumnosFilterMode={alumnosFilterMode}
+            setAlumnosFilterMode={setAlumnosFilterMode}
+            isAddingAlumno={isAddingAlumno}
+            setIsAddingAlumno={setIsAddingAlumno}
+            studentForm={studentForm}
+            setStudentForm={setStudentForm}
+            handleSaveStudent={handleSaveStudent}
+            handleDeleteStudent={handleDeleteStudent}
+            selectedAlumno={selectedAlumno}
+            setSelectedAlumno={setSelectedAlumno}
+            alumnoAsistencias={alumnoAsistencias}
+            isLoadingAsistencias={isLoadingAsistencias}
+            isAddingSkill={isAddingSkill}
+            setIsAddingSkill={setIsAddingSkill}
+            newSkill={newSkill}
+            setNewSkill={setNewSkill}
+            handleSaveSkill={handleSaveSkill}
+            handleDeleteSkill={handleDeleteSkill}
+            editingSkillId={editingSkillId}
+            setEditingSkillId={setEditingSkillId}
+            editingSkillData={editingSkillData}
+            setEditingSkillData={setEditingSkillData}
+            skillSearchQuery={skillSearchQuery}
+            setSkillSearchQuery={setSkillSearchQuery}
+            skillApparatusFilter={skillApparatusFilter}
+            setSkillApparatusFilter={setSkillApparatusFilter}
+            feedbacks={feedbacks}
+            newFeedback={newFeedback}
+            setNewFeedback={setNewFeedback}
+            handleAddFeedback={handleAddFeedback}
+            handleDeleteFeedback={handleDeleteFeedback}
+            setIsBulkImporting={setIsBulkImporting}
+            userRole={userRole}
+          />
+          <Staff 
+            vista={vista}
+            setVista={setVista}
+            isAddingProfesor={isAddingProfesor}
+            setIsAddingProfesor={setIsAddingProfesor}
+            newProfesorName={newProfesorName}
+            setNewProfesorName={setNewProfesorName}
+            handleAddProfesor={handleAddProfesor}
+            profesoresList={profesoresList}
+            handleDeleteProfesor={handleDeleteProfesor}
+            isSavingProfesor={isSavingProfesor}
+          />
+          <Finanzas 
+            vista={vista}
+            setVista={setVista}
+            clases={clases}
+            alumnos={alumnos}
+            asistencias={asistencias}
+            grupos={grupos}
+            selectedDisciplina={selectedDisciplina}
+            setSelectedDisciplina={setSelectedDisciplina}
+            planesFilterDate={planesFilterDate}
+            setPlanesFilterDate={setPlanesFilterDate}
+            planesFilterCoach={planesFilterCoach}
+            setPlanesFilterCoach={setPlanesFilterCoach}
+            comparativeData={comparativeData}
+            handleAIAnalysis={handleAIAnalysis}
+            isAnalyzing={isAnalyzing}
+          />
+        </Suspense>
 
-            <section className="space-y-4">
-              <div className="flex flex-col items-start">
-                <div className="flex justify-between w-full items-center">
-                  <h3 className="text-accent-purple font-bold text-2xl active-glow">
-                    {editingGroup ? 'Editar Grupo' : 'Crear Nuevo Grupo'}
-                  </h3></div>
-                  <p className="text-[10px] text-white/60 mt-2">Completá estos datos para crear un grupo nuevo. Solo necesitás hacerlo una vez por grupo.</p>
-                {editingGroup && (
-                  <button 
-                    onClick={() => {
-                      setEditingGroup(null);
-                      setNewGroupName("");
-                      setNewCoachName("");
-                      setSelectedDays([]);
-                    }}
-                    className="text-[10px] text-white/60 uppercase font-bold hover:text-white transition-colors"
-                  >
-                    Cancelar Edición
-                  </button>
-                )}
-              </div>
-              <div className="glass-card rounded-[2.5rem] p-6 space-y-8">
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2 px-1">
-                    <span className="material-icons-outlined text-primary text-sm">calendar_month</span>
-                    <h4 className="text-[10px] uppercase font-black text-white/80 tracking-[0.2em]">Días de Entrenamiento</h4>
-                  </div>
-                  <div className="flex justify-between items-center px-1">
-                    {[
-                      { id: 'L-0', label: 'Lun' },
-                      { id: 'M-1', label: 'Mar' },
-                      { id: 'M-2', label: 'Mié' },
-                      { id: 'J-3', label: 'Jue' },
-                      { id: 'V-4', label: 'Vie' },
-                      { id: 'S-5', label: 'Sáb' },
-                      { id: 'D-6', label: 'Dom' }
-                    ].map((day) => {
-                      const isSelected = selectedDays.includes(day.id);
-                      return (
-                        <div key={day.id} className="flex flex-col items-center gap-2">
-                          <button 
-                            onClick={() => setSelectedDays(prev => prev.includes(day.id) ? prev.filter(d => d !== day.id) : [...prev, day.id])}
-                            className={`w-11 h-11 rounded-2xl flex items-center justify-center font-black text-sm transition-all duration-300 ${
-                              isSelected 
-                                ? 'bg-primary text-antigravity-black shadow-neon-cyan scale-110' 
-                                : 'bg-white/5 text-white/60 border border-white/5 hover:bg-white/10 hover:text-white/80'
-                            }`}
-                          >
-                            {day.id.split('-')[0]}
-                          </button>
-                          <span className={`text-[8px] font-black uppercase tracking-[0.15em] transition-colors duration-300 ${isSelected ? 'text-primary' : 'text-white/80'}`}>
-                            {day.label}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
 
-                <div className="space-y-6">
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-2 px-1">
-                      <span className="material-icons-outlined text-primary text-sm">badge</span>
-                      <h4 className="text-[10px] uppercase font-black text-white/80 tracking-[0.2em]">Información del Grupo</h4>
-                    </div>
-                    <div className="space-y-4">
-                      <input className="w-full crafted-input"
-                        placeholder="Nombre del Grupo (Ej. Avanzados)" value={newGroupName} onChange={(e) => setNewGroupName(e.target.value)} />
-                      
-                      <input className="w-full crafted-input"
-                        placeholder="Nombre y Apellido del Profesor" value={newCoachName} onChange={(e) => setNewCoachName(e.target.value)} />
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-2 px-1">
-                      <span className="material-icons-outlined text-primary text-sm">schedule</span>
-                      <h4 className="text-[10px] uppercase font-black text-white/80 tracking-[0.2em]">Franja Horaria</h4>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-1">
-                        <label className="text-[8px] uppercase font-bold text-white/90 ml-1 tracking-widest">Hora Inicio</label>
-                        <div className="relative">
-                          <select value={startTime} onChange={(e) => setStartTime(e.target.value)} className="w-full bg-antigravity-charcoal rounded-2xl px-4 py-3.5 text-sm text-white appearance-none border border-white/10 focus:border-primary focus:ring-1 focus:ring-primary/50 outline-none transition-all">
-                            {timeIntervals.map(t => <option key={t} value={t} className="bg-antigravity-charcoal">{t}</option>)}
-                          </select>
-                          <span className="material-icons-outlined absolute right-4 top-1/2 -translate-y-1/2 text-white/80 pointer-events-none text-sm">expand_more</span>
-                        </div>
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[8px] uppercase font-bold text-white/90 ml-1 tracking-widest">Hora Fin</label>
-                        <div className="relative">
-                          <select value={endTime} onChange={(e) => setEndTime(e.target.value)} className="w-full bg-antigravity-charcoal rounded-2xl px-4 py-3.5 text-sm text-white appearance-none border border-white/10 focus:border-primary focus:ring-1 focus:ring-primary/50 outline-none transition-all">
-                            {timeIntervals.map(t => <option key={t} value={t} className="bg-antigravity-charcoal">{t}</option>)}
-                          </select>
-                          <span className="material-icons-outlined absolute right-4 top-1/2 -translate-y-1/2 text-white/80 pointer-events-none text-sm">expand_more</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
 
-                <button onClick={handleSaveGroup} className="w-full py-4.5 rounded-2xl border border-primary text-primary font-black bg-primary/5 shadow-neon-cyan active:scale-[0.98] transition-all uppercase text-[10px] tracking-[0.2em] flex items-center justify-center gap-2">
-                  <span className="material-icons-outlined text-sm">{editingGroup ? 'save' : 'add_circle'}</span>
-                  <span>{editingGroup ? 'Actualizar Configuración' : 'Crear Nuevo Grupo'}</span>
-                </button>
-              </div>
-            </section>
 
-            <section className="space-y-4">
-              <div className="flex justify-between px-1"><h3 className="text-white font-bold text-2xl">Mis Grupos</h3></div>
-              {grupos.length > 0 ? grupos.map((g, idx) => (
-                <div key={idx} className="glass-card rounded-[1.5rem] p-6 space-y-5 border border-white/5">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h4 className="font-bold text-white text-lg tracking-tight leading-none">{g.nombre}</h4>
-                      <p className="text-xs text-white/90 mt-2 font-medium italic">{g.horario}</p>
-                      {g.entrenador && <p className="text-[10px] text-primary mt-1 font-bold uppercase tracking-wider">Prof: {g.entrenador}</p>}
-                    </div>
-                    <div className="flex flex-col items-end gap-2">
-                      <div className="bg-primary/10 text-primary text-[10px] font-black px-3 py-1.5 rounded-lg border border-primary/20 tracking-wider shadow-neon-cyan uppercase">Activo</div>
-                      <div className="flex gap-2">
-                        <button 
-                          onClick={(e) => { 
-                            e.stopPropagation(); 
-                            setEditingGroup(g);
-                            setNewGroupName(g.nombre);
-                            setNewCoachName(g.entrenador || "");
-                            setSelectedDays(g.dias || []);
-                            const times = g.horario.split(' - ');
-                            if (times.length === 2) {
-                              setStartTime(times[0]);
-                              setEndTime(times[1]);
-                            }
-                            window.scrollTo({ top: 0, behavior: 'smooth' });
-                          }}
-                          className="text-primary bg-primary/10 p-4 rounded-xl border border-primary/20 hover:bg-primary/20 transition-all flex items-center justify-center"
-                          title="Editar grupo"
-                        >
-                          <span className="material-icons-outlined text-[24px]">edit</span>
-                        </button>
-                        <button 
-                          onClick={(e) => { e.stopPropagation(); handleDeleteGroup(g); }}
-                          className="text-rose-500 bg-rose-500/10 p-4 rounded-xl border border-rose-500/20 hover:bg-rose-500/20 transition-all flex items-center justify-center"
-                          title="Eliminar grupo"
-                        >
-                          <span className="material-icons-outlined text-[24px]">delete</span>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                  <button onClick={() => { setActiveGroup(g); setVista('AsistenciaLista'); }} className="w-full py-3.5 rounded-2xl border border-primary text-primary font-bold text-[11px] uppercase tracking-widest shadow-neon-cyan flex items-center justify-center gap-2.5 bg-primary/5 active:scale-95 transition-all">
-                    <span className="material-icons-outlined text-[18px]">fact_check</span> Listas de Asistencia
-                  </button>
-                </div>
-              )) : (
-                <div className="p-10 text-center glass-card rounded-[2rem] border-dashed border-slate-700/50 italic text-white/80 text-xs font-medium">No hay grupos configurados aún.</div>
-              )}
-            </section>
-          </div>
-        )}
 
-        {/* VISTA: LISTAS DE ASISTENCIA */}
-        {vista === 'ListasDeAsistencia' && (
-          <div className="px-6 py-8 space-y-8 page-transition">
-            <header className="flex items-center gap-4">
-              <button onClick={() => setVista('Dashboard')} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white active:scale-95 transition-all">
-                <span className="material-icons-outlined">arrow_back</span>
-              </button>
-              <div>
-                <h2 className="text-2xl font-black text-white uppercase tracking-tighter">Asistencia</h2>
-                <p className="text-primary text-[10px] font-black uppercase tracking-widest mt-1">Selecciona un grupo</p>
-              </div>
-            </header>
-
-            <section className="space-y-4">
-              {grupos.length > 0 ? grupos.map((g, idx) => {
-                const stats = asistenciasGlobales[g.nombre] || { presentes: 0, total: 0 };
-                const isTaken = stats.total > 0 && stats.presentes > 0;
-                return (
-                  <button 
-                    key={idx} 
-                    onClick={() => { setActiveGroup(g); setVista('AsistenciaLista'); }}
-                    className="w-full text-left glass-card rounded-[1.5rem] p-6 flex flex-col gap-4 border border-white/5 active:scale-95 transition-all group hover:bg-white/10"
-                  >
-                    <div className="flex justify-between items-start w-full">
-                      <div>
-                        <h4 className="font-bold text-white text-lg tracking-tight leading-none group-hover:text-primary transition-colors">{g.nombre}</h4>
-                        <p className="text-xs text-white/60 mt-2 font-medium flex items-center gap-1">
-                          <span className="material-symbols-outlined text-sm">schedule</span> {g.horario}
-                        </p>
-                      </div>
-                      <div className={`px-3 py-1 text-[9px] font-black uppercase tracking-widest rounded-lg border ${isTaken ? 'bg-primary/10 text-primary border-primary/20' : 'bg-rose-500/10 text-rose-500 border-rose-500/20'}`}>
-                        {isTaken ? 'Completada' : 'Pendiente'}
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between pt-4 border-t border-white/5 w-full">
-                      <span className="text-[10px] font-bold text-white/50 uppercase tracking-widest">Tomar Asistencia</span>
-                      <span className="material-icons-outlined text-white/40 group-hover:text-primary transition-colors">arrow_forward</span>
-                    </div>
-                  </button>
-                )
-              }) : (
-                <div className="p-8 text-center glass-card rounded-[2rem] border-dashed border-white/10 space-y-4">
-                  <span className="material-icons-outlined text-5xl text-white/20">groups</span>
-                  <div>
-                    <h4 className="text-white font-bold mb-1">Crea tu primer Grupo</h4>
-                    <p className="text-white/50 text-xs">Añade grupos para poder registrar su asistencia.</p>
-                  </div>
-                  <button 
-                    onClick={() => { setVista('Horario'); setTimeout(() => window.scrollTo(0, 0), 100); }}
-                    className="px-6 py-3.5 mt-2 rounded-xl bg-primary text-antigravity-black font-black text-xs uppercase tracking-widest shadow-neon-cyan active:scale-95 transition-all w-full flex items-center justify-center gap-2"
-                  >
-                    <span className="material-icons-outlined text-lg">add_circle</span> Crear Grupo
-                  </button>
-                </div>
-              )}
-            </section>
-          </div>
-        )}
-
-        {/* VISTA: ASISTENCIA LISTA (EXACT MATCH) */}
-        {vista === 'AsistenciaLista' && activeGroup && (
-          <div className="page-transition flex flex-col min-h-screen relative bg-antigravity-black">
-            <header className="px-6 py-4 flex flex-col gap-4 bg-antigravity-black sticky top-12 z-40">
-              <div className="flex items-center justify-between">
-                <button onClick={() => setVista('Dashboard')} className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 border border-white/20 bg-white/20 border-primary/50 placeholder:text-white/80 text-white">
-                  <span className="material-symbols-outlined text-[20px]">arrow_back_ios_new</span>
-                </button>
-                <h1 className="text-sm font-bold tracking-widest uppercase text-white/80">Asistencia</h1>
-                <button 
-                  onClick={() => {
-                    loadMonthlyReport(activeGroup.nombre, reportMonth, reportYear);
-                    setVista('ReportePDF');
-                  }}
-                  className="w-10 h-10 flex items-center justify-center rounded-full bg-primary/10 border border-primary/30 text-primary"
-                  title="Reporte Mensual"
-                >
-                  <span className="material-icons-outlined text-[20px]">assessment</span>
-                </button>
-              </div>
-              <div className="flex justify-between items-end">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-3xl font-bold text-white tracking-tight leading-none">{activeGroup.nombre}</h2>
-                    <button 
-                      onClick={() => {
-                        setEditingGroup(activeGroup);
-                        setNewGroupName(activeGroup.nombre);
-                        setNewCoachName(activeGroup.entrenador || "");
-                        setSelectedDays(activeGroup.dias || []);
-                        const times = activeGroup.horario.split(' - ');
-                        if (times.length === 2) {
-                          setStartTime(times[0]);
-                          setEndTime(times[1]);
-                        }
-                        setVista('Horario');
-                      }}
-                      className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 border border-white/10 text-white/40 hover:text-primary transition-all"
-                      title="Editar Grupo"
-                    >
-                      <span className="material-icons-outlined text-[16px]">edit</span>
-                    </button>
-                  </div>
-                  <p className="text-neon-cyan font-medium flex items-center gap-2 mt-2 opacity-90 text-sm">
-                    <span className="material-symbols-outlined text-[18px]">schedule</span> {activeGroup.horario}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <span className="text-[10px] font-bold text-white/70 uppercase tracking-[0.2em]">Presentes</span>
-                  <div className="text-2xl font-bold text-neon-cyan neon-glow-cyan">
-                    {presentCount}<span className="text-white/20 mx-1">/</span>{filteredAlumnos.length}
-                  </div>
-                </div>
-              </div>
-            </header>
-
-            <div className="px-6 py-2 flex gap-3 overflow-x-auto scrollbar-hide">
-              <button 
-                onClick={() => handleNavigation('RegistroAlumno')}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary/10 border border-primary/20 text-primary text-[10px] font-black uppercase tracking-widest whitespace-nowrap active:scale-95 transition-all"
-              >
-                <span className="material-icons-outlined text-sm">person_add</span>
-                Agregar Gimnasta
-              </button>
-              <button 
-                onClick={() => handleNavigation('Asistente')}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary/10 border border-primary/20 text-primary text-[10px] font-black uppercase tracking-widest whitespace-nowrap active:scale-95 transition-all"
-              >
-                <span className="material-icons-outlined text-sm">local_library</span>
-                Biblioteca Técnica
-              </button>
-              <button 
-                onClick={() => {
-                  const element = document.getElementById('recent-classes-section');
-                  element?.scrollIntoView({ behavior: 'smooth' });
-                }}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white/60 text-[10px] font-black uppercase tracking-widest whitespace-nowrap active:scale-95 transition-all"
-              >
-                <span className="material-icons-outlined text-sm">history</span>
-                Clases Recientes
-              </button>
-            </div>
-
-            <div className="px-6 pt-2 pb-4">
-              <div className="relative group">
-                <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-white/60 text-xl group-focus-within:text-neon-cyan transition-colors">search</span>
-                <input 
-                  className="w-full crafted-input pl-12 !py-3.5 !border-neon-cyan/50 !ring-neon-cyan/50" 
-                  placeholder="Buscar alumno..." 
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
-            </div>
-
-            <main className="flex-1 overflow-y-auto px-6 py-2 space-y-4">
-              {filteredAlumnos.length > 0 ? filteredAlumnos.map(alumno => {
-                const hasAlerts = alumno.alertas && alumno.alertas.length > 0 && alumno.alertas[0] !== '';
-                const isExpanded = expandedAlumnoId === alumno.id;
-
-                return (
-                  <div key={alumno.id} className={`flex flex-col p-4 rounded-2xl glass-card transition-all duration-300 ${!asistenciasHoy[alumno.id!] ? 'opacity-70 border-red-500/30 bg-red-900/10' : 'border-neon-cyan/20'}`}>
-                    <div className="flex items-center justify-between">
-                      <div 
-                        className="flex items-center gap-4 cursor-pointer flex-1"
-                        onClick={() => setExpandedAlumnoId(isExpanded ? null : alumno.id!)}
-                      >
-                        <div className="relative">
-                          <div className="w-12 h-12 rounded-xl bg-antigravity-charcoal flex items-center justify-center overflow-hidden border border-white/10">
-                            <img 
-                              alt="Avatar" 
-                              className={`w-full h-full object-cover ${!asistenciasHoy[alumno.id!] ? 'grayscale' : 'grayscale-[0.3]'}`} 
-                              src={`https://ui-avatars.com/api/?name=${encodeURIComponent(alumno.nombre)}&background=121214&color=fff&size=128`}
-                            />
-                          </div>
-                          {asistenciasHoy[alumno.id!] && <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-neon-cyan rounded-full border-2 border-antigravity-black"></div>}
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <h4 className={`text-sm font-semibold ${asistenciasHoy[alumno.id!] ? 'text-white' : 'text-white/70'} leading-none`}>{alumno.nombre}</h4>
-                            {hasAlerts && (
-                              <span className="material-icons-outlined text-amber-500 text-[16px] animate-pulse" title="Alerta Médica">warning</span>
-                            )}
-                          </div>
-                          <p className={`text-[10px] font-bold uppercase tracking-wider mt-2 ${asistenciasHoy[alumno.id!] ? 'text-white/70' : 'text-white/60'}`}>{alumno.nivel}</p>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center gap-4">
-                        <button 
-                          onClick={() => setExpandedAlumnoId(isExpanded ? null : alumno.id!)}
-                          className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-white/80 hover:text-white transition-colors"
-                        >
-                          <span className="material-icons-outlined text-[18px]">{isExpanded ? 'expand_less' : 'expand_more'}</span>
-                        </button>
-                        <label className="relative inline-flex items-center cursor-pointer">
-                          <input 
-                            type="checkbox" 
-                            className="sr-only ios-toggle peer border border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none" 
-                            checked={asistenciasHoy[alumno.id!] || false}
-                            onChange={() => toggleAttendance(alumno.id!)}
-                          />
-                          <div className="w-11 h-6 bg-white/10 peer-outline-none rounded-full ios-toggle-label after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white/60 after:rounded-full after:h-5 after:w-5 after:transition-all shadow-sm"></div>
-                        </label>
-                      </div>
-                    </div>
-
-                    {/* Expanded Details */}
-                    {isExpanded && (
-                      <div className="mt-4 pt-4 border-t border-white/10 space-y-4 animate-in slide-in-from-top-2 duration-200">
-                        {/* Health Alerts */}
-                        {hasAlerts && (
-                          <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3">
-                            <h5 className="text-[10px] font-bold text-amber-500 uppercase tracking-widest mb-2 flex items-center gap-1">
-                              <span className="material-icons-outlined text-[14px]">medical_services</span>
-                              Observaciones de Salud
-                            </h5>
-                            <ul className="space-y-1">
-                              {alumno.alertas.map((alerta, idx) => (
-                                <li key={idx} className="text-xs text-amber-200/80 flex items-start gap-2">
-                                  <span className="text-amber-500 mt-0.5">•</span>
-                                  {alerta}
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-
-                        {/* Emergency Contacts */}
-                        {alumno.contacto && (
-                          <div className="bg-white/5 rounded-xl p-3 space-y-3">
-                            <h5 className="text-[10px] font-bold text-white/70 uppercase tracking-widest flex items-center gap-1">
-                              <span className="material-icons-outlined text-[14px]">contact_phone</span>
-                              Contactos de Emergencia
-                            </h5>
-                            
-                            <div className="grid grid-cols-1 gap-2">
-                              {alumno.contacto.emergenciaNombre && alumno.contacto.emergenciaTelefono && (
-                                <div className="flex items-center justify-between bg-black/20 p-2 rounded-lg">
-                                  <div>
-                                    <p className="text-[10px] text-white/70 uppercase">Emergencia</p>
-                                    <p className="text-xs text-white font-medium">{alumno.contacto.emergenciaNombre}</p>
-                                  </div>
-                                  <a href={`tel:${alumno.contacto.emergenciaTelefono}`} className="w-8 h-8 rounded-full bg-rose-500/20 text-rose-500 flex items-center justify-center">
-                                    <span className="material-icons-outlined text-[16px]">call</span>
-                                  </a>
-                                </div>
-                              )}
-                              
-                              {alumno.contacto.padreNombre && alumno.contacto.padreTelefono && (
-                                <div className="flex items-center justify-between bg-black/20 p-2 rounded-lg">
-                                  <div>
-                                    <p className="text-[10px] text-white/70 uppercase">Padre</p>
-                                    <p className="text-xs text-white font-medium">{alumno.contacto.padreNombre}</p>
-                                  </div>
-                                  <a href={`tel:${alumno.contacto.padreTelefono}`} className="w-8 h-8 rounded-full bg-neon-cyan/20 text-neon-cyan flex items-center justify-center">
-                                    <span className="material-icons-outlined text-[16px]">call</span>
-                                  </a>
-                                </div>
-                              )}
-
-                              {alumno.contacto.madreNombre && alumno.contacto.madreTelefono && (
-                                <div className="flex items-center justify-between bg-black/20 p-2 rounded-lg">
-                                  <div>
-                                    <p className="text-[10px] text-white/70 uppercase">Madre</p>
-                                    <p className="text-xs text-white font-medium">{alumno.contacto.madreNombre}</p>
-                                  </div>
-                                  <a href={`tel:${alumno.contacto.madreTelefono}`} className="w-8 h-8 rounded-full bg-neon-cyan/20 text-neon-cyan flex items-center justify-center">
-                                    <span className="material-icons-outlined text-[16px]">call</span>
-                                  </a>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        )}
-                        
-                        {(!alumno.contacto || (!alumno.contacto.emergenciaTelefono && !alumno.contacto.padreTelefono && !alumno.contacto.madreTelefono)) && (
-                          <p className="text-[10px] text-white/60 italic text-center">No hay contactos registrados</p>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              }) : (
-                <div className="py-24 text-center flex flex-col items-center space-y-6 opacity-30">
-                  <span className="material-symbols-outlined text-[80px] font-light">person_off</span>
-                  <p className="text-sm font-medium italic tracking-wide">Inicia agregando tu primer alumno<br/>usando el botón azul inferior.</p>
-                </div>
-              )}
-
-              {/* Recent Classes Section for this group */}
-              <section id="recent-classes-section" className="pt-8 pb-12 space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-white font-bold text-sm uppercase tracking-widest opacity-50">Clases Recientes</h3>
-                  <span className="text-[10px] font-bold text-primary uppercase tracking-widest">{activeGroup.nombre}</span>
-                </div>
-                <div className="space-y-3">
-                  {clases
-                    .filter(c => c.grupo === activeGroup.nombre)
-                    .slice(0, 3)
-                    .map((clase) => (
-                      <div 
-                        key={clase.id} 
-                        onClick={() => { setSelectedClase(clase); handleNavigation('ClaseDetalle'); }}
-                        className="glass-card rounded-2xl p-4 border border-white/5 flex items-center justify-between active:scale-95 transition-all cursor-pointer"
-                      >
-                        <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center border border-primary/20">
-                            <span className="material-icons-outlined text-primary text-xl">history_edu</span>
-                          </div>
-                          <div>
-                            <h4 className="text-sm font-bold text-white">{new Date(clase.fecha).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}</h4>
-                            <p className="text-[10px] text-slate-500 font-medium uppercase tracking-wider">{clase.entrenador}</p>
-                          </div>
-                        </div>
-                        <span className="material-icons-outlined text-slate-600 text-sm">chevron_right</span>
-                      </div>
-                    ))}
-                  {clases.filter(c => c.grupo === activeGroup.nombre).length === 0 && (
-                    <div className="py-8 text-center border border-dashed border-white/5 rounded-2xl opacity-20 italic text-xs">
-                      No hay clases registradas para este grupo.
-                    </div>
-                  )}
-                </div>
-              </section>
-            </main>
-
-            {/* FAB button matches user snippet */}
-            <button 
-              onClick={() => handleNavigation('RegistroAlumno')}
-              className="absolute bottom-28 right-6 w-16 h-16 bg-neon-blue text-white rounded-2xl flex items-center justify-center neon-fab-blue active:scale-95 transition-all z-30"
-            >
-              <span className="material-symbols-outlined text-[32px] font-light">person_add</span>
-            </button>
-          </div>
-        )}
-
-      {/* VISTA: ALUMNOS */}
-      {vista === 'Alumnos' && (
-        <div className="px-6 py-8 space-y-8 page-transition pb-24">
-          <header className="flex justify-between items-end">
-            <div>
-              <h2 className="title-antigravity text-3xl">
-                {alumnosFilterMode === 'alerts' ? 'Obs. de Salud' : 'Gimnastas'}
-              </h2>
-              <p className="text-primary text-[10px] font-black uppercase tracking-widest mt-1">
-                {alumnosFilterMode === 'alerts' ? 'Gimnastas con Alertas Médicas' : 'Tus alumnas registradas'}
-              </p>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="text-right">
-                <p className="text-[10px] font-bold text-white/70 uppercase tracking-widest">Total</p>
-                <p className="text-2xl font-black text-white">
-                  {alumnos
-                    .filter(a => alumnosFilterMode === 'alerts' ? (a.alertas && a.alertas.length > 0 && a.alertas[0] !== '') : true)
-                    .filter(a => selectedGrupoFilter === 'Todos' || a.grupo === selectedGrupoFilter)
-                    .filter(a => selectedNivelFilter === 'Todos' || a.nivel === selectedNivelFilter)
-                    .filter(a => a.nombre.toLowerCase().includes(searchQuery.toLowerCase()) || a.dni.includes(searchQuery))
-                    .length}
-                </p>
-              </div>
-              {alumnosFilterMode === 'all' && (
-                <div className="flex gap-2">
-                  <button 
-                    onClick={() => setIsBulkImporting(true)}
-                    className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/60 border border-white/10 active:scale-90 transition-all"
-                    title="Importación Masiva"
-                  >
-                    <span className="material-icons-outlined text-sm">upload_file</span>
-                  </button>
-                  <button 
-                    onClick={() => setIsAddingAlumno(!isAddingAlumno)}
-                    className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary border border-primary/20 active:scale-90 transition-all"
-                  >
-                    <span className="material-icons-outlined text-sm">{isAddingAlumno ? 'close' : 'person_add'}</span>
-                  </button>
-                  <button 
-                    onClick={handleExportAttendance}
-                    className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/60 border border-white/10 active:scale-90 transition-all"
-                    title="Exportar Asistencia Mensual"
-                  >
-                    <span className="material-icons-outlined text-sm">download</span>
-                  </button>
-                  <button 
-                    onClick={handleSendPaymentReminders}
-                    className="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-500 border border-amber-500/20 active:scale-90 transition-all"
-                    title="Recordatorios de Pago"
-                  >
-                    <span className="material-icons-outlined text-sm">notifications_active</span>
-                  </button>
-                </div>
-              )}
-            </div>
-          </header>
-
-          <div className="space-y-4">
-            <div className="relative">
-              <span className="material-icons-outlined absolute left-4 top-1/2 -translate-y-1/2 text-white/70">search</span>
-              <input 
-                className="w-full crafted-input pl-12"
-                placeholder="Buscar por nombre o DNI..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-
-            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide items-end">
-              <div className="flex flex-col gap-1">
-                <label className="text-[8px] uppercase font-bold text-white/50 ml-1">Grupo</label>
-                <select 
-                  value={selectedGrupoFilter}
-                  onChange={(e) => setSelectedGrupoFilter(e.target.value)}
-                  className="bg-antigravity-charcoal border border-white/10 rounded-lg px-3 py-1.5 text-[10px] text-white outline-none focus:border-primary transition-all"
-                >
-                  <option value="Todos">Todos los Grupos</option>
-                  {grupos.map(g => (
-                    <option key={g.id} value={g.nombre}>{g.nombre}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-[8px] uppercase font-bold text-white/50 ml-1">Nivel</label>
-                <select 
-                  value={selectedNivelFilter}
-                  onChange={(e) => setSelectedNivelFilter(e.target.value)}
-                  className="bg-antigravity-charcoal border border-white/10 rounded-lg px-3 py-1.5 text-[10px] text-white outline-none focus:border-primary transition-all"
-                >
-                  <option value="Todos">Todos los Niveles</option>
-                  {niveles.map(n => (
-                    <option key={n.id} value={n.nombre}>{n.nombre}</option>
-                  ))}
-                </select>
-              </div>
-              <button 
-                onClick={clearAlumnosFilters}
-                className="bg-white/5 border border-white/10 rounded-xl px-5 py-3 text-xs text-white/80 hover:text-white transition-all flex items-center gap-2 shadow-sm"
-              >
-                <span className="material-icons-outlined text-xs">filter_alt_off</span>
-                Limpiar
-              </button>
-            </div>
-          </div>
-
-            {isAddingAlumno && (
-              <div className="glass-card rounded-2xl p-5 border border-primary/30 space-y-4 shadow-neon-cyan">
-                <h3 className="text-white font-bold text-sm uppercase tracking-wider">Nuevo Gimnasta</h3>
-                <input 
-                  type="text" 
-                  placeholder="Nombre completo" 
-                  className="w-full bg-antigravity-charcoal border rounded-xl px-4 py-3 text-sm text-white border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
-                  value={newAlumnoForm.nombre}
-                  onChange={e => setNewAlumnoForm({...newAlumnoForm, nombre: e.target.value})}
-                />
-                <input 
-                  type="text" 
-                  placeholder="DNI (Opcional)" 
-                  className="w-full bg-antigravity-charcoal border rounded-xl px-4 py-3 text-sm text-white border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
-                  value={newAlumnoForm.dni}
-                  onChange={e => setNewAlumnoForm({...newAlumnoForm, dni: e.target.value})}
-                />
-                <div className="space-y-3">
-                  <label className="text-[10px] uppercase font-black text-white ml-2 tracking-[0.2em]">Grupo</label>
-                  <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                    {grupos.filter(g => userRole === 'Coordinator' || !user?.displayName || g.entrenador === user.displayName).map(g => (
-                      <button 
-                        key={g.id}
-                        onClick={() => setNewAlumnoForm({...newAlumnoForm, grupo: g.nombre})}
-                        className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all border ${
-                          newAlumnoForm.grupo === g.nombre 
-                            ? 'bg-primary text-antigravity-black border-primary shadow-neon-cyan' 
-                            : 'bg-white/5 text-white/80 border-white/10 hover:border-white/20'
-                        }`}
-                      >
-                        {g.nombre}
-                      </button>
-                    ))}
-                    <button 
-                      onClick={() => setVista('Horario')}
-                      className="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap bg-white/5 text-white/80 border border-dashed border-white/30"
-                    >
-                      + Nuevo
-                    </button>
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 gap-3">
-                  <EditableDropdown 
-                    label="Nivel"
-                    placeholder="Nivel..."
-                    value={newAlumnoForm.nivel}
-                    onChange={val => setNewAlumnoForm({...newAlumnoForm, nivel: val})}
-                    options={niveles}
-                    onAdd={handleSaveLevel}
-                    onEdit={handleUpdateLevel}
-                    onDelete={handleDeleteLevel}
-                  />
-                </div>
-                <div className="flex gap-2 pt-2">
-                  <button 
-                    onClick={() => setIsAddingAlumno(false)}
-                    className="flex-1 py-3 rounded-xl border border-white/10 text-white font-bold text-xs uppercase tracking-wider"
-                  >
-                    Cancelar
-                  </button>
-                  <button 
-                    onClick={handleAddAlumno}
-                    disabled={!newAlumnoForm.nombre.trim()}
-                    className="flex-1 py-3 rounded-xl bg-primary text-antigravity-black font-bold text-xs uppercase tracking-wider disabled:opacity-50"
-                  >
-                    Guardar
-                  </button>
-                </div>
-              </div>
-            )}
-
-            <div className="space-y-3">
-              {alumnos
-                .filter(a => alumnosFilterMode === 'alerts' ? (a.alertas && a.alertas.length > 0 && a.alertas[0] !== '') : true)
-                .filter(a => selectedGrupoFilter === 'Todos' || a.grupo === selectedGrupoFilter)
-                .filter(a => selectedNivelFilter === 'Todos' || a.nivel === selectedNivelFilter)
-                .filter(a => a.nombre.toLowerCase().includes(searchQuery.toLowerCase()) || a.dni.includes(searchQuery))
-                .map(alumno => {
-                  const hasAlerts = alumno.alertas && alumno.alertas.length > 0 && alumno.alertas[0] !== '';
-                  return (
-                    <div 
-                      key={alumno.id} 
-                      onClick={async () => { 
-                        setSelectedAlumno(alumno); 
-                        handleNavigation('AlumnoDetalle'); 
-                        if (alumno.id) {
-                          setIsLoadingAsistencias(true);
-                          const history = (await getAttendanceByStudent(alumno.id)) as AsistenciaRecord[];
-                          setAlumnoAsistencias(history.sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime()));
-                          setIsLoadingAsistencias(false);
-                        }
-                      }}
-                      className={`glass-card rounded-2xl p-4 border flex items-center justify-between cursor-pointer active:scale-95 transition-all ${hasAlerts && alumnosFilterMode === 'alerts' ? 'border-amber-500/30 bg-amber-500/5' : 'border-white/5'}`}
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center border border-white/10 overflow-hidden relative">
-                          <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(alumno.nombre)}&background=random`} alt="" className="w-full h-full object-cover opacity-80" />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <h4 className="text-sm font-bold text-white">{alumno.nombre}</h4>
-                            {hasAlerts && (
-                              <div className="alert-icon alert-icon-warning scale-75" title="Alerta Médica">
-                                <span className="material-icons-outlined text-sm">warning</span>
-                              </div>
-                            )}
-                          </div>
-                          <p className="text-[10px] text-white/80 font-medium uppercase tracking-wider">{alumno.grupo} • {alumno.nivel}</p>
-                        </div>
-                      </div>
-                      <button className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/70">
-                        <span className="material-icons-outlined text-sm">chevron_right</span>
-                      </button>
-                    </div>
-                  );
-                })}
-              {alumnos.filter(a => alumnosFilterMode === 'alerts' ? (a.alertas && a.alertas.length > 0 && a.alertas[0] !== '') : true)
-                .filter(a => selectedGrupoFilter === 'Todos' || a.grupo === selectedGrupoFilter)
-                .filter(a => selectedNivelFilter === 'Todos' || a.nivel === selectedNivelFilter)
-                .filter(a => a.nombre.toLowerCase().includes(searchQuery.toLowerCase()) || a.dni.includes(searchQuery))
-                .length === 0 && (
-                <div className="py-20 text-center opacity-20 italic text-sm">
-                  {alumnosFilterMode === 'alerts' ? 'No hay gimnastas con alertas médicas.' : 'No hay gimnastas que coincidan con los filtros.'}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {vista === 'AlumnoDetalle' && selectedAlumno && (
-          <div className="px-6 py-8 space-y-8 page-transition">
-            <header className="flex items-center gap-4">
-              <button onClick={() => setVista('Alumnos')} className="w-10 h-10 rounded-full bg-antigravity-charcoal flex items-center justify-center text-primary border border-white/5 active:scale-90 transition-all">
-                <span className="material-icons-outlined">arrow_back</span>
-              </button>
-              <div className="flex-1">
-                <h2 className="title-antigravity text-2xl leading-none">{selectedAlumno.nombre}</h2>
-                <p className="text-primary text-[10px] font-black uppercase tracking-widest mt-1">{selectedAlumno.grupo} • {selectedAlumno.nivel}</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <button 
-                  onClick={() => {
-                    setEditingAlumnoData(selectedAlumno);
-                    setIsEditingAlumno(!isEditingAlumno);
-                  }}
-                  className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/60 border border-white/10 active:scale-90 transition-all"
-                >
-                  <span className="material-icons-outlined text-sm">{isEditingAlumno ? 'close' : 'edit'}</span>
-                </button>
-                <button 
-                  onClick={() => sendPaymentReminder(selectedAlumno)}
-                  className="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-500 border border-amber-500/20 active:scale-90 transition-all"
-                  title="Enviar Recordatorio de Pago"
-                >
-                  <span className="material-icons-outlined text-sm">notifications_active</span>
-                </button>
-              </div>
-
-            </header>
-
-            {isEditingAlumno && (
-              <div className="glass-card rounded-2xl p-5 border border-primary/30 space-y-4 shadow-neon-cyan">
-                <h3 className="text-white font-bold text-sm uppercase tracking-wider">Editar Gimnasta</h3>
-                
-                <div className="space-y-4">
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-white/70 uppercase tracking-widest ml-1">Información Básica</label>
-                    <input 
-                      type="text" 
-                      placeholder="Nombre completo" 
-                      className="w-full crafted-input"
-                      value={editingAlumnoData.nombre || ''}
-                      onChange={e => setEditingAlumnoData({...editingAlumnoData, nombre: e.target.value})}
-                    />
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1">
-                        <label className="text-[10px] uppercase font-bold text-slate-500 ml-1">DNI (Opcional)</label>
-                        <input 
-                          type="text" 
-                          placeholder="Número..." 
-                          className="w-full crafted-input"
-                          value={editingAlumnoData.dni || ''}
-                          onChange={e => setEditingAlumnoData({...editingAlumnoData, dni: e.target.value})}
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[10px] uppercase font-bold text-slate-500 ml-1">Fecha Nacimiento</label>
-                        <input 
-                          type="date" 
-                          className="w-full crafted-input"
-                          value={editingAlumnoData.fechaNacimiento || ''}
-                          onChange={e => setEditingAlumnoData({...editingAlumnoData, fechaNacimiento: e.target.value})}
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-3">
-                    <label className="text-[10px] uppercase font-black text-white ml-2 tracking-[0.2em]">Grupo</label>
-                    <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                      {grupos.filter(g => userRole === 'Coordinator' || !user?.displayName || g.entrenador === user.displayName).map(g => (
-                        <button 
-                          key={g.id}
-                          onClick={() => setEditingAlumnoData({...editingAlumnoData, grupo: g.nombre})}
-                          className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all border ${
-                            editingAlumnoData.grupo === g.nombre 
-                              ? 'bg-primary text-antigravity-black border-primary shadow-neon-cyan' 
-                              : 'bg-white/5 text-white/80 border-white/10 hover:border-white/20'
-                          }`}
-                        >
-                          {g.nombre}
-                        </button>
-                      ))}
-                      <button 
-                        onClick={() => setVista('Horario')}
-                        className="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap bg-white/5 text-white/80 border border-dashed border-white/30"
-                      >
-                        + Nuevo
-                      </button>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 gap-3">
-                    <EditableDropdown 
-                      label="Nivel"
-                      placeholder="Nivel..."
-                      value={editingAlumnoData.nivel || ''}
-                      onChange={val => setEditingAlumnoData({...editingAlumnoData, nivel: val})}
-                      options={niveles}
-                      onAdd={handleSaveLevel}
-                      onEdit={handleUpdateLevel}
-                      onDelete={handleDeleteLevel}
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-white/70 uppercase tracking-widest ml-1">Observaciones de Salud</label>
-                    <textarea 
-                      className="w-full crafted-input h-20"
-                      placeholder="Alergias, lesiones, condiciones médicas..."
-                      value={editingAlumnoData.alertas?.[0] || ''}
-                      onChange={e => setEditingAlumnoData({...editingAlumnoData, alertas: [e.target.value]})}
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-white/70 uppercase tracking-widest ml-1">Contactos de Familia</label>
-                    <div className="space-y-3">
-                      <div className="grid grid-cols-2 gap-3">
-                        <input 
-                          type="text" 
-                          placeholder="Nombre Padre" 
-                          className="w-full crafted-input"
-                          value={editingAlumnoData.contacto?.padreNombre || ''}
-                          onChange={e => setEditingAlumnoData({...editingAlumnoData, contacto: {...(editingAlumnoData.contacto || {}), padreNombre: e.target.value}})}
-                        />
-                        <input 
-                          type="tel" 
-                          placeholder="Tel Padre" 
-                          className="w-full crafted-input"
-                          value={editingAlumnoData.contacto?.padreTelefono || ''}
-                          onChange={e => setEditingAlumnoData({...editingAlumnoData, contacto: {...(editingAlumnoData.contacto || {}), padreTelefono: e.target.value}})}
-                        />
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <input 
-                          type="text" 
-                          placeholder="Nombre Madre" 
-                          className="w-full crafted-input"
-                          value={editingAlumnoData.contacto?.madreNombre || ''}
-                          onChange={e => setEditingAlumnoData({...editingAlumnoData, contacto: {...(editingAlumnoData.contacto || {}), madreNombre: e.target.value}})}
-                        />
-                        <input 
-                          type="tel" 
-                          placeholder="Tel Madre" 
-                          className="w-full crafted-input"
-                          value={editingAlumnoData.contacto?.madreTelefono || ''}
-                          onChange={e => setEditingAlumnoData({...editingAlumnoData, contacto: {...(editingAlumnoData.contacto || {}), madreTelefono: e.target.value}})}
-                        />
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <input 
-                          type="text" 
-                          placeholder="Emergencia Nombre" 
-                          className="w-full crafted-input"
-                          value={editingAlumnoData.contacto?.emergenciaNombre || ''}
-                          onChange={e => setEditingAlumnoData({...editingAlumnoData, contacto: {...(editingAlumnoData.contacto || {}), emergenciaNombre: e.target.value}})}
-                        />
-                        <input 
-                          type="tel" 
-                          placeholder="Emergencia Tel" 
-                          className="w-full crafted-input"
-                          value={editingAlumnoData.contacto?.emergenciaTelefono || ''}
-                          onChange={e => setEditingAlumnoData({...editingAlumnoData, contacto: {...(editingAlumnoData.contacto || {}), emergenciaTelefono: e.target.value}})}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex gap-2 pt-2">
-                  <button 
-                    onClick={handleDeleteAlumno}
-                    className="py-3 px-4 rounded-xl border border-red-500/30 text-red-400 font-bold text-xs uppercase tracking-wider bg-red-500/10"
-                  >
-                    <span className="material-icons-outlined text-sm">delete</span>
-                  </button>
-                  <button 
-                    onClick={handleUpdateAlumno}
-                    disabled={!editingAlumnoData.nombre?.trim()}
-                    className="flex-1 py-3 rounded-xl bg-primary text-antigravity-black font-bold text-xs uppercase tracking-wider disabled:opacity-50"
-                  >
-                    Guardar Cambios
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Progress Summary */}
-            <section className="space-y-4">
-              <h3 className="text-white font-bold text-lg px-1">Resumen de Progreso</h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="glass-card rounded-2xl p-4 border border-white/5 flex flex-col items-center justify-center text-center">
-                  <p className="text-[10px] font-bold text-white/70 uppercase tracking-widest mb-1">Habilidades</p>
-                  <p className="text-2xl font-black text-white">{selectedAlumno.habilidades?.length || 0}</p>
-                  <p className="text-[9px] text-primary font-bold uppercase mt-1">Registradas</p>
-                </div>
-                <div className="glass-card rounded-2xl p-4 border border-white/5 flex flex-col items-center justify-center text-center">
-                  <p className="text-[10px] font-bold text-white/70 uppercase tracking-widest mb-1">Dominadas</p>
-                  <p className="text-2xl font-black text-emerald-400">{selectedAlumno.habilidades?.filter(s => s.status === 'Dominado' || s.status === 'Elite').length || 0}</p>
-                  <p className="text-[9px] text-emerald-500/60 font-bold uppercase mt-1">Logros</p>
-                </div>
-              </div>
-              
-              {/* Apparatus Progress */}
-              <div className="glass-card rounded-2xl p-5 border border-white/5 space-y-4">
-                <p className="text-[10px] font-bold text-white/70 uppercase tracking-widest">Progreso por Aparato</p>
-                <div className="space-y-3">
-                  {Object.keys(SKILL_TREE).map(apparatus => {
-                    const skills = selectedAlumno.habilidades?.filter(s => s.apparatus === apparatus) || [];
-                    if (skills.length === 0) return null;
-                    const mastered = skills.filter(s => s.status === 'Dominado' || s.status === 'Elite').length;
-                    const percent = Math.round((mastered / skills.length) * 100);
-                    
-                    return (
-                      <div key={apparatus} className="space-y-1.5">
-                        <div className="flex justify-between text-[10px] uppercase font-bold tracking-wider">
-                          <span className="text-white/70">{apparatus}</span>
-                          <span className="text-primary">{percent}%</span>
-                        </div>
-                        <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-primary shadow-neon-cyan transition-all duration-1000" 
-                            style={{ width: `${percent}%` }}
-                          ></div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </section>
-
-            {/* Attendance History */}
-            <section className="space-y-4">
-              <div className="flex justify-between items-center px-1">
-                <h3 className="text-white font-bold text-lg">Historial de Asistencia</h3>
-                <div className="text-[10px] font-bold text-white/70 uppercase tracking-widest">
-                  {alumnoAsistencias.filter(a => a.presente).length} Presentes
-                </div>
-              </div>
-              
-              <div className="glass-card rounded-2xl overflow-hidden border border-white/5">
-                {isLoadingAsistencias ? (
-                  <div className="p-8 text-center">
-                    <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
-                  </div>
-                ) : alumnoAsistencias.length > 0 ? (
-                  <div className="divide-y divide-white/5">
-                    {alumnoAsistencias.slice(0, 5).map((record, idx) => (
-                      <div key={record.id || idx} className="p-4 flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className={`w-2 h-2 rounded-full ${record.presente ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-rose-500'}`}></div>
-                          <div>
-                            <p className="text-xs font-bold text-white">{new Date(record.fecha).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'short' })}</p>
-                            <p className="text-[9px] text-white/60 uppercase font-bold tracking-widest">{record.grupo}</p>
-                          </div>
-                        </div>
-                        <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-md ${record.presente ? 'text-emerald-400 bg-emerald-500/10' : 'text-rose-400 bg-rose-500/10'}`}>
-                          {record.presente ? 'Presente' : 'Ausente'}
-                        </span>
-                      </div>
-                    ))}
-                    {alumnoAsistencias.length > 5 && (
-                      <button className="w-full py-3 text-[10px] font-bold text-primary uppercase tracking-widest hover:bg-white/5 transition-colors">
-                        Ver historial completo
-                      </button>
-                    )}
-                  </div>
-                ) : (
-                  <div className="p-8 text-center opacity-30 italic text-sm">No hay registros de asistencia.</div>
-                )}
-              </div>
-            </section>
-
-            <section className="space-y-4">
-              <div className="flex justify-between items-center px-1">
-                <h3 className="text-white font-bold text-lg">Habilidades</h3>
-                <button 
-                  onClick={() => setIsAddingSkill(!isAddingSkill)}
-                  className="text-primary text-xs font-bold uppercase tracking-wider flex items-center gap-1"
-                >
-                  <span className="material-icons-outlined text-sm">{isAddingSkill ? 'close' : 'add'}</span>
-                  {isAddingSkill ? 'Cancelar' : 'Añadir'}
-                </button>
-              </div>
-
-              {/* Skill Filters */}
-              <div className="space-y-4">
-                <div className="relative">
-                  <span className="material-icons-outlined absolute left-3 top-1/2 -translate-y-1/2 text-white/40 text-sm">search</span>
-                  <input 
-                    type="text" 
-                    placeholder="Buscar habilidad por nombre..." 
-                    value={skillSearchQuery}
-                    onChange={(e) => setSkillSearchQuery(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl py-2.5 pl-10 pr-10 text-xs text-white outline-none focus:border-primary/50 transition-all"
-                  />
-                  {skillSearchQuery && (
-                    <button 
-                      onClick={() => setSkillSearchQuery('')}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white"
-                    >
-                      <span className="material-icons text-sm">close</span>
-                    </button>
-                  )}
-                </div>
-                
-                <div className="flex gap-2 overflow-x-auto pb-3 no-scrollbar scroll-smooth" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}>
-                  {['Todos', 'Favoritos', ...Object.keys(SKILL_TREE)].map(ap => (
-                    <button
-                      key={ap}
-                      onClick={() => setSkillApparatusFilter(ap)}
-                      className={`px-5 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all border flex items-center shrink-0 ${
-                        skillApparatusFilter === ap 
-                          ? 'bg-primary text-antigravity-black border-primary shadow-neon-cyan' 
-                          : 'bg-white/5 text-white/60 border-white/10 hover:bg-white/10'
-                      }`}
-                    >
-                      {ap === 'Favoritos' && <span className="material-icons text-[12px] mr-1.5">star</span>}
-                      {ap}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <AnimatePresence mode="wait">
-                {isAddingSkill && (
-                  <motion.div 
-                    initial={{ opacity: 0, y: -20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                    className="glass-card rounded-2xl p-5 border border-primary/30 space-y-4 shadow-neon-cyan"
-                  >
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-white/70 uppercase tracking-widest ml-1">Aparato</label>
-                      <select 
-                        className="w-full crafted-input"
-                        value={newSkill.apparatus}
-                        onChange={(e) => setNewSkill({...newSkill, apparatus: e.target.value as Apparatus, name: ''})}
-                      >
-                        {Object.keys(SKILL_TREE).map(ap => (
-                          <option key={ap} value={ap}>{ap}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-white/70 uppercase tracking-widest ml-1">Habilidad (IFG Tree)</label>
-                      <select 
-                        className="w-full crafted-input"
-                        value={newSkill.name}
-                        onChange={(e) => {
-                          const selectedSkill = SKILL_TREE[newSkill.apparatus as Apparatus]?.find(s => s.name === e.target.value);
-                          setNewSkill({
-                            ...newSkill, 
-                            name: e.target.value,
-                            level: selectedSkill?.difficulty || '1'
-                          });
-                        }}
-                      >
-                        <option value="">Seleccionar habilidad...</option>
-                        {SKILL_TREE[newSkill.apparatus as Apparatus]?.map(s => (
-                          <option key={s.name} value={s.name}>{s.name} ({s.difficulty})</option>
-                        ))}
-                        <option value="custom">-- Otra habilidad --</option>
-                      </select>
-                    </div>
-
-                    {newSkill.name === 'custom' && (
-                      <input 
-                        type="text" 
-                        placeholder="Nombre de la habilidad personalizada"
-                        className="w-full crafted-input"
-                        onChange={(e) => setNewSkill({...newSkill, name: e.target.value})}
-                      />
-                    )}
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-white/70 uppercase tracking-widest ml-1">Estado</label>
-                        <select 
-                          className="w-full crafted-input"
-                          value={newSkill.status}
-                          onChange={(e) => setNewSkill({...newSkill, status: e.target.value as SkillStatus})}
-                        >
-                          <option value="No Iniciado">No Iniciado</option>
-                          <option value="En Proceso">En Proceso</option>
-                          <option value="Dominado">Dominado</option>
-                          <option value="Elite">Elite</option>
-                        </select>
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-white/70 uppercase tracking-widest ml-1">Dificultad IFG</label>
-                        <input 
-                          type="text" 
-                          placeholder="Nivel/Dificultad"
-                          className="w-full crafted-input"
-                          value={newSkill.level}
-                          onChange={(e) => setNewSkill({...newSkill, level: e.target.value})}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-3 px-1">
-                      <button 
-                        onClick={() => setNewSkill({...newSkill, favorite: !newSkill.favorite})}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-all ${
-                          newSkill.favorite 
-                            ? 'bg-primary/10 border-primary/30 text-primary' 
-                            : 'bg-white/5 border-white/10 text-white/40'
-                        }`}
-                      >
-                        <span className="material-icons text-sm">{newSkill.favorite ? 'star' : 'star_border'}</span>
-                        <span className="text-[10px] font-black uppercase tracking-widest">Favorito</span>
-                      </button>
-                    </div>
-
-                    <button 
-                      onClick={handleAddSkill}
-                      disabled={!newSkill.name || newSkill.name === 'custom'}
-                      className="w-full py-3 rounded-xl bg-primary text-antigravity-black font-black uppercase text-[10px] tracking-widest active:scale-95 transition-all disabled:opacity-50 shadow-neon-cyan"
-                    >
-                      Guardar Habilidad
-                    </button>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              <div className="space-y-3">
-                {selectedAlumno.habilidades && selectedAlumno.habilidades.length > 0 ? (
-                  selectedAlumno.habilidades
-                    .filter(skill => {
-                      const matchesSearch = skill.name.toLowerCase().includes(skillSearchQuery.toLowerCase());
-                      const matchesApparatus = skillApparatusFilter === 'Todos' 
-                        ? true 
-                        : skillApparatusFilter === 'Favoritos' 
-                          ? skill.favorite 
-                          : skill.apparatus === skillApparatusFilter;
-                      return matchesSearch && matchesApparatus;
-                    })
-                    .sort((a, b) => {
-                      if (a.favorite && !b.favorite) return -1;
-                      if (!a.favorite && b.favorite) return 1;
-                      return 0;
-                    })
-                    .map(skill => (
-                      <motion.div 
-                        layout
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        key={skill.id} 
-                        className={`glass-card rounded-2xl p-4 border transition-all ${skill.favorite ? 'border-primary/40 bg-primary/5' : 'border-white/5'}`}
-                      >
-                        {editingSkillId === skill.id ? (
-                          <div className="space-y-4">
-                            <input 
-                              type="text" 
-                              placeholder="Nombre de la habilidad"
-                              className="w-full bg-antigravity-charcoal border rounded-xl py-3 px-4 text-sm text-white transition-all border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
-                              value={editingSkillData.name || ''}
-                              onChange={(e) => setEditingSkillData({...editingSkillData, name: e.target.value})}
-                            />
-                            <div className="grid grid-cols-2 gap-3">
-                              <input 
-                                list="apparatus-list"
-                                placeholder="Aparato"
-                                className="bg-antigravity-charcoal border rounded-xl py-3 px-4 text-sm text-white transition-all border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
-                                value={editingSkillData.apparatus || ''}
-                                onChange={(e) => setEditingSkillData({...editingSkillData, apparatus: e.target.value as Apparatus})}
-                              />
-                              <input 
-                                list="status-list"
-                                placeholder="Estado"
-                                className="bg-antigravity-charcoal border rounded-xl py-3 px-4 text-sm text-white transition-all border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
-                                value={editingSkillData.status || ''}
-                                onChange={(e) => setEditingSkillData({...editingSkillData, status: e.target.value as SkillStatus})}
-                              />
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <label className="text-xs text-white/60 font-medium">Nivel:</label>
-                              <input 
-                                type="text" 
-                                placeholder="Ej. 1, E2, USAG 3"
-                                className="flex-1 bg-antigravity-charcoal border rounded-xl py-2 px-3 text-sm text-white transition-all border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
-                                value={editingSkillData.level || ''}
-                                onChange={(e) => setEditingSkillData({...editingSkillData, level: e.target.value})}
-                              />
-                            </div>
-                            <div className="flex gap-2 pt-2">
-                              <button 
-                                onClick={() => handleDeleteSkill(skill.id)}
-                                className="py-3 px-4 rounded-xl border border-red-500/30 text-red-400 font-bold text-xs uppercase tracking-wider bg-red-500/10"
-                              >
-                                <span className="material-icons-outlined text-sm">delete</span>
-                              </button>
-                              <button 
-                                onClick={() => { setEditingSkillId(null); setEditingSkillData({}); }}
-                                className="flex-1 py-3 rounded-xl border border-white/10 text-white font-bold text-xs uppercase tracking-wider"
-                              >
-                                Cancelar
-                              </button>
-                              <button 
-                                onClick={handleUpdateSkill}
-                                disabled={!editingSkillData.name?.trim()}
-                                className="flex-1 py-3 rounded-xl bg-primary text-antigravity-black font-bold text-xs uppercase tracking-wider disabled:opacity-50"
-                              >
-                                Guardar
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="flex flex-col gap-3">
-                            <div className="flex items-center justify-between">
-                              <div className="flex-1" onClick={() => { setEditingSkillId(skill.id); setEditingSkillData(skill); }}>
-                                <div className="flex items-center gap-2">
-                                  <h4 className="text-sm font-bold text-white">{skill.name}</h4>
-                                  {skill.favorite && <span className="material-icons text-primary text-xs">star</span>}
-                                </div>
-                                <p className="text-[10px] text-white/80 font-medium uppercase tracking-wider mt-1">{skill.apparatus} • Nivel {skill.level}</p>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <button 
-                                  onClick={(e) => { e.stopPropagation(); toggleFavoriteSkill(skill.id); }}
-                                  className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${skill.favorite ? 'text-primary' : 'text-white/30 hover:text-white/50'}`}
-                                >
-                                  <span className="material-icons-outlined text-sm">{skill.favorite ? 'star' : 'star_border'}</span>
-                                </button>
-                                <div className={`px-3 py-1 rounded-lg border text-[9px] font-black uppercase tracking-widest ${
-                                  skill.status === 'Dominado' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
-                                  skill.status === 'En Proceso' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
-                                  skill.status === 'Elite' ? 'bg-accent-purple/10 text-accent-purple border-accent-purple/20' :
-                                  'bg-white/5 text-white/70 border-white/10'
-                                }`}>
-                                  {skill.status}
-                                </div>
-                                <button 
-                                  onClick={() => { setEditingSkillId(skill.id); setEditingSkillData(skill); }}
-                                  className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/70 hover:bg-white/10 active:scale-90 transition-all"
-                                  title="Editar"
-                                >
-                                  <span className="material-icons-outlined text-sm">edit</span>
-                                </button>
-                                <button 
-                                  onClick={() => handleDeleteSkill(skill.id)}
-                                  className="w-8 h-8 rounded-lg bg-rose-500/10 flex items-center justify-center text-rose-500 border border-rose-500/20 hover:bg-rose-500/20 active:scale-90 transition-all"
-                                  title="Eliminar"
-                                >
-                                  <span className="material-icons-outlined text-sm">delete</span>
-                                </button>
-                              </div>
-                            </div>
-                            
-                            {skill.history && skill.history.length > 0 && (
-                              <div className="mt-1 pt-3 border-t border-white/5">
-                                <p className="text-[9px] text-white/80 uppercase tracking-widest mb-2 font-bold">
-                                  Línea de tiempo
-                                  {skill.status === 'Dominado' && skill.history.length > 1 && (
-                                    <span className="text-emerald-400 ml-1">
-                                      (Logrado en {Math.ceil(Math.abs(new Date(skill.history[skill.history.length - 1].date).getTime() - new Date(skill.history[0].date).getTime()) / (1000 * 60 * 60 * 24))} días)
-                                    </span>
-                                  )}
-                                </p>
-                                <div className="flex flex-col gap-1.5">
-                                  {skill.history.map((h, i) => (
-                                    <div key={i} className="flex items-center gap-2 text-[10px]">
-                                      <span className="w-1.5 h-1.5 rounded-full bg-primary/50"></span>
-                                      <span className="text-white/90 min-w-[70px]">{new Date(h.date).toLocaleDateString()}</span>
-                                      <span className="text-white/80 font-medium">{h.status}</span>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </motion.div>
-                    ))
-                ) : (
-                  <div className="py-10 text-center opacity-20 italic text-sm">No hay habilidades registradas.</div>
-                )}
-              </div>
-            </section>
-          </div>
-        )}
-
-        {vista === 'Planes' && (
-          <div className="px-6 py-8 space-y-8 page-transition pb-24">
-            <header>
-              <h2 className="text-3xl font-black text-white uppercase tracking-tighter">Planes de Trabajo</h2>
-              <p className="text-primary text-[10px] font-black uppercase tracking-widest mt-1">Historial Técnico de Clases</p>
-            </header>
-
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-[10px] uppercase font-bold text-white/90 ml-1">Fecha</label>
-                  <input 
-                    type="date" 
-                    value={planesFilterDate} 
-                    onChange={(e) => setPlanesFilterDate(e.target.value)} 
-                    className="w-full bg-antigravity-charcoal border rounded-2xl px-4 py-3 text-sm text-white border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] uppercase font-bold text-white/90 ml-1">Profesor</label>
-                  <select 
-                    value={planesFilterCoach} 
-                    onChange={(e) => setPlanesFilterCoach(e.target.value)} 
-                    className="w-full bg-antigravity-charcoal border rounded-2xl px-4 py-3 text-sm text-white appearance-none border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
-                  >
-                    <option value="">Todos</option>
-                    {Array.from(new Set(clases.map(c => c.entrenador))).filter(Boolean).map(prof => (
-                      <option key={prof} value={prof}>{prof}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              
-              <div className="flex justify-end">
-                {(planesFilterDate || planesFilterCoach) && (
-                  <button 
-                    onClick={() => { setPlanesFilterDate(""); setPlanesFilterCoach(""); }}
-                    className="text-[10px] text-primary font-bold uppercase tracking-widest"
-                  >
-                    Limpiar Filtros
-                  </button>
-                )}
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              {clases
-                .filter(clase => {
-                  if (planesFilterDate && !clase.fecha.startsWith(planesFilterDate)) return false;
-                  if (planesFilterCoach && clase.entrenador !== planesFilterCoach) return false;
-                  return true;
-                })
-                .map((clase) => (
-                <div 
-                  key={clase.id} 
-                  onClick={() => { setSelectedClase(clase); setVista('ClaseDetalle'); }}
-                  className="glass-card rounded-3xl p-6 border border-white/5 space-y-4 active:scale-95 transition-all cursor-pointer"
-                >
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h4 className="text-lg font-bold text-white leading-none">{clase.grupo}</h4>
-                      <p className="text-[10px] text-primary font-bold uppercase tracking-widest mt-2">{new Date(clase.fecha).toLocaleDateString()} • {clase.entrenador}</p>
-                    </div>
-                    <div className="w-10 h-10 bg-white/5 rounded-xl flex items-center justify-center border border-white/10">
-                      <span className="material-icons-outlined text-white/70 text-sm">description</span>
-                    </div>
-                  </div>
-                  
-                  <div className="flex flex-wrap gap-2">
-                    {clase.apparatusUsed?.slice(0, 2).map((ap, i) => (
-                      <span key={i} className="text-[8px] font-black uppercase tracking-widest px-2 py-1 bg-primary/10 text-primary rounded-md border border-primary/20">{ap}</span>
-                    ))}
-                    {clase.skillsCovered && clase.skillsCovered.length > 0 && (
-                      <span className="text-[8px] font-black uppercase tracking-widest px-2 py-1 bg-accent-purple/10 text-accent-purple rounded-md border border-accent-purple/20">+{clase.skillsCovered.length} Habilidades</span>
-                    )}
-                  </div>
-                </div>
-              ))}
-              {clases.filter(clase => {
-                  if (planesFilterDate && !clase.fecha.startsWith(planesFilterDate)) return false;
-                  if (planesFilterCoach && clase.entrenador !== planesFilterCoach) return false;
-                  return true;
-                }).length === 0 && (
-                <div className="py-20 text-center opacity-20 italic text-sm">No hay planes registrados que coincidan con los filtros.</div>
-              )}
-            </div>
-          </div>
-        )}
+        <Suspense fallback={<LoadingFallback />}>
+          {vista === 'Planes' && (
+            <Manuales 
+              vista={vista}
+              setVista={setVista}
+              DISCIPLINAS={DISCIPLINAS}
+              NIVELES={DEFAULT_NIVELES}
+              selectedDisciplina={selectedDisciplina}
+              setSelectedDisciplina={setSelectedDisciplina}
+              selectedNivel={selectedNivelFilter}
+              setSelectedNivel={setSelectedNivelFilter}
+              SKILL_TREE={SKILL_TREE}
+            />
+          )}
+        </Suspense>
 
         {vista === 'Emergencias' && (
           <div className="px-6 py-8 space-y-8 page-transition pb-24">
@@ -3686,8 +2331,8 @@ const App: React.FC = () => {
                 <span className="material-icons-outlined">arrow_back</span>
               </button>
               <div>
-                <h2 className="text-3xl font-black text-white uppercase tracking-tighter">Contactos de Urgencia</h2>
-                <p className="text-rose-500 text-[10px] font-black uppercase tracking-widest mt-1">Llamada inmediata a familiares y médicos</p>
+                <h2 className="text-3xl font-black text-white uppercase tracking-tighter">Emergencias</h2>
+                <p className="text-rose-500 text-[10px] font-black uppercase tracking-widest mt-1">Contacto Médico de Urgencia</p>
               </div>
             </header>
 
@@ -3831,94 +2476,11 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {vista === 'Asistente' && (
-          <div className="flex flex-col h-full overflow-hidden page-transition">
-            <div className="px-6 pt-12 pb-4 flex items-center justify-between shrink-0">
-               <div>
-                  <h2 className="title-antigravity text-3xl leading-none">Centro Técnico</h2>
-                  <p className="text-primary text-[10px] font-black uppercase tracking-[0.3em] mt-1 italic">Conocimiento Centralizado</p>
-               </div>
-               <button onClick={() => setVista('Dashboard')} className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white/40 hover:text-white active:scale-90 transition-all">
-                 <span className="material-icons-outlined">close</span>
-               </button>
-            </div>
-
-            <div className="flex-1 overflow-hidden">
-               <div className="h-full px-6 overflow-y-auto space-y-10 pb-32 no-scrollbar">
-                  {/* Biblioteca Técnica Section */}
-                  <section className="space-y-6 pt-4">
-                    <div className="flex justify-between items-center px-1">
-                      <div className="space-y-1">
-                        <h3 className="text-white font-black text-[12px] uppercase tracking-[0.2em]">Biblioteca Técnica</h3>
-                        <p className="text-[9px] text-white/40 font-bold uppercase tracking-widest">Manuales y Reglamentos Cargados</p>
-                      </div>
-                      <label className="cursor-pointer bg-primary/10 text-primary border border-primary/20 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all flex items-center gap-2 shadow-neon-cyan/10">
-                        <span className="material-icons-outlined text-sm">add_circle</span>
-                        Subir Manual
-                        <input type="file" accept="application/pdf,.docx,text/plain" className="hidden" onChange={handleFileUpload} />
-                      </label>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                      {sources.length > 0 ? sources.map(source => (
-                        <div key={source.id} className="glass-card rounded-[1.5rem] p-4 border border-white/5 flex flex-col gap-3 relative group overflow-hidden hover:border-primary/30 transition-all">
-                          <div className="w-10 h-10 bg-white/5 rounded-xl flex items-center justify-center border border-white/10 group-hover:scale-110 transition-transform">
-                            <span className="material-icons-outlined text-primary text-xl">
-                              {source.type === 'pdf' ? 'picture_as_pdf' : 'article'}
-                            </span>
-                          </div>
-                          <div>
-                             <p className="text-[10px] font-bold text-white truncate max-w-full">{source.name}</p>
-                             <p className="text-[8px] text-white/30 uppercase tracking-[0.2em] mt-1">{new Date(source.uploadDate).toLocaleDateString()}</p>
-                          </div>
-                          <button 
-                            onClick={() => handleDeleteSource(source.id!, source.name)}
-                            className="absolute top-2 right-2 w-8 h-8 rounded-full bg-rose-500/10 text-rose-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity border border-rose-500/20"
-                          >
-                            <span className="material-icons-outlined text-xs">delete</span>
-                          </button>
-                        </div>
-                      )) : (
-                        <div className="col-span-2 py-12 text-center border-2 border-dashed border-white/10 rounded-[2rem] bg-white/[0.02]">
-                          <span className="material-icons-outlined text-4xl text-white/10 mb-4 block">library_books</span>
-                          <p className="text-[10px] uppercase font-black text-white/30 tracking-widest">No hay manuales en la biblioteca</p>
-                        </div>
-                      )}
-                    </div>
-                    
-                    <div className="p-5 bg-amber-500/5 rounded-2xl border border-amber-500/10 flex gap-4 items-start">
-                      <span className="material-icons-outlined text-amber-500 text-lg">info</span>
-                      <p className="text-[10px] text-white/60 font-medium leading-relaxed italic">
-                        <span className="font-bold text-amber-500">IMPORTANTE:</span> Las respuestas de la IA se basan <span className="text-white">exclusivamente</span> en estos documentos. Por favor, suba reglamentos de GAF, GAM o Trampolín para consultas específicas.
-                      </p>
-                    </div>
-                  </section>
-
-                  {/* Chat con Asistente Section */}
-                  <section className="space-y-6">
-                    <div className="space-y-1 px-1">
-                       <h3 className="text-white font-black text-[12px] uppercase tracking-[0.2em]">Chat con Asistente</h3>
-                       <p className="text-[9px] text-white/40 font-bold uppercase tracking-widest">Consulta Técnica Inteligente</p>
-                    </div>
-                    
-                    <div className="glass-card rounded-[2rem] border border-white/5 overflow-hidden h-[500px] flex flex-col">
-                       {sources.length === 0 ? (
-                         <div className="flex-1 flex flex-col items-center justify-center text-center p-10 space-y-4 opacity-50">
-                           <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center border border-white/10 mb-2">
-                             <span className="material-symbols-outlined text-4xl font-light">psychology_alt</span>
-                           </div>
-                           <p className="text-xs text-white font-bold uppercase tracking-widest">Brain Inactivo</p>
-                           <p className="text-[10px] text-white/60 leading-relaxed italic max-w-[200px]">Carga al menos un manual PDF o DOCX en la biblioteca para que el asistente pueda responder tus consultas.</p>
-                         </div>
-                       ) : (
-                         <CoachAI sources={sources} />
-                       )}
-                    </div>
-                  </section>
-               </div>
-            </div>
-          </div>
-        )}
+        <Suspense fallback={<LoadingFallback />}>
+          {vista === 'Asistente' && (
+            <CoachAI />
+          )}
+        </Suspense>
 
         {vista === 'Ajustes' && (
           <div className="px-6 py-8 space-y-8 page-transition pb-24">
@@ -3994,7 +2556,7 @@ const App: React.FC = () => {
                 >
                   <div className="flex items-center gap-3">
                     <span className="material-icons-outlined text-neon-cyan text-lg">cloud_download</span>
-                    <div className="flex flex-col items-start"><span className="text-xs font-medium text-white">Guardar mis datos</span><span className="text-[9px] text-white/50 font-normal mt-0.5">Guardá una copia de toda tu información.</span></div>
+                    <span className="text-xs font-medium text-white">Exportar Copia de Seguridad</span>
                   </div>
                   <span className="material-icons-outlined text-white/60 text-sm">chevron_right</span>
                 </button>
@@ -4013,7 +2575,7 @@ const App: React.FC = () => {
                   >
                     <div className="flex items-center gap-3">
                       <span className="material-icons-outlined text-primary text-lg">cloud_upload</span>
-                      <div className="flex flex-col items-start"><span className="text-xs font-medium text-white">Recuperar mis datos</span><span className="text-[9px] text-white/50 font-normal mt-0.5">Restaurá información guardada anteriormente.</span></div>
+                      <span className="text-xs font-medium text-white">Importar Copia de Seguridad</span>
                     </div>
                     <span className="material-icons-outlined text-white/60 text-sm">chevron_right</span>
                   </label>
@@ -4033,1000 +2595,95 @@ const App: React.FC = () => {
             </div>
 
             <div className="p-6 text-center opacity-40">
-              
-              
-            </div>
-          </div>
-        )}
-        {vista === 'RegistroAlumno' && activeGroup && (
-          <div className="space-y-8 page-transition pb-12 px-6 pt-4">
-            <header className="flex items-center gap-4">
-              <button onClick={() => setVista('AsistenciaLista')} className="w-10 h-10 rounded-full bg-antigravity-charcoal flex items-center justify-center text-primary border border-white/5 active:scale-90 transition-all">
-                <span className="material-icons-outlined">arrow_back</span>
-              </button>
-              <div><h2 className="text-white font-bold text-xl tracking-tighter uppercase leading-none">Nueva Inscripción</h2><p className="text-primary text-[10px] font-black uppercase tracking-widest mt-1">Grupo: {activeGroup.nombre}</p></div>
-            </header>
-            <div className="glass-card rounded-[2.5rem] p-7 space-y-8 border border-white/5">
-              <div className="space-y-4">
-                <h4 className="text-white font-black text-[10px] border-b border-white/5 pb-2 uppercase tracking-[0.3em] opacity-30 italic">Identificación</h4>
-                <div className="space-y-4">
-                  <div className="space-y-1">
-                    <label className="text-[10px] uppercase font-bold text-white/90 ml-1">Nombre y Apellido *</label>
-                    <input className="w-full crafted-input" placeholder="Nombre completo..." value={studentForm.nombre} onChange={(e) => setStudentForm({...studentForm, nombre: e.target.value})}/>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                      <label className="text-[10px] uppercase font-bold text-white/90 ml-1">DNI (Opcional)</label>
-                      <input className="w-full crafted-input" placeholder="Número..." value={studentForm.dni} onChange={(e) => setStudentForm({...studentForm, dni: e.target.value})}/>
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] uppercase font-bold text-white/90 ml-1">Fecha Nacimiento *</label>
-                      <input type="date" className="w-full crafted-input" value={studentForm.fechaNacimiento} onChange={(e) => setStudentForm({...studentForm, fechaNacimiento: e.target.value})}/>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="space-y-4">
-                <h4 className="text-white font-black text-[10px] border-b border-white/5 pb-2 uppercase tracking-[0.3em] opacity-30 italic">Contactos de Familia</h4>
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                      <label className="text-[10px] uppercase font-bold text-white/90 ml-1">Nombre del Padre</label>
-                      <input className="w-full crafted-input" placeholder="Nombre..." value={studentForm.contacto?.padreNombre} onChange={(e) => setStudentForm({...studentForm, contacto: {...(studentForm.contacto || {}), padreNombre: e.target.value}})}/>
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] uppercase font-bold text-white/90 ml-1">Teléfono Padre</label>
-                      <input type="tel" className="w-full crafted-input" placeholder="Número..." value={studentForm.contacto?.padreTelefono} onChange={(e) => setStudentForm({...studentForm, contacto: {...(studentForm.contacto || {}), padreTelefono: e.target.value}})}/>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                      <label className="text-[10px] uppercase font-bold text-white/90 ml-1">Nombre de la Madre</label>
-                      <input className="w-full crafted-input" placeholder="Nombre..." value={studentForm.contacto?.madreNombre} onChange={(e) => setStudentForm({...studentForm, contacto: {...(studentForm.contacto || {}), madreNombre: e.target.value}})}/>
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] uppercase font-bold text-white/90 ml-1">Teléfono Madre</label>
-                      <input type="tel" className="w-full crafted-input" placeholder="Número..." value={studentForm.contacto?.madreTelefono} onChange={(e) => setStudentForm({...studentForm, contacto: {...(studentForm.contacto || {}), madreTelefono: e.target.value}})}/>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                      <label className="text-[10px] uppercase font-bold text-white/90 ml-1">Contacto Emergencia</label>
-                      <input className="w-full crafted-input" placeholder="Nombre..." value={studentForm.contacto?.emergenciaNombre} onChange={(e) => setStudentForm({...studentForm, contacto: {...(studentForm.contacto || {}), emergenciaNombre: e.target.value}})}/>
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] uppercase font-bold text-white/90 ml-1">Teléfono Emergencia</label>
-                      <input type="tel" className="w-full crafted-input" placeholder="Número..." value={studentForm.contacto?.emergenciaTelefono} onChange={(e) => setStudentForm({...studentForm, contacto: {...(studentForm.contacto || {}), emergenciaTelefono: e.target.value}})}/>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="space-y-4">
-                <h4 className="text-white font-black text-[10px] border-b border-white/5 pb-2 uppercase tracking-[0.3em] opacity-30 italic">Seguimiento Médico</h4>
-                <div className="space-y-1">
-                  <label className="text-[10px] uppercase font-bold text-white/90 ml-1">Observaciones de Salud (Opcional)</label>
-                  <textarea className="w-full crafted-input h-24" placeholder="Alergias, condiciones médicas..." onChange={(e) => setStudentForm({...studentForm, alertas: [e.target.value]})}/>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] uppercase font-bold text-white/90 ml-1">Fecha de Inicio de Actividades</label>
-                  <input type="date" className="w-full crafted-input" value={studentForm.fechaPrimeraClase} onChange={(e) => setStudentForm({...studentForm, fechaPrimeraClase: e.target.value})}/>
-                </div>
-              </div>
-                  <button 
-                    onClick={handleSaveStudent} 
-                    disabled={isSavingStudent}
-                    className="w-full py-5 rounded-3xl bg-accent-purple text-white font-black uppercase tracking-[0.3em] text-[10px] shadow-neon-purple active:scale-95 transition-all disabled:opacity-50"
-                  >
-                    {isSavingStudent ? 'Guardando...' : 'Finalizar Alta de Gimnasta'}
-                  </button>
-            </div>
-          </div>
-        )}
+              <p className="text-[9px] font-black uppercase tracking-[0.5em] text-white mb-2">GymCoach Pro v2.0 Cloud</p>
+              <p className="text        </Suspense>
 
-        {vista === 'ReportePDF' && activeGroup && (
-          <div className="page-transition p-8 bg-white text-black min-h-screen">
-            <div className="flex items-center justify-between mb-8 print:hidden">
-              <button onClick={() => setVista('AsistenciaLista')} className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 hover:bg-slate-200 transition-all">
-                <span className="material-icons-outlined">arrow_back</span>
-              </button>
-              
-              <div className="flex items-center gap-4">
-                <div className="flex bg-slate-100 p-1 rounded-xl border-2 border-black">
-                  <select 
-                    value={reportMonth} 
-                    onChange={(e) => {
-                      const m = parseInt(e.target.value);
-                      setReportMonth(m);
-                      loadMonthlyReport(activeGroup.nombre, m, reportYear);
-                    }}
-                    className="bg-transparent px-3 py-1.5 font-black text-xs uppercase outline-none"
-                  >
-                    {['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'].map((m, i) => (
-                      <option key={i} value={i}>{m}</option>
-                    ))}
-                  </select>
-                  <select 
-                    value={reportYear} 
-                    onChange={(e) => {
-                      const y = parseInt(e.target.value);
-                      setReportYear(y);
-                      loadMonthlyReport(activeGroup.nombre, reportMonth, y);
-                    }}
-                    className="bg-transparent px-3 py-1.5 font-black text-xs uppercase outline-none border-l-2 border-black"
-                  >
-                    {[2024, 2025, 2026].map(y => (
-                      <option key={y} value={y}>{y}</option>
-                    ))}
-                  </select>
-                </div>
-                <button 
-                  onClick={() => window.print()}
-                  className="bg-black text-white px-6 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest flex items-center gap-2 hover:scale-105 active:scale-95 transition-all"
-                >
-                  <span className="material-icons-outlined text-sm">print</span> Imprimir
-                </button>
-              </div>
-            </div>
+        <Suspense fallback={<LoadingFallback />}>
+          <Clases 
+            vista={vista}
+            setVista={setVista}
+            selectedClase={selectedClase}
+            setSelectedClase={setSelectedClase}
+            handleNavigation={handleNavigation}
+            clases={clases}
+            isLoadingClases={isLoadingClases}
+            handleDeleteClase={handleDeleteClase}
+            handleEditClase={handleEditClase}
+            asistenciasClase={asistenciasClase}
+            isLoadingAsistenciasClase={isLoadingAsistenciasClase}
+            handleExportAttendance={handleExportAttendance}
+            handleExportGroupAttendance={handleExportGroupAttendance}
+            handleExportAllAttendance={handleExportAllAttendance}
+            registrationStep={registrationStep}
+            setRegistrationStep={setRegistrationStep}
+            newClase={newClase}
+            setNewClase={setNewClase}
+            isSavingClase={isSavingClase}
+            handleSaveClase={handleSaveClase}
+            grupos={grupos}
+            profesoresList={profesoresList}
+            alumnos={alumnos}
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            filterGrupo={filterGrupo}
+            setFilterGrupo={setFilterGrupo}
+            filterProfesor={filterProfesor}
+            setFilterProfesor={setFilterProfesor}
+            dateRange={dateRange}
+            setDateRange={setDateRange}
+          />
+        </Suspense>
 
-            <div className="border-[6px] border-black p-10 max-w-5xl mx-auto space-y-12">
-              <header className="flex justify-between items-start border-b-4 border-black pb-8">
-                <div className="space-y-2">
-                  <h1 className="text-6xl font-black uppercase tracking-tighter leading-none">GymCoach Pro</h1>
-                  <h2 className="text-2xl font-black text-white/90 uppercase tracking-widest">Planilla Mensual</h2>
-                </div>
-                <div className="text-right space-y-1 font-black uppercase text-sm">
-                  <p>Grupo: <span className="bg-black text-white px-2 py-0.5">{activeGroup.nombre}</span></p>
-                  <p>Mes: <span className="bg-black text-white px-2 py-0.5">{['ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO', 'JULIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE'][reportMonth]} {reportYear}</span></p>
-                </div>
-              </header>
-
-              {isLoadingMonthly ? (
-                <div className="py-20 text-center">
-                  <div className="w-12 h-12 border-4 border-black border-t-transparent rounded-full animate-spin mx-auto"></div>
-                  <p className="mt-4 font-black uppercase tracking-widest">Calculando Asistencias...</p>
-                </div>
-              ) : (
-                <table className="w-full border-collapse border-4 border-black">
-                  <thead>
-                    <tr className="bg-slate-100 uppercase text-[12px] font-black border-b-4 border-black">
-                      <th className="p-5 text-left border-r-4 border-black">Gimnasta</th>
-                      <th className="p-5 text-center border-r-4 border-black">DNI</th>
-                      <th className="p-5 text-center border-r-4 border-black">Asistencias</th>
-                      <th className="p-5 text-center border-r-4 border-black">%</th>
-                      <th className="p-5 text-right">Firma Tutor</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {alumnos.filter(a => a.grupo === activeGroup.nombre).map(a => {
-                      const stats = monthlyStats[a.id!] || { attended: 0, expected: 0 };
-                      const percentage = stats.expected > 0 ? Math.round((stats.attended / stats.expected) * 100) : 0;
-                      return (
-                        <tr key={a.id} className="border-b-4 border-black font-bold">
-                          <td className="p-5 border-r-4 border-black uppercase">{a.nombre}</td>
-                          <td className="p-5 text-center border-r-4 border-black font-mono">{a.dni || '---'}</td>
-                          <td className="p-5 text-center border-r-4 border-black font-black">
-                            {stats.attended} / {stats.expected}
-                          </td>
-                          <td className="p-5 text-center border-r-4 border-black font-black">
-                            {percentage}%
-                          </td>
-                          <td className="p-5 text-right w-48"></td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              )}
-
-              <div className="grid grid-cols-2 gap-8 pt-12">
-                <div className="border-t-4 border-black pt-4">
-                  <p className="text-xs font-black uppercase tracking-widest">Firma del Profesor</p>
-                  <p className="mt-2 font-bold">{activeGroup.entrenador || '____________________'}</p>
-                </div>
-                <div className="border-t-4 border-black pt-4 text-right">
-                  <p className="text-xs font-black uppercase tracking-widest">Fecha de Emisión</p>
-                  <p className="mt-2 font-bold">{new Date().toLocaleDateString()}</p>
-                </div>
-              </div>
-
-              <button onClick={() => window.print()} className="w-full py-6 mt-12 bg-black text-white font-black uppercase tracking-[0.4em] rounded-2xl print:hidden shadow-2xl">
-                Imprimir Documento
-              </button>
-            </div>
-          </div>
-        )}
-
-        {vista === 'ClaseDetalle' && selectedClase && (
-          <div className="page-transition flex flex-col min-h-screen bg-antigravity-black pb-24">
-            <header className="px-6 py-6 flex items-center justify-between sticky top-12 bg-antigravity-black z-40">
-              <div className="flex items-center gap-4">
-                <button onClick={() => setVista('HistorialClases')} className="w-10 h-10 flex items-center justify-center rounded-full bg-antigravity-charcoal border border-white/10 text-white">
-                  <span className="material-symbols-outlined text-[20px]">arrow_back_ios_new</span>
-                </button>
-                <div>
-                  <h2 className="text-xl font-bold text-white leading-none">{selectedClase.grupo}</h2>
-                  <p className="text-xs text-primary mt-1 font-medium">{new Date(selectedClase.fecha).toLocaleDateString()} • {selectedClase.horario}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <button 
-                  onClick={() => handleEditClase(selectedClase)}
-                  className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/70 border border-white/10 active:scale-90 transition-all"
-                  title="Editar Clase"
-                >
-                  <span className="material-icons-outlined text-sm">edit</span>
-                </button>
-                <button 
-                  onClick={handleDeleteClase}
-                  className="w-10 h-10 rounded-full bg-rose-500/10 text-rose-500 border border-rose-500/20 flex items-center justify-center active:scale-90 transition-all"
-                >
-                  <span className="material-icons-outlined text-sm">delete</span>
-                </button>
-              </div>
-            </header>
-
-            <main className="flex-1 px-6 space-y-8 pb-12">
-              <section className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white/60 italic">Asistencia de la Clase</h3>
-                  <button 
-                    onClick={async () => {
-                      setIsLoadingAsistenciasClase(true);
-                      const q = query(
-                        collection(firestore, COLLECTIONS.ASISTENCIAS),
-                        where('fecha', '==', selectedClase.fecha.split('T')[0]),
-                        where('grupo', '==', selectedClase.grupo)
-                      );
-                      const snap = await getDocs(q);
-                      const records = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as AsistenciaRecord));
-                      setAsistenciasClase(records);
-                      setIsLoadingAsistenciasClase(false);
-                    }}
-                    className="text-[10px] font-bold text-primary uppercase tracking-widest flex items-center gap-1"
-                  >
-                    <span className="material-icons-outlined text-sm">refresh</span> Actualizar
-                  </button>
-                </div>
-                
-                <div className="glass-card rounded-3xl p-6 border border-white/5">
-                  {isLoadingAsistenciasClase ? (
-                    <div className="py-8 text-center">
-                      <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
-                    </div>
-                  ) : asistenciasClase.length > 0 ? (
-                    <div className="space-y-3">
-                      {asistenciasClase.map(record => {
-                        const alumno = alumnos.find(a => a.id === record.alumnoId);
-                        return (
-                          <div key={record.id} className="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
-                            <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center overflow-hidden">
-                                <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(alumno?.nombre || 'Alumno')}&background=random`} alt="" className="w-full h-full object-cover opacity-60" />
-                              </div>
-                              <span className="text-sm text-white font-medium">{alumno?.nombre || 'Alumno Desconocido'}</span>
-                            </div>
-                            <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-md ${record.presente ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'}`}>
-                              {record.presente ? 'Presente' : 'Ausente'}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div className="py-8 text-center">
-                      <p className="text-xs text-white/60 italic">No hay registros de asistencia para esta clase.</p>
-                      <button 
-                        onClick={async () => {
-                          setIsLoadingAsistenciasClase(true);
-                          const q = query(
-                            collection(firestore, COLLECTIONS.ASISTENCIAS),
-                            where('fecha', '==', selectedClase.fecha.split('T')[0]),
-                            where('grupo', '==', selectedClase.grupo)
-                          );
-                          const snap = await getDocs(q);
-                          const records = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as AsistenciaRecord));
-                          setAsistenciasClase(records);
-                          setIsLoadingAsistenciasClase(false);
-                        }}
-                        className="mt-4 px-4 py-2 rounded-xl bg-white/5 text-white text-[10px] font-bold uppercase tracking-widest border border-white/10"
-                      >
-                        Cargar Asistencia
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </section>
-
-              <section className="space-y-4">
-                <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white/60 italic">Contenido de la Clase</h3>
-                <div className="glass-card rounded-3xl p-6 space-y-6">
-                  {(selectedClase.faseInicial?.length || selectedClase.warmup?.length) ? (
-                    <div className="space-y-2">
-                      <p className="text-[10px] font-bold text-primary uppercase tracking-widest">Fase Inicial (Entrada en calor)</p>
-                      <div className="flex flex-wrap gap-2">
-                        {(selectedClase.faseInicial || selectedClase.warmup || []).map((item, i) => (
-                          <span key={i} className="bg-white/5 text-white/80 text-[10px] px-3 py-1.5 rounded-lg border border-white/10">{item}</span>
-                        ))}
-                      </div>
-                    </div>
-                  ) : null}
-                  
-                  {(selectedClase.fasePrincipal?.length || selectedClase.apparatusUsed?.length || selectedClase.skillsCovered?.length) ? (
-                    <div className="space-y-2">
-                      <p className="text-[10px] font-bold text-primary uppercase tracking-widest">Fase Principal</p>
-                      <div className="flex flex-wrap gap-2">
-                        {(selectedClase.fasePrincipal || [...(selectedClase.apparatusUsed || []), ...(selectedClase.skillsCovered || [])]).map((item, i) => (
-                          <span key={i} className="bg-primary/10 text-primary text-[10px] px-3 py-1.5 rounded-lg border border-primary/20">{item}</span>
-                        ))}
-                      </div>
-                      
-                      {selectedClase.habilidadesPorAparato && Object.keys(selectedClase.habilidadesPorAparato).length > 0 && (
-                        <div className="mt-4 space-y-3">
-                          {Object.entries(selectedClase.habilidadesPorAparato).map(([aparato, habilidades]) => (
-                            habilidades.length > 0 && (
-                              <div key={aparato} className="bg-white/5 p-3 rounded-xl border border-white/10">
-                                <p className="text-[10px] font-bold text-white/80 mb-2">{aparato}</p>
-                                <ul className="list-disc list-inside text-xs text-white/90 space-y-1">
-                                  {habilidades.map((hab, idx) => (
-                                    <li key={idx}>{hab}</li>
-                                  ))}
-                                </ul>
-                              </div>
-                            )
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  ) : null}
-
-                  {selectedClase.faseFinal && selectedClase.faseFinal.length > 0 && (
-                    <div className="space-y-2">
-                      <p className="text-[10px] font-bold text-primary uppercase tracking-widest">Fase Final</p>
-                      <div className="flex flex-wrap gap-2">
-                        {selectedClase.faseFinal.map((item, i) => (
-                          <span key={i} className="bg-accent-purple/10 text-accent-purple text-[10px] px-3 py-1.5 rounded-lg border border-accent-purple/20">{item}</span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {selectedClase.objetivos && (
-                    <div className="space-y-2 pt-4 border-t border-white/5">
-                      <p className="text-[10px] font-bold text-primary uppercase tracking-widest">Objetivos</p>
-                      <p className="text-xs text-white/80 leading-relaxed">{selectedClase.objetivos}</p>
-                    </div>
-                  )}
-
-                  {selectedClase.observaciones && (
-                    <div className="space-y-2 pt-4 border-t border-white/5">
-                      <p className="text-[10px] font-bold text-primary uppercase tracking-widest">Observaciones</p>
-                      <p className="text-xs text-white/80 leading-relaxed italic">"{selectedClase.observaciones}"</p>
-                    </div>
-                  )}
-                </div>
-              </section>
-
-              <section className="space-y-4">
-                <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white/60 italic">Feedback del Coordinador</h3>
-                <div className="space-y-4">
-                  {feedbacks.map((fb) => (
-                    <div key={fb.id} className={`p-5 rounded-2xl border ${fb.author === 'Coordinador' ? 'bg-primary/10 border-primary/30 ml-8' : 'bg-white/5 border-white/10 mr-8'} relative shadow-lg`}>
-                      {fb.isUrgent && (
-                        <div className="absolute -top-3 -right-3 w-7 h-7 bg-rose-500 rounded-full flex items-center justify-center shadow-[0_0_10px_rgba(244,63,94,0.5)] border-2 border-antigravity-black">
-                          <span className="material-icons-outlined text-white text-[14px]">priority_high</span>
-                        </div>
-                      )}
-                      <div className="flex justify-between items-center mb-3 border-b border-white/10 pb-2">
-                        <div className="flex items-center gap-2">
-                          <span className="material-icons-outlined text-sm">{fb.author === 'Coordinador' ? 'admin_panel_settings' : 'sports'}</span>
-                          <span className={`text-[9px] font-black uppercase tracking-widest ${fb.author === 'Coordinador' ? 'text-primary' : 'text-white/70'}`}>{fb.author}</span>
-                        </div>
-                        <span className="text-[8px] text-white/60 uppercase font-bold">{new Date(fb.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                      </div>
-                      <p className="text-sm text-white/90 leading-relaxed">"{fb.text}"</p>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="flex flex-col gap-3 mt-6 bg-white/5 p-4 rounded-3xl border border-white/10">
-                  {userRole === 'Coordinator' && (
-                    <div className="flex gap-3 items-center px-1 mb-1">
-                       <label className="flex items-center gap-2 cursor-pointer">
-                          <input type="checkbox" id="urgentFeedback" className="hidden" onChange={(e) => {
-                            const box = document.getElementById('urgentBoxInfo');
-                            if (!box) return;
-                            box.className = e.target.checked ? 'w-5 h-5 rounded border border-rose-500 flex items-center justify-center bg-rose-500' : 'w-5 h-5 rounded border border-white/30 flex items-center justify-center transition-all';
-                            box.innerHTML = e.target.checked ? '<span class="material-icons-outlined text-white text-[12px]">check</span>' : '';
-                          }} />
-                          <div className="w-5 h-5 rounded border border-white/30 flex items-center justify-center transition-all" id="urgentBoxInfo"></div>
-                          <span className="text-[10px] uppercase font-bold text-rose-500 tracking-wider">Marcar como Urgente</span>
-                       </label>
-                    </div>
-                  )}
-                  <div className="flex gap-3">
-                    <input 
-                      className="flex-1 crafted-input !py-3.5 !text-xs"
-                      placeholder="Escribir feedback..."
-                      value={newFeedback}
-                      onChange={(e) => setNewFeedback(e.target.value)}
-                    />
-                    <button onClick={handleAddFeedback} className="w-12 h-12 bg-primary rounded-2xl flex items-center justify-center text-antigravity-black shadow-neon-cyan active:scale-95 transition-all">
-                      <span className="material-icons-outlined">send</span>
-                    </button>
-                  </div>
-                </div>
-              </section>
-            </main>
-          </div>
-        )}
-
-        {vista === 'NuevaClase' && (
-          <div className="space-y-8 page-transition pt-8 px-6 pb-24">
-            <header className="flex items-center justify-between mb-8">
-              <div className="flex items-center gap-4">
-                <button onClick={() => {
-                  setVista('Dashboard');
-                  setIsEditingClase(false);
-                  setEditingClaseId(null);
-                }} className="w-10 h-10 rounded-full bg-antigravity-charcoal flex items-center justify-center text-primary border border-white/5 active:scale-90 transition-all">
-                  <span className="material-icons-outlined">arrow_back</span>
-                </button>
-                <div>
-                  <h2 className="text-white font-black text-2xl uppercase tracking-tighter leading-none">{isEditingClase ? 'Editar Clase' : 'Reporte de Clase'}</h2>
-                  <p className="text-primary text-[8px] font-black uppercase tracking-widest mt-1 italic">Paso a paso o por voz</p>
-                </div>
-              </div>
-              <button 
-                onClick={() => setVista('Asistente')}
-                className="flex items-center gap-2 px-4 py-2 bg-primary/10 border border-primary/30 text-primary rounded-2xl active:scale-95 transition-all"
-              >
-                <span className="material-icons-outlined text-sm">psychology</span>
-                <span className="text-[10px] font-black uppercase tracking-widest">IA por Voz</span>
-              </button>
-            </header>
-            
-            <div className="space-y-6">
-              <div className="space-y-3">
-                <div className="flex justify-between items-center px-2">
-                  <label className="text-[10px] uppercase font-black text-white tracking-[0.2em]">Seleccionar Grupo</label>
-                  <div className="relative">
-                    <span className="material-icons-outlined absolute left-3 top-1/2 -translate-y-1/2 text-white/80 text-xs">search</span>
-                    <input 
-                      type="text" 
-                      placeholder="Filtrar..."
-                      className="bg-white/5 border border-white/10 rounded-full py-1.5 pl-8 pr-4 text-[10px] text-white placeholder:text-white/60 outline-none focus:border-primary/50 transition-all w-32"
-                      value={groupSearch}
-                      onChange={(e) => setGroupSearch(e.target.value)}
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  {grupos
-                    .filter(g => userRole === 'Coordinator' || !user?.displayName || g.entrenador === user.displayName)
-                    .filter(g => g.nombre.toLowerCase().includes(groupSearch.toLowerCase()))
-                    .map(g => (
-                    <button 
-                      key={g.id}
-                      onClick={() => setClaseGrupo(g.nombre)}
-                      className={`glass-card p-4 rounded-2xl border transition-all text-left flex flex-col gap-1 ${
-                        claseGrupo === g.nombre 
-                          ? 'border-primary bg-primary/10 shadow-neon-cyan scale-[1.02]' 
-                          : 'border-white/5 bg-white/5 hover:bg-white/10'
-                      }`}
-                    >
-                      <span className={`text-xs font-black uppercase tracking-wider ${claseGrupo === g.nombre ? 'text-primary' : 'text-white/90'}`}>
-                        {g.nombre}
-                      </span>
-                      <span className="text-[8px] text-white/80 font-bold uppercase tracking-widest">
-                        {g.horario}
-                      </span>
-                    </button>
-                  ))}
-                  <button 
-                    onClick={() => setVista('Horario')}
-                    className="glass-card p-4 rounded-2xl border border-dashed border-white/30 bg-white/5 flex flex-col items-center justify-center gap-1 hover:bg-white/10 transition-all"
-                  >
-                    <span className="material-icons-outlined text-white/80 text-lg">add_circle</span>
-                    <span className="text-[8px] text-white/80 font-black uppercase tracking-widest">Nuevo Grupo</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-6">
-              <div className="glass-card rounded-3xl p-6 border border-white/5 space-y-4">
-                <div className="flex justify-between items-center">
-                  <label className="text-[10px] uppercase font-bold text-primary ml-1 tracking-widest">Fase Inicial (Entrada en calor)</label>
-                  <div className="flex items-center gap-2 bg-antigravity-charcoal px-3 py-1 rounded-full border border-white/5">
-                    <span className="material-icons-outlined text-[14px] text-white/70">schedule</span>
-                    <input 
-                      type="number" 
-                      value={faseInicialDuration} 
-                      onChange={(e) => setFaseInicialDuration(e.target.value)}
-                      className="w-12 bg-transparent text-[10px] text-white font-bold outline-none text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
-                    />
-                    <span className="text-[8px] text-white/80 uppercase font-black">min</span>
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {['Movilidad articular', 'Trote', 'Juegos', 'Estiramiento dinámico'].map(opt => (
-                    <button 
-                      key={opt}
-                      onClick={() => setFaseInicial(prev => prev.includes(opt) ? prev.filter(o => o !== opt) : [...prev, opt])}
-                      className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${faseInicial.includes(opt) ? 'bg-primary text-antigravity-black shadow-neon-cyan' : 'bg-antigravity-charcoal text-white/70 border border-white/5'}`}
-                    >
-                      {opt}
-                    </button>
-                  ))}
-                  {faseInicial.filter(opt => !['Movilidad articular', 'Trote', 'Juegos', 'Estiramiento dinámico'].includes(opt)).map(opt => (
-                    <button 
-                      key={opt}
-                      onClick={() => setFaseInicial(prev => prev.filter(o => o !== opt))}
-                      className="px-4 py-2 rounded-xl text-xs font-bold bg-primary text-antigravity-black shadow-neon-cyan transition-all flex items-center gap-1"
-                    >
-                      {opt} <span className="material-icons-outlined text-[14px]">close</span>
-                    </button>
-                  ))}
-                </div>
-                <div className="flex gap-2 mt-2">
-                  <input 
-                    type="text" 
-                    value={customInicial} 
-                    onChange={(e) => setCustomInicial(e.target.value)} 
-                    placeholder="Agregar otra opción..." 
-                    className="flex-1 crafted-input !py-2"
-                  />
-                  <button 
-                    onClick={() => { if(customInicial) { setFaseInicial(prev => [...prev, customInicial]); setCustomInicial(""); } }}
-                    className="bg-white/10 text-white px-4 py-2 rounded-xl text-xs font-bold"
-                  >
-                    Agregar
-                  </button>
-                </div>
-              </div>
-
-              <div className="glass-card rounded-3xl p-6 border border-white/5 space-y-4">
-                <div className="flex justify-between items-center">
-                  <label className="text-[10px] uppercase font-bold text-primary ml-1 tracking-widest">Fase Principal (Aparatos)</label>
-                  <div className="flex items-center gap-2 bg-antigravity-charcoal px-3 py-1 rounded-full border border-white/5">
-                    <span className="material-icons-outlined text-[14px] text-white/70">schedule</span>
-                    <input 
-                      type="number" 
-                      value={fasePrincipalDuration} 
-                      onChange={(e) => setFasePrincipalDuration(e.target.value)}
-                      className="w-12 bg-transparent text-[10px] text-white font-bold outline-none text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
-                    />
-                    <span className="text-[8px] text-white/80 uppercase font-black">min</span>
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {['Viga de equilibrio', 'Paralelas asimétricas', 'Suelo', 'Salto', 'Anillas', 'Arzones', 'Barra Fija', 'Trampolín'].map(opt => (
-                    <button 
-                      key={opt}
-                      onClick={() => setFasePrincipal(prev => prev.includes(opt) ? prev.filter(o => o !== opt) : [...prev, opt])}
-                      className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${fasePrincipal.includes(opt) ? 'bg-primary text-antigravity-black shadow-neon-cyan' : 'bg-antigravity-charcoal text-white/70 border border-white/5'}`}
-                    >
-                      {opt}
-                    </button>
-                  ))}
-                  {fasePrincipal.filter(opt => !['Viga de equilibrio', 'Paralelas asimétricas', 'Suelo', 'Salto', 'Anillas', 'Arzones', 'Barra Fija', 'Trampolín'].includes(opt)).map(opt => (
-                    <button 
-                      key={opt}
-                      onClick={() => setFasePrincipal(prev => prev.filter(o => o !== opt))}
-                      className="px-4 py-2 rounded-xl text-xs font-bold bg-primary text-antigravity-black shadow-neon-cyan transition-all flex items-center gap-1"
-                    >
-                      {opt} <span className="material-icons-outlined text-[14px]">close</span>
-                    </button>
-                  ))}
-                </div>
-                <div className="flex gap-2 mt-2">
-                  <input 
-                    type="text" 
-                    value={customPrincipal} 
-                    onChange={(e) => setCustomPrincipal(e.target.value)} 
-                    placeholder="Ej. Tela acrobática..." 
-                    className="flex-1 crafted-input !py-2"
-                  />
-                  <button 
-                    onClick={() => { if(customPrincipal) { setFasePrincipal(prev => [...prev, customPrincipal]); setCustomPrincipal(""); } }}
-                    className="bg-white/10 text-white px-4 py-2 rounded-xl text-xs font-bold"
-                  >
-                    Agregar
-                  </button>
-                </div>
-
-                {fasePrincipal.length > 0 && (
-                  <div className="mt-6 space-y-4 border-t border-white/10 pt-4">
-                    <label className="text-[10px] uppercase font-bold text-white/90 ml-2 tracking-widest">Habilidades por Aparato</label>
-                    {fasePrincipal.map(aparato => (
-                      <div key={aparato} className="space-y-2 bg-antigravity-charcoal/50 p-4 rounded-2xl border border-white/5">
-                        <p className="text-xs font-bold text-white">{aparato}</p>
-                        <div className="flex flex-wrap gap-2">
-                          {(habilidadesPorAparato[aparato] || []).map((hab, idx) => (
-                            <span key={idx} className="bg-primary/10 text-primary text-[10px] px-3 py-1.5 rounded-lg border border-primary/20 flex items-center gap-1">
-                              {hab}
-                              <button onClick={() => setHabilidadesPorAparato(prev => ({...prev, [aparato]: prev[aparato].filter((_, i) => i !== idx)}))}>
-                                <span className="material-icons-outlined text-[12px]">close</span>
-                              </button>
-                            </span>
-                          ))}
-                        </div>
-                        <div className="flex gap-2 mt-2">
-                          <input 
-                            type="text" 
-                            value={customHabilidad[aparato] || ""} 
-                            onChange={(e) => setCustomHabilidad(prev => ({...prev, [aparato]: e.target.value}))} 
-                            placeholder={`Ej. Rol adelante en ${aparato}...`} 
-                            className="flex-1 crafted-input !py-2"
-                          />
-                          <button 
-                            onClick={() => { 
-                              const hab = customHabilidad[aparato];
-                              if(hab) { 
-                                setHabilidadesPorAparato(prev => ({...prev, [aparato]: [...(prev[aparato] || []), hab]})); 
-                                setCustomHabilidad(prev => ({...prev, [aparato]: ""})); 
-                              } 
-                            }}
-                            className="bg-white/10 text-white px-4 py-2 rounded-xl text-xs font-bold"
-                          >
-                            Añadir
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div className="glass-card rounded-3xl p-6 border border-white/5 space-y-4">
-                <div className="flex justify-between items-center">
-                  <label className="text-[10px] uppercase font-bold text-primary ml-1 tracking-widest">Fase Final</label>
-                  <div className="flex items-center gap-2 bg-antigravity-charcoal px-3 py-1 rounded-full border border-white/5">
-                    <span className="material-icons-outlined text-[14px] text-white/70">schedule</span>
-                    <input 
-                      type="number" 
-                      value={faseFinalDuration} 
-                      onChange={(e) => setFaseFinalDuration(e.target.value)}
-                      className="w-12 bg-transparent text-[10px] text-white font-bold outline-none text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
-                    />
-                    <span className="text-[8px] text-white/80 uppercase font-black">min</span>
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {['Elongación', 'Relajación', 'Feedback'].map(opt => (
-                    <button 
-                      key={opt}
-                      onClick={() => setFaseFinal(prev => prev.includes(opt) ? prev.filter(o => o !== opt) : [...prev, opt])}
-                      className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${faseFinal.includes(opt) ? 'bg-primary text-antigravity-black shadow-neon-cyan' : 'bg-antigravity-charcoal text-white/70 border border-white/5'}`}
-                    >
-                      {opt}
-                    </button>
-                  ))}
-                  {faseFinal.filter(opt => !['Elongación', 'Relajación', 'Feedback'].includes(opt)).map(opt => (
-                    <button 
-                      key={opt}
-                      onClick={() => setFaseFinal(prev => prev.filter(o => o !== opt))}
-                      className="px-4 py-2 rounded-xl text-xs font-bold bg-primary text-antigravity-black shadow-neon-cyan transition-all flex items-center gap-1"
-                    >
-                      {opt} <span className="material-icons-outlined text-[14px]">close</span>
-                    </button>
-                  ))}
-                </div>
-                <div className="flex gap-2 mt-2">
-                  <input 
-                    type="text" 
-                    value={customFinal} 
-                    onChange={(e) => setCustomFinal(e.target.value)} 
-                    placeholder="Agregar otra opción..." 
-                    className="flex-1 crafted-input !py-2"
-                  />
-                  <button 
-                    onClick={() => { if(customFinal) { setFaseFinal(prev => [...prev, customFinal]); setCustomFinal(""); } }}
-                    className="bg-white/10 text-white px-4 py-2 rounded-xl text-xs font-bold"
-                  >
-                    Agregar
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-6">
-              <div className="glass-card rounded-3xl p-6 border border-white/5 space-y-4">
-                <label className="text-[10px] uppercase font-bold text-primary ml-1 tracking-widest">Objetivos de la Clase</label>
-                <textarea 
-                  value={objetivos}
-                  onChange={(e) => setObjetivos(e.target.value)}
-                  placeholder="Ej. Mejorar la técnica de salto, trabajar en la flexibilidad..."
-                  className="w-full bg-antigravity-charcoal border border-white/5 rounded-2xl p-4 text-xs text-white outline-none focus:border-primary/50 transition-all min-h-[100px]"
-                />
-              </div>
-
-              <div className="glass-card rounded-3xl p-6 border border-white/5 space-y-4">
-                <label className="text-[10px] uppercase font-bold text-primary ml-1 tracking-widest">Observaciones Generales</label>
-                <textarea 
-                  value={observaciones}
-                  onChange={(e) => setObservaciones(e.target.value)}
-                  placeholder="Ej. El grupo estuvo muy disperso, se recomienda reforzar..."
-                  className="w-full bg-antigravity-charcoal border border-white/5 rounded-2xl p-4 text-xs text-white outline-none focus:border-primary/50 transition-all min-h-[100px]"
-                />
-              </div>
-
-              <button 
-                onClick={handleSaveManualClass} 
-                className="w-full py-5 rounded-3xl bg-primary text-antigravity-black font-black uppercase tracking-[0.3em] text-[10px] shadow-neon-cyan active:scale-95 transition-all"
-              >
-                Guardar Reporte
-              </button>
-            </div>
-          </div>
-        )}
-        {vista === 'HistorialClases' && (
-          <div className="px-6 py-8 space-y-8 page-transition pb-24">
-            <header className="flex items-center gap-4">
-              <button onClick={() => setVista('Dashboard')} className="w-10 h-10 rounded-full bg-antigravity-charcoal flex items-center justify-center text-primary border border-white/5 active:scale-90 transition-all">
-                <span className="material-icons-outlined">arrow_back</span>
-              </button>
-              <div>
-                <h2 className="text-3xl font-black text-white uppercase tracking-tighter">Historial</h2>
-                <p className="text-primary text-[10px] font-black uppercase tracking-widest mt-1">Registro de Clases Pasadas</p>
-              </div>
-            </header>
-
-            <div className="space-y-4">
-              <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                <select 
-                  value={selectedGrupoFilter}
-                  onChange={(e) => setSelectedGrupoFilter(e.target.value)}
-                  className="bg-antigravity-charcoal border border-white/10 rounded-lg px-3 py-1.5 text-[10px] text-white outline-none focus:border-primary transition-all"
-                >
-                  <option value="Todos">Todos los Grupos</option>
-                  {grupos.map(g => (
-                    <option key={g.id} value={g.nombre}>{g.nombre}</option>
-                  ))}
-                </select>
-                <button 
-                  onClick={() => setSelectedGrupoFilter('Todos')}
-                  className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-[10px] text-white/60"
-                >
-                  Limpiar
-                </button>
-              </div>
-
-              <div className="space-y-3">
-                {clases
-                  .filter(c => selectedGrupoFilter === 'Todos' || c.grupo === selectedGrupoFilter)
-                  .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
-                  .map(clase => (
-                    <div 
-                      key={clase.id} 
-                      onClick={() => { setSelectedClase(clase); handleNavigation('ClaseDetalle'); }}
-                      className="glass-card rounded-2xl p-5 border border-white/5 flex items-center justify-between active:scale-95 transition-all cursor-pointer"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center border border-primary/20">
-                          <span className="material-icons-outlined text-primary text-xl">history_edu</span>
-                        </div>
-                        <div>
-                          <h4 className="text-sm font-bold text-white">{clase.grupo}</h4>
-                          <p className="text-[10px] text-slate-500 font-medium">
-                            {new Date(clase.fecha).toLocaleDateString()} • {clase.entrenador}
-                          </p>
-                        </div>
-                      </div>
-                      <span className="material-icons-outlined text-slate-600 text-sm">chevron_right</span>
-                    </div>
-                  ))}
-                {clases.length === 0 && (
-                  <p className="text-center text-white/40 py-10 text-sm italic">No hay clases registradas aún.</p>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {vista === 'Profesores' && userRole === 'Coordinator' && (
-          <div className="px-6 py-8 space-y-8 page-transition pb-24 relative">
-            <header className="flex justify-between items-end">
-              <div>
-                <h2 className="text-3xl font-black text-white uppercase tracking-tighter">Profesores</h2>
-                <p className="text-primary text-[10px] font-black uppercase tracking-widest mt-1">Staff de Entrenamiento</p>
-              </div>
-              <button 
-                onClick={() => setIsAddingProfesor(!isAddingProfesor)}
-                className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary border border-primary/20 active:scale-90 transition-all"
-              >
-                <span className="material-icons-outlined text-sm">{isAddingProfesor ? 'close' : 'person_add'}</span>
-              </button>
-            </header>
-            
-            {isAddingProfesor && (
-              <div className="glass-card rounded-2xl p-5 border border-primary/30 space-y-4 shadow-neon-cyan">
-                <h3 className="text-white font-bold text-sm uppercase tracking-wider">Nuevo Profesor</h3>
-                <input 
-                  type="text" 
-                  placeholder="Nombre completo" 
-                  className="w-full bg-antigravity-charcoal border rounded-xl px-4 py-3 text-sm text-white border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
-                  value={newProfesorName}
-                  onChange={e => setNewProfesorName(e.target.value)}
-                />
-                <div className="flex gap-2 pt-2">
-                  <button 
-                    onClick={() => setIsAddingProfesor(false)}
-                    className="flex-1 py-3 rounded-xl border border-white/10 text-white font-bold text-xs uppercase tracking-wider"
-                  >
-                    Cancelar
-                  </button>
-                  <button 
-                    onClick={handleAddProfesor}
-                    disabled={!newProfesorName.trim() || isSavingProfesor}
-                    className="flex-1 py-3 rounded-xl bg-primary text-antigravity-black font-bold text-xs uppercase tracking-wider disabled:opacity-50"
-                  >
-                    {isSavingProfesor ? 'Guardando...' : 'Guardar'}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            <div className="space-y-4">
-              {profesoresList.map((prof, idx) => {
-                const profClases = clases.filter(c => c.entrenador === prof.nombre);
-                const profGrupos = grupos.filter(g => g.entrenador === prof.nombre);
-                return (
-                  <div 
-                    key={prof.id || idx} 
-                    className="glass-card rounded-3xl p-6 border border-white/5 active:scale-95 transition-all flex items-center justify-between group"
-                  >
-                    <div 
-                      className="flex items-center gap-4 flex-1 cursor-pointer"
-                      onClick={() => { setSelectedProfesor(prof.nombre); handleNavigation('ProfesorDetalle'); }}
-                    >
-                      <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center border border-primary/20">
-                        <span className="material-icons-outlined text-primary text-2xl">badge</span>
-                      </div>
-                      <div>
-                        <h4 className="font-bold text-white text-lg">{prof.nombre}</h4>
-                        <p className="text-[10px] text-white/70 font-medium uppercase tracking-wider">{profGrupos.length} Grupos • {profClases.length} Clases</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteProfesor(prof.id!, prof.nombre);
-                        }}
-                        className="w-8 h-8 rounded-lg bg-rose-500/10 text-rose-500 border border-rose-500/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <span className="material-icons-outlined text-sm">delete</span>
-                      </button>
-                      <span className="material-icons-outlined text-white/40">chevron_right</span>
-                    </div>
-                  </div>
-                );
-              })}
-              {profesoresList.length === 0 && (
-                <p className="text-center text-white/40 py-10 text-sm italic">No hay profesores registrados.</p>
-              )}
-            </div>
-
-            <button 
-              onClick={() => setIsAddingProfesor(true)}
-              className="absolute bottom-28 right-6 w-16 h-16 bg-neon-blue text-white rounded-2xl flex items-center justify-center neon-fab-blue active:scale-95 transition-all z-30"
-            >
-              <span className="material-symbols-outlined text-[32px] font-light">person_add</span>
-            </button>
-          </div>
-        )}
-
-        {vista === 'ProfesorDetalle' && selectedProfesor && (
-          <div className="px-6 py-8 space-y-8 page-transition pb-24">
-            <header className="flex items-center gap-4 mb-8">
-              <button onClick={() => handleNavigation('Profesores')} className="w-10 h-10 rounded-full bg-antigravity-charcoal flex items-center justify-center text-primary border border-white/5 active:scale-90 transition-all">
-                <span className="material-icons-outlined">arrow_back</span>
-              </button>
-              <div>
-                <h2 className="text-white font-black text-2xl uppercase tracking-tighter">{selectedProfesor}</h2>
-                <p className="text-primary text-[10px] font-black uppercase tracking-widest mt-1">Reporte de Actividad</p>
-              </div>
-            </header>
-
-            <section className="space-y-4">
-              <h3 className="text-white font-bold text-lg px-1">Grupos a cargo</h3>
-              <div className="grid grid-cols-2 gap-4">
-                {(() => {
-                  const profGruposActuales = grupos.filter(g => g.entrenador === selectedProfesor);
-                  const profGruposHistoricos = Array.from(new Set(clases.filter(c => c.entrenador === selectedProfesor).map(c => c.grupo)));
-                  
-                  if (profGruposActuales.length > 0) {
-                    return profGruposActuales.map(g => (
-                      <div key={g.id} className="glass-card rounded-2xl p-4 border border-white/5">
-                        <h4 className="font-bold text-white text-sm">{g.nombre}</h4>
-                        <p className="text-[10px] text-white/80 mt-1">{g.horario}</p>
-                      </div>
-                    ));
-                  } else if (profGruposHistoricos.length > 0) {
-                    return profGruposHistoricos.map((nombre, idx) => (
-                      <div key={idx} className="glass-card rounded-2xl p-4 border border-white/5 opacity-70">
-                        <h4 className="font-bold text-white text-sm">{nombre}</h4>
-                        <p className="text-[10px] text-white/60 mt-1">Histórico</p>
-                      </div>
-                    ));
-                  } else {
-                    return <p className="text-sm text-white/60 col-span-2 px-1">No tiene grupos registrados.</p>;
-                  }
-                })()}
-              </div>
-            </section>
-
-            <section className="space-y-4">
-              <h3 className="text-white font-bold text-lg px-1">Clases Registradas</h3>
-              <div className="space-y-3">
-                {clases.filter(c => c.entrenador === selectedProfesor).map(clase => (
-                  <div key={clase.id} className="glass-card rounded-2xl p-5 border border-white/5 space-y-3">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h4 className="font-bold text-white text-sm">{clase.grupo}</h4>
-                        <p className="text-[10px] text-white/70">{new Date(clase.fecha).toLocaleDateString()} • {clase.horario}</p>
-                      </div>
-                    </div>
-                    
-                    {clase.faseInicial && clase.faseInicial.length > 0 && (
-                      <div>
-                        <p className="text-[9px] uppercase tracking-widest text-primary font-bold mb-1">Entrada en calor</p>
-                        <div className="flex flex-wrap gap-1">
-                          {clase.faseInicial.map((item, i) => <span key={i} className="text-[10px] bg-white/5 text-white/90 px-2 py-1 rounded-md">{item}</span>)}
-                        </div>
-                      </div>
-                    )}
-                    
-                    {clase.fasePrincipal && clase.fasePrincipal.length > 0 && (
-                      <div>
-                        <p className="text-[9px] uppercase tracking-widest text-primary font-bold mb-1">Fase Principal</p>
-                        <div className="flex flex-wrap gap-1">
-                          {clase.fasePrincipal.map((item, i) => <span key={i} className="text-[10px] bg-white/5 text-white/90 px-2 py-1 rounded-md">{item}</span>)}
-                        </div>
-                        
-                        {clase.habilidadesPorAparato && Object.keys(clase.habilidadesPorAparato).length > 0 && (
-                          <div className="mt-3 space-y-2">
-                            {Object.entries(clase.habilidadesPorAparato).map(([aparato, habilidades]) => (
-                              habilidades.length > 0 && (
-                                <div key={aparato} className="bg-white/5 p-2 rounded-lg border border-white/10">
-                                  <p className="text-[9px] font-bold text-white mb-1">{aparato}</p>
-                                  <ul className="list-disc list-inside text-[10px] text-white/90 space-y-0.5">
-                                    {habilidades.map((hab, idx) => (
-                                      <li key={idx}>{hab}</li>
-                                    ))}
-                                  </ul>
-                                </div>
-                              )
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {clase.faseFinal && clase.faseFinal.length > 0 && (
-                      <div>
-                        <p className="text-[9px] uppercase tracking-widest text-primary font-bold mb-1">Fase Final</p>
-                        <div className="flex flex-wrap gap-1">
-                          {clase.faseFinal.map((item, i) => <span key={i} className="text-[10px] bg-white/5 text-white/90 px-2 py-1 rounded-md">{item}</span>)}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </section>
-          </div>
-        )}
+        <Suspense fallback={<LoadingFallback />}>
+          {vista === 'Profesores' && userRole === 'Coordinator' && (
+            <Staff 
+              userRole={userRole}
+              isAddingProfesor={isAddingProfesor}
+              newProfesorName={newProfesorName}
+              isSavingProfesor={isSavingProfesor}
+              profesoresList={profesoresList}
+              clases={clases}
+              grupos={grupos}
+              setIsAddingProfesor={setIsAddingProfesor}
+              setNewProfesorName={setNewProfesorName}
+              handleAddProfesor={handleAddProfesor}
+              setSelectedProfesor={setSelectedProfesor}
+              handleNavigation={handleNavigation}
+              handleDeleteProfesor={handleDeleteProfesor}
+              vista={vista}
+              selectedProfesor={selectedProfesor}
+            />
+          )}
+          {vista === 'ProfesorDetalle' && selectedProfesor && (
+            <Staff 
+              userRole={userRole}
+              isAddingProfesor={isAddingProfesor}
+              newProfesorName={newProfesorName}
+              isSavingProfesor={isSavingProfesor}
+              profesoresList={profesoresList}
+              clases={clases}
+              grupos={grupos}
+              setIsAddingProfesor={setIsAddingProfesor}
+              setNewProfesorName={setNewProfesorName}
+              handleAddProfesor={handleAddProfesor}
+              setSelectedProfesor={setSelectedProfesor}
+              handleNavigation={handleNavigation}
+              handleDeleteProfesor={handleDeleteProfesor}
+              vista={vista}
+              selectedProfesor={selectedProfesor}
+            />
+          )}
+        </Suspense>
       </main>
 
-        <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-antigravity-charcoal/80 backdrop-blur-md border-t border-white/5 px-6 pt-4 pb-2 flex justify-between items-center z-50 rounded-t-[2.5rem] shadow-2xl">
+      {/* Navegación Inferior (Refined for Antigravity) */}
+      {vista !== 'ReportePDF' && (
+        <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-antigravity-charcoal/80 backdrop-blur-md border-t border-white/5 px-6 pt-4 pb-2 flex justify-between items-center z-50">
           {[
             { v: 'Dashboard', i: 'grid_view', l: 'Inicio' },
             { v: 'Alumnos', i: 'group', l: 'Gimnastas' },
-            { v: 'Clases', i: 'history_edu', l: 'Clases' },
-            { v: 'Asistente', i: 'psychology', l: 'Manuales' },
-            { v: 'Ajustes', i: 'person', l: 'Perfil' }
+            { v: userRole === 'Coordinator' ? 'Profesores' : 'Horario', i: userRole === 'Coordinator' ? 'badge' : 'calendar_today', l: userRole === 'Coordinator' ? 'Staff' : 'Horario' },
+            { v: 'Ajustes', i: 'app_settings_alt', l: 'Ajustes' }
           ].map(item => (
             <button 
               key={item.v} 
@@ -5034,15 +2691,16 @@ const App: React.FC = () => {
                 if (item.v === 'Alumnos') setAlumnosFilterMode('all');
                 handleNavigation(item.v as ViewMode);
               }} 
-              className={`flex flex-col items-center gap-1.5 transition-all flex-1 ${vista === item.v ? 'text-primary active-glow' : 'text-white/40 hover:text-white'}`}
+              className={`flex flex-col items-center gap-1.5 transition-all flex-1 ${vista === item.v || (vista === 'AsistenciaLista' && item.v === 'Horario') ? 'text-neon-cyan active-glow' : 'text-white/60 hover:text-white'}`}
             >
-              <span className={`material-symbols-outlined text-[24px] font-light ${vista === item.v ? 'neon-glow-cyan' : ''}`}>{item.i}</span>
-              <span className={`text-[8px] uppercase tracking-widest font-black mt-1`}>
-                {item.l}
+              <span className={`material-symbols-outlined text-[26px] font-light ${vista === item.v || (vista === 'AsistenciaLista' && item.v === 'Horario') ? 'neon-glow-cyan' : ''}`}>{item.i}</span>
+              <span className={`text-[9px] uppercase tracking-wide ${vista === item.v || (vista === 'AsistenciaLista' && item.v === 'Horario') ? 'font-bold' : 'font-medium'}`}>
+                {item.v === 'Horario' ? (activeGroup ? 'Horario' : 'Horario') : item.l}
               </span>
             </button>
           ))}
         </nav>
+      )}
 
       {/* Safe Area Indicator */}
       {vista !== 'ReportePDF' && (
@@ -5066,231 +2724,6 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {vista === 'AsistenciaStats' && (
-          <div className="px-6 py-8 space-y-8 page-transition pb-24">
-            <header className="flex items-center gap-4">
-              <button onClick={() => setVista('Dashboard')} className="w-10 h-10 rounded-full bg-antigravity-charcoal flex items-center justify-center text-primary border border-white/5 active:scale-90 transition-all">
-                <span className="material-icons-outlined">arrow_back</span>
-              </button>
-              <div>
-                <h2 className="text-2xl font-black text-white uppercase tracking-tighter">Estadísticas</h2>
-                <p className="text-primary text-[10px] font-black uppercase tracking-widest mt-1">Análisis de Asistencia</p>
-              </div>
-              <button 
-                onClick={handleExportAttendance}
-                className="ml-auto w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-400 border border-emerald-500/20 active:scale-90 transition-all"
-                title="Exportar Excel"
-              >
-                <span className="material-icons-outlined">download</span>
-              </button>
-            </header>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* AI Analysis Button */}
-              <div className="md:col-span-2">
-                <button 
-                  onClick={handleAIAnalysis}
-                  disabled={isAnalyzing}
-                  className="w-full glass-card rounded-[2rem] p-8 border border-primary/20 bg-primary/5 flex items-center justify-between group hover:bg-primary/10 transition-all"
-                >
-                  <div className="flex items-center gap-6">
-                    <div className="w-16 h-16 bg-primary/20 rounded-2xl flex items-center justify-center border border-primary/30 shadow-neon-cyan group-hover:scale-110 transition-transform">
-                      <span className="material-icons-outlined text-primary text-3xl">{isAnalyzing ? 'sync' : 'psychology'}</span>
-                    </div>
-                    <div className="text-left">
-                      <h3 className="text-xl font-black text-white uppercase tracking-tighter">Análisis con IA</h3>
-                      <p className="text-primary text-[10px] font-black uppercase tracking-widest mt-1">Obtener insights y sugerencias</p>
-                    </div>
-                  </div>
-                  <span className="material-icons-outlined text-primary/50 group-hover:translate-x-2 transition-transform">arrow_forward</span>
-                </button>
-              </div>
-
-              {/* Comparativa de Asistencia por Grupo */}
-              <div className="glass-card rounded-[2rem] p-6 border border-white/5 space-y-4 md:col-span-2">
-                <div className="flex justify-between items-center px-2">
-                  <h3 className="text-xs font-black text-white/80 uppercase tracking-widest">Comparativa de Asistencia (%)</h3>
-                  <div className="flex gap-2">
-                    <div className="flex items-center gap-1">
-                      <div className="w-2 h-2 rounded-full bg-primary"></div>
-                      <span className="text-[8px] text-white/50 uppercase font-bold">Asistencia</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="h-80 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={comparativeData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
-                      <XAxis 
-                        dataKey="name" 
-                        stroke="#ffffff40" 
-                        fontSize={10} 
-                        tickLine={false} 
-                        axisLine={false}
-                        interval={0}
-                        angle={-45}
-                        textAnchor="end"
-                        height={60}
-                      />
-                      <YAxis 
-                        stroke="#ffffff40" 
-                        fontSize={10} 
-                        tickLine={false} 
-                        axisLine={false}
-                        domain={[0, 100]}
-                        tickFormatter={(val) => `${val}%`}
-                      />
-                      <Tooltip 
-                        contentStyle={{ backgroundColor: '#151619', border: '1px solid #ffffff10', borderRadius: '12px' }}
-                        cursor={{ fill: '#ffffff05' }}
-                        formatter={(value: any) => [`${Number(value).toFixed(1)}%`, 'Asistencia Promedio']}
-                      />
-                      <Bar dataKey="asistencia" fill="url(#colorAsistencia)" radius={[6, 6, 0, 0]}>
-                        <defs>
-                          <linearGradient id="colorAsistencia" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#00F0FF" stopOpacity={0.8}/>
-                            <stop offset="95%" stopColor="#00F0FF" stopOpacity={0.2}/>
-                          </linearGradient>
-                        </defs>
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 px-2 pt-4 border-t border-white/5">
-                  {comparativeData.slice(0, 4).map((data, i) => (
-                    <div key={i} className="space-y-1">
-                      <p className="text-[8px] text-white/40 uppercase font-bold truncate">{data.name}</p>
-                      <p className="text-lg font-black text-white">{data.asistencia.toFixed(1)}%</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Gráfico de Tendencia */}
-
-              <div className="glass-card rounded-[2rem] p-6 border border-white/5 space-y-4">
-                <h3 className="text-xs font-black text-white/80 uppercase tracking-widest px-2">Tendencia Mensual</h3>
-                <div className="h-64 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={alumnos.reduce((acc: any[], al) => {
-                      const month = new Date(al.fechaIngreso).toLocaleString('default', { month: 'short' });
-                      const existing = acc.find(i => i.name === month);
-                      if (existing) existing.count++;
-                      else acc.push({ name: month, count: 1 });
-                      return acc;
-                    }, []).slice(-6)}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
-                      <XAxis dataKey="name" stroke="#ffffff40" fontSize={10} tickLine={false} axisLine={false} />
-                      <YAxis stroke="#ffffff40" fontSize={10} tickLine={false} axisLine={false} />
-                      <Tooltip 
-                        contentStyle={{ backgroundColor: '#151619', border: '1px solid #ffffff10', borderRadius: '12px' }}
-                        itemStyle={{ color: '#00F0FF', fontSize: '12px', fontWeight: 'bold' }}
-                      />
-                      <Line type="monotone" dataKey="count" stroke="#00F0FF" strokeWidth={3} dot={{ r: 4, fill: '#00F0FF' }} activeDot={{ r: 6, stroke: '#00F0FF', strokeWidth: 2, fill: '#151619' }} />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-
-              {/* Distribución por Grupo */}
-              <div className="glass-card rounded-[2rem] p-6 border border-white/5 space-y-4">
-                <h3 className="text-xs font-black text-white/80 uppercase tracking-widest px-2">Alumnos por Grupo</h3>
-                <div className="h-64 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={grupos.map(g => ({
-                      name: g.nombre,
-                      alumnos: alumnos.filter(a => a.grupo === g.nombre).length
-                    }))}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
-                      <XAxis dataKey="name" stroke="#ffffff40" fontSize={10} tickLine={false} axisLine={false} />
-                      <YAxis stroke="#ffffff40" fontSize={10} tickLine={false} axisLine={false} />
-                      <Tooltip 
-                        contentStyle={{ backgroundColor: '#151619', border: '1px solid #ffffff10', borderRadius: '12px' }}
-                        cursor={{ fill: '#ffffff05' }}
-                      />
-                      <Bar dataKey="alumnos" fill="#A855F7" radius={[6, 6, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-
-              {/* Estado de Pagos */}
-              <div className="glass-card rounded-[2rem] p-6 border border-white/5 space-y-4">
-                <h3 className="text-xs font-black text-white/80 uppercase tracking-widest px-2">Estado de Matrículas</h3>
-                <div className="h-64 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={[
-                          { name: 'Al día', value: alumnos.filter(a => a.estadoPago === 'Al día').length, color: '#10B981' },
-                          { name: 'Pendiente', value: alumnos.filter(a => a.estadoPago === 'Pendiente').length, color: '#F59E0B' },
-                          { name: 'Vencido', value: alumnos.filter(a => a.estadoPago === 'Vencido').length, color: '#EF4444' }
-                        ]}
-                        cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value"
-                      >
-                        {[
-                          { color: '#10B981' },
-                          { color: '#F59E0B' },
-                          { color: '#EF4444' }
-                        ].map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip 
-                        contentStyle={{ backgroundColor: '#151619', border: '1px solid #ffffff10', borderRadius: '12px' }}
-                      />
-                      <Legend verticalAlign="bottom" height={36} iconType="circle" />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-
-              {/* Resumen de Asistencia Hoy */}
-              <div className="glass-card rounded-[2rem] p-6 border border-white/5 flex flex-col justify-center items-center text-center space-y-4">
-                <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center border border-primary/20 shadow-neon-cyan">
-                  <span className="material-icons-outlined text-primary text-4xl">how_to_reg</span>
-                </div>
-                <div>
-                  <h4 className="text-3xl font-black text-white">{presentCount}</h4>
-                  <p className="text-[10px] text-primary font-black uppercase tracking-widest mt-1">Presentes Hoy</p>
-                </div>
-                <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
-                  <div className="h-full bg-primary shadow-neon-cyan" style={{ width: `${(presentCount / (alumnos.length || 1)) * 100}%` }}></div>
-                </div>
-                <p className="text-[10px] text-white/40 font-bold uppercase tracking-widest">
-                  {Math.round((presentCount / (alumnos.length || 1)) * 100)}% de la matrícula total
-                </p>
-              </div>
-
-              {/* Progreso por Grupo */}
-              <div className="glass-card rounded-[2rem] p-6 border border-white/5 space-y-4 md:col-span-2">
-                <h3 className="text-xs font-black text-white/80 uppercase tracking-widest px-2">Progreso Técnico por Grupo (Habilidades Dominadas)</h3>
-                <div className="h-64 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={grupos.map(g => {
-                      const groupAlumnos = alumnos.filter(a => a.grupo === g.nombre);
-                      const totalSkills = groupAlumnos.reduce((sum, a) => sum + (a.habilidades?.filter(s => s.status === 'Dominado' || s.status === 'Elite').length || 0), 0);
-                      const avgSkills = groupAlumnos.length > 0 ? (totalSkills / groupAlumnos.length).toFixed(1) : 0;
-                      return {
-                        name: g.nombre,
-                        avg: parseFloat(avgSkills as string)
-                      };
-                    })}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
-                      <XAxis dataKey="name" stroke="#ffffff40" fontSize={10} tickLine={false} axisLine={false} />
-                      <YAxis stroke="#ffffff40" fontSize={10} tickLine={false} axisLine={false} />
-                      <Tooltip 
-                        contentStyle={{ backgroundColor: '#151619', border: '1px solid #ffffff10', borderRadius: '12px' }}
-                        cursor={{ fill: '#ffffff05' }}
-                      />
-                      <Bar dataKey="avg" fill="#00F0FF" radius={[6, 6, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Focus Mode Overlay */}
         {isFocusMode && (
@@ -5462,7 +2895,52 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* Notificaciones se activan sobre la navegación */}
+        {/* Floating AI Assistant - REMOVED per user request */}
+
+      {/* Bottom Navigation */}
+      <nav className="fixed bottom-0 left-0 right-0 bg-antigravity-black/80 backdrop-blur-xl border-t border-white/5 px-6 py-3 flex justify-between items-center z-50 md:hidden">
+        <button 
+          onClick={() => setVista('Dashboard')}
+          className={`flex flex-col items-center gap-1 transition-all ${vista === 'Dashboard' ? 'text-primary' : 'text-white/40'}`}
+        >
+          <span className="material-icons-outlined text-xl">dashboard</span>
+          <span className="text-[8px] font-black uppercase tracking-widest">Inicio</span>
+        </button>
+        <button 
+          onClick={() => setVista('Clases')}
+          className={`flex flex-col items-center gap-1 transition-all ${vista === 'Clases' ? 'text-primary' : 'text-white/40'}`}
+        >
+          <span className="material-icons-outlined text-xl">history</span>
+          <span className="text-[8px] font-black uppercase tracking-widest">Clases</span>
+        </button>
+        <div className="relative -top-6">
+          <button 
+            onClick={() => {
+              setIsEditingClase(false);
+              setEditingClaseId(null);
+              setVista('NuevaClase');
+            }}
+            className="w-14 h-14 rounded-full bg-primary text-antigravity-black flex items-center justify-center shadow-neon-cyan active:scale-90 transition-all border-4 border-antigravity-black"
+          >
+            <span className="material-icons-outlined text-2xl">add</span>
+          </button>
+          <span className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[8px] font-black uppercase tracking-widest text-primary">Asistencia</span>
+        </div>
+        <button 
+          onClick={() => setVista('Alumnos')}
+          className={`flex flex-col items-center gap-1 transition-all ${vista === 'Alumnos' ? 'text-primary' : 'text-white/40'}`}
+        >
+          <span className="material-icons-outlined text-xl">groups</span>
+          <span className="text-[8px] font-black uppercase tracking-widest">Gimnastas</span>
+        </button>
+        <button 
+          onClick={() => setVista('Manuales')}
+          className={`flex flex-col items-center gap-1 transition-all ${vista === 'Manuales' ? 'text-primary' : 'text-white/40'}`}
+        >
+          <span className="material-icons-outlined text-xl">menu_book</span>
+          <span className="text-[8px] font-black uppercase tracking-widest">Manuales</span>
+        </button>
+      </nav>
 
       {/* Notificaciones */}
 

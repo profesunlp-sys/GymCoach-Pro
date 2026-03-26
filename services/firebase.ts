@@ -2,7 +2,6 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore, collection, addDoc, getDocs, updateDoc, doc, query, where, onSnapshot, setDoc, deleteDoc } from "firebase/firestore";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, User, setPersistence, browserLocalPersistence } from "firebase/auth";
-import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyBbuRw3J7t_8xQc-6_qOqQDdjEEWZgSHaY",
@@ -16,7 +15,6 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 export const auth = getAuth(app);
-export const storage = getStorage(app);
 
 // Force local persistence to avoid losing session on refresh
 setPersistence(auth, browserLocalPersistence);

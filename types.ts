@@ -66,6 +66,7 @@ export interface AsistenciaRecord {
   alumnoId: string;
   grupo: string;
   presente: boolean;
+  pago?: boolean;
 }
 
 export interface Clase {
@@ -86,8 +87,6 @@ export interface Clase {
   warmup?: string[]; // Legacy
   apparatusUsed?: string[]; // Legacy
   skillsCovered?: string[]; // Legacy
-  hasCoordinatorFeedback?: boolean;
-  hasUrgentFeedback?: boolean;
 }
 
 export interface GrupoConfig {
@@ -106,16 +105,14 @@ export interface Feedback {
   author: string;
   text: string;
   timestamp: string;
-  isUrgent?: boolean;
 }
 
 export interface Source {
-  id?: string;
+  id: string;
   name: string;
   type: 'pdf' | 'text' | 'doc' | 'docx';
-  content: string; // For text it's the text, for files it's the Firebase Storage URL
-  storagePath?: string; 
+  content: string; // base64 for pdf/doc/docx, plain text for text
   uploadDate: string;
 }
 
-export type ViewMode = 'Dashboard' | 'Horario' | 'Alumnos' | 'Ajustes' | 'NuevaClase' | 'RegistroAlumno' | 'AsistenciaLista' | 'ListasDeAsistencia' | 'ReportePDF' | 'ClaseDetalle' | 'Planes' | 'AlumnoDetalle' | 'Profesores' | 'ProfesorDetalle' | 'Asistente' | 'Emergencias' | 'AsistenciaStats' | 'KnowledgeBase' | 'HistorialClases' | 'Clases';
+export type ViewMode = 'Dashboard' | 'Horario' | 'Alumnos' | 'Ajustes' | 'NuevaClase' | 'RegistroAlumno' | 'AsistenciaLista' | 'ReportePDF' | 'ClaseDetalle' | 'Planes' | 'AlumnoDetalle' | 'Profesores' | 'ProfesorDetalle' | 'Asistente' | 'Emergencias' | 'AsistenciaStats' | 'KnowledgeBase' | 'HistorialClases' | 'Clases' | 'CoachAI' | 'Staff' | 'Finanzas' | 'Manuales' | 'Habilidades';
