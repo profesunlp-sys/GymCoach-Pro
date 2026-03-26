@@ -58,6 +58,8 @@ export interface Alumno {
   alertas: string[]; 
   datosFederativos?: string;
   contacto?: ContactoFamilia;
+  pagoVencido?: boolean;
+  observacionesMedicas?: string;
 }
 
 export interface AsistenciaRecord {

@@ -230,6 +230,7 @@ const App: React.FC = () => {
   const [selectedGrupoFilter, setSelectedGrupoFilter] = useState<string>('Todos');
   const [selectedNivelFilter, setSelectedNivelFilter] = useState<string>('Todos');
   const [asistenciasClase, setAsistenciasClase] = useState<AsistenciaRecord[]>([]);
+  const [asistencias, setAsistencias] = useState<AsistenciaRecord[]>([]);
   const [isLoadingAsistenciasClase, setIsLoadingAsistenciasClase] = useState(false);
   const [asistenciasGlobales, setAsistenciasGlobales] = useState<Record<string, { presentes: number, total: number }>>({});
   const [isEditingClase, setIsEditingClase] = useState(false);
@@ -838,12 +839,14 @@ const App: React.FC = () => {
       const a = await getCollectionData(COLLECTIONS.ALUMNOS) as Alumno[];
       const c = await getCollectionData(COLLECTIONS.CLASES) as Clase[];
       const g = await getCollectionData(COLLECTIONS.GRUPOS) as GrupoConfig[];
+      const asis = await getCollectionData(COLLECTIONS.ASISTENCIAS) as AsistenciaRecord[];
       const p = await getCollectionData(COLLECTIONS.PROFESORES) as {id?: string, nombre: string}[];
       const n = await getCollectionData(COLLECTIONS.NIVELES) as {id?: string, nombre: string}[];
       const s = await getCollectionData(COLLECTIONS.SOURCES) as Source[];
       setAlumnos(a);
       setClases(c.sort((x, y) => new Date(y.fecha).getTime() - new Date(x.fecha).getTime()));
       setGrupos(g);
+      setAsistencias(asis);
       setProfesoresList(p || []);
       setSources(s || []);
       setNiveles(n.length > 0 ? n : [
@@ -898,6 +901,12 @@ const App: React.FC = () => {
         setHasNewData(true);
       });
 
+      // Real-time updates for attendance
+      const unsubAsistencias = onSnapshot(collection(firestore, COLLECTIONS.ASISTENCIAS), (snapshot) => {
+        const asis = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as AsistenciaRecord[];
+        setAsistencias(asis);
+      });
+
       // Real-time updates for sources
       const unsubSources = onSnapshot(collection(firestore, COLLECTIONS.SOURCES), (snapshot) => {
         const s = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Source[];
@@ -922,6 +931,7 @@ const App: React.FC = () => {
       return () => {
         unsubClases();
         unsubAlumnos();
+        unsubAsistencias();
         unsubSources();
         clearTimeout(timer);
       };
@@ -1790,6 +1800,58 @@ const App: React.FC = () => {
     }
   };
 
+  const handleExportGroupAttendance = async (groupName: string) => {
+    try {
+      setIsLoading(true);
+      const now = new Date();
+      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+      
+      const q = query(
+        collection(firestore, COLLECTIONS.ASISTENCIAS),
+        where('fecha', '>=', firstDay),
+        where('grupo', '==', groupName)
+      );
+      
+      const snap = await getDocs(q);
+      const records = snap.docs.map(doc => doc.data() as AsistenciaRecord);
+      
+      const groupAlumnos = alumnos.filter(a => a.grupo === groupName);
+      
+      const exportData = groupAlumnos.map(alumno => {
+        const alumnoRecords = records.filter(r => r.alumnoId === alumno.id);
+        const presentCount = alumnoRecords.filter(r => r.presente).length;
+        const totalClasses = alumnoRecords.length;
+        
+        return {
+          Nombre: alumno.nombre,
+          DNI: alumno.dni,
+          Grupo: alumno.grupo,
+          Nivel: alumno.nivel,
+          EstadoPago: alumno.estadoPago,
+          'Clases del Mes': totalClasses,
+          'Presentes Mes': presentCount,
+          '% Asistencia': totalClasses > 0 ? `${Math.round((presentCount / totalClasses) * 100)}%` : '0%',
+          'Total Histórico': alumno.asistenciasHistoricas || 0
+        };
+      });
+
+      const ws = XLSX.utils.json_to_sheet(exportData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, `Asistencia ${groupName}`);
+      XLSX.writeFile(wb, `Asistencia_${groupName}_${now.getMonth() + 1}_${now.getFullYear()}.xlsx`);
+      setNotificacion({ t: "Éxito", d: `Reporte de asistencia para ${groupName} exportado.` });
+    } catch (error) {
+      console.error("Error exporting group attendance:", error);
+      setNotificacion({ t: "Error", d: "No se pudo exportar el reporte." });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleExportAllAttendance = async () => {
+    handleExportAttendance();
+  };
+
   const handleSendPaymentReminders = async () => {
     try {
       setIsLoading(true);
@@ -2103,10 +2165,8 @@ const App: React.FC = () => {
       </div>
 
       <main className="flex-1 overflow-y-auto">
-        
-
-        {vista === 'Dashboard' && (
-          <Suspense fallback={<LoadingFallback />}>
+        <Suspense fallback={<LoadingFallback />}>
+          {vista === 'Dashboard' && (
             <Dashboard 
               userRole={userRole}
               user={user}
@@ -2128,10 +2188,9 @@ const App: React.FC = () => {
               setUserRole={setUserRole}
               COORDINATOR_EMAIL={COORDINATOR_EMAIL}
             />
-          </Suspense>
-        )}
+          )}
 
-        <Suspense fallback={<LoadingFallback />}>
+        {vista === 'Horario' && (
           <Grupos 
             vista={vista}
             setVista={setVista}
@@ -2153,29 +2212,67 @@ const App: React.FC = () => {
             handleDeleteGroup={handleDeleteGroup}
             setActiveGroup={setActiveGroup}
           />
+        )}
+
+        {(vista === 'AsistenciaLista' || vista === 'AsistenciaStats') && (
           <Asistencia 
             vista={vista}
             setVista={setVista}
             activeGroup={activeGroup}
             setActiveGroup={setActiveGroup}
+            reportMonth={reportMonth}
+            reportYear={reportYear}
+            loadMonthlyReport={loadMonthlyReport}
+            setEditingGroup={setEditingGroup}
+            setNewGroupName={setNewGroupName}
+            setNewCoachName={setNewCoachName}
+            setSelectedDays={setSelectedDays}
+            setStartTime={setStartTime}
+            setEndTime={setEndTime}
+            presentCount={presentCount}
+            filteredAlumnos={filteredAlumnos}
+            handleNavigation={handleNavigation}
+            handleAIAnalysis={handleAIAnalysis}
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            expandedAlumnoId={expandedAlumnoId}
+            setExpandedAlumnoId={setExpandedAlumnoId}
+            asistenciasHoy={asistenciasHoy}
+            pagosHoy={pagosHoy}
+            togglePayment={togglePayment}
+            toggleAttendance={toggleAttendance}
+            asistenciasClase={asistenciasClase}
+            isLoadingAsistenciasClase={isLoadingAsistenciasClase}
+            handleDeleteAsistencia={handleDeleteAsistencia}
+            handleEditAsistencia={handleEditAsistencia}
+            asistenciasGlobales={asistenciasGlobales}
             alumnos={alumnos}
-            asistencias={asistencias}
-            handleToggleAsistencia={toggleAttendance}
-            handleTogglePago={togglePayment}
-            clases={clases}
-            setSelectedClase={setSelectedClase}
-            handleDeleteClase={handleDeleteClase}
+            grupos={grupos}
+            isAnalyzing={isAnalyzing}
+            comparativeData={comparativeData}
             handleExportAttendance={handleExportAttendance}
             handleExportGroupAttendance={handleExportGroupAttendance}
             handleExportAllAttendance={handleExportAllAttendance}
-            handleAIAnalysis={handleAIAnalysis}
-            isAnalyzing={isAnalyzing}
-            comparativeData={comparativeData}
-            grupos={grupos}
-            presentCount={presentCount}
-            handleDeleteAsistencia={handleDeleteAsistencia}
-            handleEditAsistencia={handleEditAsistencia}
+            studentForm={studentForm}
+            setStudentForm={setStudentForm}
+            handleSaveStudent={handleSaveStudent}
+            isSavingStudent={isSavingStudent}
+            isLoadingMonthly={isLoadingMonthly}
+            monthlyStats={monthlyStats}
+            setReportMonth={setReportMonth}
+            setReportYear={setReportYear}
+            clases={clases}
+            asistencias={asistencias}
+            selectedDisciplina={selectedDisciplina}
+            setSelectedDisciplina={setSelectedDisciplina}
+            planesFilterDate={planesFilterDate}
+            setPlanesFilterDate={setPlanesFilterDate}
+            planesFilterCoach={planesFilterCoach}
+            setPlanesFilterCoach={setPlanesFilterCoach}
           />
+        )}
+
+        {(vista === 'Clases' || vista === 'NuevaClase' || vista === 'Planes') && (
           <Clases 
             vista={vista}
             setVista={setVista}
@@ -2227,6 +2324,9 @@ const App: React.FC = () => {
             planesFilterCoach={planesFilterCoach}
             setPlanesFilterCoach={setPlanesFilterCoach}
           />
+        )}
+
+        {(vista === 'Alumnos' || vista === 'RegistroAlumno' || vista === 'AlumnoDetalle' || vista === 'Habilidades') && (
           <Alumnos 
             vista={vista}
             setVista={setVista}
@@ -2273,6 +2373,9 @@ const App: React.FC = () => {
             setIsBulkImporting={setIsBulkImporting}
             userRole={userRole}
           />
+        )}
+
+        {(vista === 'Profesores' || vista === 'ProfesorDetalle') && (
           <Staff 
             vista={vista}
             setVista={setVista}
@@ -2284,7 +2387,18 @@ const App: React.FC = () => {
             profesoresList={profesoresList}
             handleDeleteProfesor={handleDeleteProfesor}
             isSavingProfesor={isSavingProfesor}
+            clases={clases}
+            grupos={grupos}
+            alumnos={alumnos}
+            asistencias={asistencias}
+            setSelectedProfesor={setSelectedProfesor}
+            handleNavigation={handleNavigation}
+            selectedProfesor={selectedProfesor}
+            userRole={userRole}
           />
+        )}
+
+        {vista === 'Finanzas' && (
           <Finanzas 
             vista={vista}
             setVista={setVista}
@@ -2301,28 +2415,28 @@ const App: React.FC = () => {
             comparativeData={comparativeData}
             handleAIAnalysis={handleAIAnalysis}
             isAnalyzing={isAnalyzing}
+            presentCount={presentCount}
+            handleExportAttendance={handleExportAttendance}
           />
-        </Suspense>
+        )}
 
 
 
 
 
-        <Suspense fallback={<LoadingFallback />}>
-          {vista === 'Planes' && (
-            <Manuales 
-              vista={vista}
-              setVista={setVista}
-              DISCIPLINAS={DISCIPLINAS}
-              NIVELES={DEFAULT_NIVELES}
-              selectedDisciplina={selectedDisciplina}
-              setSelectedDisciplina={setSelectedDisciplina}
-              selectedNivel={selectedNivelFilter}
-              setSelectedNivel={setSelectedNivelFilter}
-              SKILL_TREE={SKILL_TREE}
-            />
-          )}
-        </Suspense>
+        {vista === 'Planes' && (
+          <Manuales 
+            vista={vista}
+            setVista={setVista}
+            DISCIPLINAS={DISCIPLINAS}
+            NIVELES={DEFAULT_NIVELES}
+            selectedDisciplina={selectedDisciplina}
+            setSelectedDisciplina={setSelectedDisciplina}
+            selectedNivel={selectedNivelFilter}
+            setSelectedNivel={setSelectedNivelFilter}
+            SKILL_TREE={SKILL_TREE}
+          />
+        )}
 
         {vista === 'Emergencias' && (
           <div className="px-6 py-8 space-y-8 page-transition pb-24">
@@ -2476,11 +2590,9 @@ const App: React.FC = () => {
           </div>
         )}
 
-        <Suspense fallback={<LoadingFallback />}>
-          {vista === 'Asistente' && (
-            <CoachAI />
-          )}
-        </Suspense>
+        {vista === 'Asistente' && (
+          <CoachAI />
+        )}
 
         {vista === 'Ajustes' && (
           <div className="px-6 py-8 space-y-8 page-transition pb-24">
@@ -2596,85 +2708,12 @@ const App: React.FC = () => {
 
             <div className="p-6 text-center opacity-40">
               <p className="text-[9px] font-black uppercase tracking-[0.5em] text-white mb-2">GymCoach Pro v2.0 Cloud</p>
-              <p className="text        </Suspense>
-
-        <Suspense fallback={<LoadingFallback />}>
-          <Clases 
-            vista={vista}
-            setVista={setVista}
-            selectedClase={selectedClase}
-            setSelectedClase={setSelectedClase}
-            handleNavigation={handleNavigation}
-            clases={clases}
-            isLoadingClases={isLoadingClases}
-            handleDeleteClase={handleDeleteClase}
-            handleEditClase={handleEditClase}
-            asistenciasClase={asistenciasClase}
-            isLoadingAsistenciasClase={isLoadingAsistenciasClase}
-            handleExportAttendance={handleExportAttendance}
-            handleExportGroupAttendance={handleExportGroupAttendance}
-            handleExportAllAttendance={handleExportAllAttendance}
-            registrationStep={registrationStep}
-            setRegistrationStep={setRegistrationStep}
-            newClase={newClase}
-            setNewClase={setNewClase}
-            isSavingClase={isSavingClase}
-            handleSaveClase={handleSaveClase}
-            grupos={grupos}
-            profesoresList={profesoresList}
-            alumnos={alumnos}
-            searchQuery={searchQuery}
-            setSearchQuery={setSearchQuery}
-            filterGrupo={filterGrupo}
-            setFilterGrupo={setFilterGrupo}
-            filterProfesor={filterProfesor}
-            setFilterProfesor={setFilterProfesor}
-            dateRange={dateRange}
-            setDateRange={setDateRange}
-          />
-        </Suspense>
-
-        <Suspense fallback={<LoadingFallback />}>
-          {vista === 'Profesores' && userRole === 'Coordinator' && (
-            <Staff 
-              userRole={userRole}
-              isAddingProfesor={isAddingProfesor}
-              newProfesorName={newProfesorName}
-              isSavingProfesor={isSavingProfesor}
-              profesoresList={profesoresList}
-              clases={clases}
-              grupos={grupos}
-              setIsAddingProfesor={setIsAddingProfesor}
-              setNewProfesorName={setNewProfesorName}
-              handleAddProfesor={handleAddProfesor}
-              setSelectedProfesor={setSelectedProfesor}
-              handleNavigation={handleNavigation}
-              handleDeleteProfesor={handleDeleteProfesor}
-              vista={vista}
-              selectedProfesor={selectedProfesor}
-            />
-          )}
-          {vista === 'ProfesorDetalle' && selectedProfesor && (
-            <Staff 
-              userRole={userRole}
-              isAddingProfesor={isAddingProfesor}
-              newProfesorName={newProfesorName}
-              isSavingProfesor={isSavingProfesor}
-              profesoresList={profesoresList}
-              clases={clases}
-              grupos={grupos}
-              setIsAddingProfesor={setIsAddingProfesor}
-              setNewProfesorName={setNewProfesorName}
-              handleAddProfesor={handleAddProfesor}
-              setSelectedProfesor={setSelectedProfesor}
-              handleNavigation={handleNavigation}
-              handleDeleteProfesor={handleDeleteProfesor}
-              vista={vista}
-              selectedProfesor={selectedProfesor}
-            />
-          )}
-        </Suspense>
-      </main>
+              <p className="text-[8px] text-white/40 uppercase tracking-widest">© 2026 Antigravity Labs • Todos los derechos reservados</p>
+            </div>
+          </div>
+        )}
+      </Suspense>
+    </main>
 
       {/* Navegación Inferior (Refined for Antigravity) */}
       {vista !== 'ReportePDF' && (
@@ -2695,7 +2734,7 @@ const App: React.FC = () => {
             >
               <span className={`material-symbols-outlined text-[26px] font-light ${vista === item.v || (vista === 'AsistenciaLista' && item.v === 'Horario') ? 'neon-glow-cyan' : ''}`}>{item.i}</span>
               <span className={`text-[9px] uppercase tracking-wide ${vista === item.v || (vista === 'AsistenciaLista' && item.v === 'Horario') ? 'font-bold' : 'font-medium'}`}>
-                {item.v === 'Horario' ? (activeGroup ? 'Horario' : 'Horario') : item.l}
+                {item.v === 'Horario' ? 'Horario' : item.l}
               </span>
             </button>
           ))}
@@ -2896,51 +2935,6 @@ const App: React.FC = () => {
       )}
 
         {/* Floating AI Assistant - REMOVED per user request */}
-
-      {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-antigravity-black/80 backdrop-blur-xl border-t border-white/5 px-6 py-3 flex justify-between items-center z-50 md:hidden">
-        <button 
-          onClick={() => setVista('Dashboard')}
-          className={`flex flex-col items-center gap-1 transition-all ${vista === 'Dashboard' ? 'text-primary' : 'text-white/40'}`}
-        >
-          <span className="material-icons-outlined text-xl">dashboard</span>
-          <span className="text-[8px] font-black uppercase tracking-widest">Inicio</span>
-        </button>
-        <button 
-          onClick={() => setVista('Clases')}
-          className={`flex flex-col items-center gap-1 transition-all ${vista === 'Clases' ? 'text-primary' : 'text-white/40'}`}
-        >
-          <span className="material-icons-outlined text-xl">history</span>
-          <span className="text-[8px] font-black uppercase tracking-widest">Clases</span>
-        </button>
-        <div className="relative -top-6">
-          <button 
-            onClick={() => {
-              setIsEditingClase(false);
-              setEditingClaseId(null);
-              setVista('NuevaClase');
-            }}
-            className="w-14 h-14 rounded-full bg-primary text-antigravity-black flex items-center justify-center shadow-neon-cyan active:scale-90 transition-all border-4 border-antigravity-black"
-          >
-            <span className="material-icons-outlined text-2xl">add</span>
-          </button>
-          <span className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[8px] font-black uppercase tracking-widest text-primary">Asistencia</span>
-        </div>
-        <button 
-          onClick={() => setVista('Alumnos')}
-          className={`flex flex-col items-center gap-1 transition-all ${vista === 'Alumnos' ? 'text-primary' : 'text-white/40'}`}
-        >
-          <span className="material-icons-outlined text-xl">groups</span>
-          <span className="text-[8px] font-black uppercase tracking-widest">Gimnastas</span>
-        </button>
-        <button 
-          onClick={() => setVista('Manuales')}
-          className={`flex flex-col items-center gap-1 transition-all ${vista === 'Manuales' ? 'text-primary' : 'text-white/40'}`}
-        >
-          <span className="material-icons-outlined text-xl">menu_book</span>
-          <span className="text-[8px] font-black uppercase tracking-widest">Manuales</span>
-        </button>
-      </nav>
 
       {/* Notificaciones */}
 

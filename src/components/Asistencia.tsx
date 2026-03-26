@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Alumno, GrupoConfig, ViewMode, AsistenciaRecord } from '../../types';
+import { Alumno, GrupoConfig, ViewMode, AsistenciaRecord, Clase } from '../../types';
 import { Finanzas as AsistenciaStats } from './Finanzas';
 
 interface AsistenciaProps {
@@ -40,6 +40,8 @@ interface AsistenciaProps {
   isAnalyzing: boolean;
   comparativeData: any[];
   handleExportAttendance: () => void;
+  handleExportGroupAttendance: (groupName: string) => void;
+  handleExportAllAttendance: () => void;
   studentForm: Partial<Alumno>;
   setStudentForm: (f: Partial<Alumno>) => void;
   handleSaveStudent: () => void;
@@ -48,6 +50,14 @@ interface AsistenciaProps {
   monthlyStats: Record<string, { attended: number, expected: number }>;
   setReportMonth: (m: number) => void;
   setReportYear: (y: number) => void;
+  clases: Clase[];
+  asistencias: AsistenciaRecord[];
+  selectedDisciplina: string;
+  setSelectedDisciplina: (d: string) => void;
+  planesFilterDate: string;
+  setPlanesFilterDate: (d: string) => void;
+  planesFilterCoach: string;
+  setPlanesFilterCoach: (c: string) => void;
 }
 
 export const Asistencia: React.FC<AsistenciaProps> = ({
@@ -93,7 +103,17 @@ export const Asistencia: React.FC<AsistenciaProps> = ({
   isLoadingMonthly,
   monthlyStats,
   setReportMonth,
-  setReportYear
+  setReportYear,
+  clases,
+  asistencias,
+  selectedDisciplina,
+  setSelectedDisciplina,
+  planesFilterDate,
+  setPlanesFilterDate,
+  planesFilterCoach,
+  setPlanesFilterCoach,
+  handleExportGroupAttendance,
+  handleExportAllAttendance
 }) => {
   if (vista === 'AsistenciaStats') {
     return (
@@ -107,6 +127,14 @@ export const Asistencia: React.FC<AsistenciaProps> = ({
         alumnos={alumnos}
         grupos={grupos}
         presentCount={presentCount}
+        clases={clases}
+        asistencias={asistencias}
+        selectedDisciplina={selectedDisciplina}
+        setSelectedDisciplina={setSelectedDisciplina}
+        planesFilterDate={planesFilterDate}
+        setPlanesFilterDate={setPlanesFilterDate}
+        planesFilterCoach={planesFilterCoach}
+        setPlanesFilterCoach={setPlanesFilterCoach}
       />
     );
   }

@@ -1,8 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Alumno, GrupoConfig, Skill, AsistenciaRecord, Feedback } from '../types';
-import { Button } from '../App';
-import Tooltip from './Tooltip';
+import { Alumno, GrupoConfig, Skill, AsistenciaRecord, Feedback } from '../../types';
+import { Button } from '../../App';
 
 interface AlumnosProps {
   vista: string;
@@ -124,24 +123,20 @@ const Alumnos: React.FC<AlumnosProps> = ({
             </div>
             {alumnosFilterMode === 'all' && (
               <div className="flex gap-2">
-                <Tooltip text="Importación Masiva">
-                  <Button 
-                    onClick={() => setIsBulkImporting(true)}
-                    variant="secondary"
-                    className="w-10 h-10 !p-0 rounded-full"
-                  >
-                    <span className="material-icons-outlined text-sm">upload_file</span>
-                  </Button>
-                </Tooltip>
-                <Tooltip text={isAddingAlumno ? 'Cerrar' : 'Nuevo Gimnasta'}>
-                  <Button 
-                    onClick={() => setIsAddingAlumno(!isAddingAlumno)}
-                    variant={isAddingAlumno ? 'danger' : 'primary'}
-                    className="w-10 h-10 !p-0 rounded-full"
-                  >
-                    <span className="material-icons-outlined text-sm">{isAddingAlumno ? 'close' : 'person_add'}</span>
-                  </Button>
-                </Tooltip>
+                <Button 
+                  onClick={() => setIsBulkImporting(true)}
+                  variant="secondary"
+                  className="w-10 h-10 !p-0 rounded-full"
+                >
+                  <span className="material-icons-outlined text-sm">upload_file</span>
+                </Button>
+                <Button 
+                  onClick={() => setIsAddingAlumno(!isAddingAlumno)}
+                  variant={isAddingAlumno ? 'danger' : 'primary'}
+                  className="w-10 h-10 !p-0 rounded-full"
+                >
+                  <span className="material-icons-outlined text-sm">{isAddingAlumno ? 'close' : 'person_add'}</span>
+                </Button>
               </div>
             )}
           </div>
@@ -440,7 +435,7 @@ const Alumnos: React.FC<AlumnosProps> = ({
               </div>
 
               <div className="space-y-3">
-                {selectedAlumno.skills?.filter(s => skillApparatusFilter === 'Todos' || s.apparatus === skillApparatusFilter).map((skill) => (
+                {selectedAlumno.habilidades?.filter((s: Skill) => skillApparatusFilter === 'Todos' || s.apparatus === skillApparatusFilter).map((skill: Skill) => (
                   <div key={skill.id} className="glass-card rounded-2xl p-4 border border-white/5 flex items-center justify-between group">
                     <div className="flex items-center gap-4">
                       <div className={`w-2 h-2 rounded-full ${skill.status === 'Logrado' ? 'bg-emerald-500 shadow-neon-emerald' : skill.status === 'En Proceso' ? 'bg-amber-500 shadow-neon-amber' : 'bg-white/20'}`}></div>
@@ -492,15 +487,15 @@ const Alumnos: React.FC<AlumnosProps> = ({
                   {feedbacks.map((f) => (
                     <div key={f.id} className="glass-card rounded-2xl p-4 border border-white/5 space-y-2 relative group">
                       <div className="flex justify-between items-start">
-                        <span className="text-[8px] font-black uppercase tracking-widest text-primary">{f.date}</span>
+                        <span className="text-[8px] font-black uppercase tracking-widest text-primary">{f.timestamp}</span>
                         <button 
-                          onClick={() => handleDeleteFeedback(f.id)}
+                          onClick={() => handleDeleteFeedback(f.id!)}
                           className="opacity-0 group-hover:opacity-100 transition-opacity text-white/20 hover:text-rose-500"
                         >
                           <span className="material-icons-outlined text-xs">delete</span>
                         </button>
                       </div>
-                      <p className="text-xs text-white/80 leading-relaxed italic">"{f.content}"</p>
+                      <p className="text-xs text-white/80 leading-relaxed italic">"{f.text}"</p>
                     </div>
                   ))}
                 </div>
@@ -510,7 +505,7 @@ const Alumnos: React.FC<AlumnosProps> = ({
             {/* Danger Zone */}
             <div className="pt-8 border-t border-white/5">
               <button 
-                onClick={() => handleDeleteStudent(selectedAlumno.id)}
+                onClick={() => handleDeleteStudent(selectedAlumno.id!)}
                 className="w-full py-4 rounded-2xl border border-rose-500/20 text-rose-500 text-[10px] font-black uppercase tracking-widest hover:bg-rose-500/5 transition-all flex items-center justify-center gap-2"
               >
                 <span className="material-icons-outlined text-sm">person_remove</span>

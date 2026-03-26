@@ -1,7 +1,8 @@
 
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Clase, GrupoConfig, ViewMode, User } from '../../types';
+import { Clase, GrupoConfig, ViewMode } from '../../types';
+import { User } from 'firebase/auth';
 import { Button } from '../../App';
 
 interface ClasesProps {
@@ -12,11 +13,12 @@ interface ClasesProps {
   isEditingClase: boolean;
   setIsEditingClase: (val: boolean) => void;
   setEditingClaseId: (id: string | null) => void;
+  editingClaseId: string | null;
   claseGrupo: string;
   setClaseGrupo: (grupo: string) => void;
   grupos: GrupoConfig[];
   userRole: string;
-  user: User | null;
+  user: any;
   handleSaveManualClass: () => void;
   faseInicialDuration: string;
   setFaseInicialDuration: (val: string) => void;

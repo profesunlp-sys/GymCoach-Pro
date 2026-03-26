@@ -2,21 +2,24 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '../../App';
-import { Clase, GrupoConfig, ViewMode } from '../../types';
+import { Clase, GrupoConfig, ViewMode, Alumno, UserRole, AsistenciaRecord } from '../../types';
 
 interface StaffProps {
-  userRole: string;
+  userRole: UserRole;
   isAddingProfesor: boolean;
   newProfesorName: string;
   isSavingProfesor: boolean;
   profesoresList: { id?: string, nombre: string }[];
   clases: Clase[];
   grupos: GrupoConfig[];
+  alumnos: Alumno[];
+  asistencias: AsistenciaRecord[];
   setIsAddingProfesor: (val: boolean) => void;
   setNewProfesorName: (val: string) => void;
   handleAddProfesor: () => void;
   setSelectedProfesor: (val: string) => void;
   handleNavigation: (vista: ViewMode) => void;
+  setVista: (vista: ViewMode) => void;
   handleDeleteProfesor: (id: string, nombre: string) => void;
   vista: ViewMode;
   selectedProfesor: string | null;
@@ -30,11 +33,14 @@ export const Staff: React.FC<StaffProps> = ({
   profesoresList,
   clases,
   grupos,
+  alumnos,
+  asistencias,
   setIsAddingProfesor,
   setNewProfesorName,
   handleAddProfesor,
   setSelectedProfesor,
   handleNavigation,
+  setVista,
   handleDeleteProfesor,
   vista,
   selectedProfesor
@@ -94,11 +100,13 @@ export const Staff: React.FC<StaffProps> = ({
             const clasesEsteMes = profClases.filter(c => c.fecha >= firstDayOfMonth).length;
             
             // Alumnos totales asignados
-            const alumnosAsignados = profGrupos.reduce((acc, g) => acc + (g.alumnosCount || 0), 0);
+            const alumnosAsignados = profGrupos.reduce((acc, g) => acc + (alumnos.filter(a => a.grupo === g.nombre).length), 0);
             
             // Promedio de asistencia (simulado o calculado si hay datos)
-            const promedioAsistencia = profClases.length > 0 
-              ? Math.round((profClases.reduce((acc, c) => acc + (c.asistenciaCount || 0), 0) / profClases.reduce((acc, c) => acc + (c.totalAlumnos || 10), 0)) * 100)
+            const totalPresentes = profClases.reduce((acc, c) => acc + (asistencias.filter(a => a.fecha === c.fecha && a.grupo === c.grupo && a.presente).length), 0);
+            const totalEsperados = profClases.reduce((acc, c) => acc + (alumnos.filter(a => a.grupo === c.grupo).length), 0);
+            const promedioAsistencia = totalEsperados > 0 
+              ? Math.round((totalPresentes / totalEsperados) * 100)
               : 0;
 
             // Indicador de estado
@@ -220,7 +228,7 @@ export const Staff: React.FC<StaffProps> = ({
             </div>
             <div className="glass-card rounded-3xl p-5 border border-white/5 space-y-2">
               <span className="text-[10px] text-white/40 uppercase font-bold block">Alumnos Activos</span>
-              <span className="text-3xl font-black text-primary">{profGrupos.reduce((acc, g) => acc + (g.alumnosCount || 0), 0)}</span>
+              <span className="text-3xl font-black text-primary">{profGrupos.reduce((acc, g) => acc + (alumnos.filter(a => a.grupo === g.nombre).length), 0)}</span>
             </div>
           </div>
         </section>
@@ -229,18 +237,21 @@ export const Staff: React.FC<StaffProps> = ({
         <section className="space-y-4">
           <h3 className="text-[10px] uppercase font-black text-white/40 tracking-[0.2em] px-1">Grupos a cargo</h3>
           <div className="space-y-3">
-            {profGrupos.length > 0 ? profGrupos.map(g => (
-              <div key={g.id} className="glass-card rounded-2xl p-4 border border-white/5 flex justify-between items-center">
-                <div>
-                  <h4 className="font-bold text-white text-sm">{g.nombre}</h4>
-                  <p className="text-[10px] text-white/60 mt-0.5">{g.horario}</p>
+            {profGrupos.length > 0 ? profGrupos.map(g => {
+              const groupStudents = alumnos.filter(a => a.grupo === g.nombre).length;
+              return (
+                <div key={g.id} className="glass-card rounded-2xl p-4 border border-white/5 flex justify-between items-center">
+                  <div>
+                    <h4 className="font-bold text-white text-sm">{g.nombre}</h4>
+                    <p className="text-[10px] text-white/60 mt-0.5">{g.horario}</p>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-xs font-black text-primary block">{groupStudents} Alumnos</span>
+                    <span className="text-[8px] text-white/40 uppercase font-bold tracking-widest">Inscriptos</span>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <span className="text-xs font-black text-primary block">{g.alumnosCount || 0} Alumnos</span>
-                  <span className="text-[8px] text-white/40 uppercase font-bold tracking-widest">Inscriptos</span>
-                </div>
-              </div>
-            )) : (
+              );
+            }) : (
               <p className="text-sm text-white/60 px-1 italic">No tiene grupos asignados actualmente.</p>
             )}
           </div>
@@ -276,7 +287,7 @@ export const Staff: React.FC<StaffProps> = ({
                   <h4 className="font-bold text-white text-sm">{clase.grupo}</h4>
                   <p className="text-[10px] text-white/60">{new Date(clase.fecha).toLocaleDateString()} • {clase.horario}</p>
                 </div>
-                <span className="text-[10px] font-black text-primary uppercase tracking-widest">{clase.asistenciaCount || 0} Presentes</span>
+                <span className="text-[10px] font-black text-primary uppercase tracking-widest">{asistencias.filter(a => a.fecha === clase.fecha && a.grupo === clase.grupo && a.presente).length} Presentes</span>
               </div>
             ))}
           </div>

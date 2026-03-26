@@ -1,11 +1,11 @@
 
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Button } from '../App';
-import { GrupoConfig, ViewMode, Alumno, Clase } from '../types';
+import { Button } from '../../App';
+import { GrupoConfig, ViewMode, Alumno, Clase, UserRole } from '../../types';
 
 interface DashboardProps {
-  userRole: string;
+  userRole: UserRole;
   user: any;
   grupos: GrupoConfig[];
   alumnos: Alumno[];
@@ -22,7 +22,7 @@ interface DashboardProps {
   asistenciasGlobales: Record<string, { presentes: number, total: number }>;
   setActiveGroup: (g: GrupoConfig) => void;
   setRegistrationStep: (step: number) => void;
-  setUserRole: React.Dispatch<React.SetStateAction<string>>;
+  setUserRole: React.Dispatch<React.SetStateAction<UserRole>>;
   COORDINATOR_EMAIL: string;
 }
 
@@ -344,7 +344,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       <span className="text-[8px] font-bold text-white uppercase tracking-tighter">S.O.S</span>
                       <span className="text-[7px] text-white/40 uppercase">Emergencias</span>
                     </button>
-                    {userRole === 'Coordinator' && (
+                    {(userRole as string) === 'Coordinator' && (
                       <button 
                         onClick={() => handleNavigation('Profesores')}
                         className="glass-card rounded-2xl p-4 border border-white/5 flex flex-col items-center gap-2 active:scale-95 transition-all"

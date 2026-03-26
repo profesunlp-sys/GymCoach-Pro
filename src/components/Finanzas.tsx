@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, Tooltip as RechartsTooltip, Bar, LineChart, Line, PieChart, Pie, Cell, Legend } from 'recharts';
-import { Alumno, GrupoConfig, ViewMode } from '../../types';
+import { Alumno, GrupoConfig, ViewMode, Clase } from '../../types';
 
 interface FinanzasProps {
   vista: ViewMode;
@@ -13,6 +13,14 @@ interface FinanzasProps {
   alumnos: Alumno[];
   grupos: GrupoConfig[];
   presentCount: number;
+  clases: Clase[];
+  asistencias: any;
+  selectedDisciplina: string;
+  setSelectedDisciplina: (d: string) => void;
+  planesFilterDate: string;
+  setPlanesFilterDate: (d: string) => void;
+  planesFilterCoach: string;
+  setPlanesFilterCoach: (c: string) => void;
 }
 
 export const Finanzas: React.FC<FinanzasProps> = ({
