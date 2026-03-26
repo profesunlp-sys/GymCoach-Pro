@@ -329,7 +329,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       <span className="text-[7px] text-white/40 uppercase">Clases</span>
                     </button>
                     <button 
-                      onClick={() => handleNavigation('Manuales')}
+                      onClick={() => handleNavigation('Planes')}
                       className="glass-card rounded-2xl p-4 border border-white/5 flex flex-col items-center gap-2 active:scale-95 transition-all"
                     >
                       <span className="material-icons-outlined text-amber-500 text-xl">menu_book</span>

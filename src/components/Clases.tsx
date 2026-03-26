@@ -129,11 +129,11 @@ export const Clases: React.FC<ClasesProps> = ({
             </Button>
             <div>
               <h2 className="text-white font-black text-2xl uppercase tracking-tighter">{isEditingClase ? 'Editar Clase' : 'Nueva Clase'}</h2>
-              <p className="text-primary text-[10px] font-black uppercase tracking-widest">Paso {registrationStep} de 3</p>
+              <p className="text-primary text-[10px] font-black uppercase tracking-widest">Paso {registrationStep} de 6</p>
             </div>
           </div>
           <div className="flex gap-2">
-            {registrationStep < 3 ? (
+            {registrationStep < 6 ? (
               <Button 
                 onClick={() => {
                   if (registrationStep === 1 && !claseGrupo) {
@@ -160,7 +160,7 @@ export const Clases: React.FC<ClasesProps> = ({
 
         {/* Indicador de Pasos */}
         <div className="flex gap-2 px-1">
-          {[1, 2, 3].map(step => (
+          {[1, 2, 3, 4, 5, 6].map(step => (
             <div 
               key={step} 
               className={`h-1 flex-1 rounded-full transition-all duration-500 ${step <= registrationStep ? 'bg-primary shadow-neon-cyan' : 'bg-white/10'}`}
@@ -273,7 +273,17 @@ export const Clases: React.FC<ClasesProps> = ({
                   </button>
                 </div>
               </div>
+            </motion.div>
+          )}
 
+          {registrationStep === 3 && (
+            <motion.div 
+              key="step3"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="space-y-6"
+            >
               <div className="glass-card rounded-3xl p-6 border border-white/5 space-y-4">
                 <div className="flex justify-between items-center">
                   <label className="text-[10px] uppercase font-bold text-primary ml-1 tracking-widest">Fase Principal (Aparatos)</label>
@@ -299,8 +309,21 @@ export const Clases: React.FC<ClasesProps> = ({
                     </button>
                   ))}
                 </div>
-                
-                {fasePrincipal.length > 0 && (
+              </div>
+            </motion.div>
+          )}
+
+          {registrationStep === 4 && (
+            <motion.div 
+              key="step4"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="space-y-6"
+            >
+              <div className="glass-card rounded-3xl p-6 border border-white/5 space-y-4">
+                <label className="text-[10px] uppercase font-bold text-primary ml-1 tracking-widest">Habilidades por Aparato</label>
+                {fasePrincipal.length > 0 ? (
                   <div className="mt-4 space-y-4 border-t border-white/10 pt-4">
                     {fasePrincipal.map(aparato => (
                       <div key={aparato} className="space-y-2">
@@ -339,9 +362,23 @@ export const Clases: React.FC<ClasesProps> = ({
                       </div>
                     ))}
                   </div>
+                ) : (
+                  <div className="p-10 text-center glass-card rounded-3xl border-dashed border-white/10 italic text-white/40 text-sm">
+                    No has seleccionado aparatos en el paso anterior.
+                  </div>
                 )}
               </div>
+            </motion.div>
+          )}
 
+          {registrationStep === 5 && (
+            <motion.div 
+              key="step5"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="space-y-6"
+            >
               <div className="glass-card rounded-3xl p-6 border border-white/5 space-y-4">
                 <div className="flex justify-between items-center">
                   <label className="text-[10px] uppercase font-bold text-primary ml-1 tracking-widest">Vuelta a la calma</label>
@@ -391,9 +428,9 @@ export const Clases: React.FC<ClasesProps> = ({
             </motion.div>
           )}
 
-          {registrationStep === 3 && (
+          {registrationStep === 6 && (
             <motion.div 
-              key="step3"
+              key="step6"
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
