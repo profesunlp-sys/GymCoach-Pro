@@ -285,7 +285,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           <section className="space-y-4">
             <div className="flex justify-between items-end px-1">
               <h3 className="text-[10px] uppercase font-black text-primary/60 tracking-[0.2em]">Asistencia por Grupo</h3>
-              <button onClick={() => setVista('AsistenciaStats')} className="text-[10px] text-primary font-bold uppercase">Ver Reporte Completo</button>
+              <button onClick={() => setVista('AsistenciaStats')} className="text-[10px] text-primary font-bold uppercase hover:underline">Ver Reportes y Estadísticas</button>
             </div>
             <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide -mx-2 px-2">
               {grupos.map((g) => {

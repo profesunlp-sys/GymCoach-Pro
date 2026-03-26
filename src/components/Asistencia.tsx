@@ -2,7 +2,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Alumno, GrupoConfig, ViewMode, AsistenciaRecord, Clase } from '../../types';
-import { Finanzas as AsistenciaStats } from './Finanzas';
+import { Reportes as AsistenciaStats } from './Reportes';
 
 interface AsistenciaProps {
   vista: ViewMode;
@@ -115,7 +115,7 @@ export const Asistencia: React.FC<AsistenciaProps> = ({
   handleExportGroupAttendance,
   handleExportAllAttendance
 }) => {
-  if (vista === 'AsistenciaStats') {
+  if (vista === 'AsistenciaStats' || vista === 'ReporteGrupal' || vista === 'TendenciasHabilidades') {
     return (
       <AsistenciaStats 
         vista={vista}
@@ -126,15 +126,8 @@ export const Asistencia: React.FC<AsistenciaProps> = ({
         comparativeData={comparativeData}
         alumnos={alumnos}
         grupos={grupos}
-        presentCount={presentCount}
         clases={clases}
         asistencias={asistencias}
-        selectedDisciplina={selectedDisciplina}
-        setSelectedDisciplina={setSelectedDisciplina}
-        planesFilterDate={planesFilterDate}
-        setPlanesFilterDate={setPlanesFilterDate}
-        planesFilterCoach={planesFilterCoach}
-        setPlanesFilterCoach={setPlanesFilterCoach}
       />
     );
   }

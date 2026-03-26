@@ -1,9 +1,10 @@
 
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Clase, GrupoConfig, ViewMode } from '../../types';
+import { Clase, GrupoConfig, ViewMode, Alumno, Discipline, Apparatus, SkillStatus } from '../../types';
 import { User } from 'firebase/auth';
 import { Button } from '../../App';
+import { SKILL_TREE, DISCIPLINAS, NIVELES } from '../../constants';
 
 interface ClasesProps {
   vista: ViewMode;
@@ -17,6 +18,9 @@ interface ClasesProps {
   claseGrupo: string;
   setClaseGrupo: (grupo: string) => void;
   grupos: GrupoConfig[];
+  alumnos: Alumno[];
+  asistenciasHoy: Record<string, boolean>;
+  toggleAttendance: (alumnoId: string) => void;
   userRole: string;
   user: any;
   handleSaveManualClass: () => void;
@@ -68,6 +72,9 @@ export const Clases: React.FC<ClasesProps> = ({
   claseGrupo,
   setClaseGrupo,
   grupos,
+  alumnos,
+  asistenciasHoy,
+  toggleAttendance,
   userRole,
   user,
   handleSaveManualClass,
@@ -169,6 +176,7 @@ export const Clases: React.FC<ClasesProps> = ({
         </div>
         
         <AnimatePresence mode="wait">
+          {/* Paso 1: Selección de Grupo */}
           {registrationStep === 1 && (
             <motion.div 
               key="step1"
@@ -219,9 +227,62 @@ export const Clases: React.FC<ClasesProps> = ({
             </motion.div>
           )}
 
+          {/* Paso 2: Asistencia */}
           {registrationStep === 2 && (
             <motion.div 
               key="step2"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="space-y-6"
+            >
+              <div className="space-y-4">
+                <div className="flex justify-between items-center px-2">
+                  <label className="text-[10px] uppercase font-black text-white/40 tracking-[0.2em]">Marcar presentes</label>
+                  <button 
+                    onClick={() => setVista('RegistroAlumno')}
+                    className="text-[10px] font-black text-primary uppercase tracking-widest flex items-center gap-1"
+                  >
+                    <span className="material-icons-outlined text-sm">person_add</span>
+                    Nuevo Alumno
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 gap-2 max-h-[400px] overflow-y-auto pr-2 scrollbar-hide">
+                  {alumnos.filter(a => a.grupo === claseGrupo).map(alumno => (
+                    <button 
+                      key={alumno.id}
+                      onClick={() => alumno.id && toggleAttendance(alumno.id)}
+                      className={`p-4 rounded-2xl border transition-all flex items-center justify-between ${
+                        alumno.id && asistenciasHoy[alumno.id] 
+                          ? 'bg-primary/10 border-primary shadow-neon-cyan' 
+                          : 'bg-white/5 border-white/5'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${alumno.id && asistenciasHoy[alumno.id] ? 'bg-primary text-antigravity-black' : 'bg-white/10 text-white/40'}`}>
+                          <span className="material-icons-outlined text-sm">{alumno.id && asistenciasHoy[alumno.id] ? 'check' : 'person'}</span>
+                        </div>
+                        <span className={`text-sm font-bold ${alumno.id && asistenciasHoy[alumno.id] ? 'text-white' : 'text-white/60'}`}>{alumno.nombre}</span>
+                      </div>
+                      {alumno.id && asistenciasHoy[alumno.id] && (
+                        <span className="text-[10px] font-black text-primary uppercase tracking-widest">Presente</span>
+                      )}
+                    </button>
+                  ))}
+                  {alumnos.filter(a => a.grupo === claseGrupo).length === 0 && (
+                    <div className="p-10 text-center glass-card rounded-3xl border-dashed border-white/10 italic text-white/40 text-sm">
+                      No hay alumnos registrados en este grupo.
+                    </div>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* Paso 3: Entrada en Calor */}
+          {registrationStep === 3 && (
+            <motion.div 
+              key="step3"
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
@@ -276,9 +337,10 @@ export const Clases: React.FC<ClasesProps> = ({
             </motion.div>
           )}
 
-          {registrationStep === 3 && (
+          {/* Paso 4: Aparatos */}
+          {registrationStep === 4 && (
             <motion.div 
-              key="step3"
+              key="step4"
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
@@ -299,7 +361,7 @@ export const Clases: React.FC<ClasesProps> = ({
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  {['Viga de equilibrio', 'Paralelas asimétricas', 'Suelo', 'Salto', 'Anillas', 'Arzones', 'Barra Fija', 'Trampolín'].map(opt => (
+                  {DISCIPLINAS.map((opt: string) => (
                     <button 
                       key={opt}
                       onClick={() => setFasePrincipal(prev => prev.includes(opt) ? prev.filter(o => o !== opt) : [...prev, opt])}
@@ -313,9 +375,10 @@ export const Clases: React.FC<ClasesProps> = ({
             </motion.div>
           )}
 
-          {registrationStep === 4 && (
+          {/* Paso 5: Habilidades */}
+          {registrationStep === 5 && (
             <motion.div 
-              key="step4"
+              key="step5"
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
@@ -371,63 +434,7 @@ export const Clases: React.FC<ClasesProps> = ({
             </motion.div>
           )}
 
-          {registrationStep === 5 && (
-            <motion.div 
-              key="step5"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              className="space-y-6"
-            >
-              <div className="glass-card rounded-3xl p-6 border border-white/5 space-y-4">
-                <div className="flex justify-between items-center">
-                  <label className="text-[10px] uppercase font-bold text-primary ml-1 tracking-widest">Vuelta a la calma</label>
-                  <div className="flex items-center gap-2 bg-antigravity-charcoal px-3 py-1 rounded-full border border-white/5">
-                    <span className="material-icons-outlined text-[14px] text-white/70">schedule</span>
-                    <input 
-                      type="number" 
-                      value={faseFinalDuration} 
-                      onChange={(e) => setFaseFinalDuration(e.target.value)}
-                      className="w-12 bg-transparent text-[10px] text-white font-bold outline-none text-center" 
-                    />
-                    <span className="text-[8px] text-white/80 uppercase font-black">min</span>
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {['Estiramiento estático', 'Relajación', 'Charla técnica', 'Acondicionamiento físico'].map(opt => (
-                    <button 
-                      key={opt}
-                      onClick={() => setFaseFinal(prev => prev.includes(opt) ? prev.filter(o => o !== opt) : [...prev, opt])}
-                      className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${faseFinal.includes(opt) ? 'bg-primary text-antigravity-black shadow-neon-cyan' : 'bg-antigravity-charcoal text-white/70 border border-white/5'}`}
-                    >
-                      {opt}
-                    </button>
-                  ))}
-                </div>
-                <div className="flex gap-2 mt-2">
-                  <input 
-                    type="text" 
-                    value={customFinal} 
-                    onChange={(e) => setCustomFinal(e.target.value)} 
-                    placeholder="Añadir actividad personalizada..." 
-                    className="flex-1 crafted-input !py-2 !text-[10px]"
-                  />
-                  <button 
-                    onClick={() => { 
-                      if(customFinal) { 
-                        setFaseFinal(prev => [...prev, customFinal]); 
-                        setCustomFinal(""); 
-                      } 
-                    }}
-                    className="bg-white/10 text-white px-3 rounded-xl text-[10px] font-bold"
-                  >
-                    +
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          )}
-
+          {/* Paso 6: Resumen */}
           {registrationStep === 6 && (
             <motion.div 
               key="step6"
@@ -437,23 +444,39 @@ export const Clases: React.FC<ClasesProps> = ({
               className="space-y-6"
             >
               <div className="glass-card rounded-3xl p-6 border border-white/5 space-y-4">
-                <label className="text-[10px] uppercase font-bold text-primary ml-1 tracking-widest">Objetivos de la Clase</label>
-                <textarea 
-                  value={claseObjetivos}
-                  onChange={(e) => setClaseObjetivos(e.target.value)}
-                  placeholder="¿Qué buscamos lograr hoy?"
-                  className="w-full h-32 bg-antigravity-charcoal border border-white/10 rounded-2xl p-4 text-xs text-white placeholder:text-white/20 outline-none focus:border-primary/50 transition-all"
-                />
-              </div>
-
-              <div className="glass-card rounded-3xl p-6 border border-white/5 space-y-4">
-                <label className="text-[10px] uppercase font-bold text-primary ml-1 tracking-widest">Observaciones Generales</label>
-                <textarea 
-                  value={claseObservaciones}
-                  onChange={(e) => setClaseObservaciones(e.target.value)}
-                  placeholder="Notas sobre el desempeño del grupo, incidentes o recordatorios..."
-                  className="w-full h-32 bg-antigravity-charcoal border border-white/10 rounded-2xl p-4 text-xs text-white placeholder:text-white/20 outline-none focus:border-primary/50 transition-all"
-                />
+                <label className="text-[10px] uppercase font-bold text-primary ml-1 tracking-widest">Resumen de la Clase</label>
+                <div className="space-y-4">
+                  <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
+                    <p className="text-[10px] text-white/40 uppercase font-black tracking-widest mb-1">Grupo</p>
+                    <p className="text-white font-bold">{claseGrupo}</p>
+                  </div>
+                  <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
+                    <p className="text-[10px] text-white/40 uppercase font-black tracking-widest mb-1">Asistencia</p>
+                    <p className="text-white font-bold">{Object.values(asistenciasHoy).filter(Boolean).length} Alumnos Presentes</p>
+                  </div>
+                  <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
+                    <p className="text-[10px] text-white/40 uppercase font-black tracking-widest mb-1">Aparatos</p>
+                    <p className="text-white font-bold">{fasePrincipal.join(', ') || 'Ninguno'}</p>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] uppercase font-bold text-white/40 ml-1 tracking-widest">Objetivos</label>
+                    <textarea 
+                      value={claseObjetivos}
+                      onChange={(e) => setClaseObjetivos(e.target.value)}
+                      className="w-full crafted-input min-h-[80px] !text-[10px]"
+                      placeholder="¿Qué buscamos lograr hoy?"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] uppercase font-bold text-white/40 ml-1 tracking-widest">Observaciones</label>
+                    <textarea 
+                      value={claseObservaciones}
+                      onChange={(e) => setClaseObservaciones(e.target.value)}
+                      className="w-full crafted-input min-h-[80px] !text-[10px]"
+                      placeholder="Notas sobre el desempeño del grupo..."
+                    />
+                  </div>
+                </div>
               </div>
             </motion.div>
           )}

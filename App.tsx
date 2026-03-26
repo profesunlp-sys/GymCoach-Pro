@@ -16,8 +16,8 @@ import { collection, query, where, getDocs, addDoc, doc, updateDoc, onSnapshot, 
 import { signInWithPopup, signOut, onAuthStateChanged, User, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, setPersistence, browserLocalPersistence, browserSessionPersistence } from 'firebase/auth';
 // Lazy loaded components
 const Dashboard = lazy(() => import('./src/components/Dashboard').then(module => ({ default: module.Dashboard })));
+const Reportes = lazy(() => import('./src/components/Reportes').then(module => ({ default: module.Reportes })));
 const Staff = lazy(() => import('./src/components/Staff').then(module => ({ default: module.Staff })));
-const Finanzas = lazy(() => import('./src/components/Finanzas').then(module => ({ default: module.Finanzas })));
 const Manuales = lazy(() => import('./src/components/Manuales').then(module => ({ default: module.Manuales })));
 const Habilidades = lazy(() => import('./src/components/Habilidades').then(module => ({ default: module.Habilidades })));
 const Grupos = lazy(() => import('./src/components/Grupos').then(module => ({ default: module.Grupos })));
@@ -1917,7 +1917,8 @@ const App: React.FC = () => {
         faseFinalDuration: faseFinalDuration,
         habilidadesPorAparato: habilidadesPorAparato,
         objetivos: objetivos,
-        observaciones: observaciones
+        observaciones: observaciones,
+        asistencias: Object.keys(asistenciasHoy).filter(id => asistenciasHoy[id])
       };
 
       if (editingClaseId) {
@@ -1946,6 +1947,7 @@ const App: React.FC = () => {
       setCustomInicial("");
       setCustomPrincipal("");
       setCustomFinal("");
+      setAsistenciasHoy({});
       setRegistrationStep(1);
       setEditingClaseId(null);
       setIsEditingClase(false);
@@ -2215,7 +2217,7 @@ const App: React.FC = () => {
           />
         )}
 
-        {(vista === 'AsistenciaLista' || vista === 'AsistenciaStats') && (
+        {(vista === 'AsistenciaLista' || vista === 'AsistenciaStats' || vista === 'ReporteGrupal' || vista === 'TendenciasHabilidades') && (
           <Asistencia 
             vista={vista}
             setVista={setVista}
@@ -2273,13 +2275,16 @@ const App: React.FC = () => {
           />
         )}
 
-        {(vista === 'Clases' || vista === 'NuevaClase' || vista === 'Planes') && (
+        {(vista === 'Clases' || vista === 'NuevaClase') && (
           <Clases 
             vista={vista}
             setVista={setVista}
             registrationStep={registrationStep}
             setRegistrationStep={setRegistrationStep}
             grupos={grupos}
+            alumnos={alumnos}
+            asistenciasHoy={asistenciasHoy}
+            toggleAttendance={toggleAttendance}
             claseGrupo={claseGrupo}
             setClaseGrupo={setClaseGrupo}
             faseInicial={faseInicial}
@@ -2399,25 +2404,18 @@ const App: React.FC = () => {
           />
         )}
 
-        {vista === 'Finanzas' && (
-          <Finanzas 
+        {(vista === 'Finanzas' || vista === 'AsistenciaStats' || vista === 'ReporteGrupal' || vista === 'TendenciasHabilidades') && (
+          <Reportes 
             vista={vista}
             setVista={setVista}
-            clases={clases}
             alumnos={alumnos}
-            asistencias={asistencias}
             grupos={grupos}
-            selectedDisciplina={selectedDisciplina}
-            setSelectedDisciplina={setSelectedDisciplina}
-            planesFilterDate={planesFilterDate}
-            setPlanesFilterDate={setPlanesFilterDate}
-            planesFilterCoach={planesFilterCoach}
-            setPlanesFilterCoach={setPlanesFilterCoach}
+            clases={clases}
+            asistencias={asistencias}
             comparativeData={comparativeData}
+            handleExportAttendance={handleExportAttendance}
             handleAIAnalysis={handleAIAnalysis}
             isAnalyzing={isAnalyzing}
-            presentCount={presentCount}
-            handleExportAttendance={handleExportAttendance}
           />
         )}
 

@@ -86,6 +86,7 @@ export interface Clase {
   habilidadesPorAparato?: Record<string, string[]>;
   objetivos?: string;
   observaciones?: string;
+  asistencias?: string[]; // List of student IDs present
   warmup?: string[]; // Legacy
   apparatusUsed?: string[]; // Legacy
   skillsCovered?: string[]; // Legacy
@@ -118,4 +119,4 @@ export interface Source {
   uploadDate: string;
 }
 
-export type ViewMode = 'Dashboard' | 'Horario' | 'Alumnos' | 'Ajustes' | 'NuevaClase' | 'RegistroAlumno' | 'AsistenciaLista' | 'ReportePDF' | 'ClaseDetalle' | 'Planes' | 'AlumnoDetalle' | 'Profesores' | 'ProfesorDetalle' | 'Asistente' | 'Emergencias' | 'AsistenciaStats' | 'KnowledgeBase' | 'HistorialClases' | 'Clases' | 'CoachAI' | 'Staff' | 'Finanzas' | 'Manuales' | 'Habilidades';
+export type ViewMode = 'Dashboard' | 'Horario' | 'Alumnos' | 'Ajustes' | 'NuevaClase' | 'RegistroAlumno' | 'AsistenciaLista' | 'ReportePDF' | 'ClaseDetalle' | 'Planes' | 'AlumnoDetalle' | 'Profesores' | 'ProfesorDetalle' | 'Asistente' | 'Emergencias' | 'AsistenciaStats' | 'KnowledgeBase' | 'HistorialClases' | 'Clases' | 'CoachAI' | 'Staff' | 'Finanzas' | 'Manuales' | 'Habilidades' | 'ReporteGrupal' | 'TendenciasHabilidades';
