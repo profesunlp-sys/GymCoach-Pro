@@ -59,6 +59,15 @@ interface ClasesProps {
   handleEditClase: (clase: Clase) => void;
   handleNavigation: (vista: ViewMode) => void;
   setNotificacion: (notif: { t: string, d: string } | null) => void;
+  disciplinas: { id?: string, nombre: string }[];
+  warmupOptions: { id?: string, nombre: string }[];
+  cooldownOptions: { id?: string, nombre: string }[];
+  handleSaveWarmupOption: (name: string) => void;
+  handleUpdateWarmupOption: (id: string, name: string) => void;
+  handleDeleteWarmupOption: (id: string) => void;
+  handleSaveCooldownOption: (name: string) => void;
+  handleUpdateCooldownOption: (id: string, name: string) => void;
+  handleDeleteCooldownOption: (id: string) => void;
 }
 
 export const Clases: React.FC<ClasesProps> = ({
@@ -112,7 +121,16 @@ export const Clases: React.FC<ClasesProps> = ({
   handleDeleteClase,
   handleEditClase,
   handleNavigation,
-  setNotificacion
+  setNotificacion,
+  disciplinas,
+  warmupOptions,
+  cooldownOptions,
+  handleSaveWarmupOption,
+  handleUpdateWarmupOption,
+  handleDeleteWarmupOption,
+  handleSaveCooldownOption,
+  handleUpdateCooldownOption,
+  handleDeleteCooldownOption
 }) => {
   if (vista === 'NuevaClase') {
     return (
@@ -303,14 +321,40 @@ export const Clases: React.FC<ClasesProps> = ({
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  {['Movilidad articular', 'Trote', 'Juegos', 'Estiramiento dinámico'].map(opt => (
-                    <button 
-                      key={opt}
-                      onClick={() => setFaseInicial(prev => prev.includes(opt) ? prev.filter(o => o !== opt) : [...prev, opt])}
-                      className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${faseInicial.includes(opt) ? 'bg-primary text-antigravity-black shadow-neon-cyan' : 'bg-antigravity-charcoal text-white/70 border border-white/5'}`}
-                    >
-                      {opt}
-                    </button>
+                  {warmupOptions.map(opt => (
+                    <div key={opt.id || opt.nombre} className="relative group">
+                      <button 
+                        onClick={() => setFaseInicial(prev => prev.includes(opt.nombre) ? prev.filter(o => o !== opt.nombre) : [...prev, opt.nombre])}
+                        className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${faseInicial.includes(opt.nombre) ? 'bg-primary text-antigravity-black shadow-neon-cyan' : 'bg-antigravity-charcoal text-white/70 border border-white/5'}`}
+                      >
+                        {opt.nombre}
+                      </button>
+                      {opt.id && (
+                        <div className="absolute -top-1 -right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const newName = prompt("Editar opción:", opt.nombre);
+                              if (newName && newName.trim() && newName !== opt.nombre) {
+                                handleUpdateWarmupOption(opt.id!, newName.trim());
+                              }
+                            }}
+                            className="w-5 h-5 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-[10px]"
+                          >
+                            <span className="material-icons-outlined text-[10px]">edit</span>
+                          </button>
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteWarmupOption(opt.id!);
+                            }}
+                            className="w-5 h-5 rounded-full bg-rose-500/20 backdrop-blur-md flex items-center justify-center text-rose-500 text-[10px]"
+                          >
+                            <span className="material-icons-outlined text-[10px]">delete</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   ))}
                 </div>
                 <div className="flex gap-2 mt-2">
@@ -324,6 +368,7 @@ export const Clases: React.FC<ClasesProps> = ({
                   <button 
                     onClick={() => { 
                       if(customInicial) { 
+                        handleSaveWarmupOption(customInicial);
                         setFaseInicial(prev => [...prev, customInicial]); 
                         setCustomInicial(""); 
                       } 
@@ -361,13 +406,13 @@ export const Clases: React.FC<ClasesProps> = ({
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  {DISCIPLINAS.map((opt: string) => (
+                  {disciplinas.map((opt) => (
                     <button 
-                      key={opt}
-                      onClick={() => setFasePrincipal(prev => prev.includes(opt) ? prev.filter(o => o !== opt) : [...prev, opt])}
-                      className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${fasePrincipal.includes(opt) ? 'bg-primary text-antigravity-black shadow-neon-cyan' : 'bg-antigravity-charcoal text-white/70 border border-white/5'}`}
+                      key={opt.id || opt.nombre}
+                      onClick={() => setFasePrincipal(prev => prev.includes(opt.nombre) ? prev.filter(o => o !== opt.nombre) : [...prev, opt.nombre])}
+                      className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${fasePrincipal.includes(opt.nombre) ? 'bg-primary text-antigravity-black shadow-neon-cyan' : 'bg-antigravity-charcoal text-white/70 border border-white/5'}`}
                     >
-                      {opt}
+                      {opt.nombre}
                     </button>
                   ))}
                 </div>

@@ -281,6 +281,54 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </div>
           </section>
 
+          {/* Reportes Ejecutivos */}
+          <section className="space-y-4">
+            <h3 className="text-[10px] uppercase font-black text-primary/60 tracking-[0.2em] px-1">Reportes Ejecutivos</h3>
+            <div className="grid grid-cols-1 gap-3">
+              <button 
+                onClick={() => setVista('AsistenciaStats')}
+                className="glass-card rounded-3xl p-5 border border-white/5 flex items-center gap-4 active:scale-[0.98] transition-all group"
+              >
+                <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center border border-primary/20 shadow-neon-cyan">
+                  <span className="material-icons-outlined text-primary">analytics</span>
+                </div>
+                <div className="flex-1 text-left">
+                  <h4 className="text-sm font-bold text-white">Estadísticas de Asistencia</h4>
+                  <p className="text-[9px] text-white/40 uppercase font-bold tracking-widest">Tendencias y Presentismo</p>
+                </div>
+                <span className="material-icons-outlined text-white/20 group-hover:text-primary transition-colors">chevron_right</span>
+              </button>
+
+              <button 
+                onClick={() => setVista('ReporteGrupal')}
+                className="glass-card rounded-3xl p-5 border border-white/5 flex items-center gap-4 active:scale-[0.98] transition-all group"
+              >
+                <div className="w-12 h-12 bg-accent-purple/10 rounded-2xl flex items-center justify-center border border-accent-purple/20 shadow-neon-purple">
+                  <span className="material-icons-outlined text-accent-purple">groups</span>
+                </div>
+                <div className="flex-1 text-left">
+                  <h4 className="text-sm font-bold text-white">Reporte por Grupos</h4>
+                  <p className="text-[9px] text-white/40 uppercase font-bold tracking-widest">Desempeño Colectivo</p>
+                </div>
+                <span className="material-icons-outlined text-white/20 group-hover:text-accent-purple transition-colors">chevron_right</span>
+              </button>
+
+              <button 
+                onClick={() => setVista('TendenciasHabilidades')}
+                className="glass-card rounded-3xl p-5 border border-white/5 flex items-center gap-4 active:scale-[0.98] transition-all group"
+              >
+                <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center border border-emerald-500/20 shadow-neon-emerald">
+                  <span className="material-icons-outlined text-emerald-500">auto_graph</span>
+                </div>
+                <div className="flex-1 text-left">
+                  <h4 className="text-sm font-bold text-white">Tendencias de Habilidades</h4>
+                  <p className="text-[9px] text-white/40 uppercase font-bold tracking-widest">Evolución Técnica</p>
+                </div>
+                <span className="material-icons-outlined text-white/20 group-hover:text-emerald-500 transition-colors">chevron_right</span>
+              </button>
+            </div>
+          </section>
+
           {/* Estado de Asistencia Hoy */}
           <section className="space-y-4">
             <div className="flex justify-between items-end px-1">

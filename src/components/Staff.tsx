@@ -21,6 +21,7 @@ interface StaffProps {
   handleNavigation: (vista: ViewMode) => void;
   setVista: (vista: ViewMode) => void;
   handleDeleteProfesor: (id: string, nombre: string) => void;
+  handleUpdateProfesor: (id: string, nombre: string) => void;
   vista: ViewMode;
   selectedProfesor: string | null;
 }
@@ -42,6 +43,7 @@ export const Staff: React.FC<StaffProps> = ({
   handleNavigation,
   setVista,
   handleDeleteProfesor,
+  handleUpdateProfesor,
   vista,
   selectedProfesor
 }) => {
@@ -129,15 +131,29 @@ export const Staff: React.FC<StaffProps> = ({
                       <p className="text-[10px] text-primary font-black uppercase tracking-widest">Profesor de Gimnasia</p>
                     </div>
                   </div>
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteProfesor(prof.id!, prof.nombre);
-                    }}
-                    className="w-10 h-10 rounded-xl bg-rose-500/10 text-rose-500 border border-rose-500/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <span className="material-icons-outlined text-sm">delete</span>
-                  </button>
+                  <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const newName = prompt("Editar nombre del profesor:", prof.nombre);
+                        if (newName && newName.trim() && newName !== prof.nombre) {
+                          handleUpdateProfesor(prof.id!, newName.trim());
+                        }
+                      }}
+                      className="w-10 h-10 rounded-xl bg-primary/10 text-primary border border-primary/20 flex items-center justify-center"
+                    >
+                      <span className="material-icons-outlined text-sm">edit</span>
+                    </button>
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteProfesor(prof.id!, prof.nombre);
+                      }}
+                      className="w-10 h-10 rounded-xl bg-rose-500/10 text-rose-500 border border-rose-500/20 flex items-center justify-center"
+                    >
+                      <span className="material-icons-outlined text-sm">delete</span>
+                    </button>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-3 gap-2">

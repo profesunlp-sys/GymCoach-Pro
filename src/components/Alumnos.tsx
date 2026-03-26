@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Alumno, GrupoConfig, Skill, AsistenciaRecord, Feedback } from '../../types';
-import { Button } from '../../App';
+import { Button, EditableDropdown, Tooltip } from '../../App';
 
 interface AlumnosProps {
   vista: string;
@@ -45,9 +45,16 @@ interface AlumnosProps {
   newFeedback: string;
   setNewFeedback: (f: string) => void;
   handleAddFeedback: () => void;
+  handleUpdateFeedback: (id: string, text: string) => void;
   handleDeleteFeedback: (id: string) => void;
   setIsBulkImporting: (b: boolean) => void;
   userRole: string;
+  handleSaveLevel: (name: string) => void;
+  handleUpdateLevel: (id: string, name: string) => void;
+  handleDeleteLevel: (id: string) => void;
+  handleQuickSaveGroup: (name: string) => void;
+  handleUpdateGroupQuick: (id: string, name: string) => void;
+  handleDeleteGroup: (group: GrupoConfig) => void;
 }
 
 const Alumnos: React.FC<AlumnosProps> = ({
@@ -92,10 +99,18 @@ const Alumnos: React.FC<AlumnosProps> = ({
   newFeedback,
   setNewFeedback,
   handleAddFeedback,
+  handleUpdateFeedback,
   handleDeleteFeedback,
   setIsBulkImporting,
-  userRole
+  userRole,
+  handleSaveLevel,
+  handleUpdateLevel,
+  handleDeleteLevel,
+  handleQuickSaveGroup,
+  handleUpdateGroupQuick,
+  handleDeleteGroup
 }) => {
+  const [isEditingStudent, setIsEditingStudent] = useState(false);
   if (vista !== 'Alumnos' && vista !== 'AlumnoDetalle') return null;
 
   const filteredAlumnos = alumnos
@@ -206,7 +221,7 @@ const Alumnos: React.FC<AlumnosProps> = ({
               className="overflow-hidden"
             >
               <div className="glass-card rounded-[2rem] p-6 border border-primary/30 bg-primary/5 space-y-6">
-                <h3 className="text-sm font-black text-white uppercase tracking-widest">Nuevo Gimnasta</h3>
+                <h3 className="text-sm font-black text-white uppercase tracking-widest">{isEditingStudent ? 'Editar Gimnasta' : 'Nuevo Gimnasta'}</h3>
                 <div className="grid grid-cols-1 gap-4">
                   <div className="space-y-1">
                     <label className="text-[10px] uppercase font-bold text-white/60 ml-1">Nombre Completo</label>
@@ -244,28 +259,29 @@ const Alumnos: React.FC<AlumnosProps> = ({
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                      <label className="text-[10px] uppercase font-bold text-white/60 ml-1">Grupo</label>
-                      <select 
-                        value={studentForm.grupo}
-                        onChange={(e) => setStudentForm({ ...studentForm, grupo: e.target.value })}
-                        className="w-full bg-antigravity-charcoal border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-primary/50 transition-all"
-                      >
-                        <option value="">Seleccionar...</option>
-                        {grupos.map(g => <option key={g.id} value={g.nombre}>{g.nombre}</option>)}
-                      </select>
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] uppercase font-bold text-white/60 ml-1">Nivel</label>
-                      <select 
-                        value={studentForm.nivel}
-                        onChange={(e) => setStudentForm({ ...studentForm, nivel: e.target.value })}
-                        className="w-full bg-antigravity-charcoal border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-primary/50 transition-all"
-                      >
-                        <option value="">Seleccionar...</option>
-                        {niveles.map(n => <option key={n.id} value={n.nombre}>{n.nombre}</option>)}
-                      </select>
-                    </div>
+                    <EditableDropdown 
+                      label="Grupo"
+                      value={studentForm.grupo || ''}
+                      onChange={(val) => setStudentForm({ ...studentForm, grupo: val })}
+                      options={grupos}
+                      onAdd={handleQuickSaveGroup}
+                      onEdit={handleUpdateGroupQuick}
+                      onDelete={(id) => {
+                        const g = grupos.find(group => group.id === id);
+                        if (g) handleDeleteGroup(g);
+                      }}
+                      placeholder="Seleccionar..."
+                    />
+                    <EditableDropdown 
+                      label="Nivel"
+                      value={studentForm.nivel || ''}
+                      onChange={(val) => setStudentForm({ ...studentForm, nivel: val })}
+                      options={niveles}
+                      onAdd={handleSaveLevel}
+                      onEdit={handleUpdateLevel}
+                      onDelete={handleDeleteLevel}
+                      placeholder="Seleccionar..."
+                    />
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] uppercase font-bold text-white/60 ml-1">Alertas Médicas (Opcional)</label>
@@ -279,17 +295,28 @@ const Alumnos: React.FC<AlumnosProps> = ({
                 </div>
                 <div className="flex gap-3">
                   <Button 
-                    onClick={() => setIsAddingAlumno(false)}
+                    onClick={() => {
+                      setIsAddingAlumno(false);
+                      setIsEditingStudent(false);
+                      setStudentForm({
+                        nombre: '', dni: '', disciplina: 'GAF', nivel: 'Escuela',
+                        fechaNacimiento: '', fechaPrimeraClase: new Date().toISOString().split('T')[0],
+                        alertas: [], contacto: { padreNombre: '', padreTelefono: '', madreNombre: '', madreTelefono: '', emergenciaNombre: '', emergenciaTelefono: '' }
+                      });
+                    }}
                     variant="secondary"
                     className="flex-1 py-4 rounded-2xl"
                   >
                     Cancelar
                   </Button>
                   <Button 
-                    onClick={handleSaveStudent}
+                    onClick={() => {
+                      handleSaveStudent();
+                      setIsEditingStudent(false);
+                    }}
                     className="flex-1 py-4 rounded-2xl shadow-neon-cyan"
                   >
-                    Guardar Gimnasta
+                    {isEditingStudent ? 'Actualizar' : 'Guardar Gimnasta'}
                   </Button>
                 </div>
               </div>
@@ -360,13 +387,25 @@ const Alumnos: React.FC<AlumnosProps> = ({
               <span className="text-4xl font-black text-primary/20 absolute inset-0 flex items-center justify-center select-none">{selectedAlumno.nombre.charAt(0)}</span>
               <span className="text-3xl font-black text-white relative z-10">{selectedAlumno.nombre.charAt(0)}</span>
             </div>
-            <div className="pb-2 space-y-1">
-              <h2 className="text-3xl font-black text-white uppercase tracking-tighter leading-none">{selectedAlumno.nombre}</h2>
-              <div className="flex items-center gap-3">
-                <span className="text-[10px] font-black uppercase tracking-widest text-primary">{selectedAlumno.grupo}</span>
-                <span className="w-1 h-1 rounded-full bg-white/20"></span>
-                <span className="text-[10px] font-black uppercase tracking-widest text-white/60">{selectedAlumno.nivel}</span>
+            <div className="pb-2 flex-1 flex justify-between items-end">
+              <div className="space-y-1">
+                <h2 className="text-3xl font-black text-white uppercase tracking-tighter leading-none">{selectedAlumno.nombre}</h2>
+                <div className="flex items-center gap-3">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-primary">{selectedAlumno.grupo}</span>
+                  <span className="w-1 h-1 rounded-full bg-white/20"></span>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-white/60">{selectedAlumno.nivel}</span>
+                </div>
               </div>
+              <button 
+                onClick={() => {
+                  setStudentForm(selectedAlumno);
+                  setIsEditingStudent(true);
+                  setIsAddingAlumno(true);
+                }}
+                className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary active:scale-90 transition-all"
+              >
+                <span className="material-icons-outlined">edit</span>
+              </button>
             </div>
           </div>
         </div>
@@ -487,13 +526,26 @@ const Alumnos: React.FC<AlumnosProps> = ({
                   {feedbacks.map((f) => (
                     <div key={f.id} className="glass-card rounded-2xl p-4 border border-white/5 space-y-2 relative group">
                       <div className="flex justify-between items-start">
-                        <span className="text-[8px] font-black uppercase tracking-widest text-primary">{f.timestamp}</span>
-                        <button 
-                          onClick={() => handleDeleteFeedback(f.id!)}
-                          className="opacity-0 group-hover:opacity-100 transition-opacity text-white/20 hover:text-rose-500"
-                        >
-                          <span className="material-icons-outlined text-xs">delete</span>
-                        </button>
+                        <span className="text-[8px] font-black uppercase tracking-widest text-primary">{new Date(f.timestamp).toLocaleDateString()}</span>
+                        <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button 
+                            onClick={() => {
+                              const newText = prompt("Editar observación:", f.text);
+                              if (newText && newText.trim() && newText !== f.text) {
+                                handleUpdateFeedback(f.id!, newText.trim());
+                              }
+                            }}
+                            className="text-white/20 hover:text-primary transition-colors"
+                          >
+                            <span className="material-icons-outlined text-xs">edit</span>
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteFeedback(f.id!)}
+                            className="text-white/20 hover:text-rose-500 transition-colors"
+                          >
+                            <span className="material-icons-outlined text-xs">delete</span>
+                          </button>
+                        </div>
                       </div>
                       <p className="text-xs text-white/80 leading-relaxed italic">"{f.text}"</p>
                     </div>

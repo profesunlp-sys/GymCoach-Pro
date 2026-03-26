@@ -31,6 +31,9 @@ export const COLLECTIONS = {
   FEEDBACK: "feedback",
   PROFESORES: "profesores",
   NIVELES: "niveles",
+  DISCIPLINAS: "disciplinas",
+  WARMUP_OPTIONS: "warmup_options",
+  COOLDOWN_OPTIONS: "cooldown_options",
   CONFIG: "config",
   SOURCES: "sources"
 };

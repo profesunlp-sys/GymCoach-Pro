@@ -7,8 +7,8 @@ import Markdown from 'react-markdown';
 interface ManualesProps {
   vista: ViewMode;
   setVista: (vista: ViewMode) => void;
-  DISCIPLINAS: string[];
-  NIVELES: string[];
+  disciplinas: { id?: string, nombre: string }[];
+  niveles: { id?: string, nombre: string }[];
   selectedDisciplina: string;
   setSelectedDisciplina: (val: string) => void;
   selectedNivel: string;
@@ -27,8 +27,8 @@ interface ManualesProps {
 export const Manuales: React.FC<ManualesProps> = ({
   vista,
   setVista,
-  DISCIPLINAS,
-  NIVELES,
+  disciplinas,
+  niveles,
   selectedDisciplina,
   setSelectedDisciplina,
   selectedNivel,
@@ -154,25 +154,25 @@ export const Manuales: React.FC<ManualesProps> = ({
 
       <div className="space-y-6">
         <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
-          {DISCIPLINAS.map(d => (
+          {disciplinas.map(d => (
             <button 
-              key={d}
-              onClick={() => setSelectedDisciplina(d)}
-              className={`px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all ${selectedDisciplina === d ? 'bg-primary text-antigravity-black shadow-neon-cyan' : 'bg-white/5 text-white/60 border border-white/5'}`}
+              key={d.id || d.nombre}
+              onClick={() => setSelectedDisciplina(d.nombre)}
+              className={`px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all ${selectedDisciplina === d.nombre ? 'bg-primary text-antigravity-black shadow-neon-cyan' : 'bg-white/5 text-white/60 border border-white/5'}`}
             >
-              {d}
+              {d.nombre}
             </button>
           ))}
         </div>
 
         <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
-          {NIVELES.map(n => (
+          {niveles.map(n => (
             <button 
-              key={n}
-              onClick={() => setSelectedNivel(n)}
-              className={`px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all ${selectedNivel === n ? 'bg-white text-antigravity-black' : 'bg-white/5 text-white/40 border border-white/5'}`}
+              key={n.id || n.nombre}
+              onClick={() => setSelectedNivel(n.nombre)}
+              className={`px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all ${selectedNivel === n.nombre ? 'bg-white text-antigravity-black' : 'bg-white/5 text-white/40 border border-white/5'}`}
             >
-              {n}
+              {n.nombre}
             </button>
           ))}
         </div>

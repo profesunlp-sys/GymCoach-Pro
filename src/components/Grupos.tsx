@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { GrupoConfig, ViewMode } from '../../types';
+import { EditableDropdown } from '../../App';
 
 interface GruposProps {
   vista: ViewMode;
@@ -22,6 +23,10 @@ interface GruposProps {
   grupos: GrupoConfig[];
   handleDeleteGroup: (group: GrupoConfig) => void;
   setActiveGroup: (group: GrupoConfig) => void;
+  profesoresList: { id?: string, nombre: string }[];
+  handleAddProfesor: (name: string) => void;
+  handleUpdateProfesor: (id: string, name: string) => void;
+  handleDeleteProfesor: (id: string, name: string) => void;
 }
 
 export const Grupos: React.FC<GruposProps> = ({
@@ -43,7 +48,11 @@ export const Grupos: React.FC<GruposProps> = ({
   handleSaveGroup,
   grupos,
   handleDeleteGroup,
-  setActiveGroup
+  setActiveGroup,
+  profesoresList,
+  handleAddProfesor,
+  handleUpdateProfesor,
+  handleDeleteProfesor
 }) => {
   if (vista !== 'Horario') return null;
 
@@ -118,11 +127,25 @@ export const Grupos: React.FC<GruposProps> = ({
                 <h4 className="text-[10px] uppercase font-black text-white/80 tracking-[0.2em]">Información del Grupo</h4>
               </div>
               <div className="space-y-4">
-                <input className="w-full crafted-input"
-                  placeholder="Nombre del Grupo (Ej. Avanzados)" value={newGroupName} onChange={(e) => setNewGroupName(e.target.value)} />
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase font-bold text-white/70 ml-1">Nombre del Grupo</label>
+                  <input className="w-full crafted-input"
+                    placeholder="Ej. Avanzados" value={newGroupName} onChange={(e) => setNewGroupName(e.target.value)} />
+                </div>
                 
-                <input className="w-full crafted-input"
-                  placeholder="Nombre y Apellido del Profesor" value={newCoachName} onChange={(e) => setNewCoachName(e.target.value)} />
+                <EditableDropdown 
+                  label="Profesor"
+                  value={newCoachName}
+                  onChange={setNewCoachName}
+                  options={profesoresList}
+                  onAdd={handleAddProfesor}
+                  onEdit={handleUpdateProfesor}
+                  onDelete={(id) => {
+                    const prof = profesoresList.find(p => p.id === id);
+                    if (prof) handleDeleteProfesor(id, prof.nombre);
+                  }}
+                  placeholder="Seleccionar profesor..."
+                />
               </div>
             </div>
             

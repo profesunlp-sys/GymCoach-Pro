@@ -32,7 +32,7 @@ const LoadingFallback = () => (
   </div>
 );
 
-const Tooltip = ({ children, text }: { children: React.ReactNode, text: string }) => {
+export const Tooltip = ({ children, text }: { children: React.ReactNode, text: string }) => {
   return (
     <div className="relative group flex items-center">
       {children}
@@ -90,7 +90,7 @@ export const Button = ({
   return content;
 };
 
-const EditableDropdown = ({ 
+export const EditableDropdown = ({ 
   label, 
   value, 
   onChange, 
@@ -249,6 +249,9 @@ const App: React.FC = () => {
   const [isSavingProfesor, setIsSavingProfesor] = useState(false);
   const [newProfesorName, setNewProfesorName] = useState('');
   const [profesoresList, setProfesoresList] = useState<{id?: string, nombre: string}[]>([]);
+  const [disciplinas, setDisciplinas] = useState<{id?: string, nombre: string}[]>([]);
+  const [warmupOptions, setWarmupOptions] = useState<{id?: string, nombre: string}[]>([]);
+  const [cooldownOptions, setCooldownOptions] = useState<{id?: string, nombre: string}[]>([]);
 
   // Group Form State
   const [newGroupName, setNewGroupName] = useState("");
@@ -655,6 +658,11 @@ const App: React.FC = () => {
     }
   };
 
+  const [selectedNivelToManage, setSelectedNivelToManage] = useState("");
+  const [selectedDisciplinaToManage, setSelectedDisciplinaToManage] = useState("");
+  const [selectedWarmupToManage, setSelectedWarmupToManage] = useState("");
+  const [selectedCooldownToManage, setSelectedCooldownToManage] = useState("");
+
   const handleLogout = async () => {
     try {
       await auth.signOut();
@@ -841,6 +849,9 @@ const App: React.FC = () => {
       const asis = await getCollectionData(COLLECTIONS.ASISTENCIAS) as AsistenciaRecord[];
       const p = await getCollectionData(COLLECTIONS.PROFESORES) as {id?: string, nombre: string}[];
       const n = await getCollectionData(COLLECTIONS.NIVELES) as {id?: string, nombre: string}[];
+      const d = await getCollectionData(COLLECTIONS.DISCIPLINAS) as {id?: string, nombre: string}[];
+      const w = await getCollectionData(COLLECTIONS.WARMUP_OPTIONS) as {id?: string, nombre: string}[];
+      const co = await getCollectionData(COLLECTIONS.COOLDOWN_OPTIONS) as {id?: string, nombre: string}[];
       const s = await getCollectionData(COLLECTIONS.SOURCES) as Source[];
       setAlumnos(a);
       setClases(c.sort((x, y) => new Date(y.fecha).getTime() - new Date(x.fecha).getTime()));
@@ -853,6 +864,9 @@ const App: React.FC = () => {
         { nombre: 'Pre-Equipo' },
         { nombre: 'Equipo' }
       ]);
+      setDisciplinas(d.length > 0 ? d : DISCIPLINAS.map(name => ({ nombre: name })));
+      setWarmupOptions(w.length > 0 ? w : ['Movilidad articular', 'Trote', 'Juegos', 'Estiramiento dinámico'].map(name => ({ nombre: name })));
+      setCooldownOptions(co.length > 0 ? co : ['Estiramiento pasivo', 'Relajación', 'Feedback grupal'].map(name => ({ nombre: name })));
       
       // Filter global alerts
       setAlertasGlobales(a.filter(student => student.alertas && student.alertas.length > 0 && student.alertas[0] !== ""));
@@ -1079,6 +1093,106 @@ const App: React.FC = () => {
     }
   };
 
+  const handleUpdateProfesor = async (id: string, nombre: string) => {
+    try {
+      await updateDocument(COLLECTIONS.PROFESORES, id, { nombre });
+      setNotificacion({ t: "Éxito", d: "Profesor actualizado." });
+      loadData();
+    } catch (error: any) {
+      setNotificacion({ t: "Error", d: error.message });
+    }
+  };
+
+  const handleSaveDiscipline = async (nombre: string) => {
+    try {
+      await addDocument(COLLECTIONS.DISCIPLINAS, { nombre });
+      setNotificacion({ t: "Éxito", d: "Disciplina añadida." });
+      loadData();
+    } catch (error: any) {
+      setNotificacion({ t: "Error", d: error.message });
+    }
+  };
+
+  const handleUpdateDiscipline = async (id: string, nombre: string) => {
+    try {
+      await updateDocument(COLLECTIONS.DISCIPLINAS, id, { nombre });
+      setNotificacion({ t: "Éxito", d: "Disciplina actualizada." });
+      loadData();
+    } catch (error: any) {
+      setNotificacion({ t: "Error", d: error.message });
+    }
+  };
+
+  const handleDeleteDiscipline = async (id: string) => {
+    requestConfirmation(
+      "Eliminar Disciplina",
+      "¿Estás seguro de que deseas eliminar esta disciplina?",
+      async () => {
+        try {
+          await deleteDocument(COLLECTIONS.DISCIPLINAS, id);
+          setNotificacion({ t: "Éxito", d: "Disciplina eliminada." });
+          loadData();
+        } catch (error: any) {
+          setNotificacion({ t: "Error", d: error.message });
+        }
+      }
+    );
+  };
+
+  const handleSaveWarmupOption = async (nombre: string) => {
+    try {
+      await addDocument(COLLECTIONS.WARMUP_OPTIONS, { nombre });
+      loadData();
+    } catch (error: any) {
+      setNotificacion({ t: "Error", d: error.message });
+    }
+  };
+
+  const handleUpdateWarmupOption = async (id: string, nombre: string) => {
+    try {
+      await updateDocument(COLLECTIONS.WARMUP_OPTIONS, id, { nombre });
+      loadData();
+    } catch (error: any) {
+      setNotificacion({ t: "Error", d: error.message });
+    }
+  };
+
+  const handleDeleteWarmupOption = async (id: string) => {
+    try {
+      await deleteDocument(COLLECTIONS.WARMUP_OPTIONS, id);
+      loadData();
+    } catch (error: any) {
+      setNotificacion({ t: "Error", d: error.message });
+    }
+  };
+
+  const handleSaveCooldownOption = async (nombre: string) => {
+    try {
+      await addDocument(COLLECTIONS.COOLDOWN_OPTIONS, { nombre });
+      loadData();
+    } catch (error: any) {
+      setNotificacion({ t: "Error", d: error.message });
+    }
+  };
+
+  const handleUpdateCooldownOption = async (id: string, nombre: string) => {
+    try {
+      await updateDocument(COLLECTIONS.COOLDOWN_OPTIONS, id, { nombre });
+      loadData();
+    } catch (error: any) {
+      setNotificacion({ t: "Error", d: error.message });
+    }
+  };
+
+  const handleDeleteCooldownOption = async (id: string) => {
+    try {
+      await deleteDocument(COLLECTIONS.COOLDOWN_OPTIONS, id);
+      loadData();
+    } catch (error: any) {
+      setNotificacion({ t: "Error", d: error.message });
+    }
+  };
+
   const handleAddAlumno = async () => {
     if (!newAlumnoForm.nombre.trim()) return;
     try {
@@ -1220,6 +1334,16 @@ const App: React.FC = () => {
       await handleUpdateSkill();
     } else {
       await handleAddSkill();
+    }
+  };
+
+  const handleUpdateFeedback = async (id: string, text: string) => {
+    try {
+      await updateDocument(COLLECTIONS.FEEDBACK, id, { text });
+      setNotificacion({ t: "Éxito", d: "Comentario actualizado." });
+    } catch (error) {
+      console.error("Error updating feedback:", error);
+      setNotificacion({ t: "Error", d: "No se pudo actualizar el comentario." });
     }
   };
 
@@ -1418,41 +1542,53 @@ const App: React.FC = () => {
       setNotificacion({ t: "Error", d: "El DNI es obligatorio." });
       return;
     }
-    if (!studentForm.fechaNacimiento) {
-      setNotificacion({ t: "Error", d: "La fecha de nacimiento es obligatoria." });
-      return;
-    }
 
     setIsSavingStudent(true);
     try {
       const currentYear = new Date().getFullYear();
-      const birthDate = new Date(studentForm.fechaNacimiento);
-      const ageAtEndOfYear = currentYear - (birthDate.getFullYear() || currentYear);
+      const birthDate = studentForm.fechaNacimiento ? new Date(studentForm.fechaNacimiento) : null;
+      const ageAtEndOfYear = birthDate ? currentYear - birthDate.getFullYear() : 0;
 
-      const newStudent: Omit<Alumno, 'id'> = {
-        ...studentForm as Alumno,
+      const studentData: any = {
+        ...studentForm,
         edad: isNaN(ageAtEndOfYear) ? 0 : ageAtEndOfYear,
         dni: studentForm.dni || 'No especificado',
-        grupo: activeGroup?.nombre || 'Sin Grupo',
-        fechaIngreso: new Date().toISOString(),
-        estadoPago: 'Al día',
-        habilidades: [],
-        biometria: { fuerza: 50, flexibilidad: 50, tecnica: 50, resistencia: 50, coordinacion: 50 },
-        qrCode: `QR_${studentForm.dni || new Date().getTime()}`,
-        asistenciasHistoricas: 0
       };
 
-      // Remove undefined values just in case
-      Object.keys(newStudent).forEach(key => {
-        if ((newStudent as any)[key] === undefined) {
-          delete (newStudent as any)[key];
+      // Remove undefined values
+      Object.keys(studentData).forEach(key => {
+        if (studentData[key] === undefined) {
+          delete studentData[key];
         }
       });
 
-      await addDocument(COLLECTIONS.ALUMNOS, newStudent);
+      if (studentForm.id) {
+        await updateDocument(COLLECTIONS.ALUMNOS, studentForm.id, studentData);
+        setNotificacion({ t: "Gimnasta Actualizado", d: `${studentData.nombre} actualizado correctamente.` });
+      } else {
+        const newStudent = {
+          ...studentData,
+          grupo: studentForm.grupo || activeGroup?.nombre || 'Sin Grupo',
+          fechaIngreso: new Date().toISOString(),
+          estadoPago: 'Al día',
+          habilidades: studentForm.habilidades || [],
+          biometria: studentForm.biometria || { fuerza: 50, flexibilidad: 50, tecnica: 50, resistencia: 50, coordinacion: 50 },
+          qrCode: `QR_${studentForm.dni || new Date().getTime()}`,
+          asistenciasHistoricas: 0
+        };
+        await addDocument(COLLECTIONS.ALUMNOS, newStudent);
+        setNotificacion({ t: "Gimnasta Registrado", d: `${newStudent.nombre} añadido.` });
+      }
+
       await loadData();
-      setNotificacion({ t: "Gimnasta Registrado", d: `${newStudent.nombre} añadido.` });
-      handleNavigation('AsistenciaLista');
+      if (vista === 'RegistroAlumno') {
+        handleNavigation('AsistenciaLista');
+      } else if (vista === 'AlumnoDetalle') {
+        // Keep in detail view but refresh selected student
+        const updated = alumnos.find(a => a.id === studentForm.id);
+        if (updated) setSelectedAlumno(updated);
+      }
+      
       setStudentForm({
         nombre: '', dni: '', disciplina: 'GAF', nivel: 'Escuela',
         fechaNacimiento: '', fechaPrimeraClase: new Date().toISOString().split('T')[0],
@@ -2214,6 +2350,10 @@ const App: React.FC = () => {
             grupos={grupos}
             handleDeleteGroup={handleDeleteGroup}
             setActiveGroup={setActiveGroup}
+            profesoresList={profesoresList}
+            handleAddProfesor={handleAddProfesor}
+            handleUpdateProfesor={handleUpdateProfesor}
+            handleDeleteProfesor={handleDeleteProfesor}
           />
         )}
 
@@ -2329,6 +2469,15 @@ const App: React.FC = () => {
             setPlanesFilterDate={setPlanesFilterDate}
             planesFilterCoach={planesFilterCoach}
             setPlanesFilterCoach={setPlanesFilterCoach}
+            disciplinas={disciplinas}
+            warmupOptions={warmupOptions}
+            cooldownOptions={cooldownOptions}
+            handleSaveWarmupOption={handleSaveWarmupOption}
+            handleUpdateWarmupOption={handleUpdateWarmupOption}
+            handleDeleteWarmupOption={handleDeleteWarmupOption}
+            handleSaveCooldownOption={handleSaveCooldownOption}
+            handleUpdateCooldownOption={handleUpdateCooldownOption}
+            handleDeleteCooldownOption={handleDeleteCooldownOption}
           />
         )}
 
@@ -2375,9 +2524,16 @@ const App: React.FC = () => {
             newFeedback={newFeedback}
             setNewFeedback={setNewFeedback}
             handleAddFeedback={handleAddFeedback}
+            handleUpdateFeedback={handleUpdateFeedback}
             handleDeleteFeedback={handleDeleteFeedback}
             setIsBulkImporting={setIsBulkImporting}
             userRole={userRole}
+            handleSaveLevel={handleSaveLevel}
+            handleUpdateLevel={handleUpdateLevel}
+            handleDeleteLevel={handleDeleteLevel}
+            handleQuickSaveGroup={handleQuickSaveGroup}
+            handleUpdateGroupQuick={handleUpdateGroupQuick}
+            handleDeleteGroup={handleDeleteGroup}
           />
         )}
 
@@ -2392,6 +2548,7 @@ const App: React.FC = () => {
             handleAddProfesor={handleAddProfesor}
             profesoresList={profesoresList}
             handleDeleteProfesor={handleDeleteProfesor}
+            handleUpdateProfesor={handleUpdateProfesor}
             isSavingProfesor={isSavingProfesor}
             clases={clases}
             grupos={grupos}
@@ -2427,8 +2584,8 @@ const App: React.FC = () => {
           <Manuales 
             vista={vista}
             setVista={setVista}
-            DISCIPLINAS={DISCIPLINAS}
-            NIVELES={DEFAULT_NIVELES}
+            disciplinas={disciplinas}
+            niveles={niveles}
             selectedDisciplina={selectedDisciplina}
             setSelectedDisciplina={setSelectedDisciplina}
             selectedNivel={selectedNivelFilter}
@@ -2694,6 +2851,65 @@ const App: React.FC = () => {
                     </div>
                     <span className="material-icons-outlined text-white/60 text-sm">chevron_right</span>
                   </label>
+                </div>
+              </div>
+
+              {/* Configuración de Listas */}
+              <div className="space-y-4">
+                <h3 className="text-white/70 text-[10px] font-bold uppercase tracking-widest px-2">Configuración de Listas</h3>
+                
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <EditableDropdown 
+                      label="Niveles"
+                      options={niveles}
+                      value={selectedNivelToManage}
+                      onChange={setSelectedNivelToManage}
+                      onAdd={handleSaveLevel}
+                      onEdit={handleUpdateLevel}
+                      onDelete={handleDeleteLevel}
+                      placeholder="Gestionar Niveles..."
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <EditableDropdown 
+                      label="Disciplinas"
+                      options={disciplinas}
+                      value={selectedDisciplinaToManage}
+                      onChange={setSelectedDisciplinaToManage}
+                      onAdd={handleSaveDiscipline}
+                      onEdit={handleUpdateDiscipline}
+                      onDelete={handleDeleteDiscipline}
+                      placeholder="Gestionar Disciplinas..."
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <EditableDropdown 
+                      label="Opciones de Entrada en Calor"
+                      options={warmupOptions}
+                      value={selectedWarmupToManage}
+                      onChange={setSelectedWarmupToManage}
+                      onAdd={handleSaveWarmupOption}
+                      onEdit={handleUpdateWarmupOption}
+                      onDelete={handleDeleteWarmupOption}
+                      placeholder="Gestionar Entrada en Calor..."
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <EditableDropdown 
+                      label="Opciones de Vuelta a la Calma"
+                      options={cooldownOptions}
+                      value={selectedCooldownToManage}
+                      onChange={setSelectedCooldownToManage}
+                      onAdd={handleSaveCooldownOption}
+                      onEdit={handleUpdateCooldownOption}
+                      onDelete={handleDeleteCooldownOption}
+                      placeholder="Gestionar Vuelta a la Calma..."
+                    />
+                  </div>
                 </div>
               </div>
 
