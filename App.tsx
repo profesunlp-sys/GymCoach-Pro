@@ -16,7 +16,6 @@ import { collection, query, where, getDocs, addDoc, doc, updateDoc, onSnapshot, 
 import { signInWithPopup, signOut, onAuthStateChanged, User, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, setPersistence, browserLocalPersistence, browserSessionPersistence } from 'firebase/auth';
 // Lazy loaded components
 const Dashboard = lazy(() => import('./src/components/Dashboard').then(module => ({ default: module.Dashboard })));
-const CoachAI = lazy(() => import('./src/components/CoachAI').then(module => ({ default: module.CoachAI })));
 const Staff = lazy(() => import('./src/components/Staff').then(module => ({ default: module.Staff })));
 const Finanzas = lazy(() => import('./src/components/Finanzas').then(module => ({ default: module.Finanzas })));
 const Manuales = lazy(() => import('./src/components/Manuales').then(module => ({ default: module.Manuales })));
@@ -2173,6 +2172,8 @@ const App: React.FC = () => {
               grupos={grupos}
               alumnos={alumnos}
               clases={clases}
+              asistencias={asistencias}
+              feedbacks={feedbacks}
               profesoresList={profesoresList}
               setVista={setVista}
               handleNavigation={handleNavigation}
@@ -2435,6 +2436,14 @@ const App: React.FC = () => {
             selectedNivel={selectedNivelFilter}
             setSelectedNivel={setSelectedNivelFilter}
             SKILL_TREE={SKILL_TREE}
+            sources={sources}
+            kbMessages={kbMessages}
+            isKbLoading={isKbLoading}
+            kbInput={kbInput}
+            setKbInput={setKbInput}
+            handleKbQuery={handleKbQuery}
+            handleFileUpload={handleFileUpload}
+            handleDeleteSource={handleDeleteSource}
           />
         )}
 
@@ -2590,10 +2599,6 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {vista === 'Asistente' && (
-          <CoachAI />
-        )}
-
         {vista === 'Ajustes' && (
           <div className="px-6 py-8 space-y-8 page-transition pb-24">
             <header>
@@ -2721,7 +2726,8 @@ const App: React.FC = () => {
           {[
             { v: 'Dashboard', i: 'grid_view', l: 'Inicio' },
             { v: 'Alumnos', i: 'group', l: 'Gimnastas' },
-            { v: userRole === 'Coordinator' ? 'Profesores' : 'Horario', i: userRole === 'Coordinator' ? 'badge' : 'calendar_today', l: userRole === 'Coordinator' ? 'Staff' : 'Horario' },
+            { v: 'Clases', i: 'fitness_center', l: 'Clases' },
+            { v: 'Planes', i: 'psychology', l: 'Manuales' },
             { v: 'Ajustes', i: 'app_settings_alt', l: 'Ajustes' }
           ].map(item => (
             <button 
@@ -2730,11 +2736,11 @@ const App: React.FC = () => {
                 if (item.v === 'Alumnos') setAlumnosFilterMode('all');
                 handleNavigation(item.v as ViewMode);
               }} 
-              className={`flex flex-col items-center gap-1.5 transition-all flex-1 ${vista === item.v || (vista === 'AsistenciaLista' && item.v === 'Horario') ? 'text-neon-cyan active-glow' : 'text-white/60 hover:text-white'}`}
+              className={`flex flex-col items-center gap-1.5 transition-all flex-1 ${vista === item.v || (vista === 'AsistenciaLista' && item.v === 'Horario') || (vista === 'NuevaClase' && item.v === 'Clases') ? 'text-neon-cyan active-glow' : 'text-white/60 hover:text-white'}`}
             >
-              <span className={`material-symbols-outlined text-[26px] font-light ${vista === item.v || (vista === 'AsistenciaLista' && item.v === 'Horario') ? 'neon-glow-cyan' : ''}`}>{item.i}</span>
-              <span className={`text-[9px] uppercase tracking-wide ${vista === item.v || (vista === 'AsistenciaLista' && item.v === 'Horario') ? 'font-bold' : 'font-medium'}`}>
-                {item.v === 'Horario' ? 'Horario' : item.l}
+              <span className={`material-symbols-outlined text-[26px] font-light ${vista === item.v || (vista === 'AsistenciaLista' && item.v === 'Horario') || (vista === 'NuevaClase' && item.v === 'Clases') ? 'neon-glow-cyan' : ''}`}>{item.i}</span>
+              <span className={`text-[9px] uppercase tracking-wide ${vista === item.v || (vista === 'AsistenciaLista' && item.v === 'Horario') || (vista === 'NuevaClase' && item.v === 'Clases') ? 'font-bold' : 'font-medium'}`}>
+                {item.l}
               </span>
             </button>
           ))}

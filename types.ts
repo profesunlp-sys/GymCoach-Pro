@@ -107,6 +107,7 @@ export interface Feedback {
   author: string;
   text: string;
   timestamp: string;
+  urgente?: boolean;
 }
 
 export interface Source {
