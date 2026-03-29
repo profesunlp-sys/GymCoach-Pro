@@ -1750,6 +1750,23 @@ const App: React.FC = () => {
     }
   };
 
+  const handleToggleSkillFavorite = async (skillId: string) => {
+    if (!selectedAlumno || !selectedAlumno.id) return;
+    try {
+      const updatedHabilidades = (selectedAlumno.habilidades || []).map(skill => {
+        if (skill.id === skillId) {
+          return { ...skill, favorite: !skill.favorite };
+        }
+        return skill;
+      });
+      await updateDocument(COLLECTIONS.ALUMNOS, selectedAlumno.id, { habilidades: updatedHabilidades });
+      setSelectedAlumno({ ...selectedAlumno, habilidades: updatedHabilidades });
+      loadData();
+    } catch (error) {
+      console.error("Error toggling skill favorite:", error);
+    }
+  };
+
   const handleDeleteSkill = async (skillId: string) => {
     if (!selectedAlumno || !selectedAlumno.id) return;
     requestConfirmation(
@@ -2412,6 +2429,7 @@ const App: React.FC = () => {
             setPlanesFilterDate={setPlanesFilterDate}
             planesFilterCoach={planesFilterCoach}
             setPlanesFilterCoach={setPlanesFilterCoach}
+            setSelectedAlumno={setSelectedAlumno}
           />
         )}
 
@@ -2534,6 +2552,8 @@ const App: React.FC = () => {
             handleQuickSaveGroup={handleQuickSaveGroup}
             handleUpdateGroupQuick={handleUpdateGroupQuick}
             handleDeleteGroup={handleDeleteGroup}
+            handleUpdateSkill={handleUpdateSkill}
+            handleToggleSkillFavorite={handleToggleSkillFavorite}
           />
         )}
 
@@ -2558,6 +2578,8 @@ const App: React.FC = () => {
             handleNavigation={handleNavigation}
             selectedProfesor={selectedProfesor}
             userRole={userRole}
+            setSelectedClase={setSelectedClase}
+            setNotificacion={setNotificacion}
           />
         )}
 

@@ -113,9 +113,18 @@ export const Manuales: React.FC<ManualesProps> = ({
               </div>
             ) : (
               kbMessages.map((msg, idx) => (
-                <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-[85%] px-4 py-2 rounded-2xl text-xs ${msg.role === 'user' ? 'bg-primary text-antigravity-black font-bold' : 'bg-white/5 text-white/90 border border-white/10'}`}>
-                    <Markdown>{msg.text}</Markdown>
+                <div key={idx} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+                  <span className={`text-[8px] font-black uppercase tracking-widest mb-1 ${msg.role === 'user' ? 'text-primary' : 'text-white/40'}`}>
+                    {msg.role === 'user' ? 'Tú' : 'Asistente Técnico'}
+                  </span>
+                  <div className={`max-w-[85%] px-4 py-3 rounded-2xl text-xs leading-relaxed ${
+                    msg.role === 'user' 
+                      ? 'bg-primary text-antigravity-black font-bold shadow-neon-cyan rounded-tr-none' 
+                      : 'bg-white/10 text-white/90 border border-white/10 rounded-tl-none'
+                  }`}>
+                    <div className="prose prose-invert prose-xs max-w-none">
+                      <Markdown>{msg.text}</Markdown>
+                    </div>
                   </div>
                 </div>
               ))

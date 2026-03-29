@@ -55,6 +55,8 @@ interface AlumnosProps {
   handleQuickSaveGroup: (name: string) => void;
   handleUpdateGroupQuick: (id: string, name: string) => void;
   handleDeleteGroup: (group: GrupoConfig) => void;
+  handleUpdateSkill: () => void;
+  handleToggleSkillFavorite: (skillId: string) => void;
 }
 
 const Alumnos: React.FC<AlumnosProps> = ({
@@ -108,8 +110,11 @@ const Alumnos: React.FC<AlumnosProps> = ({
   handleDeleteLevel,
   handleQuickSaveGroup,
   handleUpdateGroupQuick,
-  handleDeleteGroup
+  handleDeleteGroup,
+  handleUpdateSkill,
+  handleToggleSkillFavorite
 }) => {
+  const [activeTab, setActiveTab] = useState<'Progreso' | 'Asistencia' | 'Contacto'>('Progreso');
   const [isEditingStudent, setIsEditingStudent] = useState(false);
   if (vista !== 'Alumnos' && vista !== 'AlumnoDetalle') return null;
 
@@ -443,116 +448,219 @@ const Alumnos: React.FC<AlumnosProps> = ({
           {/* Tabs Section */}
           <div className="space-y-6">
             <div className="flex border-b border-white/5">
-              <button className="px-4 py-2 text-[10px] font-black uppercase tracking-widest text-primary border-b-2 border-primary">Progreso</button>
-              <button className="px-4 py-2 text-[10px] font-black uppercase tracking-widest text-white/40">Asistencia</button>
-              <button className="px-4 py-2 text-[10px] font-black uppercase tracking-widest text-white/40">Contacto</button>
+              <button 
+                onClick={() => setActiveTab('Progreso')}
+                className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'Progreso' ? 'text-primary border-b-2 border-primary' : 'text-white/40'}`}
+              >
+                Progreso
+              </button>
+              <button 
+                onClick={() => setActiveTab('Asistencia')}
+                className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'Asistencia' ? 'text-primary border-b-2 border-primary' : 'text-white/40'}`}
+              >
+                Asistencia
+              </button>
+              <button 
+                onClick={() => setActiveTab('Contacto')}
+                className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'Contacto' ? 'text-primary border-b-2 border-primary' : 'text-white/40'}`}
+              >
+                Contacto
+              </button>
             </div>
 
-            {/* Skills Section */}
-            <div className="space-y-4">
-              <div className="flex justify-between items-center px-1">
-                <h3 className="text-sm font-black text-white uppercase tracking-widest">Habilidades</h3>
-                <Button 
-                  onClick={() => setIsAddingSkill(true)}
-                  className="!py-1.5 !px-3 !text-[8px]"
-                >
-                  Añadir Skill
-                </Button>
-              </div>
-
-              {/* Skill Filters */}
-              <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
-                {['Todos', 'Suelo', 'Salto', 'Viga', 'Paralelas'].map(app => (
-                  <button 
-                    key={app}
-                    onClick={() => setSkillApparatusFilter(app)}
-                    className={`px-4 py-2 rounded-full text-[8px] font-black uppercase tracking-widest whitespace-nowrap transition-all ${skillApparatusFilter === app ? 'bg-primary text-antigravity-black' : 'bg-white/5 text-white/40'}`}
-                  >
-                    {app}
-                  </button>
-                ))}
-              </div>
-
-              <div className="space-y-3">
-                {selectedAlumno.habilidades?.filter((s: Skill) => skillApparatusFilter === 'Todos' || s.apparatus === skillApparatusFilter).map((skill: Skill) => (
-                  <div key={skill.id} className="glass-card rounded-2xl p-4 border border-white/5 flex items-center justify-between group">
-                    <div className="flex items-center gap-4">
-                      <div className={`w-2 h-2 rounded-full ${skill.status === 'Logrado' ? 'bg-emerald-500 shadow-neon-emerald' : skill.status === 'En Proceso' ? 'bg-amber-500 shadow-neon-amber' : 'bg-white/20'}`}></div>
-                      <div>
-                        <h4 className="text-xs font-bold text-white">{skill.name}</h4>
-                        <span className="text-[8px] font-black uppercase tracking-widest text-white/40">{skill.apparatus} • Nivel {skill.level}</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button 
-                        onClick={() => {
-                          setEditingSkillId(skill.id);
-                          setEditingSkillData(skill);
-                          setIsAddingSkill(true);
-                        }}
-                        className="p-2 text-white/40 hover:text-primary transition-colors"
-                      >
-                        <span className="material-icons-outlined text-sm">edit</span>
-                      </button>
-                      <button 
-                        onClick={() => handleDeleteSkill(skill.id)}
-                        className="p-2 text-white/40 hover:text-rose-500 transition-colors"
-                      >
-                        <span className="material-icons-outlined text-sm">delete</span>
-                      </button>
-                    </div>
+            {activeTab === 'Progreso' && (
+              <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2">
+                {/* Skills Section */}
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center px-1">
+                    <h3 className="text-sm font-black text-white uppercase tracking-widest">Habilidades</h3>
+                    <Button 
+                      onClick={() => setIsAddingSkill(true)}
+                      className="!py-1.5 !px-3 !text-[8px]"
+                    >
+                      Añadir Skill
+                    </Button>
                   </div>
-                ))}
-              </div>
-            </div>
 
-            {/* Feedback Section */}
-            <div className="space-y-4">
-              <h3 className="text-sm font-black text-white uppercase tracking-widest px-1">Observaciones del Coach</h3>
-              <div className="space-y-4">
-                <div className="flex gap-2">
-                  <input 
-                    type="text" 
-                    value={newFeedback}
-                    onChange={(e) => setNewFeedback(e.target.value)}
-                    placeholder="Escribir observación..."
-                    className="flex-1 bg-antigravity-charcoal border border-white/10 rounded-xl px-4 py-3 text-xs text-white outline-none focus:border-primary/50 transition-all"
-                  />
-                  <Button onClick={handleAddFeedback} className="!px-4">
-                    <span className="material-icons-outlined text-sm">send</span>
-                  </Button>
-                </div>
-                <div className="space-y-3">
-                  {feedbacks.map((f) => (
-                    <div key={f.id} className="glass-card rounded-2xl p-4 border border-white/5 space-y-2 relative group">
-                      <div className="flex justify-between items-start">
-                        <span className="text-[8px] font-black uppercase tracking-widest text-primary">{new Date(f.timestamp).toLocaleDateString()}</span>
-                        <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  {/* Skill Filters */}
+                  <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
+                    {['Todos', 'Suelo', 'Salto', 'Viga', 'Paralelas'].map(app => (
+                      <button 
+                        key={app}
+                        onClick={() => setSkillApparatusFilter(app)}
+                        className={`px-4 py-2 rounded-full text-[8px] font-black uppercase tracking-widest whitespace-nowrap transition-all ${skillApparatusFilter === app ? 'bg-primary text-antigravity-black' : 'bg-white/5 text-white/40'}`}
+                      >
+                        {app}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="space-y-3">
+                    {selectedAlumno.habilidades?.filter((s: Skill) => skillApparatusFilter === 'Todos' || s.apparatus === skillApparatusFilter).map((skill: Skill) => (
+                      <div key={skill.id} className="glass-card rounded-2xl p-4 border border-white/5 flex items-center justify-between group">
+                        <div className="flex items-center gap-4">
+                          <div className={`w-2 h-2 rounded-full ${skill.status === 'Logrado' ? 'bg-emerald-500 shadow-neon-emerald' : skill.status === 'En Proceso' ? 'bg-amber-500 shadow-neon-amber' : 'bg-white/20'}`}></div>
+                          <div>
+                            <h4 className="text-xs font-bold text-white">{skill.name}</h4>
+                            <span className="text-[8px] font-black uppercase tracking-widest text-white/40">{skill.apparatus} • Nivel {skill.level}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button 
                             onClick={() => {
-                              const newText = prompt("Editar observación:", f.text);
-                              if (newText && newText.trim() && newText !== f.text) {
-                                handleUpdateFeedback(f.id!, newText.trim());
-                              }
+                              setEditingSkillId(skill.id);
+                              setEditingSkillData(skill);
+                              setIsAddingSkill(true);
                             }}
-                            className="text-white/20 hover:text-primary transition-colors"
+                            className="p-2 text-white/40 hover:text-primary transition-colors"
                           >
-                            <span className="material-icons-outlined text-xs">edit</span>
+                            <span className="material-icons-outlined text-sm">edit</span>
                           </button>
                           <button 
-                            onClick={() => handleDeleteFeedback(f.id!)}
-                            className="text-white/20 hover:text-rose-500 transition-colors"
+                            onClick={() => handleDeleteSkill(skill.id)}
+                            className="p-2 text-white/40 hover:text-rose-500 transition-colors"
                           >
-                            <span className="material-icons-outlined text-xs">delete</span>
+                            <span className="material-icons-outlined text-sm">delete</span>
                           </button>
                         </div>
                       </div>
-                      <p className="text-xs text-white/80 leading-relaxed italic">"{f.text}"</p>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Feedback Section */}
+                <div className="space-y-4">
+                  <h3 className="text-sm font-black text-white uppercase tracking-widest px-1">Observaciones del Coach</h3>
+                  <div className="space-y-4">
+                    <div className="flex gap-2">
+                      <input 
+                        type="text" 
+                        value={newFeedback}
+                        onChange={(e) => setNewFeedback(e.target.value)}
+                        placeholder="Escribir observación..."
+                        className="flex-1 bg-antigravity-charcoal border border-white/10 rounded-xl px-4 py-3 text-xs text-white outline-none focus:border-primary/50 transition-all"
+                      />
+                      <Button onClick={handleAddFeedback} className="!px-4">
+                        <span className="material-icons-outlined text-sm">send</span>
+                      </Button>
                     </div>
-                  ))}
+                    <div className="space-y-3">
+                      {feedbacks.map((f) => (
+                        <div key={f.id} className="glass-card rounded-2xl p-4 border border-white/5 space-y-2 relative group">
+                          <div className="flex justify-between items-start">
+                            <span className="text-[8px] font-black uppercase tracking-widest text-primary">{new Date(f.timestamp).toLocaleDateString()}</span>
+                            <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button 
+                                onClick={() => {
+                                  const newText = prompt("Editar observación:", f.text);
+                                  if (newText && newText.trim() && newText !== f.text) {
+                                    handleUpdateFeedback(f.id!, newText.trim());
+                                  }
+                                }}
+                                className="text-white/20 hover:text-primary transition-colors"
+                              >
+                                <span className="material-icons-outlined text-xs">edit</span>
+                              </button>
+                              <button 
+                                onClick={() => handleDeleteFeedback(f.id!)}
+                                className="text-white/20 hover:text-rose-500 transition-colors"
+                              >
+                                <span className="material-icons-outlined text-xs">delete</span>
+                              </button>
+                            </div>
+                          </div>
+                          <p className="text-xs text-white/80 leading-relaxed italic">"{f.text}"</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
+
+            {activeTab === 'Asistencia' && (
+              <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
+                <h3 className="text-sm font-black text-white uppercase tracking-widest px-1">Historial de Asistencia</h3>
+                <div className="space-y-2">
+                  {isLoadingAsistencias ? (
+                    <div className="p-10 text-center text-white/40 italic">Cargando asistencias...</div>
+                  ) : alumnoAsistencias.length > 0 ? (
+                    alumnoAsistencias.map((a, idx) => (
+                      <div key={idx} className="glass-card rounded-2xl p-4 border border-white/5 flex justify-between items-center">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${a.presente ? 'bg-emerald-500/20 text-emerald-500' : 'bg-rose-500/20 text-rose-500'}`}>
+                            <span className="material-icons-outlined text-sm">{a.presente ? 'check_circle' : 'cancel'}</span>
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-white">{new Date(a.fecha).toLocaleDateString()}</p>
+                            <p className="text-[8px] text-white/40 uppercase font-black tracking-widest">{a.grupo}</p>
+                          </div>
+                        </div>
+                        <span className={`text-[10px] font-black uppercase tracking-widest ${a.presente ? 'text-emerald-500' : 'text-rose-500'}`}>
+                          {a.presente ? 'Presente' : 'Ausente'}
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="p-10 text-center text-white/40 italic">No hay registros de asistencia.</div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'Contacto' && (
+              <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
+                <h3 className="text-sm font-black text-white uppercase tracking-widest px-1">Información de Contacto</h3>
+                <div className="grid grid-cols-1 gap-4">
+                  <div className="glass-card rounded-3xl p-6 border border-white/5 space-y-4">
+                    <div className="flex items-center gap-3 text-primary">
+                      <span className="material-icons-outlined">family_restroom</span>
+                      <h4 className="text-[10px] font-black uppercase tracking-widest">Familia y Emergencia</h4>
+                    </div>
+                    <div className="grid grid-cols-1 gap-4">
+                      {selectedAlumno.contacto?.padreNombre && (
+                        <div className="space-y-1">
+                          <p className="text-[8px] text-white/40 uppercase font-black tracking-widest">Padre</p>
+                          <p className="text-xs text-white font-bold">{selectedAlumno.contacto.padreNombre}</p>
+                          <p className="text-xs text-primary">{selectedAlumno.contacto.padreTelefono}</p>
+                        </div>
+                      )}
+                      {selectedAlumno.contacto?.madreNombre && (
+                        <div className="space-y-1">
+                          <p className="text-[8px] text-white/40 uppercase font-black tracking-widest">Madre</p>
+                          <p className="text-xs text-white font-bold">{selectedAlumno.contacto.madreNombre}</p>
+                          <p className="text-xs text-primary">{selectedAlumno.contacto.madreTelefono}</p>
+                        </div>
+                      )}
+                      {selectedAlumno.contacto?.emergenciaNombre && (
+                        <div className="bg-rose-500/10 border border-rose-500/20 rounded-2xl p-4 space-y-1">
+                          <p className="text-[8px] text-rose-500 uppercase font-black tracking-widest">Emergencia</p>
+                          <p className="text-xs text-white font-bold">{selectedAlumno.contacto.emergenciaNombre}</p>
+                          <p className="text-xs text-rose-500 font-black">{selectedAlumno.contacto.emergenciaTelefono}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="glass-card rounded-3xl p-6 border border-white/5 space-y-4">
+                    <div className="flex items-center gap-3 text-primary">
+                      <span className="material-icons-outlined">info</span>
+                      <h4 className="text-[10px] font-black uppercase tracking-widest">Datos Generales</h4>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <p className="text-[8px] text-white/40 uppercase font-black tracking-widest">DNI</p>
+                        <p className="text-xs text-white font-bold">{selectedAlumno.dni}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-[8px] text-white/40 uppercase font-black tracking-widest">Ingreso</p>
+                        <p className="text-xs text-white font-bold">{new Date(selectedAlumno.fechaIngreso).toLocaleDateString()}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Danger Zone */}
             <div className="pt-8 border-t border-white/5">

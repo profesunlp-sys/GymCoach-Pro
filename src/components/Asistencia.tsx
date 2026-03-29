@@ -57,6 +57,7 @@ interface AsistenciaProps {
   setPlanesFilterDate: (d: string) => void;
   planesFilterCoach: string;
   setPlanesFilterCoach: (c: string) => void;
+  setSelectedAlumno: (alumno: Alumno) => void;
 }
 
 export const Asistencia: React.FC<AsistenciaProps> = ({
@@ -112,7 +113,8 @@ export const Asistencia: React.FC<AsistenciaProps> = ({
   planesFilterCoach,
   setPlanesFilterCoach,
   handleExportGroupAttendance,
-  handleExportAllAttendance
+  handleExportAllAttendance,
+  setSelectedAlumno
 }) => {
   if (vista === 'RegistroAlumno' && activeGroup) {
     return (
@@ -497,7 +499,10 @@ export const Asistencia: React.FC<AsistenciaProps> = ({
 
                   <div className="grid grid-cols-2 gap-3">
                     <button 
-                      onClick={() => handleNavigation('AlumnoDetalle')}
+                      onClick={() => {
+                        setSelectedAlumno(alumno);
+                        handleNavigation('AlumnoDetalle');
+                      }}
                       className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-white/5 border border-white/10 text-white/80 text-[10px] font-bold uppercase tracking-widest hover:bg-white/10 transition-all"
                     >
                       <span className="material-icons-outlined text-sm">visibility</span>

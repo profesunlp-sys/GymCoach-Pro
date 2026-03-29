@@ -24,6 +24,8 @@ interface StaffProps {
   handleUpdateProfesor: (id: string, nombre: string) => void;
   vista: ViewMode;
   selectedProfesor: string | null;
+  setSelectedClase: (clase: Clase | null) => void;
+  setNotificacion: (notif: { t: string, d: string } | null) => void;
 }
 
 export const Staff: React.FC<StaffProps> = ({
@@ -45,7 +47,9 @@ export const Staff: React.FC<StaffProps> = ({
   handleDeleteProfesor,
   handleUpdateProfesor,
   vista,
-  selectedProfesor
+  selectedProfesor,
+  setSelectedClase,
+  setNotificacion
 }) => {
   if (vista === 'Profesores') {
     return (
@@ -291,11 +295,20 @@ export const Staff: React.FC<StaffProps> = ({
         <section className="space-y-4">
           <div className="flex justify-between items-end px-1">
             <h3 className="text-[10px] uppercase font-black text-white/40 tracking-[0.2em]">Historial de clases</h3>
-            <button className="text-[10px] text-primary font-bold uppercase">Ver todo</button>
+            <button 
+              onClick={() => handleNavigation('HistorialClases')}
+              className="text-[10px] text-primary font-bold uppercase hover:underline"
+            >
+              Ver todo
+            </button>
           </div>
           <div className="space-y-3">
             {profClases.slice(0, 5).map(clase => (
-              <div key={clase.id} className="glass-card rounded-2xl p-5 border border-white/5 flex items-center gap-4">
+              <div 
+                key={clase.id} 
+                onClick={() => { setSelectedClase?.(clase); setVista('ClaseDetalle'); }}
+                className="glass-card rounded-2xl p-5 border border-white/5 flex items-center gap-4 cursor-pointer hover:border-primary/30 transition-all"
+              >
                 <div className="w-10 h-10 bg-white/5 rounded-xl flex items-center justify-center text-white/40">
                   <span className="material-icons-outlined text-sm">event</span>
                 </div>
@@ -309,7 +322,13 @@ export const Staff: React.FC<StaffProps> = ({
           </div>
         </section>
 
-        <Button className="w-full py-4 rounded-2xl shadow-neon-cyan flex items-center justify-center gap-2">
+        <Button 
+          onClick={() => {
+            setNotificacion?.({ t: "Feedback", d: "Sección de feedback en desarrollo. Próximamente disponible." });
+            setTimeout(() => setNotificacion?.(null), 3000);
+          }}
+          className="w-full py-4 rounded-2xl shadow-neon-cyan flex items-center justify-center gap-2"
+        >
           <span className="material-icons-outlined">feedback</span>
           Ver Feedback del Coordinador
         </Button>
