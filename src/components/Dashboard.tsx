@@ -326,6 +326,20 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 </div>
                 <span className="material-icons-outlined text-white/20 group-hover:text-emerald-500 transition-colors">chevron_right</span>
               </button>
+
+              <button 
+                onClick={() => setVista('ReporteBiometrico')}
+                className="glass-card rounded-3xl p-5 border border-white/5 flex items-center gap-4 active:scale-[0.98] transition-all group"
+              >
+                <div className="w-12 h-12 bg-amber-500/10 rounded-2xl flex items-center justify-center border border-amber-500/20 shadow-neon-amber">
+                  <span className="material-icons-outlined text-amber-500">biotech</span>
+                </div>
+                <div className="flex-1 text-left">
+                  <h4 className="text-sm font-bold text-white">Mapeo Biofísico</h4>
+                  <p className="text-[9px] text-white/40 uppercase font-bold tracking-widest">Análisis de Condición Física</p>
+                </div>
+                <span className="material-icons-outlined text-white/20 group-hover:text-amber-500 transition-colors">chevron_right</span>
+              </button>
             </div>
           </section>
 
@@ -587,6 +601,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       <span className="material-icons-outlined text-rose-500 text-xl">emergency</span>
                       <span className="text-[8px] font-bold text-white uppercase tracking-tighter">S.O.S</span>
                       <span className="text-[7px] text-white/40 uppercase">Emergencias</span>
+                    </button>
+                    <button 
+                      onClick={() => setVista('ReporteBiometrico')}
+                      className="glass-card rounded-2xl p-4 border border-white/5 flex flex-col items-center gap-2 active:scale-95 transition-all"
+                    >
+                      <span className="material-icons-outlined text-amber-500 text-xl">biotech</span>
+                      <span className="text-[8px] font-bold text-white uppercase tracking-tighter">Mapeo Bio</span>
+                      <span className="text-[7px] text-white/40 uppercase">Condición</span>
                     </button>
                     {(userRole as string) === 'Coordinator' && (
                       <button 

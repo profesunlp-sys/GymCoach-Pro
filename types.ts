@@ -119,4 +119,4 @@ export interface Source {
   uploadDate: string;
 }
 
-export type ViewMode = 'Dashboard' | 'Horario' | 'Alumnos' | 'Ajustes' | 'NuevaClase' | 'RegistroAlumno' | 'AsistenciaLista' | 'ReportePDF' | 'ClaseDetalle' | 'Planes' | 'AlumnoDetalle' | 'Profesores' | 'ProfesorDetalle' | 'Emergencias' | 'AsistenciaStats' | 'HistorialClases' | 'Clases' | 'ReporteGrupal' | 'TendenciasHabilidades';
+export type ViewMode = 'Dashboard' | 'Horario' | 'Alumnos' | 'Ajustes' | 'NuevaClase' | 'RegistroAlumno' | 'AsistenciaLista' | 'ReportePDF' | 'ClaseDetalle' | 'Planes' | 'AlumnoDetalle' | 'Profesores' | 'ProfesorDetalle' | 'Emergencias' | 'AsistenciaStats' | 'HistorialClases' | 'Clases' | 'ReporteGrupal' | 'TendenciasHabilidades' | 'ReporteBiometrico';

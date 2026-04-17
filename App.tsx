@@ -228,6 +228,8 @@ const App: React.FC = () => {
   const [selectedDisciplina, setSelectedDisciplina] = useState<string>('Todas');
   const [selectedGrupoFilter, setSelectedGrupoFilter] = useState<string>('Todos');
   const [selectedNivelFilter, setSelectedNivelFilter] = useState<string>('Todos');
+  const [selectedAgeFilter, setSelectedAgeFilter] = useState<string>('Todos');
+  const [selectedPhysicalFilter, setSelectedPhysicalFilter] = useState<string>('Cualquiera');
   const [asistenciasClase, setAsistenciasClase] = useState<AsistenciaRecord[]>([]);
   const [asistencias, setAsistencias] = useState<AsistenciaRecord[]>([]);
   const [isLoadingAsistenciasClase, setIsLoadingAsistenciasClase] = useState(false);
@@ -1054,6 +1056,18 @@ const App: React.FC = () => {
       loadData();
     } catch (error: any) {
       setNotificacion({ t: "Error", d: error.message });
+    }
+  };
+
+  const handleUpdateBiometrics = async (alumnoId: string, biometria: any) => {
+    try {
+      await updateDocument(COLLECTIONS.ALUMNOS, alumnoId, { biometria });
+      if (selectedAlumno?.id === alumnoId) {
+        setSelectedAlumno({ ...selectedAlumno, biometria });
+      }
+      loadData();
+    } catch (error) {
+      console.error("Error updating biometrics:", error);
     }
   };
 
@@ -2554,6 +2568,11 @@ const App: React.FC = () => {
             handleDeleteGroup={handleDeleteGroup}
             handleUpdateSkill={handleUpdateSkill}
             handleToggleSkillFavorite={handleToggleSkillFavorite}
+            selectedAgeFilter={selectedAgeFilter}
+            setSelectedAgeFilter={setSelectedAgeFilter}
+            selectedPhysicalFilter={selectedPhysicalFilter}
+            setSelectedPhysicalFilter={setSelectedPhysicalFilter}
+            handleUpdateBiometrics={handleUpdateBiometrics}
           />
         )}
 

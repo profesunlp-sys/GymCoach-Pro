@@ -2,7 +2,8 @@ import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
-  LineChart, Line, AreaChart, Area, PieChart, Pie, Cell, Legend
+  LineChart, Line, AreaChart, Area, PieChart, Pie, Cell, Legend,
+  Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis
 } from 'recharts';
 import { Alumno, Clase, GrupoConfig, ViewMode } from '../../types';
 
@@ -103,13 +104,65 @@ export const Reportes: React.FC<ReportesProps> = ({ alumnos, clases, grupos, vis
     }));
   }, []);
 
+  // Stats for ReporteBiometrico
+  const biometricStats = useMemo(() => {
+    if (!selectedGrupo) return null;
+    const alumnosGrupo = alumnos.filter(a => a.grupo === selectedGrupo);
+    if (alumnosGrupo.length === 0) return null;
+
+    const avgBio = {
+      fuerza: 0,
+      flexibilidad: 0,
+      tecnica: 0,
+      resistencia: 0,
+      coordinacion: 0
+    };
+
+    alumnosGrupo.forEach(a => {
+      if (a.biometria) {
+        avgBio.fuerza += a.biometria.fuerza || 0;
+        avgBio.flexibilidad += a.biometria.flexibilidad || 0;
+        avgBio.tecnica += a.biometria.tecnica || 0;
+        avgBio.resistencia += a.biometria.resistencia || 0;
+        avgBio.coordinacion += a.biometria.coordinacion || 0;
+      }
+    });
+
+    const count = alumnosGrupo.length;
+    const radarData = [
+      { subject: 'Fuerza', A: Math.round(avgBio.fuerza / count), fullMark: 100 },
+      { subject: 'Flex', A: Math.round(avgBio.flexibilidad / count), fullMark: 100 },
+      { subject: 'Técnica', A: Math.round(avgBio.tecnica / count), fullMark: 100 },
+      { subject: 'Resist', A: Math.round(avgBio.resistencia / count), fullMark: 100 },
+      { subject: 'Coord', A: Math.round(avgBio.coordinacion / count), fullMark: 100 },
+    ];
+
+    // Age distribution
+    const ageGroups: Record<string, number> = {};
+    alumnosGrupo.forEach(a => {
+        const year = new Date().getFullYear();
+        const birthYear = a.fechaNacimiento ? new Date(a.fechaNacimiento).getFullYear() : year;
+        const age = year - birthYear;
+        const group = age < 9 ? 'Mini/Pre' : age < 13 ? 'Infantiles' : age < 16 ? 'Juveniles' : 'Mayores';
+        ageGroups[group] = (ageGroups[group] || 0) + 1;
+    });
+
+    const ageData = Object.entries(ageGroups).map(([name, value]) => ({ name, value }));
+
+    return {
+      radarData,
+      ageData,
+      totalAlumnos: count
+    };
+  }, [selectedGrupo, alumnos]);
+
   const COLORS = ['#00F5FF', '#7000FF', '#FF00E5', '#FFB800', '#00FF85'];
 
   return (
     <div className="space-y-8 pb-24">
       {/* Header Selector for Group Reports */}
-      {vista === 'ReporteGrupal' && (
-        <div className="flex items-center gap-4 overflow-x-auto pb-2 scrollbar-hide">
+      {(vista === 'ReporteGrupal' || vista === 'ReporteBiometrico') && (
+        <div className="flex items-center gap-4 overflow-x-auto pb-2 scrollbar-hide px-6">
           {grupos.map(g => (
             <button
               key={g.id}
@@ -289,6 +342,75 @@ export const Reportes: React.FC<ReportesProps> = ({ alumnos, clases, grupos, vis
           </div>
         </div>
       )}
+      {/* View: ReporteBiometrico */}
+      {vista === 'ReporteBiometrico' && biometricStats && (
+        <div className="space-y-6 px-6">
+          <div className="glass-card p-6 rounded-[2.5rem] border border-white/5 space-y-6">
+            <h4 className="text-sm font-black text-white uppercase tracking-widest">Promedio Biométrico: {selectedGrupo}</h4>
+            <div className="h-80 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <RadarChart cx="50%" cy="50%" outerRadius="80%" data={biometricStats.radarData}>
+                  <PolarGrid stroke="#ffffff10" />
+                  <PolarAngleAxis dataKey="subject" tick={{ fill: '#ffffff40', fontSize: 10, fontWeight: 900 }} />
+                  <Radar
+                    name="Group Average"
+                    dataKey="A"
+                    stroke="#00F5FF"
+                    fill="#00F5FF"
+                    fillOpacity={0.3}
+                  />
+                  <Tooltip 
+                    contentStyle={{backgroundColor: '#151619', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px'}}
+                  />
+                </RadarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="glass-card p-6 rounded-3xl border border-white/5 space-y-6">
+              <h4 className="text-sm font-black text-white uppercase tracking-widest">Distribución por Edades</h4>
+              <div className="h-64 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={biometricStats.ageData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={80}
+                      paddingAngle={5}
+                      dataKey="value"
+                    >
+                      {biometricStats.ageData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip 
+                      contentStyle={{backgroundColor: '#151619', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px'}}
+                    />
+                    <Legend verticalAlign="bottom" iconType="circle" wrapperStyle={{fontSize: 10, fontWeight: 900, textTransform: 'uppercase'}} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            <div className="glass-card p-6 rounded-3xl border border-white/5 flex flex-col justify-center gap-4">
+              <div className="text-center space-y-1">
+                <p className="text-[10px] font-black text-white/40 uppercase tracking-widest">Alumnos en el Grupo</p>
+                <h3 className="text-4xl font-black text-white">{biometricStats.totalAlumnos}</h3>
+              </div>
+              <div className="p-4 bg-primary/10 rounded-2xl border border-primary/20 text-center">
+                <p className="text-[10px] font-black text-primary uppercase tracking-widest mb-1">Potencial del Grupo</p>
+                <p className="text-xs text-white font-medium italic">"El grupo muestra un fuerte desarrollo en {
+                  biometricStats.radarData.reduce((prev, current) => (prev.A > current.A) ? prev : current).subject
+                }."</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* View: ReportePDF */}
       {vista === 'ReportePDF' && (
         <div className="space-y-8 bg-white p-12 rounded-[2rem] text-black min-h-[800px] shadow-2xl border border-gray-200 relative">

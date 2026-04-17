@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { Alumno, GrupoConfig, Skill, AsistenciaRecord, Feedback } from '../../types';
 import { Button, EditableDropdown, Tooltip } from '../../App';
+import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
 
 interface AlumnosProps {
   vista: string;
@@ -15,6 +16,10 @@ interface AlumnosProps {
   setSelectedGrupoFilter: (g: string) => void;
   selectedNivelFilter: string;
   setSelectedNivelFilter: (n: string) => void;
+  selectedAgeFilter: string;
+  setSelectedAgeFilter: (a: string) => void;
+  selectedPhysicalFilter: string;
+  setSelectedPhysicalFilter: (p: string) => void;
   alumnosFilterMode: 'all' | 'alerts';
   setAlumnosFilterMode: (m: 'all' | 'alerts') => void;
   isAddingAlumno: boolean;
@@ -57,6 +62,7 @@ interface AlumnosProps {
   handleDeleteGroup: (group: GrupoConfig) => void;
   handleUpdateSkill: () => void;
   handleToggleSkillFavorite: (skillId: string) => void;
+  handleUpdateBiometrics: (alumnoId: string, biometria: any) => void;
 }
 
 const Alumnos: React.FC<AlumnosProps> = ({
@@ -112,16 +118,56 @@ const Alumnos: React.FC<AlumnosProps> = ({
   handleUpdateGroupQuick,
   handleDeleteGroup,
   handleUpdateSkill,
-  handleToggleSkillFavorite
+  handleToggleSkillFavorite,
+  selectedAgeFilter,
+  setSelectedAgeFilter,
+  selectedPhysicalFilter,
+  setSelectedPhysicalFilter,
+  handleUpdateBiometrics
 }) => {
-  const [activeTab, setActiveTab] = useState<'Progreso' | 'Asistencia' | 'Contacto'>('Progreso');
+  const [activeTab, setActiveTab] = useState<'Progreso' | 'Asistencia' | 'Bio' | 'Contacto'>('Progreso');
   const [isEditingStudent, setIsEditingStudent] = useState(false);
+  const [isEditingBiometrics, setIsEditingBiometrics] = useState(false);
+  
+  const calculateAgeGroup = (birthDateStr?: string) => {
+    if (!birthDateStr) return 'Desconocido';
+    const birthDate = new Date(birthDateStr);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+    }
+    
+    if (age < 7) return 'Pre-Mini';
+    if (age <= 8) return 'Mini';
+    if (age <= 10) return 'Pre-Infantil';
+    if (age <= 12) return 'Infantil';
+    if (age <= 15) return 'Juvenil';
+    return 'Mayor';
+  };
+
+  const getPhysicalScore = (biometria?: any) => {
+    if (!biometria) return 0;
+    const values = [biometria.fuerza, biometria.flexibilidad, biometria.tecnica, biometria.resistencia, biometria.coordinacion];
+    return values.reduce((a, b) => a + (b || 0), 0) / values.length;
+  };
+
+  const getPhysicalCategory = (score: number) => {
+    if (score >= 80) return 'Elite';
+    if (score >= 60) return 'Bueno';
+    if (score >= 40) return 'Regular';
+    return 'Bajo';
+  };
+
   if (vista !== 'Alumnos' && vista !== 'AlumnoDetalle') return null;
 
   const filteredAlumnos = alumnos
     .filter(a => alumnosFilterMode === 'alerts' ? (a.alertas && a.alertas.length > 0 && a.alertas[0] !== '') : true)
     .filter(a => selectedGrupoFilter === 'Todos' || a.grupo === selectedGrupoFilter)
     .filter(a => selectedNivelFilter === 'Todos' || a.nivel === selectedNivelFilter)
+    .filter(a => selectedAgeFilter === 'Todos' || calculateAgeGroup(a.fechaNacimiento) === selectedAgeFilter)
+    .filter(a => selectedPhysicalFilter === 'Cualquiera' || getPhysicalCategory(getPhysicalScore(a.biometria)) === selectedPhysicalFilter)
     .filter(a => a.nombre.toLowerCase().includes(searchQuery.toLowerCase()) || a.dni.includes(searchQuery));
 
   if (vista === 'Alumnos') {
@@ -211,6 +257,36 @@ const Alumnos: React.FC<AlumnosProps> = ({
               >
                 <option value="Todos">Todos los Niveles</option>
                 {niveles.map(n => <option key={n.id} value={n.nombre}>{n.nombre}</option>)}
+              </select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-[8px] uppercase font-bold text-white/40 ml-1">Categoría Edad</label>
+              <select 
+                value={selectedAgeFilter}
+                onChange={(e) => setSelectedAgeFilter(e.target.value)}
+                className="w-full bg-antigravity-charcoal border border-white/10 rounded-xl px-4 py-3 text-xs text-white appearance-none outline-none focus:border-primary/50 transition-all"
+              >
+                <option value="Todos">Todas las Edades</option>
+                <option value="Pre-Mini">Pre-Mini</option>
+                <option value="Mini">Mini</option>
+                <option value="Pre-Infantil">Pre-Infantil</option>
+                <option value="Infantil">Infantil</option>
+                <option value="Juvenil">Juvenil</option>
+                <option value="Mayor">Mayor</option>
+              </select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-[8px] uppercase font-bold text-white/40 ml-1">Condición Física</label>
+              <select 
+                value={selectedPhysicalFilter}
+                onChange={(e) => setSelectedPhysicalFilter(e.target.value)}
+                className="w-full bg-antigravity-charcoal border border-white/10 rounded-xl px-4 py-3 text-xs text-white appearance-none outline-none focus:border-primary/50 transition-all"
+              >
+                <option value="Cualquiera">Cualquiera</option>
+                <option value="Elite">Elite (&gt;80%)</option>
+                <option value="Bueno">Bueno (&gt;60%)</option>
+                <option value="Regular">Regular (&gt;40%)</option>
+                <option value="Bajo">Bajo (&lt;40%)</option>
               </select>
             </div>
           </div>
@@ -461,6 +537,12 @@ const Alumnos: React.FC<AlumnosProps> = ({
                 Asistencia
               </button>
               <button 
+                onClick={() => setActiveTab('Bio')}
+                className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'Bio' ? 'text-primary border-b-2 border-primary' : 'text-white/40'}`}
+              >
+                Bio
+              </button>
+              <button 
                 onClick={() => setActiveTab('Contacto')}
                 className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'Contacto' ? 'text-primary border-b-2 border-primary' : 'text-white/40'}`}
               >
@@ -605,6 +687,88 @@ const Alumnos: React.FC<AlumnosProps> = ({
                     <div className="p-10 text-center text-white/40 italic">No hay registros de asistencia.</div>
                   )}
                 </div>
+              </div>
+            )}
+
+            {activeTab === 'Bio' && selectedAlumno.biometria && (
+              <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2">
+                <div className="flex justify-between items-center px-1">
+                  <h3 className="text-sm font-black text-white uppercase tracking-widest">Biometría Radar</h3>
+                  <Button 
+                    variant={isEditingBiometrics ? 'success' : 'outline'}
+                    onClick={() => {
+                      if (isEditingBiometrics) {
+                        handleUpdateBiometrics(selectedAlumno.id!, selectedAlumno.biometria);
+                      }
+                      setIsEditingBiometrics(!isEditingBiometrics);
+                    }}
+                    className="!py-1.5 !px-3 !text-[8px]"
+                  >
+                    {isEditingBiometrics ? 'Guardar Cambios' : 'Editar Valores'}
+                  </Button>
+                </div>
+
+                <div className="glass-card rounded-[2.5rem] p-6 border border-white/5 flex flex-col items-center">
+                  <div className="w-full h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <RadarChart cx="50%" cy="50%" outerRadius="80%" data={[
+                        { subject: 'Fuerza', A: selectedAlumno.biometria.fuerza, fullMark: 100 },
+                        { subject: 'Flex', A: selectedAlumno.biometria.flexibilidad, fullMark: 100 },
+                        { subject: 'Técnica', A: selectedAlumno.biometria.tecnica, fullMark: 100 },
+                        { subject: 'Resist', A: selectedAlumno.biometria.resistencia, fullMark: 100 },
+                        { subject: 'Coord', A: selectedAlumno.biometria.coordinacion, fullMark: 100 },
+                      ]}>
+                        <PolarGrid stroke="#ffffff10" />
+                        <PolarAngleAxis dataKey="subject" tick={{ fill: '#ffffff40', fontSize: 10, fontWeight: 900 }} />
+                        <Radar
+                          name={selectedAlumno.nombre}
+                          dataKey="A"
+                          stroke="#00f2ff"
+                          fill="#00f2ff"
+                          fillOpacity={0.3}
+                        />
+                      </RadarChart>
+                    </ResponsiveContainer>
+                  </div>
+                  
+                  <div className="mt-4 text-center">
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 block mb-1">Score Físico General</span>
+                    <span className={`text-3xl font-black ${
+                      getPhysicalScore(selectedAlumno.biometria) >= 80 ? 'text-emerald-500 text-glow-emerald' :
+                      getPhysicalScore(selectedAlumno.biometria) >= 60 ? 'text-primary shadow-neon-cyan' :
+                      'text-amber-500'
+                    }`}>
+                      {Math.round(getPhysicalScore(selectedAlumno.biometria))}%
+                    </span>
+                  </div>
+                </div>
+
+                {isEditingBiometrics && (
+                  <div className="glass-card rounded-3xl p-6 border border-primary/20 bg-primary/5 space-y-6">
+                    {(['fuerza', 'flexibilidad', 'tecnica', 'resistencia', 'coordinacion'] as const).map((key) => (
+                      <div key={key} className="space-y-2">
+                        <div className="flex justify-between items-center">
+                          <label className="text-[10px] uppercase font-black tracking-widest text-white/60 capitalize">{key}</label>
+                          <span className="text-xs font-black text-primary">{selectedAlumno.biometria![key]}%</span>
+                        </div>
+                        <input 
+                          type="range" 
+                          min="0" 
+                          max="100" 
+                          value={selectedAlumno.biometria![key]}
+                          onChange={(e) => {
+                            const val = parseInt(e.target.value);
+                            setSelectedAlumno({
+                              ...selectedAlumno,
+                              biometria: { ...selectedAlumno.biometria!, [key]: val }
+                            });
+                          }}
+                          className="w-full accent-primary bg-white/10 rounded-lg h-2 appearance-none cursor-pointer"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
