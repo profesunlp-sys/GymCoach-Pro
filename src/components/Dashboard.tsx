@@ -131,6 +131,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <span className="text-[8px] uppercase tracking-[0.2em] text-primary/60 font-bold">
               {userRole === 'Coordinator' ? 'Panel de Control Ejecutivo' : 'Modo Entrenador'}
             </span>
+            {import.meta.env.VITE_GOOGLE_SCRIPT_URL && (
+              <div className="flex items-center gap-1 mt-0.5 opacity-50">
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                <span className="text-[6px] text-white uppercase font-black tracking-widest">Google Stich Link Active</span>
+              </div>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-2">

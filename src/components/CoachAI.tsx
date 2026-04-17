@@ -105,9 +105,17 @@ export const CoachAI = () => {
       <header className="px-6 py-8 pb-4 flex justify-between items-center">
         <div>
           <h2 className="text-3xl font-black text-white uppercase tracking-tighter">Asistente Coach</h2>
-          <p className="text-primary text-[10px] font-black uppercase tracking-widest mt-1">
-            {attachedFiles.length > 0 ? `Modo Base de Conocimientos (${attachedFiles.length} docs)` : 'Búsqueda de Metodologías'}
-          </p>
+          <div className="flex items-center gap-2 mt-1">
+            <span className="text-primary text-[10px] font-black uppercase tracking-widest">
+              {attachedFiles.length > 0 ? `Modo Base de Conocimientos (${attachedFiles.length} docs)` : 'Búsqueda de Metodologías'}
+            </span>
+            {!attachedFiles.length && (
+              <div className="flex items-center gap-1 bg-primary/10 px-1.5 py-0.5 rounded border border-primary/20">
+                <span className="material-icons text-[8px] text-primary">search</span>
+                <span className="text-[7px] font-bold text-primary uppercase">Google Search Grounded</span>
+              </div>
+            )}
+          </div>
         </div>
         <button 
           onClick={() => setMessages([])}

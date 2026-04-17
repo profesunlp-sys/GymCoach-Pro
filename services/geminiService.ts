@@ -140,19 +140,29 @@ export async function getSearchGroundedAnswer(query: string): Promise<{ text: st
   return withRetry(async () => {
     const ai = getAI();
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.1-pro-preview",
       contents: `Eres un experto entrenador de gimnasia artística. Responde a la siguiente consulta sobre ejercitaciones, metodologías o enseñanza: "${query}". Usa información actualizada de la web.`,
       config: {
         tools: [{ googleSearch: {} }],
       },
     });
     
-    const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
-    const sources = chunks.map((chunk: any) => chunk.web).filter(Boolean);
+    // Extraer metadatos de búsqueda para mostrar fuentes ricas
+    const groundingMetadata = response.candidates?.[0]?.groundingMetadata;
+    const sources = groundingMetadata?.searchEntryPoint?.renderedContent 
+      ? [{ title: 'Google Search Resources', uri: '#' }] // Fallback simplificado si no hay chunks
+      : [];
     
+    // Si hay chunks específicos, los usamos
+    const chunks = groundingMetadata?.groundingChunks || [];
+    const richSources = chunks.map((chunk: any, index: number) => ({
+      title: chunk.web?.title || `Fuente ${index + 1}`,
+      uri: chunk.web?.uri || '#'
+    })).filter((s: any) => s.uri !== '#');
+
     return {
       text: response.text || "No se encontró información.",
-      sources
+      sources: richSources.length > 0 ? richSources : sources
     };
   }).catch(error => {
     console.error("Error en getSearchGroundedAnswer:", error);
@@ -208,7 +218,7 @@ export async function queryKnowledgeBase(query: string, sources: any[]): Promise
     }
 
     const response = await ai.models.generateContent({
-      model: "gemini-flash-latest", // Cambiado a flash-latest para intentar evitar la saturación de gemini-3-flash-preview
+      model: "gemini-3.1-pro-preview", 
       contents: { parts },
     });
     

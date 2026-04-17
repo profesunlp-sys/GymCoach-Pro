@@ -319,6 +319,32 @@ const App: React.FC = () => {
 
   const [isFocusMode, setIsFocusMode] = useState(false);
 
+  const translateFirebaseError = (error: any) => {
+    const code = error.code;
+    const message = error.message;
+    
+    switch (code) {
+      case 'auth/invalid-credential':
+        return "El correo o la contraseña son incorrectos. Por favor, verifica tus datos e intenta de nuevo.";
+      case 'auth/user-not-found':
+        return "No existe una cuenta con este correo electrónico.";
+      case 'auth/wrong-password':
+        return "La contraseña ingresada es incorrecta.";
+      case 'auth/email-already-in-use':
+        return "Ya existe una cuenta registrada con este correo electrónico.";
+      case 'auth/invalid-email':
+        return "El formato del correo electrónico no es válido.";
+      case 'auth/weak-password':
+        return "La contraseña debe tener al menos 6 caracteres.";
+      case 'auth/too-many-requests':
+        return "Se han realizado demasiados intentos fallidos. Tu cuenta ha sido bloqueada temporalmente por seguridad.";
+      case 'auth/network-request-failed':
+        return "Error de red. Por favor, revisa tu conexión a internet.";
+      default:
+        return message.replace("Firebase: ", "").replace("Error (auth/", "").replace(").", "").replace("-", " ");
+    }
+  };
+
   const requestConfirmation = (title: string, message: string, onConfirm: () => void) => {
     setConfirmModal({ show: true, title, message, onConfirm });
   };
@@ -559,7 +585,7 @@ const App: React.FC = () => {
       await signInWithEmailAndPassword(auth, email, password);
     } catch (error: any) {
       console.error("Login error:", error);
-      setLoginError(error.message);
+      setLoginError(translateFirebaseError(error));
     }
   };
 
@@ -571,7 +597,7 @@ const App: React.FC = () => {
       await createUserWithEmailAndPassword(auth, email, password);
     } catch (error: any) {
       console.error("SignUp error:", error);
-      setLoginError(error.message);
+      setLoginError(translateFirebaseError(error));
     }
   };
 
@@ -644,7 +670,7 @@ const App: React.FC = () => {
       console.log("Login exitoso:", result.user.email);
     } catch (error: any) {
       console.error("Error detallado de login:", error);
-      let msg = `Error (${error.code || 'unknown'}): ${error.message || 'Error desconocido'}`;
+      let msg = translateFirebaseError(error);
       
       if (error.code === 'auth/unauthorized-domain') {
         msg = "DOMINIO NO AUTORIZADO: Agregaste el dominio en Firebase, pero la app sigue usando la base de datos de prueba. Debes configurar tus propias credenciales de Firebase en las variables de entorno (VITE_FIREBASE_...).";
@@ -2097,6 +2123,29 @@ const App: React.FC = () => {
       }
 
       loadData();
+
+      // Sincronización opcional con Google Sheets si está configurado
+      try {
+        const { sheetsService } = await import('./src/services/googleSheetsService');
+        const syncData = {
+          date: classData.fecha,
+          groupName: classData.grupo,
+          schedule: classData.horario || '',
+          selectedDays: [], 
+          ageGroups: [],
+          attendance: Object.entries(asistenciasHoy).map(([id, present]) => {
+            const alumno = alumnos.find(a => a.id === id);
+            return { name: alumno ? alumno.nombre : 'Desconocido', present };
+          }),
+          warmupSkills: classData.faseInicial || [],
+          apparatus: classData.fasePrincipal || [],
+          apparatusDetails: classData.habilidadesPorAparato || {}
+        };
+        sheetsService.syncClass(syncData);
+      } catch (err) {
+        console.warn("Sincronización con Sheets omitida o fallida:", err);
+      }
+
       setTimeout(() => setNotificacion(null), 3000);
       setClaseGrupo("");
       setNewClaseGroupName("");
