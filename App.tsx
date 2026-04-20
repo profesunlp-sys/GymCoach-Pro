@@ -2123,29 +2123,6 @@ const App: React.FC = () => {
       }
 
       loadData();
-
-      // Sincronización opcional con Google Sheets si está configurado
-      try {
-        const { sheetsService } = await import('./src/services/googleSheetsService');
-        const syncData = {
-          date: classData.fecha,
-          groupName: classData.grupo,
-          schedule: classData.horario || '',
-          selectedDays: [], 
-          ageGroups: [],
-          attendance: Object.entries(asistenciasHoy).map(([id, present]) => {
-            const alumno = alumnos.find(a => a.id === id);
-            return { name: alumno ? alumno.nombre : 'Desconocido', present };
-          }),
-          warmupSkills: classData.faseInicial || [],
-          apparatus: classData.fasePrincipal || [],
-          apparatusDetails: classData.habilidadesPorAparato || {}
-        };
-        sheetsService.syncClass(syncData);
-      } catch (err) {
-        console.warn("Sincronización con Sheets omitida o fallida:", err);
-      }
-
       setTimeout(() => setNotificacion(null), 3000);
       setClaseGrupo("");
       setNewClaseGroupName("");

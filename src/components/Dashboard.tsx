@@ -121,107 +121,161 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
   return (
     <div className="px-6 space-y-8 page-transition pt-4 pb-24">
-      <header className="flex justify-between items-center">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-accent-purple/20 rounded-xl flex items-center justify-center border border-accent-purple/30 shadow-neon-purple">
-            <span className="material-icons-outlined text-accent-purple">fitness_center</span>
-          </div>
+      <header className="flex justify-between items-center py-2">
+        <div className="flex items-center gap-4">
+          <motion.div 
+            whileHover={{ rotate: -15, scale: 1.1 }}
+            className="w-12 h-12 bg-gradient-to-br from-primary to-neon-blue rounded-2xl flex items-center justify-center shadow-neon-cyan border border-white/20"
+          >
+            <span className="material-icons-outlined text-antigravity-black text-2xl">fitness_center</span>
+          </motion.div>
           <div>
-            <h1 className="title-antigravity text-xl leading-none">GymCoach <span className="text-primary">Pro</span></h1>
-            <span className="text-[8px] uppercase tracking-[0.2em] text-primary/60 font-bold">
-              {userRole === 'Coordinator' ? 'Panel de Control Ejecutivo' : 'Modo Entrenador'}
-            </span>
-            {import.meta.env.VITE_GOOGLE_SCRIPT_URL && (
-              <div className="flex items-center gap-1 mt-0.5 opacity-50">
-                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
-                <span className="text-[6px] text-white uppercase font-black tracking-widest">Google Stich Link Active</span>
-              </div>
-            )}
+            <h1 className="title-antigravity text-2xl leading-none">
+              GymCoach <span className="text-primary italic">Pro</span>
+            </h1>
+            <div className="flex items-center gap-2 mt-1">
+              <span className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse shadow-neon-cyan"></span>
+              <span className="text-[9px] uppercase font-black tracking-[0.2em] text-white/50">
+                {userRole === 'Coordinator' ? 'Control Center • Ejecutivo' : 'Terminal • Entrenador'}
+              </span>
+            </div>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button 
+          <motion.button 
+            whileTap={{ scale: 0.9 }}
             onClick={() => setIsFocusMode(!isFocusMode)}
-            variant={isFocusMode ? 'primary' : 'secondary'}
-            className="w-10 h-10 !p-0 rounded-full"
+            className={`w-10 h-10 rounded-xl flex items-center justify-center border transition-all ${isFocusMode ? 'bg-primary border-primary text-antigravity-black shadow-neon-cyan' : 'bg-white/5 border-white/10 text-white/60 hover:text-white hover:bg-white/10'}`}
             title={isFocusMode ? "Desactivar Modo Enfoque" : "Activar Modo Enfoque"}
           >
             <span className="material-icons-outlined text-sm">{isFocusMode ? 'visibility_off' : 'visibility'}</span>
-          </Button>
-          {user?.email === COORDINATOR_EMAIL && (
-            <Button 
-              onClick={() => setUserRole(prev => prev === 'Coordinator' ? 'Coach' : 'Coordinator')}
-              variant="outline"
-              className="w-10 h-10 !p-0 rounded-full"
-              title="Cambiar entre Coordinador y Profe"
-            >
-              <span className="material-icons-outlined text-sm">swap_horiz</span>
-            </Button>
-          )}
-          <Button 
+          </motion.button>
+          <motion.button 
+            whileTap={{ scale: 0.9 }}
             onClick={handleLogout}
-            variant="danger"
-            className="w-10 h-10 !p-0 rounded-full"
+            className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 text-white/40 hover:text-rose-500 hover:bg-rose-500/10 transition-all flex items-center justify-center"
             title="Cerrar Sesión"
           >
             <span className="material-icons-outlined text-sm">logout</span>
-          </Button>
+          </motion.button>
+          {user?.email === COORDINATOR_EMAIL && (
+            <motion.button 
+              whileTap={{ scale: 0.9 }}
+              onClick={() => setUserRole(prev => prev === 'Coordinator' ? 'Coach' : 'Coordinator')}
+              className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 text-white/60 hover:text-white hover:bg-white/10 transition-all flex items-center justify-center"
+              title="Cambiar Rol"
+            >
+              <span className="material-symbols-outlined text-sm">cached</span>
+            </motion.button>
+          )}
         </div>
       </header>
 
+      {/* Saludo dinámico */}
+      <section className="px-1">
+        <h2 className="text-white text-lg font-light">
+          Hola, <span className="font-black text-primary uppercase tracking-tight">{user?.displayName?.split(' ')[0] || (userRole === 'Coordinator' ? 'Coordinador' : 'Profesor')}</span>
+        </h2>
+        <p className="text-white/40 text-[10px] uppercase font-bold tracking-widest mt-1">
+          {new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}
+        </p>
+      </section>
+
       {userRole === 'Coordinator' ? (
         /* PANEL EJECUTIVO DEL COORDINADOR */
-        <div className="space-y-8">
-          {/* Resumen del Día */}
+        <div className="space-y-10">
+          {/* Resumen del Día - Technical Grid */}
           <section className="space-y-4">
-            <h3 className="text-[10px] uppercase font-black text-white/40 tracking-[0.2em] px-1">Resumen del Día</h3>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="glass-card rounded-2xl p-4 border border-white/5 flex flex-col gap-1">
-                <span className="text-white/40 text-[10px] uppercase font-bold">Alumnos Totales</span>
-                <span className="text-2xl font-black text-white">{alumnos.length}</span>
+            <h3 className="text-[10px] uppercase font-black text-white/30 tracking-[0.3em] px-1 flex items-center gap-2">
+               <span className="w-1 h-1 bg-white/30 rounded-full"></span> RESUMEN DE ACTIVIDAD
+            </h3>
+            <div className="grid grid-cols-2 gap-px bg-white/5 border border-white/10 rounded-[2rem] overflow-hidden">
+              <div className="p-6 bg-antigravity-charcoal/50 flex flex-col gap-2">
+                <div className="flex items-center gap-2 text-white/40 mb-1">
+                  <span className="material-icons-outlined text-[14px]">groups</span>
+                  <span className="text-[9px] uppercase font-bold tracking-widest">Gimnastas</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-4xl font-black text-white font-mono tracking-tighter">{alumnos.length}</span>
+                  <div className="px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/20 rounded-md">
+                    <span className="text-[8px] text-emerald-500 font-bold uppercase tracking-tighter">Activo</span>
+                  </div>
+                </div>
               </div>
-              <div className="glass-card rounded-2xl p-4 border border-white/5 flex flex-col gap-1">
-                <span className="text-white/40 text-[10px] uppercase font-bold">Grupos Activos</span>
-                <span className="text-2xl font-black text-primary">{grupos.length}</span>
+              <div className="p-6 bg-antigravity-charcoal/50 flex flex-col gap-2 border-l border-white/10">
+                <div className="flex items-center gap-2 text-white/40 mb-1">
+                  <span className="material-icons-outlined text-[14px]">category</span>
+                  <span className="text-[9px] uppercase font-bold tracking-widest">Grupos</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-4xl font-black text-primary font-mono tracking-tighter">{grupos.length}</span>
+                </div>
               </div>
-              <div className="glass-card rounded-2xl p-4 border border-white/5 flex flex-col gap-1">
-                <span className="text-white/40 text-[10px] uppercase font-bold">Clases Hoy</span>
-                <span className="text-2xl font-black text-accent-purple">{clasesHoy}</span>
+              <div className="p-6 bg-antigravity-charcoal/50 flex flex-col gap-2 border-t border-white/10">
+                <div className="flex items-center gap-2 text-white/40 mb-1">
+                  <span className="material-icons-outlined text-[14px]">today</span>
+                  <span className="text-[9px] uppercase font-bold tracking-widest">Sesiones Hoy</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-4xl font-black text-accent-purple font-mono tracking-tighter">{clasesHoy}</span>
+                  <div className="px-2 py-0.5 bg-accent-purple/10 border border-accent-purple/20 rounded-md">
+                    <span className="text-[8px] text-accent-purple font-bold uppercase tracking-tighter">Live</span>
+                  </div>
+                </div>
               </div>
-              <div className="glass-card rounded-2xl p-4 border border-white/5 flex flex-col gap-1">
-                <span className="text-white/40 text-[10px] uppercase font-bold">Staff Activo</span>
-                <span className="text-2xl font-black text-emerald-500">{profesoresList.length}</span>
+              <div className="p-6 bg-antigravity-charcoal/50 flex flex-col gap-2 border-l border-t border-white/10">
+                <div className="flex items-center gap-2 text-white/40 mb-1">
+                  <span className="material-icons-outlined text-[14px]">badge</span>
+                  <span className="text-[9px] uppercase font-bold tracking-widest">Staff</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-4xl font-black text-emerald-500 font-mono tracking-tighter">{profesoresList.length}</span>
+                </div>
               </div>
             </div>
           </section>
 
           {/* Alertas Prioritarias */}
           <section className="space-y-4">
-            <h3 className="text-[10px] uppercase font-black text-rose-500/60 tracking-[0.2em] px-1">Alertas Prioritarias</h3>
+            <h3 className="text-[10px] uppercase font-black text-rose-500/50 tracking-[0.3em] px-1 flex items-center gap-2">
+               <span className="w-1 h-1 bg-rose-500/50 rounded-full animate-ping"></span> ALERTAS CRÍTICAS
+            </h3>
             <div className="space-y-3">
               {feedbacksUrgentes.length > 0 && (
-                <div className="bg-rose-500/20 border border-rose-500/30 rounded-2xl p-4 flex items-center gap-4 animate-pulse">
-                  <div className="w-10 h-10 bg-rose-500/30 rounded-xl flex items-center justify-center text-rose-500">
-                    <span className="material-icons-outlined">priority_high</span>
+                <motion.div 
+                  initial={{ x: -20, opacity: 0 }} animate={{ x: 0, opacity: 1 }}
+                  className="bg-rose-500/10 border border-rose-500/30 rounded-3xl p-5 flex items-center gap-5 relative overflow-hidden group"
+                >
+                  <div className="absolute top-0 right-0 p-1">
+                    <div className="w-12 h-12 bg-rose-500/10 rounded-full blur-xl group-hover:bg-rose-500/20 transition-all"></div>
+                  </div>
+                  <div className="w-12 h-12 bg-rose-500/20 rounded-2xl flex items-center justify-center text-rose-500 border border-rose-500/30 shadow-neon-rose">
+                    <span className="material-symbols-outlined font-bold">notification_important</span>
                   </div>
                   <div className="flex-1">
-                    <p className="text-white font-bold text-sm">{feedbacksUrgentes.length} Feedback Urgentes</p>
-                    <p className="text-[10px] text-rose-200/60 font-medium">Revisión inmediata requerida</p>
+                    <p className="text-white font-black text-[10px] uppercase tracking-widest opacity-60">Feedback Pendiente</p>
+                    <p className="text-white font-bold text-lg leading-tight mt-0.5">{feedbacksUrgentes.length} Alertas de Padres</p>
                   </div>
-                  <Button variant="danger" className="h-8 px-3 text-[10px]" onClick={() => setVista('Alumnos')}>Ver</Button>
-                </div>
+                  <motion.button 
+                    whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                    className="h-10 px-5 bg-rose-500 text-white font-black text-[10px] uppercase tracking-widest rounded-xl shadow-neon-rose" 
+                    onClick={() => setVista('Alumnos')}
+                  >
+                    Atender
+                  </motion.button>
+                </motion.div>
               )}
 
               {alumnosConPagosVencidos.length > 0 && (
-                <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4 flex items-center gap-4">
-                  <div className="w-10 h-10 bg-amber-500/20 rounded-xl flex items-center justify-center text-amber-500">
+                <div className="glass-card rounded-3xl p-5 flex items-center gap-5 border-amber-500/20">
+                  <div className="w-12 h-12 bg-amber-500/20 rounded-2xl flex items-center justify-center text-amber-500 border border-amber-500/30">
                     <span className="material-icons-outlined">payments</span>
                   </div>
                   <div className="flex-1">
-                    <p className="text-white font-bold text-sm">{alumnosConPagosVencidos.length} Pagos Vencidos</p>
-                    <p className="text-[10px] text-white/60">Requiere seguimiento administrativo</p>
+                    <p className="text-white font-black text-[10px] uppercase tracking-widest opacity-40">Administración</p>
+                    <p className="text-white font-bold text-lg leading-tight mt-0.5">{alumnosConPagosVencidos.length} Moras Detectadas</p>
                   </div>
-                  <Button variant="outline" className="h-8 px-3 text-[10px]" onClick={() => setVista('Alumnos')}>Ver</Button>
+                  <button className="h-10 px-4 text-[10px] font-bold uppercase tracking-widest text-amber-500/80 hover:text-amber-500 transition-colors" onClick={() => setVista('Alumnos')}>Revisar</button>
                 </div>
               )}
               
@@ -253,99 +307,90 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </div>
           </section>
 
-          {/* Estado del Staff (Tarjetas de Profesores) */}
+          {/* Estado del Staff (Technical Grid) */}
           <section className="space-y-4">
-            <h3 className="text-[10px] uppercase font-black text-emerald-500/60 tracking-[0.2em] px-1">Estado del Staff</h3>
-            <div className="grid grid-cols-1 gap-4">
+            <h3 className="text-[10px] uppercase font-black text-emerald-100/30 tracking-[0.3em] px-1 flex items-center gap-2">
+               <span className="w-1 h-1 bg-emerald-500/50 rounded-full"></span> RENDIMIENTO DEL STAFF
+            </h3>
+            <div className="grid grid-cols-1 gap-3">
               {profesoresList.map(prof => {
                 const stats = getProfesorStats(prof.nombre);
                 return (
-                  <div 
+                  <motion.div 
                     key={prof.id} 
+                    whileTap={{ scale: 0.98 }}
                     onClick={() => setSelectedProfesorDetail(prof.nombre)}
-                    className="glass-card rounded-3xl p-5 border border-white/5 flex items-center gap-4 active:scale-[0.98] transition-all cursor-pointer group"
+                    className="glass-card rounded-3xl p-5 border border-white/5 flex items-center gap-4 cursor-pointer group hover:bg-white/[0.07] transition-all"
                   >
-                    <div className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center border border-white/10 relative">
-                      <span className="material-icons-outlined text-white/40">person</span>
-                      <div className={`absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-antigravity-black ${stats.color.replace('text-', 'bg-')}`}></div>
+                    <div className="w-14 h-14 bg-white/5 rounded-2xl flex items-center justify-center border border-white/10 relative overflow-hidden">
+                      <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent"></div>
+                      <span className="material-icons-outlined text-white/40 text-2xl relative z-10">person</span>
+                      <div className={`absolute bottom-0 left-0 right-0 h-1 ${stats.color.replace('text-', 'bg-')}`}></div>
                     </div>
-                    <div className="flex-1 overflow-hidden">
-                      <h4 className="text-sm font-bold text-white truncate">{prof.nombre}</h4>
-                      <div className="flex gap-3 mt-1">
-                        <span className="text-[9px] text-white/40 uppercase font-bold">{stats.gruposCount} Grupos</span>
-                        <span className="text-[9px] text-white/40 uppercase font-bold">{stats.alumnosCount} Alumnos</span>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-sm font-bold text-white truncate uppercase tracking-tight">{prof.nombre}</h4>
+                      <div className="flex gap-4 mt-1">
+                        <div className="flex items-center gap-1.5 grayscale opacity-60">
+                           <span className="material-icons-outlined text-[12px]">category</span>
+                           <span className="text-[9px] text-white uppercase font-bold">{stats.gruposCount} Grupos</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 grayscale opacity-60">
+                           <span className="material-icons-outlined text-[12px]">groups</span>
+                           <span className="text-[9px] text-white uppercase font-bold">{stats.alumnosCount} Alumnos</span>
+                        </div>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-xs font-black text-white">{stats.asistenciaPromedio}%</p>
-                      <p className="text-[8px] text-white/40 uppercase font-bold">Asistencia</p>
+                    <div className="text-right pr-2">
+                      <p className={`text-lg font-black font-mono leading-none ${stats.color}`}>{stats.asistenciaPromedio}%</p>
+                      <p className="text-[7px] text-white/30 uppercase font-black tracking-widest mt-1">Attendance</p>
                     </div>
-                    <span className="material-icons-outlined text-white/20 group-hover:text-primary transition-colors">chevron_right</span>
-                  </div>
+                  </motion.div>
                 );
               })}
             </div>
           </section>
 
-          {/* Reportes Ejecutivos */}
+          {/* Reportes Ejecutivos (Refined Cards) */}
           <section className="space-y-4">
-            <h3 className="text-[10px] uppercase font-black text-primary/60 tracking-[0.2em] px-1">Reportes Ejecutivos</h3>
-            <div className="grid grid-cols-1 gap-3">
-              <button 
+            <h3 className="text-[10px] uppercase font-black text-primary/40 tracking-[0.3em] px-1 flex items-center gap-2">
+               <span className="w-1 h-1 bg-primary/40 rounded-full"></span> BUSQUEDA E INSIGHTS
+            </h3>
+            <div className="grid grid-cols-1 gap-4">
+              <motion.button 
+                whileHover={{ x: 4 }}
                 onClick={() => setVista('AsistenciaStats')}
-                className="glass-card rounded-3xl p-5 border border-white/5 flex items-center gap-4 active:scale-[0.98] transition-all group"
+                className="group flex items-center gap-4 bg-white/[0.03] border border-white/5 rounded-3xl p-5 hover:bg-white/[0.06] transition-all"
               >
-                <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center border border-primary/20 shadow-neon-cyan">
-                  <span className="material-icons-outlined text-primary">analytics</span>
+                <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+                  <span className="material-symbols-outlined">analytics</span>
                 </div>
                 <div className="flex-1 text-left">
-                  <h4 className="text-sm font-bold text-white">Estadísticas de Asistencia</h4>
-                  <p className="text-[9px] text-white/40 uppercase font-bold tracking-widest">Tendencias y Presentismo</p>
+                  <h4 className="text-sm font-bold text-white uppercase tracking-tight">Estadísticas de Asistencia</h4>
+                  <p className="text-[8px] text-white/40 uppercase font-bold tracking-widest mt-0.5">Métricas de Presentismo Global</p>
                 </div>
-                <span className="material-icons-outlined text-white/20 group-hover:text-primary transition-colors">chevron_right</span>
-              </button>
+                <span className="material-icons-outlined text-white/20 group-hover:text-primary transition-all">east</span>
+              </motion.button>
 
-              <button 
-                onClick={() => setVista('ReporteGrupal')}
-                className="glass-card rounded-3xl p-5 border border-white/5 flex items-center gap-4 active:scale-[0.98] transition-all group"
-              >
-                <div className="w-12 h-12 bg-accent-purple/10 rounded-2xl flex items-center justify-center border border-accent-purple/20 shadow-neon-purple">
-                  <span className="material-icons-outlined text-accent-purple">groups</span>
-                </div>
-                <div className="flex-1 text-left">
-                  <h4 className="text-sm font-bold text-white">Reporte por Grupos</h4>
-                  <p className="text-[9px] text-white/40 uppercase font-bold tracking-widest">Desempeño Colectivo</p>
-                </div>
-                <span className="material-icons-outlined text-white/20 group-hover:text-accent-purple transition-colors">chevron_right</span>
-              </button>
-
-              <button 
-                onClick={() => setVista('TendenciasHabilidades')}
-                className="glass-card rounded-3xl p-5 border border-white/5 flex items-center gap-4 active:scale-[0.98] transition-all group"
-              >
-                <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center border border-emerald-500/20 shadow-neon-emerald">
-                  <span className="material-icons-outlined text-emerald-500">auto_graph</span>
-                </div>
-                <div className="flex-1 text-left">
-                  <h4 className="text-sm font-bold text-white">Tendencias de Habilidades</h4>
-                  <p className="text-[9px] text-white/40 uppercase font-bold tracking-widest">Evolución Técnica</p>
-                </div>
-                <span className="material-icons-outlined text-white/20 group-hover:text-emerald-500 transition-colors">chevron_right</span>
-              </button>
-
-              <button 
-                onClick={() => setVista('ReporteBiometrico')}
-                className="glass-card rounded-3xl p-5 border border-white/5 flex items-center gap-4 active:scale-[0.98] transition-all group"
-              >
-                <div className="w-12 h-12 bg-amber-500/10 rounded-2xl flex items-center justify-center border border-amber-500/20 shadow-neon-amber">
-                  <span className="material-icons-outlined text-amber-500">biotech</span>
-                </div>
-                <div className="flex-1 text-left">
-                  <h4 className="text-sm font-bold text-white">Mapeo Biofísico</h4>
-                  <p className="text-[9px] text-white/40 uppercase font-bold tracking-widest">Análisis de Condición Física</p>
-                </div>
-                <span className="material-icons-outlined text-white/20 group-hover:text-amber-500 transition-colors">chevron_right</span>
-              </button>
+              <div className="grid grid-cols-2 gap-4">
+                <button onClick={() => setVista('ReporteGrupal')} className="glass-card rounded-[2rem] p-5 border border-white/5 flex flex-col gap-3 text-left group">
+                   <div className="w-10 h-10 rounded-xl bg-accent-purple/10 flex items-center justify-center text-accent-purple group-hover:bg-accent-purple/20 transition-colors">
+                      <span className="material-symbols-outlined text-xl">groups</span>
+                   </div>
+                   <div>
+                      <h5 className="text-[11px] font-black text-white uppercase tracking-tight">Reporte Grupal</h5>
+                      <p className="text-[7px] text-white/40 uppercase font-black mt-1">Evolución Colectiva</p>
+                   </div>
+                </button>
+                <button onClick={() => setVista('TendenciasHabilidades')} className="glass-card rounded-[2rem] p-5 border border-white/5 flex flex-col gap-3 text-left group">
+                   <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500 group-hover:bg-emerald-500/20 transition-colors">
+                      <span className="material-symbols-outlined text-xl">insights</span>
+                   </div>
+                   <div>
+                      <h5 className="text-[11px] font-black text-white uppercase tracking-tight">Tendencias</h5>
+                      <p className="text-[7px] text-white/40 uppercase font-black mt-1">Avance Técnico</p>
+                   </div>
+                </button>
+              </div>
             </div>
           </section>
 
@@ -489,69 +534,97 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </div>
       ) : (
         /* VISTA DEL ENTRENADOR (EXISTENTE) */
-        <div className="space-y-8">
-          {/* Bienvenida para nuevos usuarios */}
-          {grupos.length === 0 && (
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="glass-card rounded-3xl p-8 border border-primary/30 bg-primary/5 space-y-6 text-center"
-            >
-              <div className="w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center mx-auto border border-primary/30">
-                <span className="material-icons-outlined text-primary text-3xl">waving_hand</span>
-              </div>
-              <div className="space-y-2">
-                <h2 className="text-xl font-bold text-white">¡Bienvenido, Profe!</h2>
-                <p className="text-sm text-white/60">Para empezar a usar la app, primero necesitamos crear tu primer grupo de alumnos.</p>
-              </div>
-              <Button 
-                onClick={() => setVista('Horario')}
-                className="w-full py-4 rounded-2xl shadow-neon-cyan"
-              >
-                Crear mi primer grupo
-              </Button>
-            </motion.div>
-          )}
+        <div className="space-y-10">
+          {/* Bienvenida y Estado Rápido */}
+          <section className="relative px-1">
+             <div className="absolute -top-10 -right-4 w-32 h-32 bg-primary/10 blur-[60px] pointer-events-none"></div>
+             <motion.div 
+               initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
+               className="bg-gradient-to-br from-white/[0.03] to-white/[0.01] border border-white/5 rounded-[2.5rem] p-8 space-y-6"
+             >
+                <div className="flex justify-between items-start">
+                  <div className="space-y-1">
+                    <p className="text-primary text-[10px] font-black uppercase tracking-[0.3em]">Sesión Activa</p>
+                    <h4 className="text-white text-xl font-black uppercase tracking-tight">Status del Día</h4>
+                  </div>
+                  <div className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center border border-white/10">
+                     <span className="material-symbols-outlined text-white/40">rocket_launch</span>
+                  </div>
+                </div>
 
-          {/* Acciones Principales Simplificadas */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <p className="text-[20px] font-black text-white font-mono">{clasesHoy}</p>
+                    <p className="text-[8px] text-white/40 uppercase font-bold tracking-widest">Clases Hoy</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-[20px] font-black text-emerald-500 font-mono">{grupos.length}</p>
+                    <p className="text-[8px] text-white/40 uppercase font-bold tracking-widest">Tus Grupos</p>
+                  </div>
+                </div>
+
+                {grupos.length === 0 && (
+                  <Button 
+                    onClick={() => setVista('Horario')}
+                    className="w-full py-4 rounded-2xl shadow-neon-cyan !bg-primary !text-antigravity-black"
+                  >
+                    Configurar mis grupos
+                  </Button>
+                )}
+             </motion.div>
+          </section>
+
+          {/* Acciones Críticas */}
           <section className="space-y-4">
-            <div className="px-1">
-              <h3 className="text-[10px] uppercase font-black text-white/40 tracking-[0.2em]">Accesos Rápidos</h3>
-              <p className="text-[10px] text-primary/60 mt-1">¿Por dónde empezar? Tocá Lista de Asistencia para registrar la clase de hoy.</p>
-            </div>
+            <h3 className="text-[10px] uppercase font-black text-white/30 tracking-[0.3em] px-1">Control de Operaciones</h3>
             <div className="grid grid-cols-1 gap-4">
-              <button 
+              <motion.button 
+                whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
                 onClick={() => { setRegistrationStep(1); setVista('NuevaClase'); }}
-                className="glass-card rounded-3xl p-6 border border-primary/20 bg-primary/5 flex items-center gap-6 active:scale-[0.98] transition-all group ring-2 ring-primary/20"
+                className="relative h-48 rounded-[2.5rem] overflow-hidden group shadow-2xl shadow-primary/10"
               >
-                <div className="w-14 h-14 bg-primary/20 rounded-2xl flex items-center justify-center border border-primary/30 shadow-neon-cyan group-hover:scale-110 transition-transform">
-                  <span className="material-icons-outlined text-primary text-3xl">add_task</span>
+                <div className="absolute inset-0 bg-primary shadow-inner"></div>
+                <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent"></div>
+                <div className="absolute bottom-[-20%] right-[-10%] opacity-10 scale-150 rotate-[-15deg]">
+                   <span className="material-icons-outlined text-[160px] text-black">checklist</span>
                 </div>
-                <div className="text-left">
-                  <span className="text-lg font-bold text-white block">Lista de Asistencia</span>
-                  <span className="text-[10px] text-primary font-black uppercase tracking-widest">Registrar clase de hoy</span>
+                
+                <div className="absolute inset-0 p-8 flex flex-col justify-between items-start">
+                  <div className="w-12 h-12 bg-antigravity-black/20 rounded-2xl flex items-center justify-center backdrop-blur-md border border-white/30">
+                    <span className="material-icons-outlined text-black text-2xl">add_task</span>
+                  </div>
+                  <div>
+                    <h4 className="text-black text-2xl font-black uppercase tracking-tighter leading-none">Pasar Lista</h4>
+                    <p className="text-black/60 text-[10px] font-black uppercase tracking-[0.2em] mt-2">Registrar Asistencia Hoy</p>
+                  </div>
                 </div>
-              </button>
+              </motion.button>
 
               <div className="grid grid-cols-2 gap-4">
                 <button 
                   onClick={() => setVista('Horario')}
-                  className="glass-card rounded-3xl p-6 border border-white/5 flex flex-col items-center justify-center gap-3 active:scale-[0.98] transition-all"
+                  className="glass-card rounded-[2rem] p-6 border border-white/5 flex flex-col items-center justify-center gap-4 active:scale-95 transition-all text-center"
                 >
-                  <div className="w-12 h-12 bg-accent-purple/10 rounded-xl flex items-center justify-center border border-accent-purple/20 shadow-neon-purple">
-                    <span className="material-icons-outlined text-accent-purple text-2xl">groups</span>
+                  <div className="w-12 h-12 bg-accent-purple/10 rounded-2xl flex items-center justify-center border border-accent-purple/20">
+                    <span className="material-symbols-outlined text-accent-purple text-2xl">event_note</span>
                   </div>
-                  <span className="text-xs font-bold text-white">Mis Grupos</span>
+                  <div className="space-y-1">
+                    <span className="text-xs font-black text-white uppercase tracking-tight">Horarios</span>
+                    <p className="text-[7px] text-white/40 uppercase font-bold">Mis Grupos</p>
+                  </div>
                 </button>
 
                 <button 
                   onClick={() => setVista('AsistenciaStats')}
-                  className="glass-card rounded-3xl p-6 border border-white/5 flex flex-col items-center justify-center gap-3 active:scale-[0.98] transition-all"
+                  className="glass-card rounded-[2rem] p-6 border border-white/5 flex flex-col items-center justify-center gap-4 active:scale-95 transition-all text-center"
                 >
-                  <div className="w-12 h-12 bg-emerald-500/10 rounded-xl flex items-center justify-center border border-emerald-500/20 shadow-neon-emerald">
-                    <span className="material-icons-outlined text-emerald-500 text-2xl">analytics</span>
+                  <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center border border-emerald-500/20">
+                    <span className="material-symbols-outlined text-emerald-500 text-2xl">monitoring</span>
                   </div>
-                  <span className="text-xs font-bold text-white">Reportes</span>
+                  <div className="space-y-1">
+                    <span className="text-xs font-black text-white uppercase tracking-tight">Analytics</span>
+                    <p className="text-[7px] text-white/40 uppercase font-bold">Reportes</p>
+                  </div>
                 </button>
               </div>
             </div>
