@@ -186,13 +186,22 @@ const Alumnos: React.FC<AlumnosProps> = ({
 
   if (vista !== 'Alumnos' && vista !== 'AlumnoDetalle') return null;
 
-  const filteredAlumnos = alumnos
-    .filter(a => alumnosFilterMode === 'alerts' ? (a.alertas && a.alertas.length > 0 && a.alertas[0] !== '') : true)
-    .filter(a => selectedGrupoFilter === 'Todos' || a.grupo === selectedGrupoFilter)
-    .filter(a => selectedNivelFilter === 'Todos' || a.nivel === selectedNivelFilter)
-    .filter(a => selectedAgeFilter === 'Todos' || calculateAgeGroup(a.fechaNacimiento) === selectedAgeFilter)
-    .filter(a => selectedPhysicalFilter === 'Cualquiera' || getPhysicalCategory(getPhysicalScore(a.biometria)) === selectedPhysicalFilter)
-    .filter(a => a.nombre.toLowerCase().includes(searchQuery.toLowerCase()) || a.dni.includes(searchQuery));
+  const filteredAlumnos = alumnos.filter(a => {
+    const query = searchQuery.toLowerCase().trim();
+    const nameMatch = a.nombre.toLowerCase().includes(query) || (a.dni && a.dni.includes(query));
+    
+    // Si hay búsqueda activa, ignorar filtros para permitir encontrar a cualquiera rápidamente
+    if (query !== "") return nameMatch;
+
+    // Filtros estándar
+    if (alumnosFilterMode === 'alerts' && !(a.alertas && a.alertas.length > 0 && a.alertas[0] !== '')) return false;
+    if (selectedGrupoFilter !== 'Todos' && a.grupo !== selectedGrupoFilter) return false;
+    if (selectedNivelFilter !== 'Todos' && a.nivel !== selectedNivelFilter) return false;
+    if (selectedAgeFilter !== 'Todos' && calculateAgeGroup(a.fechaNacimiento) !== selectedAgeFilter) return false;
+    if (selectedPhysicalFilter !== 'Cualquiera' && getPhysicalCategory(getPhysicalScore(a.biometria)) !== selectedPhysicalFilter) return false;
+    
+    return true;
+  });
 
   if (vista === 'Alumnos') {
     return (
@@ -305,7 +314,7 @@ const Alumnos: React.FC<AlumnosProps> = ({
         </div>
 
         {/* Filters Grid - Moved down as per user request */}
-        <div className="pt-8 mt-4 border-t border-white/5 grid grid-cols-2 gap-x-4 gap-y-14 pb-8">
+        <div className="pt-8 mt-4 border-t border-white/5 grid grid-cols-2 gap-x-6 gap-y-16 pb-40">
           <EditableDropdown 
             label="Grupo"
             value={selectedGrupoFilter === 'Todos' ? '' : selectedGrupoFilter}

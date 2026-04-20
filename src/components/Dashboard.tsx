@@ -26,6 +26,7 @@ interface DashboardProps {
   setRegistrationStep: (step: number) => void;
   setUserRole: React.Dispatch<React.SetStateAction<UserRole>>;
   COORDINATOR_EMAIL: string;
+  onOpenBulkPayment: () => void;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({
@@ -49,7 +50,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
   setActiveGroup,
   setRegistrationStep,
   setUserRole,
-  COORDINATOR_EMAIL
+  COORDINATOR_EMAIL,
+  onOpenBulkPayment
 }) => {
   const [selectedProfesorDetail, setSelectedProfesorDetail] = useState<string | null>(null);
 

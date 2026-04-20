@@ -24,6 +24,7 @@ const Grupos = lazy(() => import('./src/components/Grupos').then(module => ({ de
 const Asistencia = lazy(() => import('./src/components/Asistencia').then(module => ({ default: module.Asistencia })));
 const Clases = lazy(() => import('./src/components/Clases').then(module => ({ default: module.Clases })));
 const Alumnos = lazy(() => import('./src/components/Alumnos'));
+const BulkPaymentImport = lazy(() => import('./src/components/BulkPaymentImport').then(module => ({ default: module.BulkPaymentImport })));
 
 const LoadingFallback = () => (
   <div className="flex flex-col items-center justify-center p-20 space-y-4">
@@ -134,7 +135,7 @@ export const EditableDropdown = ({
         <select 
           value={value} 
           onChange={(e) => onChange(e.target.value)}
-          className="w-full bg-antigravity-charcoal border rounded-xl pl-4 pr-44 py-3 text-sm text-white appearance-none border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none transition-all overflow-hidden text-ellipsis"
+          className="w-full bg-antigravity-charcoal border rounded-xl pl-4 pr-16 py-3 text-sm text-white appearance-none border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none transition-all overflow-hidden text-ellipsis text-left"
         >
           <option value="">{placeholder}</option>
           {options.map((opt, idx) => (
@@ -143,91 +144,95 @@ export const EditableDropdown = ({
             </option>
           ))}
         </select>
-        <div className="absolute right-12 top-1/2 -translate-y-1/2 flex gap-1 opacity-0 group-hover:opacity-100 transition-all bg-antigravity-charcoal/95 backdrop-blur-sm px-1.5 py-1 rounded-lg border border-white/10 shadow-xl z-10">
-           {value && (
-             <>
-               <Tooltip text="Editar">
-                 <button 
-                   type="button"
-                   onClick={(e) => {
-                     e.stopPropagation();
-                     const opt = options.find(o => o.nombre === value);
-                     if (opt?.id) {
-                       const newName = window.prompt(`Editar ${label.toLowerCase()}:`, opt.nombre);
-                       if (newName && newName.trim() && newName !== opt.nombre) {
-                         onEdit(opt.id, newName.trim());
-                         onChange(newName.trim());
-                       }
-                     }
-                   }}
-                   className="w-7 h-7 flex items-center justify-center text-primary hover:bg-primary/20 rounded-lg transition-all active:scale-90"
-                 >
-                   <span className="material-icons-outlined text-[16px]">edit_note</span>
-                 </button>
-               </Tooltip>
-               <Tooltip text="Eliminar">
-                 <button 
-                   type="button"
-                   onClick={(e) => {
-                     e.stopPropagation();
-                     const opt = options.find(o => o.nombre === value);
-                     if (opt?.id) {
-                       if (window.confirm(`¿Seguro que deseas eliminar "${opt.nombre}"? Esto podría afectar a los alumnos asignados.`)) {
-                         onDelete(opt.id);
-                         onChange(''); // Limpiar selección tras borrar
-                       }
-                     }
-                   }}
-                   className="w-7 h-7 flex items-center justify-center text-rose-500 hover:bg-rose-500/20 rounded-lg transition-all active:scale-90"
-                 >
-                   <span className="material-icons-outlined text-[16px]">delete_sweep</span>
-                 </button>
-               </Tooltip>
-             </>
-           )}
-        </div>
-        <Tooltip text={isAdding ? 'Cerrar' : 'Añadir'}>
-          <button 
-            type="button"
-            onClick={() => setIsAdding(!isAdding)}
-            className={`absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-full transition-all active:scale-90 ${isAdding ? 'bg-rose-500/10 text-rose-500' : 'bg-primary/10 text-primary hover:bg-primary/20 shadow-neon-cyan/20'}`}
-          >
-            <span className="material-icons-outlined text-lg">{isAdding ? 'close' : 'add_circle_outline'}</span>
-          </button>
-        </Tooltip>
-      </div>
-      {isAdding && (
-        <motion.div 
-          initial={{ opacity: 0, y: -5 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex flex-col gap-3 mt-3 p-4 bg-antigravity-black/40 rounded-2xl border border-primary/20 backdrop-blur-sm shadow-xl"
-        >
-          <div className="space-y-1">
-            <label className="text-[9px] uppercase font-bold text-primary/80 ml-1">Nuevo {label}</label>
-            <input 
-              type="text" 
-              value={newItem} 
-              onChange={(e) => setNewItem(e.target.value)}
-              placeholder="..."
-              autoFocus
-              className="w-full bg-antigravity-charcoal border border-primary/30 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-primary focus:ring-1 focus:ring-primary/50 transition-all placeholder:text-white/10"
-            />
+        
+        {/* Control Icons */}
+        <div className="absolute right-0 top-0 bottom-0 flex items-center pr-2 pointer-events-none">
+          <div className="flex items-center gap-1 pointer-events-auto">
+            {value && (
+              <div className="flex items-center gap-0.5 mr-1 pr-1 border-r border-white/10">
+                <button 
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const opt = options.find(o => o.nombre === value);
+                    if (opt?.id) {
+                      const newName = window.prompt(`Editar ${label.toLowerCase()}:`, opt.nombre);
+                      if (newName && newName.trim() && newName !== opt.nombre) {
+                        onEdit(opt.id, newName.trim());
+                        onChange(newName.trim());
+                      }
+                    }
+                  }}
+                  className="w-6 h-6 flex items-center justify-center text-primary/60 hover:text-primary hover:bg-primary/20 rounded-lg transition-all active:scale-90"
+                >
+                  <span className="material-icons-outlined text-[14px]">edit</span>
+                </button>
+                <button 
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const opt = options.find(o => o.nombre === value);
+                    if (opt?.id) {
+                      if (window.confirm(`¿Seguro que deseas eliminar "${opt.nombre}"?`)) {
+                        onDelete(opt.id);
+                        onChange('');
+                      }
+                    }
+                  }}
+                  className="w-6 h-6 flex items-center justify-center text-rose-500/60 hover:text-rose-500 hover:bg-rose-500/20 rounded-lg transition-all active:scale-90"
+                >
+                  <span className="material-icons-outlined text-[14px]">delete</span>
+                </button>
+              </div>
+            )}
+            <button 
+              type="button"
+              onClick={() => setIsAdding(!isAdding)}
+              className={`w-7 h-7 flex items-center justify-center rounded-full transition-all active:scale-90 ${isAdding ? 'bg-rose-500/20 text-rose-500' : 'bg-primary/20 text-primary hover:bg-primary/30'}`}
+            >
+              <span className="material-icons-outlined text-base">{isAdding ? 'close' : 'add'}</span>
+            </button>
           </div>
-          <Button 
-            onClick={() => {
-              if (newItem.trim()) {
-                onAdd(newItem.trim());
-                onChange(newItem.trim());
-                setNewItem('');
-                setIsAdding(false);
-              }
-            }}
-            className="w-full !py-3.5 shadow-neon-cyan/20 border border-primary/50"
+        </div>
+      </div>
+
+      <AnimatePresence>
+        {isAdding && (
+          <motion.div 
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="absolute left-0 right-0 z-50 mt-2 p-4 bg-antigravity-charcoal border border-primary/30 rounded-2xl shadow-2xl backdrop-blur-md"
           >
-            Guardar {label}
-          </Button>
-        </motion.div>
-      )}
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <label className="text-[9px] uppercase font-bold text-primary ml-1">Nuevo {label}</label>
+                <input 
+                  type="text" 
+                  value={newItem} 
+                  onChange={(e) => setNewItem(e.target.value)}
+                  placeholder="Escribir nombre..."
+                  autoFocus
+                  className="w-full bg-antigravity-black border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-primary transition-all"
+                />
+              </div>
+              <Button 
+                onClick={() => {
+                  if (newItem.trim()) {
+                    onAdd(newItem.trim());
+                    onChange(newItem.trim());
+                    setNewItem('');
+                    setIsAdding(false);
+                  }
+                }}
+                className="w-full !py-3 rounded-xl shadow-lg border border-primary/20"
+              >
+                Guardar {label}
+              </Button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
@@ -1617,6 +1622,7 @@ const App: React.FC = () => {
     );
   };
   const [isBulkImporting, setIsBulkImporting] = useState(false);
+  const [isBulkPaymentModalOpen, setIsBulkPaymentModalOpen] = useState(false);
   const [bulkImportText, setBulkImportText] = useState("");
   const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
   const [groupSearch, setGroupSearch] = useState("");
@@ -1691,6 +1697,36 @@ const App: React.FC = () => {
       setNotificacion({ t: "Error", d: "No se pudo realizar el análisis de IA." });
     } finally {
       setIsAnalyzing(false);
+    }
+  };
+
+  const handleBulkPaymentConfirm = async (updates: { alumnoId: string, name: string, month: string, year: number }[]) => {
+    try {
+      setIsLoading(true);
+      const updatedAlumnos = [...alumnos];
+      
+      for (const update of updates) {
+        const alumno = updatedAlumnos.find(a => a.id === update.alumnoId);
+        if (alumno) {
+          const pagos = alumno.pagosMensuales || [];
+          // Evitar duplicados
+          const exists = pagos.some(p => p.mes === update.month && p.anio === update.year);
+          if (!exists) {
+            const newPago = { mes: update.month, anio: update.year, fechaPago: new Date().toISOString() };
+            const newPagos = [...pagos, newPago];
+            await updateDocument(COLLECTIONS.ALUMNOS, alumno.id!, { pagosMensuales: newPagos });
+          }
+        }
+      }
+      
+      setNotificacion({ t: 'Éxito', d: `${updates.length} pagos registrados correctamente.` });
+      setIsBulkPaymentModalOpen(false);
+      loadData();
+    } catch (error: any) {
+      console.error("Error bulk updating payments:", error);
+      setNotificacion({ t: 'Error', d: 'Hubo un problema al registrar los pagos.' });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -2411,10 +2447,16 @@ const App: React.FC = () => {
     const minute = i % 2 === 0 ? '00' : '30';
     return `${hour.toString().padStart(2, '0')}:${minute}`;
   });
-  const filteredAlumnos = alumnos.filter(a => 
-    a.grupo === activeGroup?.nombre && 
-    (a.nombre.toLowerCase().includes(searchQuery.toLowerCase()) || a.dni.includes(searchQuery))
-  );
+  const filteredAlumnos = alumnos.filter(a => {
+    const query = searchQuery.toLowerCase().trim();
+    const nameMatch = a.nombre.toLowerCase().includes(query) || (a.dni && a.dni.includes(query));
+    
+    // Si hay búsqueda, mostrar resultados globales (ignorando grupo para facilitar encontrar a cualquiera)
+    if (query !== "") return nameMatch;
+    
+    // Si no hay búsqueda, filtrar por el grupo activo
+    return a.grupo === activeGroup?.nombre;
+  });
   const presentCount = Object.values(asistenciasHoy).filter(v => v).length;
 
   if (!isLoggedIn) return (
@@ -2635,8 +2677,16 @@ const App: React.FC = () => {
               setRegistrationStep={setRegistrationStep}
               setUserRole={setUserRole}
               COORDINATOR_EMAIL={COORDINATOR_EMAIL}
+              onOpenBulkPayment={() => setIsBulkPaymentModalOpen(true)}
             />
           )}
+
+          <BulkPaymentImport 
+            isOpen={isBulkPaymentModalOpen}
+            onClose={() => setIsBulkPaymentModalOpen(false)}
+            alumnos={alumnos}
+            onConfirm={handleBulkPaymentConfirm}
+          />
 
         {vista === 'Horario' && (
           <Grupos 
