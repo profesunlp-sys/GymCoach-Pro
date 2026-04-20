@@ -3402,33 +3402,87 @@ const App: React.FC = () => {
 
               <div className="animate-in fade-in zoom-in duration-500">
                 {/* Render current view content in focus mode */}
-                {vista === 'Dashboard' && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div className="glass-card p-8 rounded-[2.5rem] border-primary/20">
-                      <h3 className="title-antigravity text-2xl mb-6">Próximas Clases</h3>
-                      {/* Simplified list for focus */}
-                      <div className="space-y-4">
-                        {grupos.slice(0, 3).map(g => (
-                          <div key={g.id} className="flex justify-between items-center p-4 bg-white/5 rounded-2xl">
-                            <span className="font-bold">{g.nombre}</span>
-                            <span className="text-primary font-mono">{g.horario}</span>
-                          </div>
-                        ))}
+                {vista === 'Dashboard' && (() => {
+                  const alumnosConPagosVencidos = alumnos.filter(a => a.pagoVencido);
+                  const alumnosConObservacionesMedicas = alumnos.filter(a => a.observacionesMedicas && a.observacionesMedicas.trim() !== '');
+                  const feedbacksUrgentes = feedbacks.filter(f => f.urgente);
+                  const tieneAlertas = alumnosConPagosVencidos.length > 0 || alumnosConObservacionesMedicas.length > 0 || feedbacksUrgentes.length > 0;
+
+                  return (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      <div className="glass-card p-8 rounded-[2.5rem] border-primary/20">
+                        <h3 className="title-antigravity text-2xl mb-6">Próximas Clases</h3>
+                        {/* Simplified list for focus */}
+                        <div className="space-y-4">
+                          {grupos.slice(0, 3).map(g => (
+                            <div 
+                              key={g.id} 
+                              onClick={() => {
+                                setIsFocusMode(false);
+                                setActiveGroup(g);
+                                setVista('AsistenciaLista');
+                              }}
+                              className="flex justify-between items-center p-4 bg-white/5 hover:bg-white/10 rounded-2xl cursor-pointer transition-all active:scale-95 group"
+                            >
+                              <div>
+                                <span className="font-bold block text-white group-hover:text-primary transition-colors">{g.nombre}</span>
+                                <span className="text-[10px] text-white/50 uppercase">{g.dias.join(', ')}</span>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <span className="text-primary font-mono bg-primary/10 px-2 py-1 rounded-lg">{g.horario}</span>
+                                <span className="material-icons-outlined text-white/20 group-hover:text-primary transition-colors">arrow_forward_ios</span>
+                              </div>
+                            </div>
+                          ))}
+                          {grupos.length === 0 && (
+                            <p className="text-white/40 text-sm italic text-center py-4">No hay grupos configurados.</p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="glass-card p-8 rounded-[2.5rem] border-rose-500/20">
+                        <h3 className="title-antigravity text-2xl mb-6 text-rose-500">Alertas Críticas</h3>
+                        <div className="space-y-4">
+                          {!tieneAlertas ? (
+                            <div className="flex flex-col items-center justify-center py-8 text-emerald-500/50 space-y-2">
+                              <span className="material-icons-outlined text-4xl">check_circle</span>
+                              <p className="text-sm font-bold uppercase tracking-wider">Todo en orden</p>
+                            </div>
+                          ) : (
+                            <>
+                              {feedbacksUrgentes.slice(0, 2).map(f => (
+                                <div key={f.id} className="flex items-center gap-4 p-4 bg-rose-500/10 border border-rose-500/20 rounded-2xl cursor-pointer hover:bg-rose-500/20 transition-all active:scale-95" onClick={() => { setIsFocusMode(false); setVista('Alumnos'); }}>
+                                  <span className="material-symbols-outlined text-rose-500">notification_important</span>
+                                  <div>
+                                    <span className="font-bold text-white block text-sm">Feedback de Padre</span>
+                                    <span className="text-[10px] text-white/60 line-clamp-1">{f.mensaje}</span>
+                                  </div>
+                                </div>
+                              ))}
+                              {alumnosConPagosVencidos.slice(0, 2).map(a => (
+                                <div key={`mora-${a.id}`} className="flex items-center gap-4 p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl cursor-pointer hover:bg-amber-500/20 transition-all active:scale-95" onClick={() => { setIsFocusMode(false); setVista('Alumnos'); }}>
+                                  <span className="material-icons-outlined text-amber-500">payments</span>
+                                  <div>
+                                    <span className="font-bold text-white block text-sm">{a.nombre}</span>
+                                    <span className="text-[10px] text-amber-500/60 uppercase font-bold">Mora Detectada</span>
+                                  </div>
+                                </div>
+                              ))}
+                              {alumnosConObservacionesMedicas.slice(0, 2).map(a => (
+                                <div key={`med-${a.id}`} className="flex items-center gap-4 p-4 bg-rose-500/10 border border-rose-500/20 rounded-2xl cursor-pointer hover:bg-rose-500/20 transition-all active:scale-95" onClick={() => { setIsFocusMode(false); setVista('Alumnos'); }}>
+                                  <span className="material-icons-outlined text-rose-500">medical_services</span>
+                                  <div>
+                                    <span className="font-bold text-white block text-sm">{a.nombre}</span>
+                                    <span className="text-[10px] text-white/60 line-clamp-1">{a.observacionesMedicas}</span>
+                                  </div>
+                                </div>
+                              ))}
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
-                    <div className="glass-card p-8 rounded-[2.5rem] border-primary/20">
-                      <h3 className="title-antigravity text-2xl mb-6">Alertas Críticas</h3>
-                      <div className="space-y-4">
-                        {alumnos.filter(a => a.alertas?.length > 0).slice(0, 3).map(a => (
-                          <div key={a.id} className="flex items-center gap-4 p-4 bg-rose-500/10 border border-rose-500/20 rounded-2xl">
-                            <span className="material-icons-outlined text-rose-500">warning</span>
-                            <span className="font-bold">{a.nombre}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
+                  );
+                })()}
                 {vista !== 'Dashboard' && (
                   <div className="text-center py-24 opacity-50">
                     <p className="text-xl italic">Modo enfoque optimizado para esta vista próximamente.</p>
