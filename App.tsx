@@ -888,13 +888,13 @@ const App: React.FC = () => {
       setProfesoresList(p || []);
       setSources(s || []);
       setNiveles(n.length > 0 ? n : [
-        { nombre: 'Escuela' },
-        { nombre: 'Pre-Equipo' },
-        { nombre: 'Equipo' }
+        { id: 'default-0', nombre: 'Escuela' },
+        { id: 'default-1', nombre: 'Pre-Equipo' },
+        { id: 'default-2', nombre: 'Equipo' }
       ]);
-      setDisciplinas(d.length > 0 ? d : DISCIPLINAS.map(name => ({ nombre: name })));
-      setWarmupOptions(w.length > 0 ? w : ['Movilidad articular', 'Trote', 'Juegos', 'Estiramiento dinámico'].map(name => ({ nombre: name })));
-      setCooldownOptions(co.length > 0 ? co : ['Estiramiento pasivo', 'Relajación', 'Feedback grupal'].map(name => ({ nombre: name })));
+      setDisciplinas(d.length > 0 ? d : DISCIPLINAS.map((name, i) => ({ id: `default-${i}`, nombre: name })));
+      setWarmupOptions(w.length > 0 ? w : ['Movilidad articular', 'Trote', 'Juegos', 'Estiramiento dinámico'].map((name, i) => ({ id: `default-${i}`, nombre: name })));
+      setCooldownOptions(co.length > 0 ? co : ['Estiramiento pasivo', 'Relajación', 'Feedback grupal'].map((name, i) => ({ id: `default-${i}`, nombre: name })));
       
       // Filter global alerts
       setAlertasGlobales(a.filter(student => student.alertas && student.alertas.length > 0 && student.alertas[0] !== ""));
@@ -1098,6 +1098,10 @@ const App: React.FC = () => {
   };
 
   const handleUpdateLevel = async (id: string, nombre: string) => {
+    if (id.startsWith('default-')) {
+      setNotificacion({ t: "Aviso", d: "No se pueden editar niveles predeterminados." });
+      return;
+    }
     try {
       await updateDocument(COLLECTIONS.NIVELES, id, { nombre });
       setNotificacion({ t: "Éxito", d: "Nivel actualizado." });
@@ -1108,6 +1112,10 @@ const App: React.FC = () => {
   };
 
   const handleDeleteLevel = async (id: string) => {
+    if (id.startsWith('default-')) {
+      setNotificacion({ t: "Aviso", d: "No se pueden eliminar niveles predeterminados. Agrega tus propios niveles para personalizar la lista." });
+      return;
+    }
     requestConfirmation(
       "Eliminar Nivel",
       "¿Estás seguro de que deseas eliminar este nivel?",
@@ -1154,6 +1162,10 @@ const App: React.FC = () => {
   };
 
   const handleUpdateDiscipline = async (id: string, nombre: string) => {
+    if (id.startsWith('default-')) {
+      setNotificacion({ t: "Aviso", d: "No se pueden editar disciplinas predeterminadas. Agrega tus propias disciplinas para personalizar la lista." });
+      return;
+    }
     try {
       await updateDocument(COLLECTIONS.DISCIPLINAS, id, { nombre });
       setNotificacion({ t: "Éxito", d: "Disciplina actualizada." });
@@ -1164,6 +1176,10 @@ const App: React.FC = () => {
   };
 
   const handleDeleteDiscipline = async (id: string) => {
+    if (id.startsWith('default-')) {
+      setNotificacion({ t: "Aviso", d: "No se pueden eliminar disciplinas predeterminadas. Agrega tus propias disciplinas para personalizar la lista." });
+      return;
+    }
     requestConfirmation(
       "Eliminar Disciplina",
       "¿Estás seguro de que deseas eliminar esta disciplina?",
@@ -1189,6 +1205,10 @@ const App: React.FC = () => {
   };
 
   const handleUpdateWarmupOption = async (id: string, nombre: string) => {
+    if (id.startsWith('default-')) {
+      setNotificacion({ t: "Aviso", d: "No se pueden editar opciones predeterminadas." });
+      return;
+    }
     try {
       await updateDocument(COLLECTIONS.WARMUP_OPTIONS, id, { nombre });
       loadData();
@@ -1198,6 +1218,10 @@ const App: React.FC = () => {
   };
 
   const handleDeleteWarmupOption = async (id: string) => {
+    if (id.startsWith('default-')) {
+      setNotificacion({ t: "Aviso", d: "No se pueden eliminar opciones predeterminadas." });
+      return;
+    }
     try {
       await deleteDocument(COLLECTIONS.WARMUP_OPTIONS, id);
       loadData();
@@ -1216,6 +1240,10 @@ const App: React.FC = () => {
   };
 
   const handleUpdateCooldownOption = async (id: string, nombre: string) => {
+    if (id.startsWith('default-')) {
+      setNotificacion({ t: "Aviso", d: "No se pueden editar opciones predeterminadas." });
+      return;
+    }
     try {
       await updateDocument(COLLECTIONS.COOLDOWN_OPTIONS, id, { nombre });
       loadData();
@@ -1225,6 +1253,10 @@ const App: React.FC = () => {
   };
 
   const handleDeleteCooldownOption = async (id: string) => {
+    if (id.startsWith('default-')) {
+      setNotificacion({ t: "Aviso", d: "No se pueden eliminar opciones predeterminadas." });
+      return;
+    }
     try {
       await deleteDocument(COLLECTIONS.COOLDOWN_OPTIONS, id);
       loadData();
@@ -1485,14 +1517,34 @@ const App: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    Papa.parse(file, {
-      header: false,
-      skipEmptyLines: true,
-      complete: (results: Papa.ParseResult<any>) => {
-        const text = results.data.map((row: any) => row.join(',')).join('\n');
-        setBulkImportText(text);
-      }
-    });
+    const fileExt = file.name.split('.').pop()?.toLowerCase();
+    
+    if (fileExt === 'xlsx' || fileExt === 'xls') {
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        try {
+          const bstr = evt.target?.result;
+          const wb = XLSX.read(bstr, { type: 'binary' });
+          const wsname = wb.SheetNames[0];
+          const ws = wb.Sheets[wsname];
+          const csv = XLSX.utils.sheet_to_csv(ws);
+          setBulkImportText(csv);
+        } catch (error) {
+          console.error("Error reading Excel file:", error);
+          setNotificacion({ t: "Error", d: "No se pudo leer el archivo Excel." });
+        }
+      };
+      reader.readAsBinaryString(file);
+    } else {
+      Papa.parse(file, {
+        header: false,
+        skipEmptyLines: true,
+        complete: (results: Papa.ParseResult<any>) => {
+          const text = results.data.map((row: any) => row.join(',')).join('\n');
+          setBulkImportText(text);
+        }
+      });
+    }
   };
 
   const handleBulkImport = async () => {
@@ -1549,10 +1601,29 @@ const App: React.FC = () => {
       };
 
       try {
-        await addDocument(COLLECTIONS.ALUMNOS, newStudent);
+        // Buscar si ya existe el alumno por DNI para evitar duplicados y permitir carga fragmentada
+        const existingStudent = alumnos.find(a => a.dni !== 'No especificado' && a.dni === dni);
+
+        if (existingStudent) {
+          // Actualizar solo los campos que vienen con información nueva o mantienen los existentes
+          const updatedStudent = {
+            ...existingStudent,
+            nombre: nombre || existingStudent.nombre,
+            grupo: (grupo && grupo !== 'Sin Grupo') ? grupo : existingStudent.grupo,
+            nivel: (nivel && nivel !== 'Escuela') ? nivel : existingStudent.nivel,
+            contacto: {
+              ...existingStudent.contacto,
+              emergenciaTelefono: telefono || existingStudent.contacto.emergenciaTelefono
+            }
+          };
+          await updateDocument(COLLECTIONS.ALUMNOS, existingStudent.id, updatedStudent);
+        } else {
+          // Crear nuevo si no existe
+          await addDocument(COLLECTIONS.ALUMNOS, newStudent);
+        }
         importedCount++;
       } catch (e) {
-        errors.push(`Error al guardar a ${nombre}: ${e}`);
+        errors.push(`Error al procesar a ${nombre}: ${e}`);
       }
     }
 
@@ -3017,10 +3088,28 @@ const App: React.FC = () => {
                 if (item.v === 'Alumnos') setAlumnosFilterMode('all');
                 handleNavigation(item.v as ViewMode);
               }} 
-              className={`flex flex-col items-center gap-1.5 transition-all flex-1 ${vista === item.v || (vista === 'AsistenciaLista' && item.v === 'Horario') || (vista === 'NuevaClase' && item.v === 'Clases') ? 'text-neon-cyan active-glow' : 'text-white/60 hover:text-white'}`}
+              className={`flex flex-col items-center gap-1.5 transition-all flex-1 ${
+                vista === item.v || 
+                (item.v === 'Alumnos' && (vista === 'AlumnoDetalle' || vista === 'RegistroAlumno')) ||
+                (item.v === 'Clases' && (vista === 'NuevaClase' || vista === 'ClaseDetalle' || vista === 'HistorialClases'))
+                ? 'text-neon-cyan active-glow' 
+                : 'text-white/60 hover:text-white'
+              }`}
             >
-              <span className={`material-symbols-outlined text-[26px] font-light ${vista === item.v || (vista === 'AsistenciaLista' && item.v === 'Horario') || (vista === 'NuevaClase' && item.v === 'Clases') ? 'neon-glow-cyan' : ''}`}>{item.i}</span>
-              <span className={`text-[9px] uppercase tracking-wide ${vista === item.v || (vista === 'AsistenciaLista' && item.v === 'Horario') || (vista === 'NuevaClase' && item.v === 'Clases') ? 'font-bold' : 'font-medium'}`}>
+              <span className={`material-symbols-outlined text-[26px] font-light ${
+                vista === item.v || 
+                (item.v === 'Alumnos' && (vista === 'AlumnoDetalle' || vista === 'RegistroAlumno')) ||
+                (item.v === 'Clases' && (vista === 'NuevaClase' || vista === 'ClaseDetalle' || vista === 'HistorialClases'))
+                ? 'neon-glow-cyan' 
+                : ''
+              }`}>{item.i}</span>
+              <span className={`text-[9px] uppercase tracking-wide ${
+                vista === item.v || 
+                (item.v === 'Alumnos' && (vista === 'AlumnoDetalle' || vista === 'RegistroAlumno')) ||
+                (item.v === 'Clases' && (vista === 'NuevaClase' || vista === 'ClaseDetalle' || vista === 'HistorialClases'))
+                ? 'font-bold' 
+                : 'font-medium'
+              }`}>
                 {item.l}
               </span>
             </button>
@@ -3144,13 +3233,13 @@ const App: React.FC = () => {
               </div>
               <div className="bg-primary/5 border border-primary/20 rounded-2xl p-4 flex flex-col gap-4">
                 <p className="text-[10px] text-primary font-black uppercase tracking-widest leading-relaxed">
-                  Pega los datos desde Excel o sube un archivo CSV. <br/>
-                  Formato: <span className="text-white">Nombre, DNI, Grupo, Nivel, Teléfono</span>
+                  Pega los datos desde Excel o sube un archivo CSV/Excel. <br/>
+                  Formato Sugerido: <span className="text-white">Nombre, DNI, Grupo, Nivel, Teléfono</span>
                 </p>
                 <div className="flex items-center gap-3">
                   <input 
                     type="file" 
-                    accept=".csv" 
+                    accept=".csv, .xlsx, .xls" 
                     onChange={handleCsvImport} 
                     ref={fileInputRef}
                     className="hidden"
@@ -3160,7 +3249,7 @@ const App: React.FC = () => {
                     className="flex-1 py-3 px-4 rounded-xl bg-white/5 border border-white/10 text-white text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-white/10 transition-all"
                   >
                     <span className="material-icons-outlined text-sm">upload_file</span>
-                    Seleccionar CSV
+                    Seleccionar CSV o Excel
                   </button>
                 </div>
               </div>

@@ -640,7 +640,7 @@ export const Clases: React.FC<ClasesProps> = ({
     );
   }
 
-  if (vista === 'HistorialClases') {
+  if (vista === 'HistorialClases' || vista === 'Clases') {
     return (
       <div className="px-6 py-8 space-y-8 page-transition pb-24">
         <header className="flex items-center justify-between">
