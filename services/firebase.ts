@@ -35,7 +35,9 @@ export const COLLECTIONS = {
   WARMUP_OPTIONS: "warmup_options",
   COOLDOWN_OPTIONS: "cooldown_options",
   CONFIG: "config",
-  SOURCES: "sources"
+  SOURCES: "sources",
+  AGE_CATEGORIES: "age_categories",
+  PHYSICAL_CATEGORIES: "physical_categories"
 };
 
 // Generic helpers

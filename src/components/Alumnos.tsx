@@ -63,6 +63,18 @@ interface AlumnosProps {
   handleUpdateSkill: () => void;
   handleToggleSkillFavorite: (skillId: string) => void;
   handleUpdateBiometrics: (alumnoId: string, biometria: any) => void;
+  ageCategories: { id?: string; nombre: string }[];
+  physicalCategories: { id?: string; nombre: string }[];
+  handleSaveAgeCategory: (name: string) => void;
+  handleUpdateAgeCategory: (id: string, name: string) => void;
+  handleDeleteAgeCategory: (id: string) => void;
+  handleSavePhysicalCategory: (name: string) => void;
+  handleUpdatePhysicalCategory: (id: string, name: string) => void;
+  handleDeletePhysicalCategory: (id: string) => void;
+  disciplinas: { id?: string; nombre: string }[];
+  handleSaveDisciplina: (name: string) => void;
+  handleUpdateDisciplina: (id: string, nombre: string) => void;
+  handleDeleteDisciplina: (id: string) => void;
 }
 
 const Alumnos: React.FC<AlumnosProps> = ({
@@ -123,7 +135,19 @@ const Alumnos: React.FC<AlumnosProps> = ({
   setSelectedAgeFilter,
   selectedPhysicalFilter,
   setSelectedPhysicalFilter,
-  handleUpdateBiometrics
+  handleUpdateBiometrics,
+  ageCategories,
+  physicalCategories,
+  handleSaveAgeCategory,
+  handleUpdateAgeCategory,
+  handleDeleteAgeCategory,
+  handleSavePhysicalCategory,
+  handleUpdatePhysicalCategory,
+  handleDeletePhysicalCategory,
+  disciplinas,
+  handleSaveDisciplina,
+  handleUpdateDisciplina,
+  handleDeleteDisciplina
 }) => {
   const [activeTab, setActiveTab] = useState<'Progreso' | 'Asistencia' | 'Bio' | 'Contacto'>('Progreso');
   const [isEditingStudent, setIsEditingStudent] = useState(false);
@@ -139,12 +163,12 @@ const Alumnos: React.FC<AlumnosProps> = ({
         age--;
     }
     
-    if (age < 7) return 'Pre-Mini';
-    if (age <= 8) return 'Mini';
-    if (age <= 10) return 'Pre-Infantil';
-    if (age <= 12) return 'Infantil';
-    if (age <= 15) return 'Juvenil';
-    return 'Mayor';
+    if (age < 7) return ageCategories[0]?.nombre || 'Pre-Mini';
+    if (age <= 8) return ageCategories[1]?.nombre || 'Mini';
+    if (age <= 10) return ageCategories[2]?.nombre || 'Pre-Infantil';
+    if (age <= 12) return ageCategories[3]?.nombre || 'Infantil';
+    if (age <= 15) return ageCategories[4]?.nombre || 'Juvenil';
+    return ageCategories[5]?.nombre || 'Mayor';
   };
 
   const getPhysicalScore = (biometria?: any) => {
@@ -154,10 +178,10 @@ const Alumnos: React.FC<AlumnosProps> = ({
   };
 
   const getPhysicalCategory = (score: number) => {
-    if (score >= 80) return 'Elite';
-    if (score >= 60) return 'Bueno';
-    if (score >= 40) return 'Regular';
-    return 'Bajo';
+    if (score >= 80) return physicalCategories[0]?.nombre || 'Elite';
+    if (score >= 60) return physicalCategories[1]?.nombre || 'Bueno';
+    if (score >= 40) return physicalCategories[2]?.nombre || 'Regular';
+    return physicalCategories[3]?.nombre || 'Bajo';
   };
 
   if (vista !== 'Alumnos' && vista !== 'AlumnoDetalle') return null;
@@ -237,58 +261,49 @@ const Alumnos: React.FC<AlumnosProps> = ({
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <label className="text-[8px] uppercase font-bold text-white/40 ml-1">Grupo</label>
-              <select 
-                value={selectedGrupoFilter}
-                onChange={(e) => setSelectedGrupoFilter(e.target.value)}
-                className="w-full bg-antigravity-charcoal border border-white/10 rounded-xl px-4 py-3 text-xs text-white appearance-none outline-none focus:border-primary/50 transition-all"
-              >
-                <option value="Todos">Todos los Grupos</option>
-                {grupos.map(g => <option key={g.id} value={g.nombre}>{g.nombre}</option>)}
-              </select>
-            </div>
-            <div className="space-y-1">
-              <label className="text-[8px] uppercase font-bold text-white/40 ml-1">Nivel</label>
-              <select 
-                value={selectedNivelFilter}
-                onChange={(e) => setSelectedNivelFilter(e.target.value)}
-                className="w-full bg-antigravity-charcoal border border-white/10 rounded-xl px-4 py-3 text-xs text-white appearance-none outline-none focus:border-primary/50 transition-all"
-              >
-                <option value="Todos">Todos los Niveles</option>
-                {niveles.map(n => <option key={n.id} value={n.nombre}>{n.nombre}</option>)}
-              </select>
-            </div>
-            <div className="space-y-1">
-              <label className="text-[8px] uppercase font-bold text-white/40 ml-1">Categoría Edad</label>
-              <select 
-                value={selectedAgeFilter}
-                onChange={(e) => setSelectedAgeFilter(e.target.value)}
-                className="w-full bg-antigravity-charcoal border border-white/10 rounded-xl px-4 py-3 text-xs text-white appearance-none outline-none focus:border-primary/50 transition-all"
-              >
-                <option value="Todos">Todas las Edades</option>
-                <option value="Pre-Mini">Pre-Mini</option>
-                <option value="Mini">Mini</option>
-                <option value="Pre-Infantil">Pre-Infantil</option>
-                <option value="Infantil">Infantil</option>
-                <option value="Juvenil">Juvenil</option>
-                <option value="Mayor">Mayor</option>
-              </select>
-            </div>
-            <div className="space-y-1">
-              <label className="text-[8px] uppercase font-bold text-white/40 ml-1">Condición Física</label>
-              <select 
-                value={selectedPhysicalFilter}
-                onChange={(e) => setSelectedPhysicalFilter(e.target.value)}
-                className="w-full bg-antigravity-charcoal border border-white/10 rounded-xl px-4 py-3 text-xs text-white appearance-none outline-none focus:border-primary/50 transition-all"
-              >
-                <option value="Cualquiera">Cualquiera</option>
-                <option value="Elite">Elite (&gt;80%)</option>
-                <option value="Bueno">Bueno (&gt;60%)</option>
-                <option value="Regular">Regular (&gt;40%)</option>
-                <option value="Bajo">Bajo (&lt;40%)</option>
-              </select>
-            </div>
+            <EditableDropdown 
+              label="Grupo"
+              value={selectedGrupoFilter === 'Todos' ? '' : selectedGrupoFilter}
+              onChange={(val) => setSelectedGrupoFilter(val || 'Todos')}
+              options={grupos}
+              onAdd={handleQuickSaveGroup}
+              onEdit={handleUpdateGroupQuick}
+              onDelete={(id) => {
+                const g = grupos.find(group => group.id === id);
+                if (g) handleDeleteGroup(g);
+              }}
+              placeholder="Todos los Grupos"
+            />
+            <EditableDropdown 
+              label="Nivel"
+              value={selectedNivelFilter === 'Todos' ? '' : selectedNivelFilter}
+              onChange={(val) => setSelectedNivelFilter(val || 'Todos')}
+              options={niveles}
+              onAdd={handleSaveLevel}
+              onEdit={handleUpdateLevel}
+              onDelete={handleDeleteLevel}
+              placeholder="Todos los Niveles"
+            />
+            <EditableDropdown 
+              label="Categoría Edad"
+              value={selectedAgeFilter === 'Todos' ? '' : selectedAgeFilter}
+              onChange={(val) => setSelectedAgeFilter(val || 'Todos')}
+              options={ageCategories}
+              onAdd={handleSaveAgeCategory}
+              onEdit={handleUpdateAgeCategory}
+              onDelete={handleDeleteAgeCategory}
+              placeholder="Todas las Edades"
+            />
+            <EditableDropdown 
+              label="Condición Física"
+              value={selectedPhysicalFilter === 'Cualquiera' ? '' : selectedPhysicalFilter}
+              onChange={(val) => setSelectedPhysicalFilter(val || 'Cualquiera')}
+              options={physicalCategories}
+              onAdd={handleSavePhysicalCategory}
+              onEdit={handleUpdatePhysicalCategory}
+              onDelete={handleDeletePhysicalCategory}
+              placeholder="Cualquiera"
+            />
           </div>
         </div>
 
@@ -325,19 +340,16 @@ const Alumnos: React.FC<AlumnosProps> = ({
                         placeholder="Sin puntos"
                       />
                     </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] uppercase font-bold text-white/60 ml-1">Disciplina</label>
-                      <select 
-                        value={studentForm.disciplina}
-                        onChange={(e) => setStudentForm({ ...studentForm, disciplina: e.target.value as any })}
-                        className="w-full bg-antigravity-charcoal border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-primary/50 transition-all"
-                      >
-                        <option value="GAF">GAF</option>
-                        <option value="GAM">GAM</option>
-                        <option value="Trampolín">Trampolín</option>
-                        <option value="Acrobática">Acrobática</option>
-                      </select>
-                    </div>
+                    <EditableDropdown 
+                      label="Disciplina"
+                      value={studentForm.disciplina || ''}
+                      onChange={(val) => setStudentForm({ ...studentForm, disciplina: (val as any) })}
+                      options={disciplinas}
+                      onAdd={handleSaveDisciplina}
+                      onEdit={handleUpdateDisciplina}
+                      onDelete={handleDeleteDisciplina}
+                      placeholder="Seleccionar..."
+                    />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <EditableDropdown 

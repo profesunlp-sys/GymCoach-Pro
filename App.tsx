@@ -33,12 +33,27 @@ const LoadingFallback = () => (
 );
 
 export const Tooltip = ({ children, text }: { children: React.ReactNode, text: string }) => {
+  const [isVisible, setIsVisible] = useState(false);
   return (
-    <div className="relative group flex items-center">
+    <div 
+      className="relative flex items-center"
+      onMouseEnter={() => setIsVisible(true)}
+      onMouseLeave={() => setIsVisible(false)}
+    >
       {children}
-      <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 px-2 py-1 bg-antigravity-charcoal border border-white/10 text-[10px] text-white rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 shadow-xl">
-        {text}
-      </div>
+      <AnimatePresence>
+        {isVisible && (
+          <motion.div 
+            initial={{ opacity: 0, y: 5, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 5, scale: 0.9 }}
+            className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 px-2.5 py-1.5 bg-antigravity-black/95 backdrop-blur-md border border-white/10 text-[9px] font-bold uppercase tracking-wider text-white rounded-lg pointer-events-none whitespace-nowrap z-[100] shadow-2xl flex items-center gap-2 border-primary/20"
+          >
+            <div className="w-1 h-1 bg-primary rounded-full animate-pulse shadow-neon-cyan"></div>
+            {text}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
@@ -119,7 +134,7 @@ export const EditableDropdown = ({
         <select 
           value={value} 
           onChange={(e) => onChange(e.target.value)}
-          className="w-full bg-antigravity-charcoal border rounded-xl px-4 py-3 text-sm text-white appearance-none border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none transition-all"
+          className="w-full bg-antigravity-charcoal border rounded-xl pl-4 pr-32 py-3 text-sm text-white appearance-none border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none transition-all"
         >
           <option value="">{placeholder}</option>
           {options.map((opt, idx) => (
@@ -128,46 +143,56 @@ export const EditableDropdown = ({
             </option>
           ))}
         </select>
-        <div className="absolute right-10 top-1/2 -translate-y-1/2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-antigravity-charcoal px-1">
+        <div className="absolute right-14 top-1/2 -translate-y-1/2 flex gap-2 opacity-0 group-hover:opacity-100 transition-all bg-antigravity-charcoal/90 backdrop-blur-sm px-2 py-1 rounded-lg border border-white/5 shadow-lg z-10">
            {value && (
              <>
-               <Tooltip text={`Editar ${label.toLowerCase()}`}>
+               <Tooltip text="Editar">
                  <button 
                    type="button"
-                   onClick={() => {
+                   onClick={(e) => {
+                     e.stopPropagation();
                      const opt = options.find(o => o.nombre === value);
                      if (opt?.id) {
                        const newName = window.prompt(`Editar ${label.toLowerCase()}:`, opt.nombre);
-                       if (newName && newName !== opt.nombre) onEdit(opt.id, newName);
+                       if (newName && newName.trim() && newName !== opt.nombre) {
+                         onEdit(opt.id, newName.trim());
+                         onChange(newName.trim());
+                       }
                      }
                    }}
-                   className="p-1 text-primary hover:bg-primary/10 rounded transition-colors"
+                   className="w-7 h-7 flex items-center justify-center text-primary hover:bg-primary/20 rounded-lg transition-all active:scale-90"
                  >
-                   <span className="material-icons-outlined text-xs">edit</span>
+                   <span className="material-icons-outlined text-[16px]">edit_note</span>
                  </button>
                </Tooltip>
-               <Tooltip text={`Eliminar ${label.toLowerCase()}`}>
+               <Tooltip text="Eliminar">
                  <button 
                    type="button"
-                   onClick={() => {
+                   onClick={(e) => {
+                     e.stopPropagation();
                      const opt = options.find(o => o.nombre === value);
-                     if (opt?.id) onDelete(opt.id);
+                     if (opt?.id) {
+                       if (window.confirm(`¿Seguro que deseas eliminar "${opt.nombre}"? Esto podría afectar a los alumnos asignados.`)) {
+                         onDelete(opt.id);
+                         onChange(''); // Limpiar selección tras borrar
+                       }
+                     }
                    }}
-                   className="p-1 text-rose-500 hover:bg-rose-500/10 rounded transition-colors"
+                   className="w-7 h-7 flex items-center justify-center text-rose-500 hover:bg-rose-500/20 rounded-lg transition-all active:scale-90"
                  >
-                   <span className="material-icons-outlined text-xs">delete</span>
+                   <span className="material-icons-outlined text-[16px]">delete_sweep</span>
                  </button>
                </Tooltip>
              </>
            )}
         </div>
-        <Tooltip text={isAdding ? 'Cerrar' : `Añadir ${label.toLowerCase()}`}>
+        <Tooltip text={isAdding ? 'Cerrar' : 'Añadir'}>
           <button 
             type="button"
             onClick={() => setIsAdding(!isAdding)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-primary hover:scale-110 transition-transform"
+            className={`absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-full transition-all active:scale-90 ${isAdding ? 'bg-rose-500/10 text-rose-500' : 'bg-primary/10 text-primary hover:bg-primary/20 shadow-neon-cyan/20'}`}
           >
-            <span className="material-icons-outlined text-sm">{isAdding ? 'close' : 'add'}</span>
+            <span className="material-icons-outlined text-lg">{isAdding ? 'close' : 'add_circle_outline'}</span>
           </button>
         </Tooltip>
       </div>
@@ -254,6 +279,8 @@ const App: React.FC = () => {
   const [disciplinas, setDisciplinas] = useState<{id?: string, nombre: string}[]>([]);
   const [warmupOptions, setWarmupOptions] = useState<{id?: string, nombre: string}[]>([]);
   const [cooldownOptions, setCooldownOptions] = useState<{id?: string, nombre: string}[]>([]);
+  const [ageCategories, setAgeCategories] = useState<{id?: string, nombre: string}[]>([]);
+  const [physicalCategories, setPhysicalCategories] = useState<{id?: string, nombre: string}[]>([]);
 
   // Group Form State
   const [newGroupName, setNewGroupName] = useState("");
@@ -880,6 +907,8 @@ const App: React.FC = () => {
       const d = await getCollectionData(COLLECTIONS.DISCIPLINAS) as {id?: string, nombre: string}[];
       const w = await getCollectionData(COLLECTIONS.WARMUP_OPTIONS) as {id?: string, nombre: string}[];
       const co = await getCollectionData(COLLECTIONS.COOLDOWN_OPTIONS) as {id?: string, nombre: string}[];
+      const ac = await getCollectionData(COLLECTIONS.AGE_CATEGORIES) as {id?: string, nombre: string}[];
+      const pc = await getCollectionData(COLLECTIONS.PHYSICAL_CATEGORIES) as {id?: string, nombre: string}[];
       const s = await getCollectionData(COLLECTIONS.SOURCES) as Source[];
       setAlumnos(a);
       setClases(c.sort((x, y) => new Date(y.fecha).getTime() - new Date(x.fecha).getTime()));
@@ -895,6 +924,38 @@ const App: React.FC = () => {
       setDisciplinas(d.length > 0 ? d : DISCIPLINAS.map((name, i) => ({ id: `default-${i}`, nombre: name })));
       setWarmupOptions(w.length > 0 ? w : ['Movilidad articular', 'Trote', 'Juegos', 'Estiramiento dinámico'].map((name, i) => ({ id: `default-${i}`, nombre: name })));
       setCooldownOptions(co.length > 0 ? co : ['Estiramiento pasivo', 'Relajación', 'Feedback grupal'].map((name, i) => ({ id: `default-${i}`, nombre: name })));
+      
+      const newAgeCats = ac.length > 0 ? ac : [
+        { id: 'default-0', nombre: 'Pre-Mini' },
+        { id: 'default-1', nombre: 'Mini' },
+        { id: 'default-2', nombre: 'Pre-Infantil' },
+        { id: 'default-3', nombre: 'Infantil' },
+        { id: 'default-4', nombre: 'Juvenil' },
+        { id: 'default-5', nombre: 'Mayor' }
+      ];
+      setAgeCategories(newAgeCats);
+
+      const newPhysCats = pc.length > 0 ? pc : [
+        { id: 'default-0', nombre: 'Elite' },
+        { id: 'default-1', nombre: 'Bueno' },
+        { id: 'default-2', nombre: 'Regular' },
+        { id: 'default-3', nombre: 'Bajo' }
+      ];
+      setPhysicalCategories(newPhysCats);
+
+      // Auto-limpiar filtros si la opción ya no existe
+      if (selectedAgeFilter !== 'Todas' && !newAgeCats.find(o => o.nombre === selectedAgeFilter)) {
+        setSelectedAgeFilter('Todas');
+      }
+      if (selectedPhysicalFilter !== 'Todas' && !newPhysCats.find(o => o.nombre === selectedPhysicalFilter)) {
+        setSelectedPhysicalFilter('Todas');
+      }
+      if (selectedGrupoFilter !== 'Todos' && !g.find(o => o.nombre === selectedGrupoFilter)) {
+        setSelectedGrupoFilter('Todos');
+      }
+      if (selectedNivelFilter !== 'Todos' && !n.find(o => o.nombre === selectedNivelFilter)) {
+        setSelectedNivelFilter('Todos');
+      }
       
       // Filter global alerts
       setAlertasGlobales(a.filter(student => student.alertas && student.alertas.length > 0 && student.alertas[0] !== ""));
@@ -994,7 +1055,6 @@ const App: React.FC = () => {
   }, [selectedClase]);
 
   const handleSaveGroup = async () => {
-    if (userRole === 'Coordinator') return;
     if (!newGroupName || !newCoachName || selectedDays.length === 0) {
       setNotificacion({ t: "Error", d: "Nombre del grupo, profesor y días son obligatorios." });
       setTimeout(() => setNotificacion(null), 3000);
@@ -1032,7 +1092,6 @@ const App: React.FC = () => {
   };
 
   const handleDeleteGroup = async (grupo: GrupoConfig) => {
-    if (userRole === 'Coordinator') return;
     if (!grupo.id) return;
     
     requestConfirmation(
@@ -1098,12 +1157,13 @@ const App: React.FC = () => {
   };
 
   const handleUpdateLevel = async (id: string, nombre: string) => {
-    if (id.startsWith('default-')) {
-      setNotificacion({ t: "Aviso", d: "No se pueden editar niveles predeterminados." });
-      return;
-    }
     try {
-      await updateDocument(COLLECTIONS.NIVELES, id, { nombre });
+      if (id.startsWith('default-')) {
+        // Si es una opción por defecto, la creamos como nueva en Firestore
+        await addDocument(COLLECTIONS.NIVELES, { nombre });
+      } else {
+        await updateDocument(COLLECTIONS.NIVELES, id, { nombre });
+      }
       setNotificacion({ t: "Éxito", d: "Nivel actualizado." });
       loadData();
     } catch (error: any) {
@@ -1112,16 +1172,14 @@ const App: React.FC = () => {
   };
 
   const handleDeleteLevel = async (id: string) => {
-    if (id.startsWith('default-')) {
-      setNotificacion({ t: "Aviso", d: "No se pueden eliminar niveles predeterminados. Agrega tus propios niveles para personalizar la lista." });
-      return;
-    }
     requestConfirmation(
       "Eliminar Nivel",
-      "¿Estás seguro de que deseas eliminar este nivel?",
+      "¿Estás seguro de que deseas eliminar este nivel? Los alumnos asignados a este nivel podrían requerir reasignación.",
       async () => {
         try {
-          await deleteDocument(COLLECTIONS.NIVELES, id);
+          if (!id.startsWith('default-')) {
+            await deleteDocument(COLLECTIONS.NIVELES, id);
+          }
           setNotificacion({ t: "Éxito", d: "Nivel eliminado." });
           loadData();
         } catch (error: any) {
@@ -1263,6 +1321,123 @@ const App: React.FC = () => {
     } catch (error: any) {
       setNotificacion({ t: "Error", d: error.message });
     }
+  };
+
+  const handleSaveAgeCategory = async (nombre: string) => {
+    try {
+      await addDocument(COLLECTIONS.AGE_CATEGORIES, { nombre });
+      loadData();
+    } catch (error: any) {
+      setNotificacion({ t: "Error", d: error.message });
+    }
+  };
+
+  const handleUpdateAgeCategory = async (id: string, nombre: string) => {
+    try {
+      if (id.startsWith('default-')) {
+        await addDocument(COLLECTIONS.AGE_CATEGORIES, { nombre });
+      } else {
+        await updateDocument(COLLECTIONS.AGE_CATEGORIES, id, { nombre });
+      }
+      loadData();
+    } catch (error: any) {
+      setNotificacion({ t: "Error", d: error.message });
+    }
+  };
+
+  const handleDeleteAgeCategory = async (id: string) => {
+    requestConfirmation(
+      "Eliminar Categoría",
+      "¿Estás seguro de que deseas eliminar esta categoría de edad?",
+      async () => {
+        try {
+          if (!id.startsWith('default-')) {
+            await deleteDocument(COLLECTIONS.AGE_CATEGORIES, id);
+          }
+          loadData();
+        } catch (error: any) {
+          setNotificacion({ t: "Error", d: error.message });
+        }
+      }
+    );
+  };
+
+  const handleSavePhysicalCategory = async (nombre: string) => {
+    try {
+      await addDocument(COLLECTIONS.PHYSICAL_CATEGORIES, { nombre });
+      loadData();
+    } catch (error: any) {
+      setNotificacion({ t: "Error", d: error.message });
+    }
+  };
+
+  const handleUpdatePhysicalCategory = async (id: string, nombre: string) => {
+    try {
+      if (id.startsWith('default-')) {
+        await addDocument(COLLECTIONS.PHYSICAL_CATEGORIES, { nombre });
+      } else {
+        await updateDocument(COLLECTIONS.PHYSICAL_CATEGORIES, id, { nombre });
+      }
+      loadData();
+    } catch (error: any) {
+      setNotificacion({ t: "Error", d: error.message });
+    }
+  };
+
+  const handleDeletePhysicalCategory = async (id: string) => {
+    requestConfirmation(
+      "Eliminar Condición",
+      "¿Estás seguro de que deseas eliminar esta condición física?",
+      async () => {
+        try {
+          if (!id.startsWith('default-')) {
+            await deleteDocument(COLLECTIONS.PHYSICAL_CATEGORIES, id);
+          }
+          loadData();
+        } catch (error: any) {
+          setNotificacion({ t: "Error", d: error.message });
+        }
+      }
+    );
+  };
+
+  const handleSaveDisciplina = async (nombre: string) => {
+    try {
+      await addDocument(COLLECTIONS.DISCIPLINAS, { nombre });
+      loadData();
+    } catch (error: any) {
+      setNotificacion({ t: "Error", d: error.message });
+    }
+  };
+
+  const handleUpdateDisciplina = async (id: string, nombre: string) => {
+    try {
+      if (id.startsWith('default-')) {
+        await addDocument(COLLECTIONS.DISCIPLINAS, { nombre });
+      } else {
+        await updateDocument(COLLECTIONS.DISCIPLINAS, id, { nombre });
+      }
+      loadData();
+    } catch (error: any) {
+      setNotificacion({ t: "Error", d: error.message });
+    }
+  };
+
+  const handleDeleteDisciplina = async (id: string) => {
+    requestConfirmation(
+      "Eliminar Disciplina",
+      "¿Estás seguro de que deseas eliminar esta disciplina?",
+      async () => {
+        try {
+          if (!id.startsWith('default-')) {
+            await deleteDocument(COLLECTIONS.DISCIPLINAS, id);
+          }
+          loadData();
+        } catch (error: any) {
+          setNotificacion({ t: "Error", d: error.message });
+        }
+      }
+    );
   };
 
   const handleAddAlumno = async () => {
@@ -1604,7 +1779,7 @@ const App: React.FC = () => {
         // Buscar si ya existe el alumno por DNI para evitar duplicados y permitir carga fragmentada
         const existingStudent = alumnos.find(a => a.dni !== 'No especificado' && a.dni === dni);
 
-        if (existingStudent) {
+        if (existingStudent && existingStudent.id) {
           // Actualizar solo los campos que vienen con información nueva o mantienen los existentes
           const updatedStudent = {
             ...existingStudent,
@@ -1612,8 +1787,8 @@ const App: React.FC = () => {
             grupo: (grupo && grupo !== 'Sin Grupo') ? grupo : existingStudent.grupo,
             nivel: (nivel && nivel !== 'Escuela') ? nivel : existingStudent.nivel,
             contacto: {
-              ...existingStudent.contacto,
-              emergenciaTelefono: telefono || existingStudent.contacto.emergenciaTelefono
+              ...(existingStudent.contacto || {}),
+              emergenciaTelefono: telefono || existingStudent.contacto?.emergenciaTelefono || ''
             }
           };
           await updateDocument(COLLECTIONS.ALUMNOS, existingStudent.id, updatedStudent);
@@ -2657,6 +2832,7 @@ const App: React.FC = () => {
             handleDeleteFeedback={handleDeleteFeedback}
             setIsBulkImporting={setIsBulkImporting}
             userRole={userRole}
+            disciplinas={disciplinas}
             handleSaveLevel={handleSaveLevel}
             handleUpdateLevel={handleUpdateLevel}
             handleDeleteLevel={handleDeleteLevel}
@@ -2669,6 +2845,17 @@ const App: React.FC = () => {
             setSelectedAgeFilter={setSelectedAgeFilter}
             selectedPhysicalFilter={selectedPhysicalFilter}
             setSelectedPhysicalFilter={setSelectedPhysicalFilter}
+            ageCategories={ageCategories}
+            physicalCategories={physicalCategories}
+            handleSaveAgeCategory={handleSaveAgeCategory}
+            handleUpdateAgeCategory={handleUpdateAgeCategory}
+            handleDeleteAgeCategory={handleDeleteAgeCategory}
+            handleSavePhysicalCategory={handleSavePhysicalCategory}
+            handleUpdatePhysicalCategory={handleUpdatePhysicalCategory}
+            handleDeletePhysicalCategory={handleDeletePhysicalCategory}
+            handleSaveDisciplina={handleSaveDisciplina}
+            handleUpdateDisciplina={handleUpdateDisciplina}
+            handleDeleteDisciplina={handleDeleteDisciplina}
             handleUpdateBiometrics={handleUpdateBiometrics}
           />
         )}
