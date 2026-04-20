@@ -259,52 +259,96 @@ const Alumnos: React.FC<AlumnosProps> = ({
               className="w-full bg-antigravity-charcoal border border-white/10 rounded-2xl pl-12 pr-4 py-4 text-sm text-white outline-none focus:border-primary/50 transition-all placeholder:text-white/20"
             />
           </div>
+        </div>
 
-          <div className="grid grid-cols-2 gap-x-4 gap-y-14 pb-4">
-            <EditableDropdown 
-              label="Grupo"
-              value={selectedGrupoFilter === 'Todos' ? '' : selectedGrupoFilter}
-              onChange={(val) => setSelectedGrupoFilter(val || 'Todos')}
-              options={grupos}
-              onAdd={handleQuickSaveGroup}
-              onEdit={handleUpdateGroupQuick}
-              onDelete={(id) => {
-                const g = grupos.find(group => group.id === id);
-                if (g) handleDeleteGroup(g);
-              }}
-              placeholder="Todos los Grupos"
-            />
-            <EditableDropdown 
-              label="Nivel"
-              value={selectedNivelFilter === 'Todos' ? '' : selectedNivelFilter}
-              onChange={(val) => setSelectedNivelFilter(val || 'Todos')}
-              options={niveles}
-              onAdd={handleSaveLevel}
-              onEdit={handleUpdateLevel}
-              onDelete={handleDeleteLevel}
-              placeholder="Todos los Niveles"
-            />
-            <EditableDropdown 
-              label="Categoría Edad"
-              value={selectedAgeFilter === 'Todos' ? '' : selectedAgeFilter}
-              onChange={(val) => setSelectedAgeFilter(val || 'Todos')}
-              options={ageCategories}
-              onAdd={handleSaveAgeCategory}
-              onEdit={handleUpdateAgeCategory}
-              onDelete={handleDeleteAgeCategory}
-              placeholder="Todas las Edades"
-            />
-            <EditableDropdown 
-              label="Condición Física"
-              value={selectedPhysicalFilter === 'Cualquiera' ? '' : selectedPhysicalFilter}
-              onChange={(val) => setSelectedPhysicalFilter(val || 'Cualquiera')}
-              options={physicalCategories}
-              onAdd={handleSavePhysicalCategory}
-              onEdit={handleUpdatePhysicalCategory}
-              onDelete={handleDeletePhysicalCategory}
-              placeholder="Cualquiera"
-            />
-          </div>
+        {/* Alumnos List - Moved up as per user request */}
+        <div className="space-y-4 pt-2">
+          {filteredAlumnos.length === 0 ? (
+            <div className="text-center py-12 opacity-30">
+              <span className="material-icons-outlined text-4xl mb-2">person_off</span>
+              <p className="text-xs uppercase font-black tracking-widest">No se encontraron gimnastas</p>
+            </div>
+          ) : (
+            filteredAlumnos.map((alumno, idx) => (
+              <motion.div 
+                key={alumno.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: idx * 0.03 }}
+                onClick={() => { setSelectedAlumno(alumno); setVista('AlumnoDetalle'); }}
+                className="glass-card rounded-2xl p-4 border border-white/5 flex items-center justify-between group active:scale-[0.98] transition-all cursor-pointer hover:border-primary/30"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center border border-white/10 group-hover:border-primary/30 transition-colors">
+                    <span className="text-xs font-black text-white/40 group-hover:text-primary">{alumno.nombre.charAt(0)}</span>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-white group-hover:text-primary transition-colors">{alumno.nombre}</h4>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-[8px] font-black uppercase tracking-widest text-white/40">{alumno.grupo}</span>
+                      <span className="w-1 h-1 rounded-full bg-white/10"></span>
+                      <span className="text-[8px] font-black uppercase tracking-widest text-primary/60">{alumno.nivel}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  {alumno.alertas && alumno.alertas.length > 0 && alumno.alertas[0] !== '' && (
+                    <div className="w-6 h-6 rounded-lg bg-rose-500/20 flex items-center justify-center border border-rose-500/30">
+                      <span className="material-icons-outlined text-rose-500 text-[14px]">warning</span>
+                    </div>
+                  )}
+                  <span className="material-icons-outlined text-white/20 group-hover:text-primary transition-colors">chevron_right</span>
+                </div>
+              </motion.div>
+            ))
+          )}
+        </div>
+
+        {/* Filters Grid - Moved down as per user request */}
+        <div className="pt-8 mt-4 border-t border-white/5 grid grid-cols-2 gap-x-4 gap-y-14 pb-8">
+          <EditableDropdown 
+            label="Grupo"
+            value={selectedGrupoFilter === 'Todos' ? '' : selectedGrupoFilter}
+            onChange={(val) => setSelectedGrupoFilter(val || 'Todos')}
+            options={grupos}
+            onAdd={handleQuickSaveGroup}
+            onEdit={handleUpdateGroupQuick}
+            onDelete={(id) => {
+              const g = grupos.find(group => group.id === id);
+              if (g) handleDeleteGroup(g);
+            }}
+            placeholder="Todos los Grupos"
+          />
+          <EditableDropdown 
+            label="Nivel"
+            value={selectedNivelFilter === 'Todos' ? '' : selectedNivelFilter}
+            onChange={(val) => setSelectedNivelFilter(val || 'Todos')}
+            options={niveles}
+            onAdd={handleSaveLevel}
+            onEdit={handleUpdateLevel}
+            onDelete={handleDeleteLevel}
+            placeholder="Todos los Niveles"
+          />
+          <EditableDropdown 
+            label="Categoría Edad"
+            value={selectedAgeFilter === 'Todos' ? '' : selectedAgeFilter}
+            onChange={(val) => setSelectedAgeFilter(val || 'Todos')}
+            options={ageCategories}
+            onAdd={handleSaveAgeCategory}
+            onEdit={handleUpdateAgeCategory}
+            onDelete={handleDeleteAgeCategory}
+            placeholder="Todas las Edades"
+          />
+          <EditableDropdown 
+            label="Condición Física"
+            value={selectedPhysicalFilter === 'Cualquiera' ? '' : selectedPhysicalFilter}
+            onChange={(val) => setSelectedPhysicalFilter(val || 'Cualquiera')}
+            options={physicalCategories}
+            onAdd={handleSavePhysicalCategory}
+            onEdit={handleUpdatePhysicalCategory}
+            onDelete={handleDeletePhysicalCategory}
+            placeholder="Cualquiera"
+          />
         </div>
 
         {/* Add Alumno Form */}
@@ -417,48 +461,6 @@ const Alumnos: React.FC<AlumnosProps> = ({
           )}
         </AnimatePresence>
 
-        {/* Alumnos List */}
-        <div className="space-y-3">
-          {filteredAlumnos.length === 0 ? (
-            <div className="text-center py-12 opacity-30">
-              <span className="material-icons-outlined text-4xl mb-2">person_off</span>
-              <p className="text-xs uppercase font-black tracking-widest">No se encontraron gimnastas</p>
-            </div>
-          ) : (
-            filteredAlumnos.map((alumno, idx) => (
-              <motion.div 
-                key={alumno.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: idx * 0.03 }}
-                onClick={() => { setSelectedAlumno(alumno); setVista('AlumnoDetalle'); }}
-                className="glass-card rounded-2xl p-4 border border-white/5 flex items-center justify-between group active:scale-[0.98] transition-all cursor-pointer hover:border-primary/30"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center border border-white/10 group-hover:border-primary/30 transition-colors">
-                    <span className="text-xs font-black text-white/40 group-hover:text-primary">{alumno.nombre.charAt(0)}</span>
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-white group-hover:text-primary transition-colors">{alumno.nombre}</h4>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-[8px] font-black uppercase tracking-widest text-white/40">{alumno.grupo}</span>
-                      <span className="w-1 h-1 rounded-full bg-white/10"></span>
-                      <span className="text-[8px] font-black uppercase tracking-widest text-primary/60">{alumno.nivel}</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  {alumno.alertas && alumno.alertas.length > 0 && alumno.alertas[0] !== '' && (
-                    <div className="w-6 h-6 rounded-lg bg-rose-500/20 flex items-center justify-center border border-rose-500/30">
-                      <span className="material-icons-outlined text-rose-500 text-[14px]">warning</span>
-                    </div>
-                  )}
-                  <span className="material-icons-outlined text-white/20 group-hover:text-primary transition-colors">chevron_right</span>
-                </div>
-              </motion.div>
-            ))
-          )}
-        </div>
       </div>
     );
   }

@@ -134,7 +134,7 @@ export const EditableDropdown = ({
         <select 
           value={value} 
           onChange={(e) => onChange(e.target.value)}
-          className="w-full bg-antigravity-charcoal border rounded-xl pl-4 pr-32 py-3 text-sm text-white appearance-none border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none transition-all"
+          className="w-full bg-antigravity-charcoal border rounded-xl pl-4 pr-44 py-3 text-sm text-white appearance-none border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none transition-all overflow-hidden text-ellipsis"
         >
           <option value="">{placeholder}</option>
           {options.map((opt, idx) => (
@@ -143,7 +143,7 @@ export const EditableDropdown = ({
             </option>
           ))}
         </select>
-        <div className="absolute right-14 top-1/2 -translate-y-1/2 flex gap-2 opacity-0 group-hover:opacity-100 transition-all bg-antigravity-charcoal/90 backdrop-blur-sm px-2 py-1 rounded-lg border border-white/5 shadow-lg z-10">
+        <div className="absolute right-12 top-1/2 -translate-y-1/2 flex gap-1 opacity-0 group-hover:opacity-100 transition-all bg-antigravity-charcoal/95 backdrop-blur-sm px-1.5 py-1 rounded-lg border border-white/10 shadow-xl z-10">
            {value && (
              <>
                <Tooltip text="Editar">
@@ -190,7 +190,7 @@ export const EditableDropdown = ({
           <button 
             type="button"
             onClick={() => setIsAdding(!isAdding)}
-            className={`absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-full transition-all active:scale-90 ${isAdding ? 'bg-rose-500/10 text-rose-500' : 'bg-primary/10 text-primary hover:bg-primary/20 shadow-neon-cyan/20'}`}
+            className={`absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-full transition-all active:scale-90 ${isAdding ? 'bg-rose-500/10 text-rose-500' : 'bg-primary/10 text-primary hover:bg-primary/20 shadow-neon-cyan/20'}`}
           >
             <span className="material-icons-outlined text-lg">{isAdding ? 'close' : 'add_circle_outline'}</span>
           </button>
