@@ -198,28 +198,33 @@ export const EditableDropdown = ({
       </div>
       {isAdding && (
         <motion.div 
-          initial={{ opacity: 0, y: -10 }}
+          initial={{ opacity: 0, y: -5 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex gap-2 mt-2"
+          className="flex flex-col gap-3 mt-3 p-4 bg-antigravity-black/40 rounded-2xl border border-primary/20 backdrop-blur-sm shadow-xl"
         >
-          <input 
-            type="text" 
-            value={newItem} 
-            onChange={(e) => setNewItem(e.target.value)}
-            placeholder={`Nuevo ${label.toLowerCase()}...`}
-            className="flex-1 bg-antigravity-charcoal border border-neon-blue rounded-lg px-3 py-2 text-xs text-white outline-none focus:ring-1 focus:ring-neon-blue/50 transition-all"
-          />
+          <div className="space-y-1">
+            <label className="text-[9px] uppercase font-bold text-primary/80 ml-1">Nuevo {label}</label>
+            <input 
+              type="text" 
+              value={newItem} 
+              onChange={(e) => setNewItem(e.target.value)}
+              placeholder="..."
+              autoFocus
+              className="w-full bg-antigravity-charcoal border border-primary/30 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-primary focus:ring-1 focus:ring-primary/50 transition-all placeholder:text-white/10"
+            />
+          </div>
           <Button 
             onClick={() => {
               if (newItem.trim()) {
                 onAdd(newItem.trim());
+                onChange(newItem.trim());
                 setNewItem('');
                 setIsAdding(false);
               }
             }}
-            className="!py-2 !px-4"
+            className="w-full !py-3.5 shadow-neon-cyan/20 border border-primary/50"
           >
-            Guardar
+            Guardar {label}
           </Button>
         </motion.div>
       )}
@@ -1467,15 +1472,16 @@ const App: React.FC = () => {
     }
   };
 
-  const handleAddProfesor = async () => {
-    if (!newProfesorName.trim()) return;
+  const handleAddProfesor = async (nameArg?: any) => {
+    const targetName = (typeof nameArg === 'string' ? nameArg : newProfesorName).trim();
+    if (!targetName) return;
     setIsSavingProfesor(true);
     try {
-      await addDocument(COLLECTIONS.PROFESORES, { nombre: newProfesorName });
+      await addDocument(COLLECTIONS.PROFESORES, { nombre: targetName });
       await loadData();
       setIsAddingProfesor(false);
       setNewProfesorName('');
-      setNotificacion({ t: "Profesor Añadido", d: `${newProfesorName} registrado correctamente.` });
+      setNotificacion({ t: "Profesor Añadido", d: `${targetName} registrado correctamente.` });
     } catch (error) {
       console.error("Error adding professor:", error);
       setNotificacion({ t: "Error", d: "No se pudo añadir al profesor." });

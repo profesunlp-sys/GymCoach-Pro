@@ -260,7 +260,7 @@ const Alumnos: React.FC<AlumnosProps> = ({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-x-4 gap-y-14 pb-4">
             <EditableDropdown 
               label="Grupo"
               value={selectedGrupoFilter === 'Todos' ? '' : selectedGrupoFilter}
@@ -329,7 +329,7 @@ const Alumnos: React.FC<AlumnosProps> = ({
                       placeholder="Ej: Juan Perez"
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-14">
                     <div className="space-y-1">
                       <label className="text-[10px] uppercase font-bold text-white/60 ml-1">DNI</label>
                       <input 
@@ -351,7 +351,7 @@ const Alumnos: React.FC<AlumnosProps> = ({
                       placeholder="Seleccionar..."
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-14">
                     <EditableDropdown 
                       label="Grupo"
                       value={studentForm.grupo || ''}
