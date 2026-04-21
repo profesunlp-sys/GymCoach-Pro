@@ -218,10 +218,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 </div>
               </motion.button>
 
-              {/* REGISTRAR CLASE — Hero Card Púrpura/Azul */}
+              {/* REGISTRAR CLASE — Hero Card Púrpura/Azul — Acceso directo al formulario */}
               <motion.button 
                 whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-                onClick={() => handleNavigation('Clases')}
+                onClick={() => { setRegistrationStep(1); setVista('NuevaClase'); }}
                 className="relative w-full h-44 rounded-[2.5rem] overflow-hidden group shadow-2xl shadow-accent-purple/20"
               >
                 <div className="absolute inset-0 bg-gradient-to-br from-accent-purple via-indigo-500 to-neon-blue"></div>
@@ -276,53 +276,98 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </div>
           </section>
 
-          {/* ═══ MÁS HERRAMIENTAS — Uso Ocasional ═══ */}
+          {/* ═══ HOY EN EL GIMNASIO — Panel de actividad en tiempo real ═══ */}
           <section className="space-y-4">
-            <button 
-              onClick={() => setShowMoreOptions(!showMoreOptions)}
-              className="w-full flex items-center justify-between px-1 group"
-            >
-              <h3 className="text-[10px] uppercase font-black text-white/40 tracking-[0.2em]">Más herramientas</h3>
-              <span className={`material-icons-outlined text-white/40 transition-transform ${showMoreOptions ? 'rotate-180' : ''}`}>expand_more</span>
-            </button>
+            <h3 className="text-[10px] uppercase font-black text-white/30 tracking-[0.3em] px-1">Hoy en el Gimnasio</h3>
             
-            <AnimatePresence>
-              {showMoreOptions && (
-                <motion.div 
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: 'auto', opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  className="overflow-hidden"
-                >
-                  <div className="grid grid-cols-3 gap-3 pt-2">
-                    <button 
-                      onClick={() => setVista('AsistenciaStats')}
-                      className="glass-card rounded-2xl p-4 border border-white/5 flex flex-col items-center gap-2 active:scale-95 transition-all"
-                    >
-                      <span className="material-icons-outlined text-sky-400 text-xl">analytics</span>
-                      <span className="text-[8px] font-bold text-white uppercase tracking-tighter">Estadísticas</span>
-                      <span className="text-[7px] text-white/40 uppercase">Reportes</span>
-                    </button>
-                    <button 
-                      onClick={() => setVista('Habilidades')}
-                      className="glass-card rounded-2xl p-4 border border-white/5 flex flex-col items-center gap-2 active:scale-95 transition-all"
-                    >
-                      <span className="material-icons-outlined text-primary text-xl">trending_up</span>
-                      <span className="text-[8px] font-bold text-white uppercase tracking-tighter">Habilidades</span>
-                      <span className="text-[7px] text-white/40 uppercase">Progreso</span>
-                    </button>
-                    <button 
-                      onClick={() => handleNavigation('Planes')}
-                      className="glass-card rounded-2xl p-4 border border-white/5 flex flex-col items-center gap-2 active:scale-95 transition-all"
-                    >
-                      <span className="material-icons-outlined text-amber-500 text-xl">menu_book</span>
-                      <span className="text-[8px] font-bold text-white uppercase tracking-tighter">Manuales</span>
-                      <span className="text-[7px] text-white/40 uppercase">Centro Técnico</span>
-                    </button>
+            <div className="space-y-3">
+              {/* Asistencia de hoy */}
+              {(() => {
+                const today = new Date().toISOString().split('T')[0];
+                const asistenciasHoy = asistencias.filter(a => a.fecha?.split('T')[0] === today && a.presente);
+                const totalAlumnosHoy = asistenciasHoy.length;
+                const totalAlumnos = alumnos.length;
+                return (
+                  <div className="glass-card rounded-2xl p-4 border border-white/5 flex items-center gap-4">
+                    <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${totalAlumnosHoy > 0 ? 'bg-primary/10 border border-primary/20' : 'bg-white/5 border border-white/10'}`}>
+                      <span className={`material-icons-outlined text-xl ${totalAlumnosHoy > 0 ? 'text-primary' : 'text-white/30'}`}>how_to_reg</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      {totalAlumnosHoy > 0 ? (
+                        <>
+                          <p className="text-sm font-black text-white tracking-tight">
+                            {totalAlumnosHoy} / {totalAlumnos} <span className="text-white/50 font-bold text-xs">presentes hoy</span>
+                          </p>
+                          <div className="w-full h-1.5 bg-white/5 rounded-full mt-2 overflow-hidden">
+                            <div className="h-full bg-primary rounded-full shadow-neon-cyan transition-all" style={{ width: `${Math.round((totalAlumnosHoy / (totalAlumnos || 1)) * 100)}%` }}></div>
+                          </div>
+                        </>
+                      ) : (
+                        <p className="text-xs text-white/40 font-medium">Sin asistencia registrada hoy</p>
+                      )}
+                    </div>
                   </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+                );
+              })()}
+
+              {/* Última clase registrada */}
+              {(() => {
+                const misClases = clases
+                  .filter(c => c.entrenador === user?.displayName || c.entrenador === user?.email)
+                  .sort((a, b) => b.fecha.localeCompare(a.fecha));
+                const ultima = misClases[0];
+                return (
+                  <div className="glass-card rounded-2xl p-4 border border-white/5 flex items-center gap-4">
+                    <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${ultima ? 'bg-accent-purple/10 border border-accent-purple/20' : 'bg-white/5 border border-white/10'}`}>
+                      <span className={`material-icons-outlined text-xl ${ultima ? 'text-accent-purple' : 'text-white/30'}`}>history_edu</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      {ultima ? (
+                        <>
+                          <p className="text-sm font-black text-white tracking-tight truncate">{ultima.grupo}</p>
+                          <p className="text-[10px] text-white/40 font-bold uppercase tracking-wider mt-0.5">
+                            {new Date(ultima.fecha).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' })}
+                          </p>
+                        </>
+                      ) : (
+                        <p className="text-xs text-white/40 font-medium">No registraste clases todavía</p>
+                      )}
+                    </div>
+                    {ultima && (
+                      <span className="text-[8px] text-accent-purple/60 font-black uppercase tracking-widest shrink-0">Última clase</span>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* Alertas médicas */}
+              {(() => {
+                const alumnosConAlertas = alumnos.filter(a => 
+                  (a.observacionesMedicas && a.observacionesMedicas.trim() !== '') ||
+                  (a.alertas && a.alertas.length > 0 && a.alertas.some(al => al.trim() !== ''))
+                );
+                const count = alumnosConAlertas.length;
+                return (
+                  <div className={`glass-card rounded-2xl p-4 border flex items-center gap-4 ${count > 0 ? 'border-amber-500/20' : 'border-white/5'}`}>
+                    <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${count > 0 ? 'bg-amber-500/10 border border-amber-500/20' : 'bg-emerald-500/10 border border-emerald-500/20'}`}>
+                      <span className={`material-icons-outlined text-xl ${count > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                        {count > 0 ? 'warning' : 'verified_user'}
+                      </span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      {count > 0 ? (
+                        <>
+                          <p className="text-sm font-black text-amber-400 tracking-tight">{count} alumno{count > 1 ? 's' : ''} con alertas</p>
+                          <p className="text-[10px] text-white/40 font-bold uppercase tracking-wider mt-0.5">Revisá observaciones médicas</p>
+                        </>
+                      ) : (
+                        <p className="text-xs text-emerald-400 font-bold">Sin alertas médicas activas</p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
           </section>
         </div>
       )}
