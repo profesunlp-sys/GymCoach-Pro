@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Alumno } from '../types';
-import { Button } from '../App';
+import { Alumno } from '../../types';
+import { Button } from '../../App';
 
 interface BulkPaymentImportProps {
   alumnos: Alumno[];

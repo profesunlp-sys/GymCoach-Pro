@@ -152,6 +152,7 @@ const Alumnos: React.FC<AlumnosProps> = ({
   const [activeTab, setActiveTab] = useState<'Progreso' | 'Asistencia' | 'Bio' | 'Contacto'>('Progreso');
   const [isEditingStudent, setIsEditingStudent] = useState(false);
   const [isEditingBiometrics, setIsEditingBiometrics] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   
   const calculateAgeGroup = (birthDateStr?: string) => {
     if (!birthDateStr) return 'Desconocido';
@@ -372,15 +373,50 @@ const Alumnos: React.FC<AlumnosProps> = ({
               <div className="glass-card rounded-[2rem] p-6 border border-primary/30 bg-primary/5 space-y-6">
                 <h3 className="text-sm font-black text-white uppercase tracking-widest">{isEditingStudent ? 'Editar Gimnasta' : 'Nuevo Gimnasta'}</h3>
                 <div className="grid grid-cols-1 gap-4">
-                  <div className="space-y-1">
+                  <div className="space-y-1 relative z-[60]">
                     <label className="text-[10px] uppercase font-bold text-white/60 ml-1">Nombre Completo</label>
                     <input 
                       type="text" 
-                      value={studentForm.nombre}
-                      onChange={(e) => setStudentForm({ ...studentForm, nombre: e.target.value })}
+                      value={studentForm.nombre || ''}
+                      onChange={(e) => {
+                        setStudentForm({ ...studentForm, nombre: e.target.value });
+                        setShowSuggestions(true);
+                      }}
+                      onFocus={() => setShowSuggestions(true)}
+                      onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
                       className="w-full bg-antigravity-charcoal border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-primary/50 transition-all"
                       placeholder="Ej: Juan Perez"
+                      autoComplete="off"
                     />
+                    {showSuggestions && studentForm.nombre && studentForm.nombre.trim().length > 1 && (() => {
+                      const normalize = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+                      const query = normalize(studentForm.nombre!.trim());
+                      const matches = alumnos.filter(a => a.nombre && normalize(a.nombre).includes(query) && normalize(a.nombre) !== query);
+                      
+                      return (
+                        <div className="absolute z-[100] w-full mt-1 bg-antigravity-charcoal border border-white/10 rounded-xl shadow-2xl max-h-48 overflow-y-auto custom-scrollbar">
+                          {matches.length > 0 ? (
+                            matches.map(a => (
+                              <div 
+                                key={a.id} 
+                                className="px-4 py-3 border-b border-white/5 last:border-0 hover:bg-primary/20 cursor-pointer transition-colors flex flex-col"
+                                onClick={() => {
+                                  // Autorrellenar el formulario con los datos del alumno existente
+                                  setStudentForm({ ...a });
+                                  setIsEditingStudent(true); // Al ser un alumno existente, pasa a modo edición
+                                  setShowSuggestions(false);
+                                }}
+                              >
+                                <span className="text-sm font-bold text-white">{a.nombre}</span>
+                                <span className="text-[10px] text-white/40 uppercase tracking-widest">{a.dni ? `DNI: ${a.dni}` : 'Sin DNI'} • {a.grupo || 'Sin Grupo'}</span>
+                              </div>
+                            ))
+                          ) : (
+                            <div className="px-4 py-3 text-xs text-white/40 italic">No se encontraron coincidencias</div>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
                   <div className="grid grid-cols-2 gap-x-4 gap-y-14">
                     <div className="space-y-1">
