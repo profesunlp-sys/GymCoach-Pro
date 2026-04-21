@@ -189,70 +189,94 @@ export const Dashboard: React.FC<DashboardProps> = ({
           {/* ... (keep coordinator code as is) */}
         </div>
       ) : (
-        /* VISTA DEL ENTRENADOR */
-        <div className="space-y-10">
-          {/* Acciones Críticas - Reordered as requested */}
-          <section className="space-y-6">
-            <h3 className="text-[10px] uppercase font-black text-white/30 tracking-[0.3em] px-1">Control de Operaciones</h3>
+        /* VISTA DEL ENTRENADOR — Rediseñado para uso diario */
+        <div className="space-y-8">
+          {/* ═══ ACCIONES PRINCIPALES — Uso Diario ═══ */}
+          <section className="space-y-4">
+            <h3 className="text-[10px] uppercase font-black text-white/30 tracking-[0.3em] px-1">Acciones del Día</h3>
             
             <div className="space-y-4">
-              {/* Horarios y Tendencias (Analytics) Primero */}
-              <div className="grid grid-cols-2 gap-4">
-                <motion.button 
-                  whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-                  onClick={() => setVista('Horario')}
-                  className="glass-card rounded-[2rem] p-6 border border-white/5 flex flex-col items-center justify-center gap-4 active:scale-95 transition-all text-center"
-                >
-                  <div className="w-12 h-12 bg-accent-purple/10 rounded-2xl flex items-center justify-center border border-accent-purple/20">
-                    <span className="material-symbols-outlined text-accent-purple text-2xl">event_note</span>
-                  </div>
-                  <div className="space-y-1">
-                    <span className="text-xs font-black text-white uppercase tracking-tight">Horarios</span>
-                    <p className="text-[7px] text-white/40 uppercase font-bold">Mis Grupos</p>
-                  </div>
-                </motion.button>
-
-                <motion.button 
-                  whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-                  onClick={() => setVista('AsistenciaStats')}
-                  className="glass-card rounded-[2rem] p-6 border border-white/5 flex flex-col items-center justify-center gap-4 active:scale-95 transition-all text-center"
-                >
-                  <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center border border-emerald-500/20">
-                    <span className="material-symbols-outlined text-emerald-500 text-2xl">monitoring</span>
-                  </div>
-                  <div className="space-y-1">
-                    <span className="text-xs font-black text-white uppercase tracking-tight">Analytics</span>
-                    <p className="text-[7px] text-white/40 uppercase font-bold">Reportes</p>
-                  </div>
-                </motion.button>
-              </div>
-
-              {/* Pasar Lista Debajo */}
+              {/* PASAR LISTA — Hero Card Cyan */}
               <motion.button 
                 whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
                 onClick={() => { setRegistrationStep(1); setVista('NuevaClase'); }}
-                className="relative w-full h-48 rounded-[2.5rem] overflow-hidden group shadow-2xl shadow-primary/10"
+                className="relative w-full h-44 rounded-[2.5rem] overflow-hidden group shadow-2xl shadow-primary/20"
               >
-                <div className="absolute inset-0 bg-primary shadow-inner"></div>
-                <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent"></div>
-                <div className="absolute bottom-[-20%] right-[-10%] opacity-10 scale-150 rotate-[-15deg]">
-                   <span className="material-icons-outlined text-[160px] text-black">checklist</span>
+                <div className="absolute inset-0 bg-gradient-to-br from-primary via-neon-blue to-primary"></div>
+                <div className="absolute inset-0 bg-gradient-to-br from-white/25 via-transparent to-black/10"></div>
+                <div className="absolute bottom-[-15%] right-[-8%] opacity-[0.08]">
+                   <span className="material-icons-outlined text-[140px] text-black rotate-[-15deg]">checklist</span>
                 </div>
-                
-                <div className="absolute inset-0 p-8 flex flex-col justify-between items-start">
-                  <div className="w-12 h-12 bg-antigravity-black/20 rounded-2xl flex items-center justify-center backdrop-blur-md border border-white/30">
-                    <span className="material-icons-outlined text-black text-2xl">add_task</span>
+                <div className="absolute inset-0 p-7 flex flex-col justify-between items-start">
+                  <div className="w-14 h-14 bg-antigravity-black/20 rounded-2xl flex items-center justify-center backdrop-blur-md border border-white/30">
+                    <span className="material-icons-outlined text-black text-3xl">add_task</span>
                   </div>
                   <div className="text-left">
                     <h4 className="text-black text-2xl font-black uppercase tracking-tighter leading-none">Pasar Lista</h4>
-                    <p className="text-black/60 text-[10px] font-black uppercase tracking-[0.2em] mt-2">Registrar Asistencia Hoy</p>
+                    <p className="text-black/50 text-[10px] font-black uppercase tracking-[0.2em] mt-2">Registrar asistencia de hoy</p>
+                  </div>
+                </div>
+              </motion.button>
+
+              {/* REGISTRAR CLASE — Hero Card Púrpura/Azul */}
+              <motion.button 
+                whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                onClick={() => handleNavigation('Clases')}
+                className="relative w-full h-44 rounded-[2.5rem] overflow-hidden group shadow-2xl shadow-accent-purple/20"
+              >
+                <div className="absolute inset-0 bg-gradient-to-br from-accent-purple via-indigo-500 to-neon-blue"></div>
+                <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-black/10"></div>
+                <div className="absolute bottom-[-15%] right-[-8%] opacity-[0.08]">
+                   <span className="material-icons-outlined text-[140px] text-white rotate-[-15deg]">edit_note</span>
+                </div>
+                <div className="absolute inset-0 p-7 flex flex-col justify-between items-start">
+                  <div className="w-14 h-14 bg-white/15 rounded-2xl flex items-center justify-center backdrop-blur-md border border-white/30">
+                    <span className="material-icons-outlined text-white text-3xl">edit_note</span>
+                  </div>
+                  <div className="text-left">
+                    <h4 className="text-white text-2xl font-black uppercase tracking-tighter leading-none">Registrar Clase</h4>
+                    <p className="text-white/50 text-[10px] font-black uppercase tracking-[0.2em] mt-2">Anotar lo que trabajaste hoy</p>
                   </div>
                 </div>
               </motion.button>
             </div>
           </section>
 
-          {/* Más Opciones (Acordeón) */}
+          {/* ═══ ACCESO RÁPIDO — Uso Frecuente ═══ */}
+          <section className="space-y-4">
+            <h3 className="text-[10px] uppercase font-black text-white/30 tracking-[0.3em] px-1">Acceso Rápido</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <motion.button 
+                whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                onClick={() => handleNavigation('Alumnos')}
+                className="glass-card rounded-[2rem] p-6 border border-white/5 flex flex-col items-center justify-center gap-3 active:scale-95 transition-all text-center"
+              >
+                <div className="w-12 h-12 bg-accent-purple/10 rounded-2xl flex items-center justify-center border border-accent-purple/20">
+                  <span className="material-symbols-outlined text-accent-purple text-2xl">group</span>
+                </div>
+                <div className="space-y-1">
+                  <span className="text-xs font-black text-white uppercase tracking-tight">Mis Alumnos</span>
+                  <p className="text-[7px] text-white/40 uppercase font-bold">Ver y gestionar gimnastas</p>
+                </div>
+              </motion.button>
+
+              <motion.button 
+                whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                onClick={() => setVista('Horario')}
+                className="glass-card rounded-[2rem] p-6 border border-white/5 flex flex-col items-center justify-center gap-3 active:scale-95 transition-all text-center"
+              >
+                <div className="w-12 h-12 bg-amber-500/10 rounded-2xl flex items-center justify-center border border-amber-500/20">
+                  <span className="material-symbols-outlined text-amber-500 text-2xl">event_note</span>
+                </div>
+                <div className="space-y-1">
+                  <span className="text-xs font-black text-white uppercase tracking-tight">Mis Grupos</span>
+                  <p className="text-[7px] text-white/40 uppercase font-bold">Horarios y grupos</p>
+                </div>
+              </motion.button>
+            </div>
+          </section>
+
+          {/* ═══ MÁS HERRAMIENTAS — Uso Ocasional ═══ */}
           <section className="space-y-4">
             <button 
               onClick={() => setShowMoreOptions(!showMoreOptions)}
@@ -272,65 +296,29 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 >
                   <div className="grid grid-cols-3 gap-3 pt-2">
                     <button 
-                      onClick={() => handleNavigation('Alumnos')}
+                      onClick={() => setVista('AsistenciaStats')}
                       className="glass-card rounded-2xl p-4 border border-white/5 flex flex-col items-center gap-2 active:scale-95 transition-all"
                     >
-                      <span className="material-icons-outlined text-accent-purple text-xl">person_search</span>
-                      <span className="text-[8px] font-bold text-white uppercase tracking-tighter">Alumnos</span>
-                      <span className="text-[7px] text-white/40 uppercase">Gimnastas</span>
+                      <span className="material-icons-outlined text-sky-400 text-xl">analytics</span>
+                      <span className="text-[8px] font-bold text-white uppercase tracking-tighter">Estadísticas</span>
+                      <span className="text-[7px] text-white/40 uppercase">Reportes</span>
                     </button>
                     <button 
-                      onClick={() => handleNavigation('HistorialClases')}
+                      onClick={() => setVista('Habilidades')}
                       className="glass-card rounded-2xl p-4 border border-white/5 flex flex-col items-center gap-2 active:scale-95 transition-all"
                     >
-                      <span className="material-icons-outlined text-indigo-400 text-xl">history</span>
-                      <span className="text-[8px] font-bold text-white uppercase tracking-tighter">Historial</span>
-                      <span className="text-[7px] text-white/40 uppercase">Clases</span>
+                      <span className="material-icons-outlined text-primary text-xl">trending_up</span>
+                      <span className="text-[8px] font-bold text-white uppercase tracking-tighter">Habilidades</span>
+                      <span className="text-[7px] text-white/40 uppercase">Progreso</span>
                     </button>
                     <button 
                       onClick={() => handleNavigation('Planes')}
                       className="glass-card rounded-2xl p-4 border border-white/5 flex flex-col items-center gap-2 active:scale-95 transition-all"
                     >
                       <span className="material-icons-outlined text-amber-500 text-xl">menu_book</span>
-                      <span className="text-[8px] font-bold text-white uppercase tracking-tighter">Centro Técnico</span>
-                      <span className="text-[7px] text-white/40 uppercase">Manuales</span>
+                      <span className="text-[8px] font-bold text-white uppercase tracking-tighter">Manuales</span>
+                      <span className="text-[7px] text-white/40 uppercase">Centro Técnico</span>
                     </button>
-                    <button 
-                      onClick={() => handleNavigation('Emergencias')}
-                      className="glass-card rounded-2xl p-4 border border-white/5 flex flex-col items-center gap-2 active:scale-95 transition-all"
-                    >
-                      <span className="material-icons-outlined text-rose-500 text-xl">emergency</span>
-                      <span className="text-[8px] font-bold text-white uppercase tracking-tighter">S.O.S</span>
-                      <span className="text-[7px] text-white/40 uppercase">Emergencias</span>
-                    </button>
-                    <button 
-                      onClick={() => setVista('ReporteBiometrico')}
-                      className="glass-card rounded-2xl p-4 border border-white/5 flex flex-col items-center gap-2 active:scale-95 transition-all"
-                    >
-                      <span className="material-icons-outlined text-amber-500 text-xl">biotech</span>
-                      <span className="text-[8px] font-bold text-white uppercase tracking-tighter">Mapeo Bio</span>
-                      <span className="text-[7px] text-white/40 uppercase">Condición</span>
-                    </button>
-                    {(userRole as string) === 'Coordinator' && (
-                      <>
-                        <button 
-                          onClick={() => handleNavigation('Profesores')}
-                          className="glass-card rounded-2xl p-4 border border-white/5 flex flex-col items-center gap-2 active:scale-95 transition-all"
-                        >
-                          <span className="material-icons-outlined text-primary text-xl">badge</span>
-                          <span className="text-[8px] font-bold text-white uppercase tracking-tighter">Staff</span>
-                          <span className="text-[7px] text-white/40 uppercase">Profesores</span>
-                        </button>
-                        <button 
-                          onClick={onOpenBulkPayment}
-                          className="glass-card rounded-2xl p-4 border border-white/5 flex flex-col items-center gap-2 active:scale-95 transition-all"
-                        >
-                          <span className="material-icons-outlined text-emerald-500 text-xl">fact_check</span>
-                          <span className="text-[8px] font-bold text-white uppercase tracking-tighter">Importar</span>
-                          <span className="text-[7px] text-white/40 uppercase">Pagos</span>
-                        </button>
-                      </>
-                    )}
                   </div>
                 </motion.div>
               )}
