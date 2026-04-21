@@ -37,6 +37,7 @@ export interface ContactoFamilia {
   familiarTelefono?: string;
   emergenciaNombre?: string;
   emergenciaTelefono?: string;
+  familiarEmail?: string;
 }
 
 export interface Alumno {
@@ -120,4 +121,4 @@ export interface Source {
   uploadDate: string;
 }
 
-export type ViewMode = 'Dashboard' | 'Horario' | 'Alumnos' | 'Ajustes' | 'NuevaClase' | 'RegistroAlumno' | 'AsistenciaLista' | 'ReportePDF' | 'ClaseDetalle' | 'Planes' | 'AlumnoDetalle' | 'Profesores' | 'ProfesorDetalle' | 'Emergencias' | 'AsistenciaStats' | 'HistorialClases' | 'Clases' | 'ReporteGrupal' | 'TendenciasHabilidades' | 'ReporteBiometrico';
+export type ViewMode = 'Dashboard' | 'Horario' | 'Alumnos' | 'Ajustes' | 'NuevaClase' | 'RegistroAlumno' | 'AsistenciaLista' | 'ReportePDF' | 'ClaseDetalle' | 'Planes' | 'AlumnoDetalle' | 'Profesores' | 'ProfesorDetalle' | 'Emergencias' | 'AsistenciaStats' | 'HistorialClases' | 'Clases' | 'ReporteGrupal' | 'TendenciasHabilidades' | 'ReporteBiometrico' | 'Habilidades';

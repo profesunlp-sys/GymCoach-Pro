@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { Button } from '../../App';
 import { GrupoConfig, ViewMode, Alumno, Clase, UserRole, Feedback, AsistenciaRecord } from '../../types';
 
@@ -277,7 +277,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     <p className="text-white font-black text-[10px] uppercase tracking-widest opacity-40">Administración</p>
                     <p className="text-white font-bold text-lg leading-tight mt-0.5">{alumnosConPagosVencidos.length} Moras Detectadas</p>
                   </div>
-                  <button className="h-10 px-4 text-[10px] font-bold uppercase tracking-widest text-amber-500/80 hover:text-amber-500 transition-colors" onClick={() => setVista('Alumnos')}>Revisar</button>
+                  <div className="flex flex-col gap-2">
+                    <button className="h-10 px-4 text-[10px] font-bold uppercase tracking-widest text-amber-500/80 hover:text-amber-500 transition-colors" onClick={() => setVista('Alumnos')}>Revisar</button>
+                    <button className="h-10 px-4 bg-amber-500/10 border border-amber-500/30 rounded-xl text-[10px] font-bold uppercase tracking-widest text-amber-500 hover:bg-amber-500/20 transition-all" onClick={onOpenBulkPayment}>Cargar Pagos</button>
+                  </div>
                 </div>
               )}
               
@@ -692,14 +695,24 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       <span className="text-[7px] text-white/40 uppercase">Condición</span>
                     </button>
                     {(userRole as string) === 'Coordinator' && (
-                      <button 
-                        onClick={() => handleNavigation('Profesores')}
-                        className="glass-card rounded-2xl p-4 border border-white/5 flex flex-col items-center gap-2 active:scale-95 transition-all"
-                      >
-                        <span className="material-icons-outlined text-primary text-xl">badge</span>
-                        <span className="text-[8px] font-bold text-white uppercase tracking-tighter">Staff</span>
-                        <span className="text-[7px] text-white/40 uppercase">Profesores</span>
-                      </button>
+                      <>
+                        <button 
+                          onClick={() => handleNavigation('Profesores')}
+                          className="glass-card rounded-2xl p-4 border border-white/5 flex flex-col items-center gap-2 active:scale-95 transition-all"
+                        >
+                          <span className="material-icons-outlined text-primary text-xl">badge</span>
+                          <span className="text-[8px] font-bold text-white uppercase tracking-tighter">Staff</span>
+                          <span className="text-[7px] text-white/40 uppercase">Profesores</span>
+                        </button>
+                        <button 
+                          onClick={onOpenBulkPayment}
+                          className="glass-card rounded-2xl p-4 border border-white/5 flex flex-col items-center gap-2 active:scale-95 transition-all"
+                        >
+                          <span className="material-icons-outlined text-emerald-500 text-xl">fact_check</span>
+                          <span className="text-[8px] font-bold text-white uppercase tracking-tighter">Importar</span>
+                          <span className="text-[7px] text-white/40 uppercase">Pagos</span>
+                        </button>
+                      </>
                     )}
                   </div>
                 </motion.div>

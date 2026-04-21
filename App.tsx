@@ -1772,75 +1772,99 @@ const App: React.FC = () => {
     let importedCount = 0;
     let errors: string[] = [];
     
-    for (const line of lines) {
-      // Split by comma, semicolon or tab
-      const parts = line.split(/[,;\t]/).map(p => p.trim());
-      if (parts.length < 1 || !parts[0]) {
-        errors.push(`Línea vacía o sin nombre: "${line}"`);
+    // Detectar si la primera línea es el encabezado
+    const firstLine = lines[0].toLowerCase();
+    const startIndex = (firstLine.includes('marca temporal') || firstLine.includes('timestamp')) ? 1 : 0;
+
+    for (let i = startIndex; i < lines.length; i++) {
+      const line = lines[i];
+      // Split by comma, but handle quoted strings if necessary (basic CSV split)
+      // For Google Forms, it's usually simple comma separated
+      const parts = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(p => p.trim().replace(/^"|"$/g, ''));
+      
+      if (parts.length < 4) {
+        errors.push(`Línea con datos insuficientes: "${line}"`);
         continue;
       }
 
-      const nombre = parts[0];
-      const dni = parts[1] || '';
-      const grupo = parts[2] || 'Sin Grupo';
-      const nivel = parts[3] || 'Escuela';
-      const telefono = parts[4] || '';
+      // Mapeo según Google Forms (1: Timestamp, 2: Email, 3: Apellido, 4: Nombre, 5: Contacto, 6: ?, 7-9: Grupos)
+      // Ajustamos a índices 0-indexed: 0: Timestamp, 1: Email, 2: Apellido, 3: Nombre, 4: Tel, 5: ?, 6-8: Grupos
+      const email = parts[1] || '';
+      const apellido = parts[2] || '';
+      const nombrePila = parts[3] || '';
+      const nombreCompleto = `${nombrePila} ${apellido}`.trim();
+      
+      // Limpiar teléfono (quitar caracteres no numéricos y el primer '9' si es prefijo común en Argentina)
+      let telefono = (parts[4] || '').replace(/\D/g, '');
+      if (telefono.startsWith('549')) {
+        telefono = telefono.substring(3);
+      } else if (telefono.startsWith('9')) {
+        // A veces el primer 9 es el prefijo de celular, el usuario pidió "limpiar primer número"
+        // pero solo si tiene sentido. Aplicaremos una limpieza básica.
+      }
 
-      // Validación básica
-      if (nombre.length < 3) {
-        errors.push(`Nombre demasiado corto: "${nombre}"`);
+      // Grupo dinámico (Columnas 7, 8 o 9 -> índices 6, 7, 8)
+      const grupo = parts[6] || parts[7] || parts[8] || 'Sin Grupo';
+      const nivel = 'Escuela'; // Default
+
+      if (nombreCompleto.length < 3) {
+        errors.push(`Nombre inválido o muy corto: "${nombreCompleto}"`);
         continue;
       }
-      if (dni && !/^\d+$/.test(dni)) {
-        errors.push(`DNI inválido (solo números): "${dni}" para ${nombre}`);
-        continue;
-      }
 
-      const newStudent: Omit<Alumno, 'id'> = {
-        nombre,
-        dni: dni || 'No especificado',
-        disciplina: 'GAF',
-        nivel,
-        grupo,
-        fechaNacimiento: '2010-01-01',
-        fechaIngreso: new Date().toISOString(),
-        fechaPrimeraClase: new Date().toISOString().split('T')[0],
-        estadoPago: 'Al día',
-        habilidades: [],
-        biometria: { fuerza: 50, flexibilidad: 50, tecnica: 50, resistencia: 50, coordinacion: 50 },
-        qrCode: `QR_${dni || new Date().getTime()}_${Math.random().toString(36).substr(2, 5)}`,
-        asistenciasHistoricas: 0,
-        alertas: [],
-        contacto: {
-          padreNombre: '', padreTelefono: '', madreNombre: '', madreTelefono: '',
-          emergenciaNombre: 'Contacto Masivo', emergenciaTelefono: telefono
-        }
-      };
+      // Validación de duplicados por Nombre Completo
+      const existingStudent = alumnos.find(a => 
+        a.nombre.toLowerCase().trim() === nombreCompleto.toLowerCase().trim()
+      );
 
-      try {
-        // Buscar si ya existe el alumno por DNI para evitar duplicados y permitir carga fragmentada
-        const existingStudent = alumnos.find(a => a.dni !== 'No especificado' && a.dni === dni);
-
-        if (existingStudent && existingStudent.id) {
-          // Actualizar solo los campos que vienen con información nueva o mantienen los existentes
-          const updatedStudent = {
-            ...existingStudent,
-            nombre: nombre || existingStudent.nombre,
-            grupo: (grupo && grupo !== 'Sin Grupo') ? grupo : existingStudent.grupo,
-            nivel: (nivel && nivel !== 'Escuela') ? nivel : existingStudent.nivel,
-            contacto: {
-              ...(existingStudent.contacto || {}),
-              emergenciaTelefono: telefono || existingStudent.contacto?.emergenciaTelefono || ''
-            }
-          };
+      if (existingStudent && existingStudent.id) {
+        // Actualizar existente
+        const updatedStudent = {
+          ...existingStudent,
+          nombre: nombreCompleto,
+          grupo: (grupo && grupo !== 'Sin Grupo') ? grupo : existingStudent.grupo,
+          contacto: {
+            ...(existingStudent.contacto || {}),
+            emergenciaTelefono: telefono || existingStudent.contacto?.emergenciaTelefono || '',
+            familiarEmail: email || (existingStudent.contacto as any)?.familiarEmail || ''
+          }
+        };
+        try {
           await updateDocument(COLLECTIONS.ALUMNOS, existingStudent.id, updatedStudent);
-        } else {
-          // Crear nuevo si no existe
-          await addDocument(COLLECTIONS.ALUMNOS, newStudent);
+          importedCount++;
+        } catch (e) {
+          errors.push(`Error al actualizar a ${nombreCompleto}: ${e}`);
         }
-        importedCount++;
-      } catch (e) {
-        errors.push(`Error al procesar a ${nombre}: ${e}`);
+      } else {
+        // Crear nuevo
+        const newStudent: Omit<Alumno, 'id'> = {
+          nombre: nombreCompleto,
+          dni: 'No especificado', // Google Forms might not have DNI
+          disciplina: 'GAF',
+          nivel,
+          grupo,
+          fechaNacimiento: '2010-01-01',
+          fechaIngreso: new Date().toISOString(),
+          fechaPrimeraClase: new Date().toISOString().split('T')[0],
+          estadoPago: 'Al día',
+          habilidades: [],
+          biometria: { fuerza: 50, flexibilidad: 50, tecnica: 50, resistencia: 50, coordinacion: 50 },
+          qrCode: `QR_${new Date().getTime()}_${Math.random().toString(36).substr(2, 5)}`,
+          asistenciasHistoricas: 0,
+          alertas: [],
+          contacto: {
+            padreNombre: '', padreTelefono: '', madreNombre: '', madreTelefono: '',
+            emergenciaNombre: 'Importado Google Forms', 
+            emergenciaTelefono: telefono,
+            familiarEmail: email
+          }
+        };
+        try {
+          await addDocument(COLLECTIONS.ALUMNOS, newStudent);
+          importedCount++;
+        } catch (e) {
+          errors.push(`Error al insertar a ${nombreCompleto}: ${e}`);
+        }
       }
     }
 
@@ -1859,6 +1883,36 @@ const App: React.FC = () => {
       setNotificacion({ t: "Importación Exitosa", d: `Se importaron ${importedCount} alumnos correctamente.` });
     }
     setTimeout(() => setNotificacion(null), 3000);
+  };
+
+  const handleCleanupInvalidStudents = async () => {
+    requestConfirmation(
+      "¿Limpiar registros?",
+      "Se eliminarán los alumnos sin nombre o con nombres numéricos inválidos. Esta acción no se puede deshacer.",
+      async () => {
+        setIsLoading(true);
+        try {
+          let count = 0;
+          for (const a of alumnos) {
+            // Criterios: nombre vacío, nulo, o solo números
+            if (!a.nombre || a.nombre.trim() === '' || /^\d+$/.test(a.nombre.trim().replace(/\s/g, ''))) {
+              if (a.id) {
+                await deleteDocument(COLLECTIONS.ALUMNOS, a.id);
+                count++;
+              }
+            }
+          }
+          await loadData();
+          setNotificacion({ t: "Limpieza Completada", d: `Se eliminaron ${count} registros inválidos.` });
+        } catch (error) {
+          console.error("Error during cleanup:", error);
+          setNotificacion({ t: "Error", d: "No se pudo completar la limpieza." });
+        } finally {
+          setIsLoading(false);
+          setTimeout(() => setNotificacion(null), 3000);
+        }
+      }
+    );
   };
 
   const handleSaveStudent = async () => {
@@ -2941,10 +2995,17 @@ const App: React.FC = () => {
             setNotificacion={setNotificacion}
           />
         )}
-
-        {(vista === 'AsistenciaStats' || vista === 'ReporteGrupal' || vista === 'TendenciasHabilidades' || vista === 'ReportePDF') && (
-          <Reportes 
+        
+        {vista === 'Planes' && (
+          <Manuales 
             vista={vista}
+            setVista={setVista}
+          />
+        )}
+
+        {(vista === 'AsistenciaStats' || vista === 'ReporteGrupal' || vista === 'TendenciasHabilidades' || vista === 'ReportePDF' || vista === 'ReporteBiometrico' || vista === 'Habilidades') && (
+          <Reportes 
+            vista={vista === 'Habilidades' ? 'TendenciasHabilidades' : vista}
             setVista={setVista}
             alumnos={alumnos}
             grupos={grupos}
@@ -3315,6 +3376,49 @@ const App: React.FC = () => {
       </Suspense>
     </main>
 
+      {/* Overlay de Más Opciones (Menú Central) */}
+      <AnimatePresence>
+        {showMoreOptions && (
+          <div className="fixed inset-0 z-[45] flex items-end justify-center px-4 pb-28">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowMoreOptions(false)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            
+            <motion.div 
+              initial={{ y: 100, opacity: 0, scale: 0.95 }}
+              animate={{ y: 0, opacity: 1, scale: 1 }}
+              exit={{ y: 100, opacity: 0, scale: 0.95 }}
+              className="relative w-full max-w-[400px] glass-card p-6 grid grid-cols-3 gap-4 border border-white/10"
+            >
+              {[
+                { v: 'AsistenciaLista', i: 'fact_check', l: 'Asistencia', c: 'text-emerald-400' },
+                { v: 'Horario', i: 'event_note', l: 'Grupos', c: 'text-amber-400' },
+                { v: 'AsistenciaStats', i: 'analytics', l: 'Reportes', c: 'text-sky-400' },
+                { v: 'Planes', i: 'psychology', l: 'Manuales', c: 'text-violet-400' },
+                { v: 'Profesores', i: 'badge', l: 'Staff', c: 'text-rose-400' },
+                { v: 'Habilidades', i: 'trending_up', l: 'Habilidades', c: 'text-primary' },
+              ].map(opt => (
+                <button
+                  key={opt.v}
+                  onClick={() => {
+                    handleNavigation(opt.v as ViewMode);
+                    setShowMoreOptions(false);
+                  }}
+                  className="flex flex-col items-center gap-3 p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 transition-all active:scale-95"
+                >
+                  <span className={`material-symbols-outlined text-[32px] ${opt.c}`}>{opt.i}</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-white/80">{opt.l}</span>
+                </button>
+              ))}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* Navegación Inferior (Refined for Antigravity) */}
       {vista !== 'ReportePDF' && (
         <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-antigravity-charcoal/80 backdrop-blur-md border-t border-white/5 px-6 pt-4 pb-2 flex justify-between items-center z-50">
@@ -3322,34 +3426,43 @@ const App: React.FC = () => {
             { v: 'Dashboard', i: 'grid_view', l: 'Inicio' },
             { v: 'Alumnos', i: 'group', l: 'Gimnastas' },
             { v: 'Clases', i: 'fitness_center', l: 'Clases' },
-            { v: 'Planes', i: 'psychology', l: 'Manuales' },
+            { v: 'Menu', i: 'menu_open', l: 'Menú' },
             { v: 'Ajustes', i: 'app_settings_alt', l: 'Ajustes' }
           ].map(item => (
             <button 
               key={item.v} 
               onClick={() => {
+                if (item.v === 'Menu') {
+                  setShowMoreOptions(!showMoreOptions);
+                  return;
+                }
                 if (item.v === 'Alumnos') setAlumnosFilterMode('all');
                 handleNavigation(item.v as ViewMode);
+                setShowMoreOptions(false);
               }} 
               className={`flex flex-col items-center gap-1.5 transition-all flex-1 ${
-                vista === item.v || 
+                (vista === item.v || 
                 (item.v === 'Alumnos' && (vista === 'AlumnoDetalle' || vista === 'RegistroAlumno')) ||
-                (item.v === 'Clases' && (vista === 'NuevaClase' || vista === 'ClaseDetalle' || vista === 'HistorialClases'))
+                (item.v === 'Clases' && (vista === 'NuevaClase' || vista === 'ClaseDetalle' || vista === 'HistorialClases'))) && item.v !== 'Menu'
                 ? 'text-neon-cyan active-glow' 
+                : showMoreOptions && item.v === 'Menu'
+                ? 'text-primary active-glow'
                 : 'text-white/60 hover:text-white'
               }`}
             >
               <span className={`material-symbols-outlined text-[26px] font-light ${
-                vista === item.v || 
+                (vista === item.v || 
                 (item.v === 'Alumnos' && (vista === 'AlumnoDetalle' || vista === 'RegistroAlumno')) ||
-                (item.v === 'Clases' && (vista === 'NuevaClase' || vista === 'ClaseDetalle' || vista === 'HistorialClases'))
+                (item.v === 'Clases' && (vista === 'NuevaClase' || vista === 'ClaseDetalle' || vista === 'HistorialClases'))) && item.v !== 'Menu'
                 ? 'neon-glow-cyan' 
+                : showMoreOptions && item.v === 'Menu'
+                ? 'neon-glow-primary'
                 : ''
               }`}>{item.i}</span>
               <span className={`text-[9px] uppercase tracking-wide ${
-                vista === item.v || 
+                (vista === item.v || 
                 (item.v === 'Alumnos' && (vista === 'AlumnoDetalle' || vista === 'RegistroAlumno')) ||
-                (item.v === 'Clases' && (vista === 'NuevaClase' || vista === 'ClaseDetalle' || vista === 'HistorialClases'))
+                (item.v === 'Clases' && (vista === 'NuevaClase' || vista === 'ClaseDetalle' || vista === 'HistorialClases'))) && item.v !== 'Menu'
                 ? 'font-bold' 
                 : 'font-medium'
               }`}>
@@ -3569,6 +3682,16 @@ const App: React.FC = () => {
                   className="flex-1 py-4 rounded-2xl bg-primary text-antigravity-black font-black text-[10px] uppercase tracking-widest shadow-neon-cyan active:scale-95 transition-all disabled:opacity-50"
                 >
                   {isLoading ? 'Procesando...' : 'Importar Lista'}
+                </button>
+              </div>
+              
+              <div className="pt-4 border-t border-white/5">
+                <button 
+                  onClick={handleCleanupInvalidStudents}
+                  className="w-full py-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-500 font-bold text-[10px] uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2"
+                >
+                  <span className="material-icons-outlined text-sm">cleaning_services</span>
+                  Limpiar Registros Inválidos
                 </button>
               </div>
             </div>
