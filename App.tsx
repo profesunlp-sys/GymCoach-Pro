@@ -355,6 +355,7 @@ const App: React.FC = () => {
   } | null>(null);
 
   const [isFocusMode, setIsFocusMode] = useState(false);
+  const [maintenanceMode, setMaintenanceMode] = useState(false);
 
   const translateFirebaseError = (error: any) => {
     const code = error.code;
@@ -2513,6 +2514,24 @@ const App: React.FC = () => {
   });
   const presentCount = Object.values(asistenciasHoy).filter(v => v).length;
 
+  // ═══ MODO MANTENIMIENTO — Bloquea a profesores, coordinador puede entrar ═══
+  if (isLoggedIn && maintenanceMode && user?.email !== COORDINATOR_EMAIL) return (
+    <div className="auth-bg flex flex-col items-center justify-center p-8 text-white min-h-screen relative">
+      <div className="z-10 w-full max-w-sm text-center page-transition flex flex-col items-center">
+        <div className="w-24 h-24 bg-amber-500/10 backdrop-blur-3xl rounded-[2.2rem] flex items-center justify-center mb-8 shadow-[0_10px_40px_rgba(0,0,0,0.4)] border border-amber-500/20">
+          <span className="material-icons-outlined text-amber-400 text-4xl">construction</span>
+        </div>
+        <h1 className="text-2xl font-black tracking-tighter mb-3 text-white leading-none uppercase">En Mantenimiento</h1>
+        <p className="text-white/60 text-sm font-medium leading-relaxed mb-8">La aplicación está en mantenimiento.<br/>Volvé en unos minutos.</p>
+        <div className="flex items-center gap-2 text-white/30">
+          <div className="w-2 h-2 bg-amber-400 rounded-full animate-pulse"></div>
+          <span className="text-[10px] font-black uppercase tracking-[0.3em]">GymCoach Pro</span>
+        </div>
+        <button onClick={handleLogout} className="mt-8 text-white/30 text-[10px] uppercase tracking-widest hover:text-white/60 transition-all">Cerrar Sesión</button>
+      </div>
+    </div>
+  );
+
   if (!isLoggedIn) return (
     <div className="auth-bg flex flex-col items-center justify-center p-8 text-white min-h-screen relative">
       <div className="z-10 w-full max-w-sm text-center page-transition flex flex-col items-center">
@@ -3241,53 +3260,89 @@ const App: React.FC = () => {
                 </div>
               </div>
 
-              {/* Datos */}
-              <div className="space-y-4">
-                <h3 className="text-white/70 text-[10px] font-bold uppercase tracking-widest px-2">Gestión de Datos</h3>
-                <button 
-                  onClick={() => {
-                    const data = { alumnos, clases, grupos, profesores: profesoresList };
-                    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `gymcoach_backup_${new Date().toISOString().split('T')[0]}.json`;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    URL.revokeObjectURL(url);
-                    setNotificacion({ t: "Éxito", d: "Copia de seguridad descargada." });
-                    setTimeout(() => setNotificacion(null), 3000);
-                  }}
-                  className="w-full flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/10 active:scale-95 transition-all"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="material-icons-outlined text-neon-cyan text-lg">cloud_download</span>
-                    <span className="text-xs font-medium text-white">Exportar Copia de Seguridad</span>
-                  </div>
-                  <span className="material-icons-outlined text-white/60 text-sm">chevron_right</span>
-                </button>
-
-                <div className="relative">
-                  <input 
-                    type="file" 
-                    id="import-backup" 
-                    className="hidden" 
-                    accept=".json"
-                    onChange={handleImportBackup}
-                  />
-                  <label 
-                    htmlFor="import-backup"
-                    className="w-full flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/10 active:scale-95 transition-all cursor-pointer"
+              {/* Protección de Datos — Coordinador */}
+              {userRole === 'Coordinator' && (
+                <div className="space-y-4">
+                  <h3 className="text-white/70 text-[10px] font-bold uppercase tracking-widest px-2">Protección de Datos</h3>
+                  
+                  {/* Backup completo */}
+                  <button 
+                    onClick={() => {
+                      const data = { 
+                        alumnos, clases, grupos, 
+                        profesores: profesoresList, 
+                        asistencias,
+                        exportDate: new Date().toISOString(),
+                        version: '2.0'
+                      };
+                      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `gymcoach_backup_${new Date().toISOString().split('T')[0]}.json`;
+                      document.body.appendChild(a);
+                      a.click();
+                      document.body.removeChild(a);
+                      URL.revokeObjectURL(url);
+                      setNotificacion({ t: "Éxito", d: `Backup completo: ${alumnos.length} alumnos, ${clases.length} clases, ${grupos.length} grupos.` });
+                      setTimeout(() => setNotificacion(null), 4000);
+                    }}
+                    className="w-full flex items-center justify-between p-5 bg-emerald-500/5 rounded-2xl border border-emerald-500/20 active:scale-95 transition-all"
                   >
                     <div className="flex items-center gap-3">
-                      <span className="material-icons-outlined text-primary text-lg">cloud_upload</span>
-                      <span className="text-xs font-medium text-white">Importar Copia de Seguridad</span>
+                      <div className="w-10 h-10 bg-emerald-500/10 rounded-xl flex items-center justify-center border border-emerald-500/20">
+                        <span className="material-icons-outlined text-emerald-400 text-lg">shield</span>
+                      </div>
+                      <div>
+                        <span className="text-xs font-bold text-white block">Hacer copia de seguridad ahora</span>
+                        <span className="text-[9px] text-white/40 uppercase tracking-wider">Alumnos • Clases • Grupos • Asistencias</span>
+                      </div>
                     </div>
-                    <span className="material-icons-outlined text-white/60 text-sm">chevron_right</span>
-                  </label>
+                    <span className="material-icons-outlined text-emerald-400 text-lg">download</span>
+                  </button>
+
+                  <div className="relative">
+                    <input 
+                      type="file" 
+                      id="import-backup" 
+                      className="hidden" 
+                      accept=".json"
+                      onChange={handleImportBackup}
+                    />
+                    <label 
+                      htmlFor="import-backup"
+                      className="w-full flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/10 active:scale-95 transition-all cursor-pointer"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="material-icons-outlined text-primary text-lg">cloud_upload</span>
+                        <span className="text-xs font-medium text-white">Importar Copia de Seguridad</span>
+                      </div>
+                      <span className="material-icons-outlined text-white/60 text-sm">chevron_right</span>
+                    </label>
+                  </div>
+
+                  {/* Modo Mantenimiento */}
+                  <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/10">
+                    <div className="flex items-center gap-3">
+                      <span className="material-icons-outlined text-amber-400 text-lg">construction</span>
+                      <div>
+                        <span className="text-xs font-medium text-white block">Modo Mantenimiento</span>
+                        <span className="text-[9px] text-white/40">Bloquea acceso de profesores</span>
+                      </div>
+                    </div>
+                    <div 
+                      onClick={() => {
+                        setMaintenanceMode(!maintenanceMode);
+                        setNotificacion({ t: maintenanceMode ? 'Desactivado' : 'Activado', d: maintenanceMode ? 'Los profesores ya pueden acceder.' : 'Los profesores verán la pantalla de mantenimiento.' });
+                        setTimeout(() => setNotificacion(null), 3000);
+                      }}
+                      className={`w-10 h-6 rounded-full relative cursor-pointer transition-all ${maintenanceMode ? 'bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.4)]' : 'bg-white/10'}`}
+                    >
+                      <div className={`absolute top-1 w-4 h-4 bg-antigravity-black rounded-full transition-all ${maintenanceMode ? 'right-1' : 'left-1'}`}></div>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Configuración de Listas */}
               <div className="space-y-4">
