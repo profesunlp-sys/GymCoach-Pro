@@ -2996,13 +2996,6 @@ const App: React.FC = () => {
           />
         )}
         
-        {vista === 'Planes' && (
-          <Manuales 
-            vista={vista}
-            setVista={setVista}
-          />
-        )}
-
         {(vista === 'AsistenciaStats' || vista === 'ReporteGrupal' || vista === 'TendenciasHabilidades' || vista === 'ReportePDF' || vista === 'ReporteBiometrico' || vista === 'Habilidades') && (
           <Reportes 
             vista={vista === 'Habilidades' ? 'TendenciasHabilidades' : vista}
