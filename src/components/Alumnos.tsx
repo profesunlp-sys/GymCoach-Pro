@@ -75,6 +75,7 @@ interface AlumnosProps {
   handleSaveDisciplina: (name: string) => void;
   handleUpdateDisciplina: (id: string, nombre: string) => void;
   handleDeleteDisciplina: (id: string) => void;
+  sendPaymentReminder?: (alumno: Alumno) => void;
 }
 
 const Alumnos: React.FC<AlumnosProps> = ({
@@ -147,12 +148,12 @@ const Alumnos: React.FC<AlumnosProps> = ({
   disciplinas,
   handleSaveDisciplina,
   handleUpdateDisciplina,
-  handleDeleteDisciplina
+  handleDeleteDisciplina,
+  sendPaymentReminder,
 }) => {
-  const [activeTab, setActiveTab] = useState<'Progreso' | 'Asistencia' | 'Bio' | 'Contacto'>('Progreso');
+  const [activeTab, setActiveTab] = useState<'Progreso' | 'Asistencia' | 'Bio' | 'Contacto' | 'Pagos'>('Progreso');
   const [isEditingStudent, setIsEditingStudent] = useState(false);
   const [isEditingBiometrics, setIsEditingBiometrics] = useState(false);
-  const [showSuggestions, setShowSuggestions] = useState(false);
   
   const calculateAgeGroup = (birthDateStr?: string) => {
     if (!birthDateStr) return 'Desconocido';
@@ -373,50 +374,15 @@ const Alumnos: React.FC<AlumnosProps> = ({
               <div className="glass-card rounded-[2rem] p-6 border border-primary/30 bg-primary/5 space-y-6">
                 <h3 className="text-sm font-black text-white uppercase tracking-widest">{isEditingStudent ? 'Editar Gimnasta' : 'Nuevo Gimnasta'}</h3>
                 <div className="grid grid-cols-1 gap-4">
-                  <div className="space-y-1 relative z-[60]">
+                  <div className="space-y-1">
                     <label className="text-[10px] uppercase font-bold text-white/60 ml-1">Nombre Completo</label>
                     <input 
                       type="text" 
-                      value={studentForm.nombre || ''}
-                      onChange={(e) => {
-                        setStudentForm({ ...studentForm, nombre: e.target.value });
-                        setShowSuggestions(true);
-                      }}
-                      onFocus={() => setShowSuggestions(true)}
-                      onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                      value={studentForm.nombre}
+                      onChange={(e) => setStudentForm({ ...studentForm, nombre: e.target.value })}
                       className="w-full bg-antigravity-charcoal border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-primary/50 transition-all"
                       placeholder="Ej: Juan Perez"
-                      autoComplete="off"
                     />
-                    {showSuggestions && studentForm.nombre && studentForm.nombre.trim().length > 1 && (() => {
-                      const normalize = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-                      const query = normalize(studentForm.nombre!.trim());
-                      const matches = alumnos.filter(a => a.nombre && normalize(a.nombre).includes(query) && normalize(a.nombre) !== query);
-                      
-                      return (
-                        <div className="absolute z-[100] w-full mt-1 bg-antigravity-charcoal border border-white/10 rounded-xl shadow-2xl max-h-48 overflow-y-auto custom-scrollbar">
-                          {matches.length > 0 ? (
-                            matches.map(a => (
-                              <div 
-                                key={a.id} 
-                                className="px-4 py-3 border-b border-white/5 last:border-0 hover:bg-primary/20 cursor-pointer transition-colors flex flex-col"
-                                onClick={() => {
-                                  // Autorrellenar el formulario con los datos del alumno existente
-                                  setStudentForm({ ...a });
-                                  setIsEditingStudent(true); // Al ser un alumno existente, pasa a modo edición
-                                  setShowSuggestions(false);
-                                }}
-                              >
-                                <span className="text-sm font-bold text-white">{a.nombre}</span>
-                                <span className="text-[10px] text-white/40 uppercase tracking-widest">{a.dni ? `DNI: ${a.dni}` : 'Sin DNI'} • {a.grupo || 'Sin Grupo'}</span>
-                              </div>
-                            ))
-                          ) : (
-                            <div className="px-4 py-3 text-xs text-white/40 italic">No se encontraron coincidencias</div>
-                          )}
-                        </div>
-                      );
-                    })()}
                   </div>
                   <div className="grid grid-cols-2 gap-x-4 gap-y-14">
                     <div className="space-y-1">
@@ -606,6 +572,12 @@ const Alumnos: React.FC<AlumnosProps> = ({
                 className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'Contacto' ? 'text-primary border-b-2 border-primary' : 'text-white/40'}`}
               >
                 Contacto
+              </button>
+              <button 
+                onClick={() => setActiveTab('Pagos')}
+                className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'Pagos' ? 'text-primary border-b-2 border-primary' : 'text-white/40'}`}
+              >
+                Pagos
               </button>
             </div>
 
@@ -880,6 +852,45 @@ const Alumnos: React.FC<AlumnosProps> = ({
                         <p className="text-xs text-white font-bold">{new Date(selectedAlumno.fechaIngreso).toLocaleDateString()}</p>
                       </div>
                     </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'Pagos' && (
+              <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
+                <div className="flex justify-between items-center px-1">
+                  <h3 className="text-sm font-black text-white uppercase tracking-widest">Historial de Pagos</h3>
+                  {sendPaymentReminder && (
+                    <Button 
+                      onClick={() => sendPaymentReminder(selectedAlumno)}
+                      variant="outline"
+                      className="!py-1.5 !px-3 !text-[8px] border-emerald-500/20 text-emerald-500 hover:bg-emerald-500/10"
+                    >
+                      Enviar Recordatorio WA
+                    </Button>
+                  )}
+                </div>
+                <div className="glass-card rounded-[2.5rem] p-6 border border-white/5 space-y-4">
+                  <div className="space-y-4">
+                    {selectedAlumno.pagosMensuales && selectedAlumno.pagosMensuales.length > 0 ? (
+                      [...selectedAlumno.pagosMensuales].sort((a,b) => b.anio !== a.anio ? b.anio - a.anio : 0).map((pago, idx) => (
+                        <div key={idx} className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
+                          <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20">
+                              <span className="material-icons-outlined text-emerald-500">payments</span>
+                            </div>
+                            <div>
+                              <p className="text-xs font-bold text-white uppercase">{pago.mes} {pago.anio}</p>
+                              <p className="text-[8px] text-white/40 uppercase font-black tracking-widest">Registrado el {new Date(pago.fechaPago).toLocaleDateString()}</p>
+                            </div>
+                          </div>
+                          <span className="text-[10px] font-black uppercase tracking-widest text-emerald-500 bg-emerald-500/10 px-3 py-1 rounded-full">Pagado</span>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="p-10 text-center text-white/40 italic">No hay registros de pagos mensuales.</div>
+                    )}
                   </div>
                 </div>
               </div>

@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Alumno, Skill, SkillStatus, Apparatus } from '../../types';
 
 interface HabilidadesProps {

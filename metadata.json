@@ -1,6 +1,6 @@
 {
-  "name": "GymCoach Pro Elite - High Performance Suite",
-  "description": "App de gestión integral para gimnasia artística: Árbol de habilidades FIG, Control Financiero (Churn Rate), Biometría Radar y IA Staff Management.",
+  "name": "GymCoach Pro Elite",
+  "description": "Sistema de gestión integral para gimnasia artística con IA, importación masiva de pagos y reportes automatizados.",
   "requestFramePermissions": [
     "camera",
     "microphone"
