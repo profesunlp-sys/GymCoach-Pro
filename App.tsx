@@ -3330,6 +3330,49 @@ const App: React.FC = () => {
       </Suspense>
     </main>
 
+      {/* Overlay de Más Opciones (Menú Central) */}
+      <AnimatePresence>
+        {showMoreOptions && (
+          <div className="fixed inset-0 z-[45] flex items-end justify-center px-4 pb-28">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowMoreOptions(false)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            
+            <motion.div 
+              initial={{ y: 100, opacity: 0, scale: 0.95 }}
+              animate={{ y: 0, opacity: 1, scale: 1 }}
+              exit={{ y: 100, opacity: 0, scale: 0.95 }}
+              className="relative w-full max-w-[400px] glass-card p-6 grid grid-cols-3 gap-4 border border-white/10"
+            >
+              {[
+                { v: 'AsistenciaLista', i: 'fact_check', l: 'Asistencia', c: 'text-emerald-400' },
+                { v: 'Horario', i: 'event_note', l: 'Grupos', c: 'text-amber-400' },
+                { v: 'AsistenciaStats', i: 'analytics', l: 'Estadísticas', c: 'text-sky-400' },
+                { v: 'Planes', i: 'psychology', l: 'Manuales', c: 'text-violet-400' },
+                { v: 'Profesores', i: 'badge', l: 'Staff', c: 'text-rose-400' },
+                { v: 'Habilidades', i: 'trending_up', l: 'Habilidades', c: 'text-primary' },
+              ].map(opt => (
+                <button
+                  key={opt.v}
+                  onClick={() => {
+                    handleNavigation(opt.v as ViewMode);
+                    setShowMoreOptions(false);
+                  }}
+                  className="flex flex-col items-center gap-3 p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 transition-all active:scale-95"
+                >
+                  <span className={`material-symbols-outlined text-[32px] ${opt.c}`}>{opt.i}</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-white/80">{opt.l}</span>
+                </button>
+              ))}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* Navegación Inferior (Refined for Antigravity) */}
       {vista !== 'ReportePDF' && (
         <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-antigravity-charcoal/80 backdrop-blur-md border-t border-white/5 px-6 pt-4 pb-2 flex justify-between items-center z-50">
@@ -3337,34 +3380,43 @@ const App: React.FC = () => {
             { v: 'Dashboard', i: 'grid_view', l: 'Inicio' },
             { v: 'Alumnos', i: 'group', l: 'Gimnastas' },
             { v: 'Clases', i: 'fitness_center', l: 'Clases' },
-            { v: 'Planes', i: 'psychology', l: 'Manuales' },
+            { v: 'Menu', i: 'menu_open', l: 'Menú' },
             { v: 'Ajustes', i: 'app_settings_alt', l: 'Ajustes' }
           ].map(item => (
             <button 
               key={item.v} 
               onClick={() => {
+                if (item.v === 'Menu') {
+                  setShowMoreOptions(!showMoreOptions);
+                  return;
+                }
                 if (item.v === 'Alumnos') setAlumnosFilterMode('all');
                 handleNavigation(item.v as ViewMode);
+                setShowMoreOptions(false);
               }} 
               className={`flex flex-col items-center gap-1.5 transition-all flex-1 ${
-                vista === item.v || 
+                (vista === item.v || 
                 (item.v === 'Alumnos' && (vista === 'AlumnoDetalle' || vista === 'RegistroAlumno')) ||
-                (item.v === 'Clases' && (vista === 'NuevaClase' || vista === 'ClaseDetalle' || vista === 'HistorialClases'))
+                (item.v === 'Clases' && (vista === 'NuevaClase' || vista === 'ClaseDetalle' || vista === 'HistorialClases'))) && item.v !== 'Menu'
                 ? 'text-neon-cyan active-glow' 
+                : showMoreOptions && item.v === 'Menu'
+                ? 'text-primary active-glow'
                 : 'text-white/60 hover:text-white'
               }`}
             >
               <span className={`material-symbols-outlined text-[26px] font-light ${
-                vista === item.v || 
+                (vista === item.v || 
                 (item.v === 'Alumnos' && (vista === 'AlumnoDetalle' || vista === 'RegistroAlumno')) ||
-                (item.v === 'Clases' && (vista === 'NuevaClase' || vista === 'ClaseDetalle' || vista === 'HistorialClases'))
+                (item.v === 'Clases' && (vista === 'NuevaClase' || vista === 'ClaseDetalle' || vista === 'HistorialClases'))) && item.v !== 'Menu'
                 ? 'neon-glow-cyan' 
+                : showMoreOptions && item.v === 'Menu'
+                ? 'neon-glow-primary'
                 : ''
               }`}>{item.i}</span>
               <span className={`text-[9px] uppercase tracking-wide ${
-                vista === item.v || 
+                (vista === item.v || 
                 (item.v === 'Alumnos' && (vista === 'AlumnoDetalle' || vista === 'RegistroAlumno')) ||
-                (item.v === 'Clases' && (vista === 'NuevaClase' || vista === 'ClaseDetalle' || vista === 'HistorialClases'))
+                (item.v === 'Clases' && (vista === 'NuevaClase' || vista === 'ClaseDetalle' || vista === 'HistorialClases'))) && item.v !== 'Menu'
                 ? 'font-bold' 
                 : 'font-medium'
               }`}>

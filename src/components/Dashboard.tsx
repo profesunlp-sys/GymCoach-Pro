@@ -280,33 +280,51 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   <button className="h-10 px-4 text-[10px] font-bold uppercase tracking-widest text-amber-500/80 hover:text-amber-500 transition-colors" onClick={() => setVista('Alumnos')}>Revisar</button>
                 </div>
               )}
-              
-              {alumnosConObservacionesMedicas.length > 0 && (
-                <div className="bg-rose-500/10 border border-rose-500/20 rounded-2xl p-4 flex items-center gap-4">
-                  <div className="w-10 h-10 bg-rose-500/20 rounded-xl flex items-center justify-center text-rose-500">
-                    <span className="material-icons-outlined">medical_services</span>
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-white font-bold text-sm">{alumnosConObservacionesMedicas.length} Observaciones Médicas</p>
-                    <p className="text-[10px] text-white/60">Pendientes de revisión técnica</p>
-                  </div>
-                  <Button variant="outline" className="h-8 px-3 text-[10px]" onClick={() => setVista('Alumnos')}>Revisar</Button>
-                </div>
-              )}
-
-              {gruposSinClaseEstaSemana.length > 0 && (
-                <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-2xl p-4 flex items-center gap-4">
-                  <div className="w-10 h-10 bg-indigo-500/20 rounded-xl flex items-center justify-center text-indigo-500">
-                    <span className="material-icons-outlined">event_busy</span>
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-white font-bold text-sm">{gruposSinClaseEstaSemana.length} Grupos sin Actividad</p>
-                    <p className="text-[10px] text-white/60">Sin clases registradas esta semana</p>
-                  </div>
-                  <Button variant="outline" className="h-8 px-3 text-[10px]" onClick={() => setVista('Horario')}>Ver</Button>
-                </div>
-              )}
             </div>
+          </section>
+
+          {/* Panel de Actividad Diaria */}
+          <section className="space-y-4">
+             <div className="flex justify-between items-center px-1">
+               <h3 className="text-[10px] uppercase font-black text-white/30 tracking-[0.3em] flex items-center gap-2">
+                 <span className="w-1 h-1 bg-primary rounded-full"></span> ACTIVIDAD RECIENTE
+               </h3>
+               <span className="text-[8px] font-bold text-primary uppercase bg-primary/10 px-2 py-0.5 rounded-full">En Vivo</span>
+             </div>
+             
+             <div className="glass-card rounded-[2rem] p-6 border border-white/5 space-y-6">
+                {clases.filter(c => isToday(c.fecha)).length === 0 && (
+                  <div className="text-center py-4">
+                    <p className="text-xs text-white/40 italic">No se han registrado actividades hoy.</p>
+                  </div>
+                )}
+                
+                <div className="space-y-6">
+                  {clases.filter(c => isToday(c.fecha)).sort((a, b) => b.fecha.localeCompare(a.fecha)).map((clase, idx) => (
+                    <div key={clase.id} className="flex gap-4 relative">
+                      {idx !== clases.filter(c => isToday(c.fecha)).length - 1 && (
+                        <div className="absolute left-[19px] top-10 bottom-[-24px] w-px bg-white/10"></div>
+                      )}
+                      <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center shrink-0 relative z-10">
+                        <span className="material-icons-outlined text-primary text-sm">fitness_center</span>
+                      </div>
+                      <div className="flex-1 pt-1">
+                        <div className="flex justify-between items-start">
+                          <p className="text-xs font-bold text-white uppercase tracking-tight">{clase.grupo}</p>
+                          <span className="text-[9px] text-white/40 font-mono">{new Date(clase.fecha).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                        </div>
+                        <p className="text-[10px] text-white/50 mt-0.5">Clase registrada por {clase.entrenador}</p>
+                        <div className="flex gap-2 mt-2">
+                          <span className="text-[8px] px-2 py-0.5 bg-emerald-500/10 text-emerald-500 rounded-full font-bold uppercase tracking-wider">Completada</span>
+                          {clase.alumnos?.length > 0 && (
+                            <span className="text-[8px] px-2 py-0.5 bg-white/5 text-white/60 rounded-full font-bold uppercase tracking-wider">{clase.alumnos.length} Gimnastas</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+             </div>
           </section>
 
           {/* Estado del Staff (Technical Grid) */}
@@ -624,7 +642,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     <span className="material-symbols-outlined text-emerald-500 text-2xl">monitoring</span>
                   </div>
                   <div className="space-y-1">
-                    <span className="text-xs font-black text-white uppercase tracking-tight">Analytics</span>
+                    <span className="text-xs font-black text-white uppercase tracking-tight">Estadísticas</span>
                     <p className="text-[7px] text-white/40 uppercase font-bold">Reportes</p>
                   </div>
                 </button>
