@@ -507,6 +507,9 @@ const App: React.FC = () => {
   const [onboardingStep, setOnboardingStep] = useState(0); // 0 = none, 1-4 = steps
   const [studentGuideCount, setStudentGuideCount] = useState(0);
   const [showStudentGuide, setShowStudentGuide] = useState(false);
+  const [nuevoGrupoNombre, setNuevoGrupoNombre] = useState("");
+  const [nuevoGrupoDias, setNuevoGrupoDias] = useState("");
+  const [nuevoGrupoHorario, setNuevoGrupoHorario] = useState("17:00");
 
   // Load student guide count
   useEffect(() => {
@@ -3452,8 +3455,28 @@ const App: React.FC = () => {
                   <button 
                     onClick={async () => {
                       if (nuevoGrupoNombre.trim()) {
-                        await handleSaveGrupo();
-                        setOnboardingStep(3);
+                        // Prepare state for handleSaveGroup
+                        setNewGroupName(nuevoGrupoNombre);
+                        setNewCoachName(user?.displayName || "Profesor");
+                        // We need to convert dias to array for the existing function
+                        const daysArray = nuevoGrupoDias.split(',').map(d => d.trim()).filter(d => d);
+                        setSelectedDays(daysArray.length > 0 ? daysArray : ['Lu', 'Mi']);
+                        setStartTime(nuevoGrupoHorario);
+                        
+                        // Small delay to ensure state updates (or we can just call the logic directly)
+                        // Actually, better to just implement the logic here for onboarding to be safe
+                        try {
+                          await addDocument(COLLECTIONS.GRUPOS, {
+                            nombre: nuevoGrupoNombre,
+                            entrenador: user?.displayName || "Profesor",
+                            dias: daysArray.length > 0 ? daysArray : ['Lu', 'Mi'],
+                            horario: nuevoGrupoHorario
+                          });
+                          loadData();
+                          setOnboardingStep(3);
+                        } catch (e) {
+                          console.error("Onboarding group error:", e);
+                        }
                       }
                     }}
                     className="w-full py-5 rounded-[2rem] bg-emerald-500 text-antigravity-black font-black uppercase tracking-[0.2em] shadow-neon-cyan active:scale-95 transition-all"
