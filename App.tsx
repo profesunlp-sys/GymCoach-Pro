@@ -503,6 +503,29 @@ const App: React.FC = () => {
   const [notificacion, setNotificacion] = useState<{t: string, d: string} | null>(null);
   const [hasNewData, setHasNewData] = useState(false);
   const isFirstLoad = useRef(true);
+
+  const [onboardingStep, setOnboardingStep] = useState(0); // 0 = none, 1-4 = steps
+  const [studentGuideCount, setStudentGuideCount] = useState(0);
+  const [showStudentGuide, setShowStudentGuide] = useState(false);
+
+  // Load student guide count
+  useEffect(() => {
+    const count = parseInt(localStorage.getItem('student_guide_count') || '0');
+    setStudentGuideCount(count);
+  }, []);
+
+  const incrementStudentGuide = () => {
+    const newCount = studentGuideCount + 1;
+    setStudentGuideCount(newCount);
+    localStorage.setItem('student_guide_count', newCount.toString());
+  };
+
+  // Auto-trigger onboarding
+  useEffect(() => {
+    if (userRole === 'Coach' && grupos.length === 0 && !isLoading && user && isFirstLoad.current) {
+      setOnboardingStep(1);
+    }
+  }, [userRole, grupos.length, isLoading, user]);
   const [pendingNavigation, setPendingNavigation] = useState<ViewMode | null>(null);
   const [emergencyInfo, setEmergencyInfo] = useState<{publicProvider: string, publicPhone: string, privateProvider: string, privatePhone: string}>({ 
     publicProvider: 'Emergencias Públicas', publicPhone: '107',
@@ -1920,6 +1943,7 @@ const App: React.FC = () => {
         };
         await addDocument(COLLECTIONS.ALUMNOS, newStudent);
         setNotificacion({ t: "Gimnasta Registrado", d: `${newStudent.nombre} añadido.` });
+        incrementStudentGuide();
       }
 
       await loadData();
@@ -3330,7 +3354,165 @@ const App: React.FC = () => {
       </Suspense>
     </main>
 
-      {/* Overlay de Más Opciones (Menú Central) */}
+      {/* Student Data Guide Tooltip */}
+      <AnimatePresence>
+        {vista === 'RegistroAlumno' && studentGuideCount < 3 && (
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            className="fixed bottom-28 left-6 right-6 z-[80] glass-card rounded-3xl p-6 border border-primary/30 shadow-neon-cyan overflow-hidden"
+          >
+            <div className="absolute top-0 right-0 p-2">
+              <button 
+                onClick={() => {
+                  setStudentGuideCount(3);
+                  localStorage.setItem('student_guide_count', '3');
+                }} 
+                className="text-white/30 hover:text-white"
+              >
+                <span className="material-icons-outlined text-sm">close</span>
+              </button>
+            </div>
+            <div className="flex gap-4">
+              <div className="w-12 h-12 bg-primary/20 rounded-2xl flex items-center justify-center border border-primary/30 shrink-0">
+                <span className="material-icons-outlined text-primary">info</span>
+              </div>
+              <div className="space-y-1">
+                <h4 className="text-sm font-black text-white uppercase tracking-tight">Datos Importantes</h4>
+                <p className="text-[10px] text-white/70 leading-relaxed italic">
+                  Es clave cargar: <span className="text-primary font-bold">Nombre completo, fecha de nacimiento, contacto de emergencia, observaciones de salud</span> y datos deportivos como <span className="text-primary font-bold">nivel y grupo</span>.
+                </p>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Onboarding Overlay */}
+      <AnimatePresence>
+        {onboardingStep > 0 && (
+          <motion.div 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[1000] bg-antigravity-black flex items-center justify-center p-6"
+          >
+            <motion.div 
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              className="glass-card w-full max-w-lg rounded-[3rem] p-10 border border-white/10 space-y-8"
+            >
+              {onboardingStep === 1 && (
+                <div className="text-center space-y-6">
+                  <div className="w-20 h-20 bg-gradient-to-br from-primary to-neon-blue rounded-3xl flex items-center justify-center shadow-neon-cyan border border-white/20 mx-auto">
+                    <span className="material-icons-outlined text-antigravity-black text-4xl">fitness_center</span>
+                  </div>
+                  <div className="space-y-3">
+                    <h2 className="text-3xl font-black text-white uppercase tracking-tighter">¡Bienvenido/a, {user?.displayName?.split(' ')[0] || 'Profesor'}!</h2>
+                    <p className="text-white/60 text-sm leading-relaxed">En 4 pasos simples vas a tener tu gimnasio configurado y listo para usar.</p>
+                  </div>
+                  <button 
+                    onClick={() => setOnboardingStep(2)}
+                    className="w-full py-5 rounded-[2rem] bg-primary text-antigravity-black font-black uppercase tracking-[0.2em] shadow-neon-cyan-strong active:scale-95 transition-all"
+                  >
+                    Empezar configuración
+                  </button>
+                </div>
+              )}
+
+              {onboardingStep === 2 && (
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    <h2 className="text-2xl font-black text-white uppercase tracking-tighter">Primero, creá tu grupo</h2>
+                    <p className="text-white/60 text-xs">Un grupo es el conjunto de alumnos que entrenan juntos en el mismo horario. Por ejemplo: 'Lunes y Miércoles 17hs'.</p>
+                  </div>
+                  <div className="space-y-4">
+                    <input 
+                      placeholder="Nombre del grupo (ej: Principiantes)" 
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-white placeholder:text-white/20 outline-none focus:border-primary/50 transition-all font-bold"
+                      value={nuevoGrupoNombre}
+                      onChange={(e) => setNuevoGrupoNombre(e.target.value)}
+                    />
+                    <div className="grid grid-cols-2 gap-4">
+                       <input 
+                        placeholder="Días (ej: Lu, Mi)" 
+                        className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-white placeholder:text-white/20 outline-none focus:border-primary/50 transition-all text-xs font-bold"
+                        value={nuevoGrupoDias}
+                        onChange={(e) => setNuevoGrupoDias(e.target.value)}
+                      />
+                      <input 
+                        placeholder="Horario (ej: 17:00)" 
+                        className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-white placeholder:text-white/20 outline-none focus:border-primary/50 transition-all text-xs font-bold font-mono"
+                        value={nuevoGrupoHorario}
+                        onChange={(e) => setNuevoGrupoHorario(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <button 
+                    onClick={async () => {
+                      if (nuevoGrupoNombre.trim()) {
+                        await handleSaveGrupo();
+                        setOnboardingStep(3);
+                      }
+                    }}
+                    className="w-full py-5 rounded-[2rem] bg-emerald-500 text-antigravity-black font-black uppercase tracking-[0.2em] shadow-neon-cyan active:scale-95 transition-all"
+                  >
+                    Crear grupo y continuar
+                  </button>
+                </div>
+              )}
+
+              {onboardingStep === 3 && (
+                <div className="text-center space-y-8">
+                  <div className="space-y-3">
+                    <h2 className="text-2xl font-black text-white uppercase tracking-tighter">Ahora agregá tus gimnastas</h2>
+                    <p className="text-white/60 text-xs leading-relaxed">Podés agregar de a uno o importar una lista desde un archivo CSV.</p>
+                  </div>
+                  <div className="space-y-4">
+                    <button 
+                      onClick={() => { setVista('RegistroAlumno'); setOnboardingStep(0); }}
+                      className="w-full py-5 rounded-2xl bg-white/5 border border-white/10 text-white font-bold uppercase tracking-widest hover:bg-white/10 transition-all"
+                    >
+                      Agregar una por una
+                    </button>
+                    <button 
+                      onClick={() => { setIsBulkImporting(true); setOnboardingStep(4); }}
+                      className="w-full py-5 rounded-2xl bg-white/5 border border-white/10 text-white font-bold uppercase tracking-widest hover:bg-white/10 transition-all"
+                    >
+                      Importar lista CSV
+                    </button>
+                    <button 
+                      onClick={() => setOnboardingStep(4)}
+                      className="w-full py-2 text-[10px] font-black text-white/30 uppercase tracking-[0.3em] hover:text-white transition-all"
+                    >
+                      Omitir por ahora, lo hago después
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {onboardingStep === 4 && (
+                <div className="text-center space-y-8">
+                  <div className="w-24 h-24 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto border border-emerald-500/30 animate-in zoom-in duration-500">
+                    <span className="material-icons-outlined text-emerald-500 text-6xl">check_circle</span>
+                  </div>
+                  <div className="space-y-3">
+                    <h2 className="text-3xl font-black text-white uppercase tracking-tighter">¡Todo listo!</h2>
+                    <p className="text-white/60 text-sm leading-relaxed">Ya podés empezar a usar GymCoach Pro. <br/>Recordá que podés completar los datos de tus alumnas en cualquier momento.</p>
+                  </div>
+                  <button 
+                    onClick={() => { setOnboardingStep(0); setVista('Dashboard'); }}
+                    className="w-full py-5 rounded-[2rem] bg-primary text-antigravity-black font-black uppercase tracking-[0.2em] shadow-neon-cyan-strong active:scale-95 transition-all"
+                  >
+                    Ir al inicio
+                  </button>
+                </div>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       <AnimatePresence>
         {showMoreOptions && (
           <div className="fixed inset-0 z-[45] flex items-end justify-center px-4 pb-28">
@@ -3374,7 +3556,7 @@ const App: React.FC = () => {
       </AnimatePresence>
 
       {/* Navegación Inferior (Refined for Antigravity) */}
-      {vista !== 'ReportePDF' && (
+      {vista !== 'ReportePDF' && onboardingStep === 0 && (
         <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-antigravity-charcoal/80 backdrop-blur-md border-t border-white/5 px-6 pt-4 pb-2 flex justify-between items-center z-50">
           {[
             { v: 'Dashboard', i: 'grid_view', l: 'Inicio' },
