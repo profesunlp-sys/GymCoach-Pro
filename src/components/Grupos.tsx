@@ -1,7 +1,8 @@
 
-import React from 'react';
-import { GrupoConfig, ViewMode } from '../../types';
+import React, { useState } from 'react';
+import { GrupoConfig, ViewMode, Alumno } from '../../types';
 import { EditableDropdown } from '../../App';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface GruposProps {
   vista: ViewMode;
@@ -21,6 +22,8 @@ interface GruposProps {
   timeIntervals: string[];
   handleSaveGroup: () => void;
   grupos: GrupoConfig[];
+  alumnos: Alumno[];
+  handleUpdateStudentGroup: (studentId: string, groupName: string) => void;
   handleDeleteGroup: (group: GrupoConfig) => void;
   setActiveGroup: (group: GrupoConfig) => void;
   profesoresList: { id?: string, nombre: string }[];
@@ -47,6 +50,8 @@ export const Grupos: React.FC<GruposProps> = ({
   timeIntervals,
   handleSaveGroup,
   grupos,
+  alumnos,
+  handleUpdateStudentGroup,
   handleDeleteGroup,
   setActiveGroup,
   profesoresList,
@@ -54,7 +59,13 @@ export const Grupos: React.FC<GruposProps> = ({
   handleUpdateProfesor,
   handleDeleteProfesor
 }) => {
+  const [studentSearch, setStudentSearch] = useState("");
   if (vista !== 'Horario') return null;
+
+  const filteredAlumnos = alumnos.filter(a => 
+    a.nombre.toLowerCase().includes(studentSearch.toLowerCase()) ||
+    (a.dni && a.dni.includes(studentSearch))
+  );
 
   return (
     <div className="px-6 py-8 space-y-8 page-transition">
@@ -181,6 +192,72 @@ export const Grupos: React.FC<GruposProps> = ({
             <span className="material-icons-outlined text-sm">{editingGroup ? 'save' : 'add_circle'}</span>
             <span>{editingGroup ? 'Actualizar Configuración' : 'Crear Nuevo Grupo'}</span>
           </button>
+
+          {/* Selección de Alumnos (Base de Datos Global) */}
+          <AnimatePresence>
+            {editingGroup && (
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="pt-8 border-t border-white/10 space-y-6"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="material-icons-outlined text-primary text-sm">groups</span>
+                    <h4 className="text-[10px] uppercase font-black text-white/80 tracking-[0.2em]">Vincular Gimnastas</h4>
+                  </div>
+                  <div className="text-[10px] font-bold text-primary px-3 py-1 bg-primary/10 rounded-full">
+                    {alumnos.filter(a => a.grupo === editingGroup.nombre).length} Vinculados
+                  </div>
+                </div>
+
+                <div className="relative">
+                  <span className="material-icons-outlined absolute left-4 top-1/2 -translate-y-1/2 text-white/30 text-sm">search</span>
+                  <input 
+                    type="text"
+                    placeholder="Buscar en la base de datos global..."
+                    value={studentSearch}
+                    onChange={(e) => setStudentSearch(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl pl-12 pr-4 py-3 text-xs text-white outline-none focus:border-primary/30 transition-all"
+                  />
+                </div>
+
+                <div className="max-h-64 overflow-y-auto pr-2 space-y-2 custom-scrollbar">
+                  {filteredAlumnos.length > 0 ? filteredAlumnos.map(alumno => {
+                    const isInThisGroup = alumno.grupo === editingGroup.nombre;
+                    return (
+                      <div 
+                        key={alumno.id}
+                        className={`flex items-center justify-between p-3 rounded-xl border transition-all ${isInThisGroup ? 'bg-primary/10 border-primary/30' : 'bg-white/5 border-white/5 hover:bg-white/10'}`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-black ${isInThisGroup ? 'bg-primary text-antigravity-black' : 'bg-white/10 text-white/40'}`}>
+                            {alumno.nombre.charAt(0)}
+                          </div>
+                          <div>
+                            <p className={`text-xs font-bold leading-none ${isInThisGroup ? 'text-white' : 'text-white/60'}`}>{alumno.nombre}</p>
+                            <p className="text-[8px] uppercase tracking-widest text-white/30 mt-1">
+                              {isInThisGroup ? 'En este grupo' : alumno.grupo || 'Sin Grupo'}
+                            </p>
+                          </div>
+                        </div>
+                        <button 
+                          onClick={() => handleUpdateStudentGroup(alumno.id!, isInThisGroup ? 'Sin Grupo' : editingGroup.nombre)}
+                          className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${isInThisGroup ? 'bg-primary/20 text-primary hover:bg-rose-500/20 hover:text-rose-500' : 'bg-white/5 text-white/40 hover:bg-primary/20 hover:text-primary'}`}
+                        >
+                          <span className="material-icons-outlined text-sm">
+                            {isInThisGroup ? 'person_remove' : 'person_add'}
+                          </span>
+                        </button>
+                      </div>
+                    );
+                  }) : (
+                    <p className="text-center py-8 text-[10px] text-white/20 uppercase font-black tracking-widest">No se encontraron gimnastas</p>
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </section>
 

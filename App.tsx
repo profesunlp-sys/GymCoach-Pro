@@ -1542,6 +1542,16 @@ const App: React.FC = () => {
     );
   };
 
+  const handleUpdateStudentGroup = async (studentId: string, groupName: string) => {
+    try {
+      await updateDocument(COLLECTIONS.ALUMNOS, studentId, { grupo: groupName });
+      // Update local state directly for immediate feedback
+      setAlumnos(prev => prev.map(a => a.id === studentId ? { ...a, grupo: groupName } : a));
+    } catch (error) {
+      console.error("Error updating student group:", error);
+    }
+  };
+
   const clearAlumnosFilters = () => {
     setSearchQuery('');
     setSelectedGrupoFilter('Todos');
@@ -2724,6 +2734,7 @@ const App: React.FC = () => {
               setUserRole={setUserRole}
               COORDINATOR_EMAIL={COORDINATOR_EMAIL}
               onOpenBulkPayment={() => setIsBulkPaymentModalOpen(true)}
+              onOpenBulkImportStudents={() => { setIsBulkImporting(true); setOnboardingStep(0); }}
             />
           )}
 
@@ -2753,6 +2764,8 @@ const App: React.FC = () => {
             timeIntervals={timeIntervals}
             handleSaveGroup={handleSaveGroup}
             grupos={grupos}
+            alumnos={alumnos}
+            handleUpdateStudentGroup={handleUpdateStudentGroup}
             handleDeleteGroup={handleDeleteGroup}
             setActiveGroup={setActiveGroup}
             profesoresList={profesoresList}
@@ -3670,55 +3683,166 @@ const App: React.FC = () => {
         {isFocusMode && (
           <div className="focus-mode-active">
             <div className="max-w-4xl mx-auto space-y-12">
-              <header className="flex justify-between items-center border-b border-white/10 pb-6">
+              <header className="flex justify-between items-center border-b border-white/10 pb-6 px-4">
                 <div>
-                  <h1 className="title-antigravity text-5xl">Modo Enfoque</h1>
-                  <p className="text-primary text-xs font-black uppercase tracking-[0.3em] mt-2">Concentración Total • {vista}</p>
+                  <h1 className="title-antigravity text-6xl tracking-tighter">MODO ENFOQUE</h1>
+                  <p className="text-neon-cyan text-xs font-black uppercase tracking-[0.3em] mt-2 flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 bg-neon-cyan rounded-full animate-pulse shadow-neon-cyan"></span>
+                    CONCENTRACIÓN TOTAL • {vista}
+                  </p>
                 </div>
                 <button 
                   onClick={() => setIsFocusMode(false)}
-                  className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center text-white border border-white/10 hover:bg-white/10 transition-all"
+                  className="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center text-white border border-white/10 hover:bg-white/10 transition-all group"
                 >
-                  <span className="material-icons-outlined">close</span>
+                  <span className="material-icons-outlined group-hover:scale-110 transition-transform">close</span>
                 </button>
               </header>
 
-              <div className="animate-in fade-in zoom-in duration-500">
+              <div className="animate-in fade-in zoom-in duration-500 px-4">
                 {/* Render current view content in focus mode */}
                 {vista === 'Dashboard' && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div className="glass-card p-8 rounded-[2.5rem] border-primary/20">
-                      <h3 className="title-antigravity text-2xl mb-6">Próximas Clases</h3>
-                      {/* Simplified list for focus */}
-                      <div className="space-y-4">
-                        {grupos.slice(0, 3).map(g => (
-                          <div key={g.id} className="flex justify-between items-center p-4 bg-white/5 rounded-2xl">
-                            <span className="font-bold">{g.nombre}</span>
-                            <span className="text-primary font-mono">{g.horario}</span>
-                          </div>
-                        ))}
+                    {/* Tarjeta 1: Próximas Clases */}
+                    <motion.div 
+                      whileHover={{ scale: 1.02 }}
+                      className="glass-card p-10 rounded-[3rem] border-primary/20 flex flex-col h-full cursor-default"
+                    >
+                      <div className="flex justify-between items-center mb-8">
+                        <h3 className="title-antigravity text-3xl">PRÓXIMAS CLASES</h3>
+                        <span className="text-primary material-icons-outlined text-3xl">schedule</span>
                       </div>
-                    </div>
-                    <div className="glass-card p-8 rounded-[2.5rem] border-primary/20">
-                      <h3 className="title-antigravity text-2xl mb-6">Alertas Críticas</h3>
-                      <div className="space-y-4">
-                        {alumnos.filter(a => a.alertas?.length > 0).slice(0, 3).map(a => (
-                          <div key={a.id} className="flex items-center gap-4 p-4 bg-rose-500/10 border border-rose-500/20 rounded-2xl">
-                            <span className="material-icons-outlined text-rose-500">warning</span>
-                            <span className="font-bold">{a.nombre}</span>
-                          </div>
-                        ))}
+                      
+                      <div className="space-y-4 flex-1">
+                        {(() => {
+                          const daysMap: Record<number, string> = { 0: 'Do', 1: 'Lu', 2: 'Ma', 3: 'Mi', 4: 'Ju', 5: 'Vi', 6: 'Sa' };
+                          const todayStr = daysMap[new Date().getDay()];
+                          const sortedGroups = [...grupos]
+                            .filter(g => g.dias?.includes(todayStr))
+                            .sort((a, b) => a.horario.localeCompare(b.horario));
+                          
+                          const displayGroups = sortedGroups.length > 0 ? sortedGroups : grupos.slice(0, 3);
+
+                          return displayGroups.length > 0 ? displayGroups.map(g => (
+                            <button 
+                              key={g.id} 
+                              onClick={() => {
+                                setActiveGroup(g);
+                                setVista('AsistenciaLista');
+                                setIsFocusMode(false);
+                              }}
+                              className="w-full flex justify-between items-center p-6 bg-white/5 hover:bg-primary/20 border border-white/5 hover:border-primary/30 rounded-3xl transition-all group"
+                            >
+                              <div className="flex flex-col items-start">
+                                <span className="font-black text-xl text-white group-hover:text-primary transition-colors uppercase tracking-tight">{g.nombre}</span>
+                                <span className="text-[10px] text-white/40 uppercase font-bold tracking-widest">{g.entrenador}</span>
+                              </div>
+                              <div className="flex flex-col items-end">
+                                <span className="text-primary font-mono text-xl font-black">{g.horario}</span>
+                                <span className="text-[9px] text-primary/60 font-black uppercase tracking-tighter">Pasar Lista</span>
+                              </div>
+                            </button>
+                          )) : (
+                            <div className="py-12 text-center text-white/30 italic">No hay clases programadas para hoy.</div>
+                          );
+                        })()}
                       </div>
-                    </div>
+                    </motion.div>
+
+                    {/* Tarjeta 2: Alertas Críticas */}
+                    <motion.div 
+                      whileHover={{ scale: 1.02 }}
+                      className="glass-card p-10 rounded-[3rem] border-rose-500/20 flex flex-col h-full"
+                    >
+                      <div className="flex justify-between items-center mb-8">
+                        <h3 className="title-antigravity text-3xl text-rose-500">ALERTAS CRÍTICAS</h3>
+                        <span className="text-rose-500 material-icons-outlined text-3xl">priority_high</span>
+                      </div>
+
+                      <div className="space-y-4 flex-1">
+                        {(() => {
+                          const alertedStudents = alumnos.filter(a => a.alertas && a.alertas.length > 0);
+                          return alertedStudents.length > 0 ? alertedStudents.slice(0, 4).map(a => (
+                            <button 
+                              key={a.id} 
+                              onClick={() => {
+                                setSelectedAlumno(a);
+                                setVista('AlumnoDetalle');
+                                setIsFocusMode(false);
+                              }}
+                              className="w-full flex items-center gap-5 p-6 bg-rose-500/5 hover:bg-rose-500/20 border border-rose-500/10 hover:border-rose-500/30 rounded-3xl transition-all group"
+                            >
+                              <div className="w-12 h-12 rounded-2xl bg-rose-500/20 flex items-center justify-center">
+                                <span className="material-icons-outlined text-rose-500">warning</span>
+                              </div>
+                              <div className="flex-1 text-left">
+                                <span className="font-black text-white group-hover:text-rose-500 transition-colors uppercase">{a.nombre}</span>
+                                <div className="flex flex-wrap gap-2 mt-1">
+                                  {a.alertas.slice(0, 2).map((al, idx) => (
+                                    <span key={idx} className="text-[8px] bg-rose-500/20 text-rose-300 px-2 py-0.5 rounded-full font-black uppercase tracking-tighter">
+                                      {al}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                              <span className="material-icons-outlined text-white/20 group-hover:text-rose-500">chevron_right</span>
+                            </button>
+                          )) : (
+                            <div className="py-12 text-center text-white/30 italic">No hay alertas críticas pendientes.</div>
+                          );
+                        })()}
+                      </div>
+                      
+                      {alumnos.filter(a => a.alertas && a.alertas.length > 0).length > 4 && (
+                        <button 
+                          onClick={() => {
+                            setVista('Alumnos');
+                            // Podríamos añadir un filtro aquí si la vista Alumnos lo soporta
+                            setIsFocusMode(false);
+                          }}
+                          className="mt-6 text-center text-[10px] text-rose-500/60 font-black uppercase tracking-widest hover:text-rose-500 hover:underline"
+                        >
+                          Ver todas las {alumnos.filter(a => a.alertas && a.alertas.length > 0).length} alertas
+                        </button>
+                      )}
+                    </motion.div>
                   </div>
                 )}
                 {vista !== 'Dashboard' && (
-                  <div className="text-center py-24 opacity-50">
-                    <p className="text-xl italic">Modo enfoque optimizado para esta vista próximamente.</p>
-                    <button onClick={() => setIsFocusMode(false)} className="btn-primary mt-8 mx-auto">Volver</button>
+                  <div className="text-center py-24 glass-card rounded-[3rem] border-white/5">
+                    <span className="material-icons-outlined text-6xl text-white/10 mb-6 font-light">auto_awesome</span>
+                    <p className="text-xl italic text-white/50 mb-8 max-w-sm mx-auto">El Modo Enfoque está optimizado para el Dashboard en esta versión.</p>
+                    <button 
+                      onClick={() => setIsFocusMode(false)} 
+                      className="px-12 py-5 rounded-[2rem] bg-white/5 text-white font-black uppercase tracking-[0.3em] border border-white/10 hover:bg-white/10 transition-all"
+                    >
+                      Volver al {vista}
+                    </button>
                   </div>
                 )}
               </div>
+            </div>
+            
+            {/* Widget Flotante del Asistente Coach (Si está habilitado) */}
+            <div className="fixed top-8 right-8 z-[210] flex flex-col gap-4">
+               <motion.div 
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="bg-white/95 backdrop-blur-xl p-4 rounded-3xl shadow-2xl flex items-center gap-4 border border-white"
+               >
+                 <button className="w-10 h-10 rounded-2xl bg-antigravity-charcoal/5 flex items-center justify-center text-antigravity-black/40 hover:text-antigravity-black transition-colors">
+                    <span className="material-icons-outlined text-xl">settings</span>
+                 </button>
+                 <button 
+                    onClick={() => {
+                        setIsFocusMode(false);
+                        setVista('Habilidades'); // O donde esté el Coach
+                    }}
+                    className="w-14 h-14 rounded-full bg-white shadow-xl flex items-center justify-center text-neon-blue border border-neon-blue/10 active:scale-95 transition-all"
+                 >
+                    <span className="material-symbols-outlined text-3xl">mic</span>
+                 </button>
+               </motion.div>
             </div>
           </div>
         )}

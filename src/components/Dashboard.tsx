@@ -27,6 +27,7 @@ interface DashboardProps {
   setUserRole: React.Dispatch<React.SetStateAction<UserRole>>;
   COORDINATOR_EMAIL: string;
   onOpenBulkPayment: () => void;
+  onOpenBulkImportStudents: () => void;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({
@@ -51,7 +52,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
   setRegistrationStep,
   setUserRole,
   COORDINATOR_EMAIL,
-  onOpenBulkPayment
+  onOpenBulkPayment,
+  onOpenBulkImportStudents
 }) => {
   const [selectedProfesorDetail, setSelectedProfesorDetail] = useState<string | null>(null);
 
@@ -138,7 +140,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <div className="flex items-center gap-2 mt-1">
               <span className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse shadow-neon-cyan"></span>
               <span className="text-[9px] uppercase font-black tracking-[0.2em] text-white/50">
-                {userRole === 'Coordinator' ? 'Control Center • Ejecutivo' : 'Terminal • Entrenador'}
+                {userRole === 'Coordinator' ? 'VISTA DEL COORDINADOR' : 'Terminal • Entrenador'}
               </span>
             </div>
           </div>
@@ -184,9 +186,83 @@ export const Dashboard: React.FC<DashboardProps> = ({
       </section>
 
       {userRole === 'Coordinator' ? (
-        /* PANEL EJECUTIVO DEL COORDINADOR */
+        /* VISTA DEL COORDINADOR */
         <div className="space-y-10">
-          {/* ... (rest of coordinator view) ... */}
+          <section className="space-y-6">
+            <div className="flex justify-between items-end px-1">
+              <div>
+                <h3 className="title-antigravity text-xl">Gestión Centralizada</h3>
+                <p className="text-primary text-[10px] font-black uppercase tracking-widest mt-1">Acciones de Coordinación</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Botón de Carga Masiva */}
+              <motion.button 
+                whileHover={{ scale: 1.02, y: -4 }} whileTap={{ scale: 0.98 }}
+                onClick={onOpenBulkImportStudents} 
+                className="relative w-full h-44 rounded-[2.5rem] overflow-hidden group shadow-2xl shadow-emerald-500/20 border border-white/10"
+              >
+                <div className="absolute inset-0 bg-gradient-to-br from-emerald-500 to-teal-600"></div>
+                <div className="absolute top-0 right-0 p-6 opacity-20">
+                  <span className="material-icons-outlined text-[100px] text-white rotate-12">upload_file</span>
+                </div>
+                
+                <div className="absolute inset-0 p-10 flex flex-col justify-center items-start text-left">
+                  <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-xl border border-white/30 mb-4">
+                    <span className="material-icons-outlined text-white text-3xl">group_add</span>
+                  </div>
+                  <div>
+                    <h4 className="text-white text-3xl font-black uppercase tracking-tighter leading-none mb-1">Carga Masiva</h4>
+                    <p className="text-white/80 text-xs font-bold uppercase tracking-widest">Importar gimnastas desde CSV/Excel</p>
+                  </div>
+                </div>
+              </motion.button>
+
+              {/* Botón de Reportes Globales */}
+              <motion.button 
+                whileHover={{ scale: 1.02, y: -4 }} whileTap={{ scale: 0.98 }}
+                onClick={() => setVista('Reportes')}
+                className="relative w-full h-44 rounded-[2.5rem] overflow-hidden group shadow-2xl shadow-primary/20 border border-white/10"
+              >
+                <div className="absolute inset-0 bg-gradient-to-br from-primary to-neon-blue"></div>
+                <div className="absolute top-0 right-0 p-6 opacity-20">
+                  <span className="material-icons-outlined text-[100px] text-white -rotate-12">analytics</span>
+                </div>
+                
+                <div className="absolute inset-0 p-10 flex flex-col justify-center items-start text-left">
+                  <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-xl border border-white/30 mb-4">
+                    <span className="material-icons-outlined text-white text-3xl">insights</span>
+                  </div>
+                  <div>
+                    <h4 className="text-white text-3xl font-black uppercase tracking-tighter leading-none mb-1">Reportes Finanzas</h4>
+                    <p className="text-white/80 text-xs font-bold uppercase tracking-widest">Estadísticas de pagos y asistencia</p>
+                  </div>
+                </div>
+              </motion.button>
+            </div>
+          </section>
+
+          {/* Resumen de Alertas (Original collapsed logic) */}
+          <section className="space-y-6">
+             <div className="flex justify-between items-end px-1">
+                <h3 className="title-antigravity text-xl text-rose-500">Alertas de Hoy</h3>
+             </div>
+             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="glass-card p-6 rounded-3xl border-rose-500/20">
+                   <p className="text-[10px] font-black uppercase tracking-widest text-rose-500 mb-1">Pagos Vencidos</p>
+                   <p className="text-3xl font-black text-white">{alumnosConPagosVencidos.length}</p>
+                </div>
+                <div className="glass-card p-6 rounded-3xl border-rose-500/20">
+                   <p className="text-[10px] font-black uppercase tracking-widest text-rose-500 mb-1">Obs. Médicas</p>
+                   <p className="text-3xl font-black text-white">{alumnosConObservacionesMedicas.length}</p>
+                </div>
+                <div className="glass-card p-6 rounded-3xl border-rose-500/20">
+                   <p className="text-[10px] font-black uppercase tracking-widest text-rose-500 mb-1">Sin Actividad</p>
+                   <p className="text-3xl font-black text-white">{gruposSinClaseEstaSemana.length} <span className="text-xs text-white/40">Grupos</span></p>
+                </div>
+             </div>
+          </section>
         </div>
       ) : (
         /* VISTA DEL ENTRENADOR (PURAMENTE ACCIONAL) */
