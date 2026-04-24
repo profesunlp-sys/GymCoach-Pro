@@ -195,7 +195,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
             {/* Botón 1: PASAR LISTA (Cyan) */}
             <motion.button 
               whileHover={{ scale: 1.02, y: -4 }} whileTap={{ scale: 0.98 }}
-              onClick={() => { setActiveGroup(grupos[0]); setVista('AsistenciaLista'); }}
+              onClick={() => { 
+                if (grupos.length === 1) {
+                  setActiveGroup(grupos[0]); 
+                  setVista('AsistenciaLista');
+                } else {
+                  handleNavigation('Horario'); // Redirigir a selección de grupo
+                }
+              }}
               className="relative w-full h-44 rounded-[2.5rem] overflow-hidden group shadow-2xl shadow-primary/20 border border-white/10"
             >
               <div className="absolute inset-0 bg-gradient-to-br from-cyan-500 to-blue-500"></div>

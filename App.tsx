@@ -254,8 +254,9 @@ const App: React.FC = () => {
   const [selectedClase, setSelectedClase] = useState<Clase | null>(null);
   const [selectedAlumno, setSelectedAlumno] = useState<Alumno | null>(null);
   const [alumnoAsistencias, setAlumnoAsistencias] = useState<AsistenciaRecord[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [isLoadingAsistencias, setIsLoadingAsistencias] = useState(false);
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
   const [selectedProfesor, setSelectedProfesor] = useState<string | null>(null);
   const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
   const [newFeedback, setNewFeedback] = useState("");
@@ -525,10 +526,10 @@ const App: React.FC = () => {
 
   // Auto-trigger onboarding
   useEffect(() => {
-    if (userRole === 'Coach' && grupos.length === 0 && !isLoading && user && isFirstLoad.current) {
+    if (userRole === 'Coach' && isDataLoaded && grupos.length === 0 && !isLoading && user && isFirstLoad.current) {
       setOnboardingStep(1);
     }
-  }, [userRole, grupos.length, isLoading, user]);
+  }, [userRole, grupos.length, isLoading, user, isDataLoaded]);
   const [pendingNavigation, setPendingNavigation] = useState<ViewMode | null>(null);
   const [emergencyInfo, setEmergencyInfo] = useState<{publicProvider: string, publicPhone: string, privateProvider: string, privatePhone: string}>({ 
     publicProvider: 'Emergencias Públicas', publicPhone: '107',
@@ -933,6 +934,7 @@ const App: React.FC = () => {
   const [alertasGlobales, setAlertasGlobales] = useState<Alumno[]>([]);
 
   const loadData = async () => {
+    setIsLoading(true);
     try {
       const a = await getCollectionData(COLLECTIONS.ALUMNOS) as Alumno[];
       const c = await getCollectionData(COLLECTIONS.CLASES) as Clase[];
@@ -1018,6 +1020,9 @@ const App: React.FC = () => {
       console.error("Error loading data:", error);
       setNotificacion({ t: "Error de Conexión", d: error.message || "No se pudieron cargar los datos." });
       setTimeout(() => setNotificacion(null), 5000);
+    } finally {
+      setIsLoading(false);
+      setIsDataLoaded(true);
     }
   };
 
@@ -3421,6 +3426,12 @@ const App: React.FC = () => {
                   >
                     Empezar configuración
                   </button>
+                  <button 
+                    onClick={() => setOnboardingStep(0)}
+                    className="w-full py-2 text-[10px] font-black text-white/30 uppercase tracking-[0.3em] hover:text-white transition-all"
+                  >
+                    Omitir por ahora, entrar directo
+                  </button>
                 </div>
               )}
 
@@ -3600,7 +3611,7 @@ const App: React.FC = () => {
                 setShowMoreOptions(false);
               }} 
               className={`flex flex-col items-center gap-1.5 transition-all flex-1 ${
-                (vista === item.v || 
+                ((vista as string) === item.v || 
                 (item.v === 'Alumnos' && (vista === 'AlumnoDetalle' || vista === 'RegistroAlumno')) ||
                 (item.v === 'Clases' && (vista === 'NuevaClase' || vista === 'ClaseDetalle' || vista === 'HistorialClases'))) && item.v !== 'Menu'
                 ? 'text-neon-cyan active-glow' 
@@ -3610,7 +3621,7 @@ const App: React.FC = () => {
               }`}
             >
               <span className={`material-symbols-outlined text-[26px] font-light ${
-                (vista === item.v || 
+                ((vista as string) === item.v || 
                 (item.v === 'Alumnos' && (vista === 'AlumnoDetalle' || vista === 'RegistroAlumno')) ||
                 (item.v === 'Clases' && (vista === 'NuevaClase' || vista === 'ClaseDetalle' || vista === 'HistorialClases'))) && item.v !== 'Menu'
                 ? 'neon-glow-cyan' 
@@ -3619,7 +3630,7 @@ const App: React.FC = () => {
                 : ''
               }`}>{item.i}</span>
               <span className={`text-[9px] uppercase tracking-wide ${
-                (vista === item.v || 
+                ((vista as string) === item.v || 
                 (item.v === 'Alumnos' && (vista === 'AlumnoDetalle' || vista === 'RegistroAlumno')) ||
                 (item.v === 'Clases' && (vista === 'NuevaClase' || vista === 'ClaseDetalle' || vista === 'HistorialClases'))) && item.v !== 'Menu'
                 ? 'font-bold' 
