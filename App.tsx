@@ -526,10 +526,11 @@ const App: React.FC = () => {
 
   // Auto-trigger onboarding
   useEffect(() => {
-    if (userRole === 'Coach' && isDataLoaded && grupos.length === 0 && !isLoading && user && isFirstLoad.current) {
+    const coachGrupos = grupos.filter(g => g.entrenador === user?.displayName);
+    if (userRole === 'Coach' && isDataLoaded && coachGrupos.length === 0 && !isLoading && user && isFirstLoad.current) {
       setOnboardingStep(1);
     }
-  }, [userRole, grupos.length, isLoading, user, isDataLoaded]);
+  }, [userRole, grupos, isLoading, user, isDataLoaded]);
   const [pendingNavigation, setPendingNavigation] = useState<ViewMode | null>(null);
   const [emergencyInfo, setEmergencyInfo] = useState<{publicProvider: string, publicPhone: string, privateProvider: string, privatePhone: string}>({ 
     publicProvider: 'Emergencias Públicas', publicPhone: '107',
@@ -2735,6 +2736,10 @@ const App: React.FC = () => {
               COORDINATOR_EMAIL={COORDINATOR_EMAIL}
               onOpenBulkPayment={() => setIsBulkPaymentModalOpen(true)}
               onOpenBulkImportStudents={() => { setIsBulkImporting(true); setOnboardingStep(0); }}
+              setSelectedAlumno={setSelectedAlumno}
+              setStudentForm={setStudentForm}
+              setIsAddingAlumno={setIsAddingAlumno}
+              studentForm={studentForm}
             />
           )}
 
@@ -3433,18 +3438,20 @@ const App: React.FC = () => {
                     <h2 className="text-3xl font-black text-white uppercase tracking-tighter">¡Bienvenido/a, {user?.displayName?.split(' ')[0] || 'Profesor'}!</h2>
                     <p className="text-white/60 text-sm leading-relaxed">En 4 pasos simples vas a tener tu gimnasio configurado y listo para usar.</p>
                   </div>
-                  <button 
-                    onClick={() => setOnboardingStep(2)}
-                    className="w-full py-5 rounded-[2rem] bg-primary text-antigravity-black font-black uppercase tracking-[0.2em] shadow-neon-cyan-strong active:scale-95 transition-all"
-                  >
-                    Empezar configuración
-                  </button>
-                  <button 
-                    onClick={() => setOnboardingStep(0)}
-                    className="w-full py-2 text-[10px] font-black text-white/30 uppercase tracking-[0.3em] hover:text-white transition-all"
-                  >
-                    Omitir por ahora, entrar directo
-                  </button>
+                  <div className="space-y-4">
+                    <button 
+                      onClick={() => setOnboardingStep(2)}
+                      className="w-full py-5 rounded-[2rem] bg-primary text-antigravity-black font-black uppercase tracking-[0.2em] shadow-neon-cyan-strong active:scale-95 transition-all"
+                    >
+                      Empezar configuración
+                    </button>
+                    <button 
+                      onClick={() => setOnboardingStep(0)}
+                      className="w-full py-4 text-[10px] font-black text-white/40 uppercase tracking-[0.2em] bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 transition-all"
+                    >
+                      Omitir — ya tengo grupos
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -3606,11 +3613,11 @@ const App: React.FC = () => {
       {vista !== 'ReportePDF' && onboardingStep === 0 && (
         <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-antigravity-charcoal/80 backdrop-blur-md border-t border-white/5 px-6 pt-4 pb-2 flex justify-between items-center z-50">
           {[
-            { v: 'Dashboard', i: 'grid_view', l: 'Inicio' },
+            { v: 'Dashboard', i: 'home', l: 'Inicio' },
             { v: 'Alumnos', i: 'group', l: 'Gimnastas' },
-            { v: 'Clases', i: 'fitness_center', l: 'Clases' },
+            { v: 'Horario', i: 'calendar_month', l: 'Grupos' },
             { v: 'Menu', i: 'menu_open', l: 'Menú' },
-            { v: 'Ajustes', i: 'app_settings_alt', l: 'Ajustes' }
+            { v: 'Ajustes', i: 'settings', l: 'Ajustes' }
           ].map(item => (
             <button 
               key={item.v} 
@@ -3626,7 +3633,7 @@ const App: React.FC = () => {
               className={`flex flex-col items-center gap-1.5 transition-all flex-1 ${
                 ((vista as string) === item.v || 
                 (item.v === 'Alumnos' && (vista === 'AlumnoDetalle' || vista === 'RegistroAlumno')) ||
-                (item.v === 'Clases' && (vista === 'NuevaClase' || vista === 'ClaseDetalle' || vista === 'HistorialClases'))) && item.v !== 'Menu'
+                (item.v === 'Horario' && (vista === 'NuevaClase' || vista === 'ClaseDetalle' || vista === 'HistorialClases'))) && item.v !== 'Menu'
                 ? 'text-neon-cyan active-glow' 
                 : showMoreOptions && item.v === 'Menu'
                 ? 'text-primary active-glow'
@@ -3636,7 +3643,7 @@ const App: React.FC = () => {
               <span className={`material-symbols-outlined text-[26px] font-light ${
                 ((vista as string) === item.v || 
                 (item.v === 'Alumnos' && (vista === 'AlumnoDetalle' || vista === 'RegistroAlumno')) ||
-                (item.v === 'Clases' && (vista === 'NuevaClase' || vista === 'ClaseDetalle' || vista === 'HistorialClases'))) && item.v !== 'Menu'
+                (item.v === 'Horario' && (vista === 'NuevaClase' || vista === 'ClaseDetalle' || vista === 'HistorialClases'))) && item.v !== 'Menu'
                 ? 'neon-glow-cyan' 
                 : showMoreOptions && item.v === 'Menu'
                 ? 'neon-glow-primary'
@@ -3645,7 +3652,7 @@ const App: React.FC = () => {
               <span className={`text-[9px] uppercase tracking-wide ${
                 ((vista as string) === item.v || 
                 (item.v === 'Alumnos' && (vista === 'AlumnoDetalle' || vista === 'RegistroAlumno')) ||
-                (item.v === 'Clases' && (vista === 'NuevaClase' || vista === 'ClaseDetalle' || vista === 'HistorialClases'))) && item.v !== 'Menu'
+                (item.v === 'Horario' && (vista === 'NuevaClase' || vista === 'ClaseDetalle' || vista === 'HistorialClases'))) && item.v !== 'Menu'
                 ? 'font-bold' 
                 : 'font-medium'
               }`}>

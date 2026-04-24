@@ -214,7 +214,7 @@ const Alumnos: React.FC<AlumnosProps> = ({
               {alumnosFilterMode === 'alerts' ? 'Obs. de Salud' : 'Gimnastas'}
             </h2>
             <p className="text-primary text-[10px] font-black uppercase tracking-widest mt-1">
-              {alumnosFilterMode === 'alerts' ? 'Gimnastas con Alertas Médicas' : `Base de Datos ${userRole === 'Coordinator' ? 'Global' : 'del Grupo'}`}
+              {alumnosFilterMode === 'alerts' ? 'Gimnastas con Alertas Médicas' : 'Tus alumnas registradas'}
             </p>
           </div>
           <div className="flex items-center gap-4">
@@ -340,26 +340,32 @@ const Alumnos: React.FC<AlumnosProps> = ({
             onDelete={handleDeleteLevel}
             placeholder="Todos los Niveles"
           />
-          <EditableDropdown 
-            label="Categoría Edad"
-            value={selectedAgeFilter === 'Todos' ? '' : selectedAgeFilter}
-            onChange={(val) => setSelectedAgeFilter(val || 'Todos')}
-            options={ageCategories}
-            onAdd={handleSaveAgeCategory}
-            onEdit={handleUpdateAgeCategory}
-            onDelete={handleDeleteAgeCategory}
-            placeholder="Todas las Edades"
-          />
-          <EditableDropdown 
-            label="Condición Física"
-            value={selectedPhysicalFilter === 'Cualquiera' ? '' : selectedPhysicalFilter}
-            onChange={(val) => setSelectedPhysicalFilter(val || 'Cualquiera')}
-            options={physicalCategories}
-            onAdd={handleSavePhysicalCategory}
-            onEdit={handleUpdatePhysicalCategory}
-            onDelete={handleDeletePhysicalCategory}
-            placeholder="Cualquiera"
-          />
+          
+          {ageCategories.length > 0 && (
+            <EditableDropdown 
+              label="Categoría Edad"
+              value={selectedAgeFilter === 'Todos' ? '' : selectedAgeFilter}
+              onChange={(val) => setSelectedAgeFilter(val || 'Todos')}
+              options={ageCategories}
+              onAdd={handleSaveAgeCategory}
+              onEdit={handleUpdateAgeCategory}
+              onDelete={handleDeleteAgeCategory}
+              placeholder="Todas las Edades"
+            />
+          )}
+
+          {physicalCategories.length > 0 && (
+            <EditableDropdown 
+              label="Condición Física"
+              value={selectedPhysicalFilter === 'Cualquiera' ? '' : selectedPhysicalFilter}
+              onChange={(val) => setSelectedPhysicalFilter(val || 'Cualquiera')}
+              options={physicalCategories}
+              onAdd={handleSavePhysicalCategory}
+              onEdit={handleUpdatePhysicalCategory}
+              onDelete={handleDeletePhysicalCategory}
+              placeholder="Cualquiera"
+            />
+          )}
         </div>
 
         {/* Add Alumno Form */}

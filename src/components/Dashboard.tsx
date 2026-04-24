@@ -28,6 +28,10 @@ interface DashboardProps {
   COORDINATOR_EMAIL: string;
   onOpenBulkPayment: () => void;
   onOpenBulkImportStudents: () => void;
+  setSelectedAlumno: (a: Alumno | null) => void;
+  setStudentForm: (form: any) => void;
+  setIsAddingAlumno: (val: boolean) => void;
+  studentForm: any;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({
@@ -53,9 +57,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
   setUserRole,
   COORDINATOR_EMAIL,
   onOpenBulkPayment,
-  onOpenBulkImportStudents
+  onOpenBulkImportStudents,
+  setSelectedAlumno,
+  setStudentForm,
+  setIsAddingAlumno,
+  studentForm
 }) => {
   const [selectedProfesorDetail, setSelectedProfesorDetail] = useState<string | null>(null);
+  
+  const coachGrupos = grupos.filter(g => g.entrenador === user?.displayName);
+  const [selectedGroupInternal, setSelectedGroupInternal] = useState<GrupoConfig | null>(coachGrupos.length === 1 ? coachGrupos[0] : null);
 
   const isToday = (dateStr: string) => {
     const today = new Date().toISOString().split('T')[0];
@@ -222,7 +233,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               {/* Botón de Reportes Globales */}
               <motion.button 
                 whileHover={{ scale: 1.02, y: -4 }} whileTap={{ scale: 0.98 }}
-                onClick={() => setVista('Reportes')}
+                onClick={() => setVista('AsistenciaStats')}
                 className="relative w-full h-44 rounded-[2.5rem] overflow-hidden group shadow-2xl shadow-primary/20 border border-white/10"
               >
                 <div className="absolute inset-0 bg-gradient-to-br from-primary to-neon-blue"></div>
@@ -265,75 +276,190 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </section>
         </div>
       ) : (
-        /* VISTA DEL ENTRENADOR (PURAMENTE ACCIONAL) */
-        <div className="space-y-6 pt-4">
-          <section className="space-y-5">
-            {/* Botón 1: PASAR LISTA (Cyan) */}
-            <motion.button 
-              whileHover={{ scale: 1.02, y: -4 }} whileTap={{ scale: 0.98 }}
-              onClick={() => { 
-                if (grupos.length === 1) {
-                  setActiveGroup(grupos[0]); 
-                  setVista('AsistenciaLista');
-                } else {
-                  handleNavigation('Horario'); // Redirigir a selección de grupo
-                }
-              }}
-              className="relative w-full h-44 rounded-[2.5rem] overflow-hidden group shadow-2xl shadow-primary/20 border border-white/10"
-            >
-              <div className="absolute inset-0 bg-gradient-to-br from-cyan-500 to-blue-500"></div>
-              <div className="absolute top-0 right-0 p-6 opacity-20">
-                 <span className="material-icons-outlined text-[100px] text-white rotate-12">fact_check</span>
-              </div>
-              
-              <div className="absolute inset-0 p-10 flex flex-col justify-center items-start text-left">
-                <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-xl border border-white/30 mb-4">
-                  <span className="material-icons-outlined text-white text-3xl">playlist_add_check</span>
-                </div>
-                <div>
-                  <h4 className="text-white text-3xl font-black uppercase tracking-tighter leading-none mb-1">Pasar Lista</h4>
-                  <p className="text-white/80 text-xs font-bold uppercase tracking-widest">Registrar asistencia de hoy</p>
-                </div>
-              </div>
-            </motion.button>
-
-            {/* Botón 2: REGISTRAR CLASE (Púrpura/Azul) */}
-            <motion.button 
-              whileHover={{ scale: 1.02, y: -4 }} whileTap={{ scale: 0.98 }}
-              onClick={() => { setRegistrationStep(1); setVista('NuevaClase'); }}
-              className="relative w-full h-44 rounded-[2.5rem] overflow-hidden group shadow-2xl shadow-indigo-500/20 border border-white/10"
-            >
-              <div className="absolute inset-0 bg-gradient-to-br from-violet-600 via-indigo-600 to-blue-600"></div>
-              <div className="absolute top-0 right-0 p-6 opacity-20">
-                 <span className="material-symbols-outlined text-[100px] text-white rotate-12">assignment_turned_in</span>
-              </div>
-              
-              <div className="absolute inset-0 p-10 flex flex-col justify-center items-start text-left">
-                <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-xl border border-white/30 mb-4">
-                  <span className="material-symbols-outlined text-white text-3xl">school</span>
-                </div>
-                <div>
-                  <h4 className="text-white text-3xl font-black uppercase tracking-tighter leading-none mb-1">Registrar Clase</h4>
-                  <p className="text-white/80 text-xs font-bold uppercase tracking-widest">Anotar lo que trabajaste hoy</p>
-                </div>
-              </div>
-            </motion.button>
-          </section>
-
-          {/* Acceso rápido a estadísticas si tiene clases hoy */}
-          {clasesHoy > 0 && (
-            <section className="px-1 animate-in fade-in slide-in-from-bottom-4 duration-700">
-               <div className="glass-card rounded-[2rem] p-6 border border-primary/20 flex items-center justify-between">
-                  <div>
-                    <p className="text-[10px] font-black uppercase tracking-widest text-primary">Actividad</p>
-                    <p className="text-white font-bold">{clasesHoy} Clases completadas hoy</p>
+        /* VISTA DEL ENTRENADOR */
+        <div className="space-y-8">
+          {(() => {
+            if (!selectedGroupInternal) {
+              return (
+                <div className="space-y-6 pt-2">
+                  <div className="px-1">
+                    <h3 className="text-white/60 text-sm font-bold uppercase tracking-widest">¿Con qué grupo trabajás hoy?</h3>
                   </div>
-                  <button onClick={() => setVista('AsistenciaStats')} className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-                    <span className="material-icons-outlined">trending_up</span>
+                  
+                  <div className="grid grid-cols-1 gap-4">
+                    {coachGrupos.length > 0 ? (
+                      coachGrupos.map(g => (
+                        <motion.button
+                          key={g.id}
+                          whileHover={{ scale: 1.02, x: 4 }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={() => setSelectedGroupInternal(g)}
+                          className="glass-card p-8 rounded-[2.5rem] border border-white/10 hover:border-primary/40 flex items-center justify-between group transition-all"
+                        >
+                          <div className="text-left">
+                            <h4 className="text-2xl font-black text-white uppercase tracking-tighter group-hover:text-primary transition-colors">{g.nombre}</h4>
+                            <p className="text-xs text-white/40 font-bold uppercase tracking-widest mt-1">
+                              {Array.isArray(g.dias) ? g.dias.join(', ') : g.dias} • {g.horario}
+                            </p>
+                          </div>
+                          <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center text-white/20 group-hover:bg-primary/20 group-hover:text-primary transition-all">
+                            <span className="material-icons-outlined">arrow_forward</span>
+                          </div>
+                        </motion.button>
+                      ))
+                    ) : (
+                      <div className="glass-card p-12 rounded-[2.5rem] border border-dashed border-white/20 text-center space-y-6">
+                        <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mx-auto opacity-30">
+                          <span className="material-icons-outlined text-4xl">group_off</span>
+                        </div>
+                        <div className="space-y-2">
+                          <p className="text-white/60 font-medium">Todavía no tenés grupos configurados.</p>
+                          <p className="text-[10px] text-white/30 uppercase font-black tracking-widest">Creá el primero para empezar a trabajar</p>
+                        </div>
+                        <Button onClick={() => setVista('Horario')} className="px-8 py-4 !rounded-2xl mx-auto">
+                          Crear mi primer grupo
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+
+                  {coachGrupos.length > 0 && (
+                    <div className="flex justify-center pt-4">
+                      <button 
+                        onClick={() => setVista('Horario')}
+                        className="text-primary text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:brightness-125 transition-all"
+                      >
+                        <span className="material-icons-outlined text-sm">add_circle</span>
+                        Crear nuevo grupo
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
+            // Vista de acciones para el Grupo Seleccionado
+            const groupStudents = alumnos.filter(a => a.grupo === selectedGroupInternal.nombre);
+
+            return (
+              <div className="space-y-8 pt-2 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div className="flex justify-between items-center px-1">
+                  <div>
+                    <h3 className="text-3xl font-black text-white uppercase tracking-tighter leading-none">{selectedGroupInternal.nombre}</h3>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-primary mt-2 flex items-center gap-2">
+                       <span className="w-1 h-1 bg-primary rounded-full"></span>
+                       {Array.isArray(selectedGroupInternal.dias) ? selectedGroupInternal.dias.join(', ') : selectedGroupInternal.dias} • {selectedGroupInternal.horario}
+                    </p>
+                  </div>
+                  <button 
+                    onClick={() => setSelectedGroupInternal(null)}
+                    className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/40 hover:text-white transition-all shadow-lg active:scale-90"
+                    title="Cambiar de grupo"
+                  >
+                    <span className="material-icons-outlined text-sm">swap_horiz</span>
                   </button>
-               </div>
-            </section>
-          )}
+                </div>
+
+                <div className="grid grid-cols-1 gap-4">
+                  {/* PASAR LISTA */}
+                  <motion.button 
+                    whileHover={{ scale: 1.02, y: -4 }} whileTap={{ scale: 0.98 }}
+                    onClick={() => { setActiveGroup(selectedGroupInternal); setVista('AsistenciaLista'); }}
+                    className="relative w-full h-40 rounded-[2.5rem] overflow-hidden group shadow-2xl shadow-cyan-500/20 border border-white/10"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-br from-cyan-500 to-blue-500"></div>
+                    <div className="absolute top-0 right-0 p-6 opacity-20">
+                      <span className="material-icons-outlined text-[80px] text-white rotate-12">fact_check</span>
+                    </div>
+                    <div className="absolute inset-0 p-10 flex flex-col justify-center items-start text-left">
+                      <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-xl border border-white/30 mb-3">
+                        <span className="material-icons-outlined text-white text-2xl">playlist_add_check</span>
+                      </div>
+                      <div>
+                        <h4 className="text-white text-2xl font-black uppercase tracking-tighter leading-none mb-1">Pasar Lista</h4>
+                        <p className="text-white/80 text-[10px] font-bold uppercase tracking-widest">Registrar asistencia de hoy</p>
+                      </div>
+                    </div>
+                  </motion.button>
+
+                  {/* REGISTRAR CLASE */}
+                  <motion.button 
+                    whileHover={{ scale: 1.02, y: -4 }} whileTap={{ scale: 0.98 }}
+                    onClick={() => { 
+                      setActiveGroup(selectedGroupInternal);
+                      setRegistrationStep(1); 
+                      setVista('NuevaClase'); 
+                    }}
+                    className="relative w-full h-40 rounded-[2.5rem] overflow-hidden group shadow-2xl shadow-indigo-500/20 border border-white/10"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-br from-violet-600 via-indigo-600 to-blue-600"></div>
+                    <div className="absolute top-0 right-0 p-6 opacity-20">
+                      <span className="material-symbols-outlined text-[80px] text-white rotate-12">assignment_turned_in</span>
+                    </div>
+                    <div className="absolute inset-0 p-10 flex flex-col justify-center items-start text-left">
+                      <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-xl border border-white/30 mb-3">
+                        <span className="material-symbols-outlined text-white text-2xl">school</span>
+                      </div>
+                      <div>
+                        <h4 className="text-white text-2xl font-black uppercase tracking-tighter leading-none mb-1">Registrar Clase</h4>
+                        <p className="text-white/80 text-[10px] font-bold uppercase tracking-widest">Anotar lo que trabajaste hoy</p>
+                      </div>
+                    </div>
+                  </motion.button>
+                </div>
+
+                <div className="space-y-6">
+                  <div className="flex justify-between items-center px-1">
+                    <h3 className="text-sm font-black text-white uppercase tracking-widest">Gimnastas del grupo</h3>
+                    <div className="text-[10px] font-bold text-primary px-3 py-1 bg-primary/10 rounded-full">
+                      {groupStudents.length} alumnas
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    {groupStudents.length > 0 ? groupStudents.map(alumno => (
+                      <div key={alumno.id} className="glass-card rounded-2xl p-4 border border-white/5 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center border border-white/10">
+                            <span className="text-xs font-black text-white/40">{alumno.nombre.charAt(0)}</span>
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-white leading-none">{alumno.nombre}</p>
+                            <p className="text-[8px] uppercase tracking-widest text-white/30 mt-1">{alumno.nivel}</p>
+                          </div>
+                        </div>
+                        <button 
+                          onClick={() => {
+                            setSelectedAlumno(alumno);
+                            setVista('AlumnoDetalle');
+                          }}
+                          className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/20 active:scale-95 transition-all"
+                        >
+                          <span className="material-icons-outlined text-sm">visibility</span>
+                        </button>
+                      </div>
+                    )) : (
+                      <div className="py-12 text-center text-white/20 uppercase font-black text-[10px] tracking-widest border border-dashed border-white/10 rounded-[2rem] bg-white/5">
+                        Aún no hay alumnas en este grupo
+                      </div>
+                    )}
+                    
+                    <button 
+                      onClick={() => {
+                        setStudentForm({ ...studentForm, grupo: selectedGroupInternal.nombre });
+                        setIsAddingAlumno(true);
+                        setVista('Alumnos');
+                      }}
+                      className="w-full py-5 rounded-2xl border border-dashed border-primary/20 bg-primary/5 text-primary text-[10px] font-black uppercase tracking-[0.2em] hover:bg-primary/10 transition-all flex items-center justify-center gap-2 mt-4"
+                    >
+                      <span className="material-icons-outlined text-sm">person_add</span>
+                      Agregar alumna al grupo
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
         </div>
       )}
     </div>
