@@ -251,6 +251,28 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   </div>
                 </div>
               </motion.button>
+
+              {/* Botón de Control de Pagos Gimnasia Artística */}
+              <motion.button 
+                whileHover={{ scale: 1.02, y: -4 }} whileTap={{ scale: 0.98 }}
+                onClick={() => setVista('ControlPagos')}
+                className="relative w-full h-44 rounded-[2.5rem] overflow-hidden group shadow-2xl shadow-indigo-500/20 border border-white/10 md:col-span-2"
+              >
+                <div className="absolute inset-0 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600"></div>
+                <div className="absolute top-0 right-0 p-6 opacity-20">
+                  <span className="material-icons-outlined text-[100px] text-white rotate-12">receipt_long</span>
+                </div>
+                
+                <div className="absolute inset-0 p-10 flex flex-col justify-center items-start text-left">
+                  <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-xl border border-white/30 mb-4">
+                    <span className="material-icons-outlined text-white text-3xl">payments</span>
+                  </div>
+                  <div>
+                    <h4 className="text-white text-3xl font-black uppercase tracking-tighter leading-none mb-1">Control de Pagos</h4>
+                    <p className="text-white/80 text-xs font-bold uppercase tracking-widest">Módulo Gimnasia Artística Infantil</p>
+                  </div>
+                </div>
+              </motion.button>
             </div>
           </section>
 

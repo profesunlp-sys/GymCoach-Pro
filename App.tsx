@@ -25,6 +25,7 @@ const Asistencia = lazy(() => import('./src/components/Asistencia').then(module 
 const Clases = lazy(() => import('./src/components/Clases').then(module => ({ default: module.Clases })));
 const Alumnos = lazy(() => import('./src/components/Alumnos'));
 const BulkPaymentImport = lazy(() => import('./src/components/BulkPaymentImport').then(module => ({ default: module.BulkPaymentImport })));
+const ControlPagos = lazy(() => import('./src/components/ControlPagos').then(module => ({ default: module.ControlPagos })));
 
 const LoadingFallback = () => (
   <div className="flex flex-col items-center justify-center p-20 space-y-4">
@@ -2978,6 +2979,14 @@ const App: React.FC = () => {
             handleDeleteDisciplina={handleDeleteDisciplina}
             handleUpdateBiometrics={handleUpdateBiometrics}
             sendPaymentReminder={sendPaymentReminder}
+          />
+        )}
+
+        {vista === 'ControlPagos' && (
+          <ControlPagos 
+            vista={vista}
+            setVista={setVista}
+            alumnos={alumnos}
           />
         )}
 
