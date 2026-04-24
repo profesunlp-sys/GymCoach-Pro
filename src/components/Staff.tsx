@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Button } from '../../App';
+import { Button, BackButton } from '../../App';
 import { Clase, GrupoConfig, ViewMode, Alumno, UserRole, AsistenciaRecord } from '../../types';
 
 interface StaffProps {
@@ -54,7 +54,8 @@ export const Staff: React.FC<StaffProps> = ({
   if (vista === 'Profesores') {
     return (
       <div className="px-6 py-8 space-y-8 page-transition pb-24 relative">
-        <header className="flex justify-between items-end">
+        <BackButton onClick={() => setVista('Dashboard')} />
+        <header className="flex justify-between items-end pt-8">
           <div>
             <h2 className="text-3xl font-black text-white uppercase tracking-tighter">Staff</h2>
             <p className="text-primary text-[10px] font-black uppercase tracking-widest mt-1">Gestión de Profesores</p>

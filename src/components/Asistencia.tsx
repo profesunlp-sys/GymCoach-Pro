@@ -514,11 +514,20 @@ export const Asistencia: React.FC<AsistenciaProps> = ({
             </div>
           );
         }) : (
-          <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
-            <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center border border-white/10">
-              <span className="material-icons-outlined text-white/20 text-3xl">search_off</span>
+          <div className="flex flex-col items-center justify-center py-20 text-center space-y-6 glass-card rounded-[2.5rem] border-dashed border-white/10 mx-2">
+            <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center border border-white/5 shadow-inner">
+              <span className="material-icons-outlined text-white/10 text-4xl">group_add</span>
             </div>
-            <p className="text-white/40 text-sm italic">No se encontraron alumnos en este grupo.</p>
+            <div className="space-y-2 px-8">
+              <h3 className="text-white font-black text-lg uppercase tracking-tight leading-tight">Este grupo está vacío</h3>
+              <p className="text-white/40 text-xs leading-relaxed">No hay alumnas asignadas a <span className="text-primary font-bold">{activeGroup.nombre}</span> todavía.</p>
+            </div>
+            <button 
+              onClick={() => handleNavigation('RegistroAlumno')}
+              className="px-8 py-4 bg-primary text-antigravity-black font-black uppercase text-[10px] tracking-[0.2em] rounded-2xl shadow-neon-cyan hover:scale-105 active:scale-95 transition-all"
+            >
+              Inscribir Alumnas
+            </button>
           </div>
         )}
 

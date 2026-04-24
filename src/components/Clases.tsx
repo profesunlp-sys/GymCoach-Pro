@@ -48,6 +48,8 @@ interface ClasesProps {
   setClaseObjetivos: (val: string) => void;
   claseObservaciones: string;
   setClaseObservaciones: (val: string) => void;
+  claseAgeRange: string;
+  setClaseAgeRange: (val: string) => void;
   selectedClase: Clase | null;
   setSelectedClase: (clase: Clase | null) => void;
   clases: Clase[];
@@ -111,6 +113,8 @@ export const Clases: React.FC<ClasesProps> = ({
   setClaseObjetivos,
   claseObservaciones,
   setClaseObservaciones,
+  claseAgeRange,
+  setClaseAgeRange,
   selectedClase,
   setSelectedClase,
   clases,
@@ -134,63 +138,45 @@ export const Clases: React.FC<ClasesProps> = ({
 }) => {
   if (vista === 'NuevaClase') {
     return (
-      <div className="space-y-8 page-transition pt-8 px-6 pb-24">
-        <header className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-4">
-            <Button 
-              onClick={() => {
-                if (registrationStep > 1) {
-                  setRegistrationStep(registrationStep - 1);
-                } else {
-                  setVista('Dashboard');
-                  setIsEditingClase(false);
-                  setEditingClaseId(null);
-                }
-              }} 
-              variant="secondary"
-              className="w-10 h-10 !p-0 rounded-full"
-            >
-              <span className="material-icons-outlined">arrow_back</span>
-            </Button>
-            <div>
-              <h2 className="text-white font-black text-2xl uppercase tracking-tighter">{isEditingClase ? 'Editar Clase' : 'Nueva Clase'}</h2>
-              <p className="text-primary text-[10px] font-black uppercase tracking-widest">Paso {registrationStep} de 6</p>
-            </div>
+      <div className="min-h-screen bg-ios-gray space-y-0 page-transition pt-4 pb-24">
+        {/* Apple Style Header */}
+        <header className="px-6 flex items-center justify-between mb-2">
+          <button 
+            onClick={() => {
+              if (registrationStep > 1) {
+                setRegistrationStep(registrationStep - 1);
+              } else {
+                setVista('Dashboard');
+                setIsEditingClase(false);
+                setEditingClaseId(null);
+              }
+            }} 
+            className="text-primary font-medium flex items-center gap-1 active:scale-95 transition-all"
+          >
+            <span className="material-icons-outlined text-lg">arrow_back_ios</span>
+            <span>Atrás</span>
+          </button>
+          
+          <div className="flex-1 text-center">
+            <h2 className="text-black font-bold text-lg tracking-tight">{isEditingClase ? 'Editar' : 'Nueva'} Clase</h2>
           </div>
-          <div className="flex gap-2">
-            {registrationStep < 6 ? (
-              <Button 
-                onClick={() => {
-                  if (registrationStep === 1 && !claseGrupo) {
-                    setNotificacion({ t: "Error", d: "Por favor selecciona un grupo." });
-                    setTimeout(() => setNotificacion(null), 3000);
-                    return;
-                  }
-                  setRegistrationStep(registrationStep + 1);
-                }}
-                className="px-6 shadow-neon-cyan"
-              >
-                Siguiente
-              </Button>
-            ) : (
-              <Button 
-                onClick={handleSaveManualClass}
-                className="px-6 shadow-neon-cyan"
-              >
-                Finalizar
-              </Button>
-            )}
-          </div>
+
+          <div className="w-16"> {/* Spacer */}</div>
         </header>
 
-        {/* Indicador de Pasos */}
-        <div className="flex gap-2 px-1">
-          {[1, 2, 3, 4, 5, 6].map(step => (
-            <div 
-              key={step} 
-              className={`h-1 flex-1 rounded-full transition-all duration-500 ${step <= registrationStep ? 'bg-primary shadow-neon-cyan' : 'bg-white/10'}`}
+        {/* Progress Bar */}
+        <div className="px-6 mb-8">
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-[10px] font-bold text-secondary uppercase tracking-widest">Paso {registrationStep} de 6</span>
+            <span className="text-[10px] font-bold text-primary">{Math.round((registrationStep/6)*100)}%</span>
+          </div>
+          <div className="h-2 w-full bg-black/5 rounded-full overflow-hidden">
+            <motion.div 
+              initial={{ width: 0 }}
+              animate={{ width: `${(registrationStep/6)*100}%` }}
+              className="h-full bg-primary"
             />
-          ))}
+          </div>
         </div>
         
         <AnimatePresence mode="wait">
@@ -201,183 +187,114 @@ export const Clases: React.FC<ClasesProps> = ({
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
-              className="space-y-6"
+              className="px-6 space-y-6"
             >
-              <div className="space-y-4">
-                <div className="flex justify-between items-center px-2">
-                  <label className="text-[10px] uppercase font-black text-white/40 tracking-[0.2em]">¿Con qué grupo entrenamos hoy?</label>
-                </div>
-                <div className="grid grid-cols-1 gap-3">
-                  {grupos
-                    .filter(g => userRole === 'Coordinator' || !user?.displayName || g.entrenador === user.displayName)
-                    .map(g => (
-                    <button 
-                      key={g.id}
-                      onClick={() => setClaseGrupo(g.nombre)}
-                      className={`glass-card p-6 rounded-3xl border transition-all text-left flex items-center justify-between ${
-                        claseGrupo === g.nombre 
-                          ? 'border-primary bg-primary/10 shadow-neon-cyan scale-[1.02]' 
-                          : 'border-white/5 bg-white/5 hover:bg-white/10'
-                      }`}
-                    >
-                      <div>
-                        <span className={`text-lg font-bold block ${claseGrupo === g.nombre ? 'text-primary' : 'text-white'}`}>
-                          {g.nombre}
-                        </span>
-                        <span className="text-[10px] text-white/60 font-medium uppercase tracking-widest">
-                          {g.horario}
-                        </span>
-                      </div>
-                      {claseGrupo === g.nombre && (
-                        <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center">
-                          <span className="material-icons-outlined text-antigravity-black text-sm">check</span>
-                        </div>
-                      )}
-                    </button>
-                  ))}
-                  {grupos.length === 0 && (
-                    <div className="p-10 text-center glass-card rounded-3xl border-dashed border-white/10 italic text-white/40 text-sm">
-                      No tienes grupos creados aún.
+              <h3 className="text-2xl font-bold text-black tracking-tight mb-4">¿Con qué grupo entrenamos hoy?</h3>
+              <div className="space-y-3">
+                {grupos
+                  .filter(g => userRole === 'Coordinator' || !user?.displayName || g.entrenador === user.displayName)
+                  .map(g => (
+                  <button 
+                    key={g.id}
+                    onClick={() => setClaseGrupo(g.nombre)}
+                    className={`w-full p-5 rounded-2xl border transition-all text-left flex items-center justify-between ${
+                      claseGrupo === g.nombre 
+                        ? 'border-primary bg-white shadow-ios ring-1 ring-primary/20' 
+                        : 'border-black/5 bg-white shadow-sm hover:border-black/10'
+                    }`}
+                  >
+                    <div>
+                      <span className={`text-lg font-bold block ${claseGrupo === g.nombre ? 'text-primary' : 'text-black'}`}>
+                        {g.nombre}
+                      </span>
+                      <span className="text-xs text-secondary font-medium">
+                        {g.horario}
+                      </span>
                     </div>
-                  )}
-                </div>
+                    {claseGrupo === g.nombre && (
+                      <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center">
+                        <span className="material-icons-outlined text-white text-sm">check</span>
+                      </div>
+                    )}
+                  </button>
+                ))}
               </div>
             </motion.div>
           )}
 
-          {/* Paso 2: Asistencia */}
+          {/* Paso 2: Rango de Edad */}
           {registrationStep === 2 && (
             <motion.div 
               key="step2"
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
-              className="space-y-6"
+              className="px-6 space-y-6"
             >
+              <h3 className="text-2xl font-bold text-black tracking-tight mb-4">Rango de edad del grupo</h3>
               <div className="space-y-4">
-                <div className="flex justify-between items-center px-2">
-                  <label className="text-[10px] uppercase font-black text-white/40 tracking-[0.2em]">Marcar presentes</label>
+                {[
+                  { range: "3 a 5 años", emoji: "👶" },
+                  { range: "6 a 9 años", emoji: "🧒" },
+                  { range: "10 a 15 años", emoji: "👦" }
+                ].map((item) => (
                   <button 
-                    onClick={() => setVista('RegistroAlumno')}
-                    className="text-[10px] font-black text-primary uppercase tracking-widest flex items-center gap-1"
+                    key={item.range}
+                    onClick={() => setClaseAgeRange(item.range)}
+                    className={`w-full p-6 rounded-2xl border transition-all text-left flex items-center justify-between ${
+                      claseAgeRange === item.range 
+                        ? 'border-primary bg-white shadow-ios ring-1 ring-primary/20' 
+                        : 'border-black/5 bg-white shadow-sm'
+                    }`}
                   >
-                    <span className="material-icons-outlined text-sm">person_add</span>
-                    Nuevo Alumno
+                    <span className={`text-xl font-bold ${claseAgeRange === item.range ? 'text-primary' : 'text-secondary'}`}>
+                      {item.range}
+                    </span>
+                    <span className="text-3xl">{item.emoji}</span>
                   </button>
-                </div>
-                <div className="grid grid-cols-1 gap-2 max-h-[400px] overflow-y-auto pr-2 scrollbar-hide">
-                  {alumnos.filter(a => a.grupo === claseGrupo).map(alumno => (
-                    <button 
-                      key={alumno.id}
-                      onClick={() => alumno.id && toggleAttendance(alumno.id)}
-                      className={`p-4 rounded-2xl border transition-all flex items-center justify-between ${
-                        alumno.id && asistenciasHoy[alumno.id] 
-                          ? 'bg-primary/10 border-primary shadow-neon-cyan' 
-                          : 'bg-white/5 border-white/5'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${alumno.id && asistenciasHoy[alumno.id] ? 'bg-primary text-antigravity-black' : 'bg-white/10 text-white/40'}`}>
-                          <span className="material-icons-outlined text-sm">{alumno.id && asistenciasHoy[alumno.id] ? 'check' : 'person'}</span>
-                        </div>
-                        <span className={`text-sm font-bold ${alumno.id && asistenciasHoy[alumno.id] ? 'text-white' : 'text-white/60'}`}>{alumno.nombre}</span>
-                      </div>
-                      {alumno.id && asistenciasHoy[alumno.id] && (
-                        <span className="text-[10px] font-black text-primary uppercase tracking-widest">Presente</span>
-                      )}
-                    </button>
-                  ))}
-                  {alumnos.filter(a => a.grupo === claseGrupo).length === 0 && (
-                    <div className="p-10 text-center glass-card rounded-3xl border-dashed border-white/10 italic text-white/40 text-sm">
-                      No hay alumnos registrados en este grupo.
-                    </div>
-                  )}
-                </div>
+                ))}
               </div>
             </motion.div>
           )}
 
-          {/* Paso 3: Entrada en Calor */}
+          {/* Paso 3: Asistencia */}
           {registrationStep === 3 && (
             <motion.div 
               key="step3"
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
-              className="space-y-6"
+              className="px-6 space-y-6"
             >
-              <div className="glass-card rounded-3xl p-6 border border-white/5 space-y-4">
-                <div className="flex justify-between items-center">
-                  <label className="text-[10px] uppercase font-bold text-primary ml-1 tracking-widest">Entrada en calor</label>
-                  <div className="flex items-center gap-2 bg-antigravity-charcoal px-3 py-1 rounded-full border border-white/5">
-                    <span className="material-icons-outlined text-[14px] text-white/70">schedule</span>
-                    <input 
-                      type="number" 
-                      value={faseInicialDuration} 
-                      onChange={(e) => setFaseInicialDuration(e.target.value)}
-                      className="w-12 bg-transparent text-[10px] text-white font-bold outline-none text-center" 
-                    />
-                    <span className="text-[8px] text-white/80 uppercase font-black">min</span>
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {warmupOptions.map(opt => (
-                    <div key={opt.id || opt.nombre} className="relative group">
-                      <button 
-                        onClick={() => setFaseInicial(prev => prev.includes(opt.nombre) ? prev.filter(o => o !== opt.nombre) : [...prev, opt.nombre])}
-                        className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${faseInicial.includes(opt.nombre) ? 'bg-primary text-antigravity-black shadow-neon-cyan' : 'bg-antigravity-charcoal text-white/70 border border-white/5'}`}
-                      >
-                        {opt.nombre}
-                      </button>
-                      {opt.id && (
-                        <div className="absolute -top-1 -right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              const newName = prompt("Editar opción:", opt.nombre);
-                              if (newName && newName.trim() && newName !== opt.nombre) {
-                                handleUpdateWarmupOption(opt.id!, newName.trim());
-                              }
-                            }}
-                            className="w-5 h-5 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-[10px]"
-                          >
-                            <span className="material-icons-outlined text-[10px]">edit</span>
-                          </button>
-                          <button 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteWarmupOption(opt.id!);
-                            }}
-                            className="w-5 h-5 rounded-full bg-rose-500/20 backdrop-blur-md flex items-center justify-center text-rose-500 text-[10px]"
-                          >
-                            <span className="material-icons-outlined text-[10px]">delete</span>
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-                <div className="flex gap-2 mt-2">
-                  <input 
-                    type="text" 
-                    value={customInicial} 
-                    onChange={(e) => setCustomInicial(e.target.value)} 
-                    placeholder="Añadir actividad personalizada..." 
-                    className="flex-1 crafted-input !py-2 !text-[10px]"
-                  />
-                  <button 
-                    onClick={() => { 
-                      if(customInicial) { 
-                        handleSaveWarmupOption(customInicial);
-                        setFaseInicial(prev => [...prev, customInicial]); 
-                        setCustomInicial(""); 
-                      } 
-                    }}
-                    className="bg-white/10 text-white px-3 rounded-xl text-[10px] font-bold"
+              <div className="flex justify-between items-end">
+                <h3 className="text-2xl font-bold text-black tracking-tight">Asistencia del día</h3>
+                <span className="text-sm font-bold text-primary mb-1">
+                  {Object.values(asistenciasHoy).filter(Boolean).length} / {alumnos.filter(a => a.grupo === claseGrupo).length} presentes
+                </span>
+              </div>
+              <div className="bg-white rounded-3xl shadow-sm border border-black/5 divide-y divide-black/5">
+                {alumnos.filter(a => a.grupo === claseGrupo).map(alumno => (
+                  <div 
+                    key={alumno.id}
+                    onClick={() => alumno.id && toggleAttendance(alumno.id)}
+                    className="p-5 flex items-center justify-between cursor-pointer active:bg-black/5 transition-colors"
                   >
-                    +
-                  </button>
-                </div>
+                    <div className="flex items-center gap-4">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${alumno.id && asistenciasHoy[alumno.id] ? 'bg-primary/10 text-primary' : 'bg-ios-gray text-secondary'}`}>
+                        <span className="material-icons-outlined text-xl">{alumno.id && asistenciasHoy[alumno.id] ? 'check' : 'person'}</span>
+                      </div>
+                      <span className={`text-base font-semibold ${alumno.id && asistenciasHoy[alumno.id] ? 'text-black' : 'text-secondary'}`}>{alumno.nombre}</span>
+                    </div>
+                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${alumno.id && asistenciasHoy[alumno.id] ? 'bg-primary border-primary' : 'border-black/10'}`}>
+                      {alumno.id && asistenciasHoy[alumno.id] && <span className="material-icons-outlined text-white text-[14px]">check</span>}
+                    </div>
+                  </div>
+                ))}
+                {alumnos.filter(a => a.grupo === claseGrupo).length === 0 && (
+                  <div className="p-10 text-center text-secondary text-sm italic">
+                    Sin alumnos en este grupo.
+                  </div>
+                )}
               </div>
             </motion.div>
           )}
@@ -389,92 +306,70 @@ export const Clases: React.FC<ClasesProps> = ({
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
-              className="space-y-6"
+              className="px-6 space-y-6"
             >
-              <div className="glass-card rounded-3xl p-6 border border-white/5 space-y-4">
-                <div className="flex justify-between items-center">
-                  <label className="text-[10px] uppercase font-bold text-primary ml-1 tracking-widest">Fase Principal (Aparatos)</label>
-                  <div className="flex items-center gap-2 bg-antigravity-charcoal px-3 py-1 rounded-full border border-white/5">
-                    <span className="material-icons-outlined text-[14px] text-white/70">schedule</span>
-                    <input 
-                      type="number" 
-                      value={fasePrincipalDuration} 
-                      onChange={(e) => setFasePrincipalDuration(e.target.value)}
-                      className="w-12 bg-transparent text-[10px] text-white font-bold outline-none text-center" 
-                    />
-                    <span className="text-[8px] text-white/80 uppercase font-black">min</span>
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {disciplinas.map((opt) => (
-                    <button 
-                      key={opt.id || opt.nombre}
-                      onClick={() => setFasePrincipal(prev => prev.includes(opt.nombre) ? prev.filter(o => o !== opt.nombre) : [...prev, opt.nombre])}
-                      className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${fasePrincipal.includes(opt.nombre) ? 'bg-primary text-antigravity-black shadow-neon-cyan' : 'bg-antigravity-charcoal text-white/70 border border-white/5'}`}
-                    >
-                      {opt.nombre}
-                    </button>
-                  ))}
-                </div>
+              <h3 className="text-2xl font-bold text-black tracking-tight">Aparatos trabajados</h3>
+              <div className="grid grid-cols-2 gap-4">
+                {[
+                  { name: "Viga", icon: "horizontal_rule" },
+                  { name: "Paralelas Asimétricas", icon: "reorder" },
+                  { name: "Suelo", icon: "check_box_outline_blank" },
+                  { name: "Salto", icon: "arrow_upward" }
+                ].map((opt) => (
+                  <button 
+                    key={opt.name}
+                    onClick={() => setFasePrincipal(prev => prev.includes(opt.name) ? prev.filter(o => o !== opt.name) : [...prev, opt.name])}
+                    className={`relative p-6 rounded-3xl border transition-all aspect-square flex flex-col items-center justify-center gap-3 ${
+                      fasePrincipal.includes(opt.name) 
+                        ? 'border-primary bg-white shadow-ios ring-1 ring-primary/20' 
+                        : 'border-black/5 bg-white shadow-sm'
+                    }`}
+                  >
+                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${fasePrincipal.includes(opt.name) ? 'bg-primary/10 text-primary' : 'bg-ios-gray text-secondary'}`}>
+                      <span className="material-icons-outlined text-2xl">{opt.icon}</span>
+                    </div>
+                    <span className="text-sm font-bold text-black text-center">{opt.name}</span>
+                    
+                    <div className={`absolute top-4 right-4 w-5 h-5 rounded-full border-2 flex items-center justify-center ${fasePrincipal.includes(opt.name) ? 'bg-primary border-primary' : 'border-black/10'}`}>
+                      {fasePrincipal.includes(opt.name) && <span className="material-icons-outlined text-white text-[12px]">check</span>}
+                    </div>
+                  </button>
+                ))}
               </div>
             </motion.div>
           )}
 
-          {/* Paso 5: Habilidades */}
+          {/* Paso 5: Habilidades y Observaciones */}
           {registrationStep === 5 && (
             <motion.div 
               key="step5"
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
-              className="space-y-6"
+              className="px-6 space-y-6"
             >
-              <div className="glass-card rounded-3xl p-6 border border-white/5 space-y-4">
-                <label className="text-[10px] uppercase font-bold text-primary ml-1 tracking-widest">Habilidades por Aparato</label>
-                {fasePrincipal.length > 0 ? (
-                  <div className="mt-4 space-y-4 border-t border-white/10 pt-4">
-                    {fasePrincipal.map(aparato => (
-                      <div key={aparato} className="space-y-2">
-                        <p className="text-[10px] font-black text-white/60 uppercase tracking-widest">{aparato}</p>
-                        <div className="flex flex-wrap gap-2">
-                          {(habilidadesPorAparato[aparato] || []).map((hab, idx) => (
-                            <span key={idx} className="bg-primary/10 text-primary text-[10px] px-3 py-1.5 rounded-lg border border-primary/20 flex items-center gap-1">
-                              {hab}
-                              <button onClick={() => setHabilidadesPorAparato(prev => ({...prev, [aparato]: prev[aparato].filter((_, i) => i !== idx)}))}>
-                                <span className="material-icons-outlined text-[12px]">close</span>
-                              </button>
-                            </span>
-                          ))}
-                        </div>
-                        <div className="flex gap-2">
-                          <input 
-                            type="text" 
-                            value={customHabilidad[aparato] || ""} 
-                            onChange={(e) => setCustomHabilidad(prev => ({...prev, [aparato]: e.target.value}))} 
-                            placeholder="Añadir habilidad..." 
-                            className="flex-1 crafted-input !py-2 !text-[10px]"
-                          />
-                          <button 
-                            onClick={() => { 
-                              const hab = customHabilidad[aparato];
-                              if(hab) { 
-                                setHabilidadesPorAparato(prev => ({...prev, [aparato]: [...(prev[aparato] || []), hab]})); 
-                                setCustomHabilidad(prev => ({...prev, [aparato]: ""})); 
-                              } 
-                            }}
-                            className="bg-white/10 text-white px-3 rounded-xl text-[10px] font-bold"
-                          >
-                            +
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="p-10 text-center glass-card rounded-3xl border-dashed border-white/10 italic text-white/40 text-sm">
-                    No has seleccionado aparatos en el paso anterior.
-                  </div>
-                )}
+              <h3 className="text-2xl font-bold text-black tracking-tight">Detalles del entrenamiento</h3>
+              
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-secondary uppercase tracking-widest px-1">Habilidades trabajadas</label>
+                  <textarea 
+                    value={claseObjetivos}
+                    onChange={(e) => setClaseObjetivos(e.target.value)}
+                    className="w-full bg-white border border-black/10 rounded-2xl p-5 text-sm min-h-[120px] shadow-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                    placeholder="Ej: Roles, verticales, enlace en viga..."
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-secondary uppercase tracking-widest px-1">Observaciones generales</label>
+                  <textarea 
+                    value={claseObservaciones}
+                    onChange={(e) => setClaseObservaciones(e.target.value)}
+                    className="w-full bg-white border border-black/10 rounded-2xl p-5 text-sm min-h-[120px] shadow-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                    placeholder="Notas sobre el comportamiento o desempeño del grupo..."
+                  />
+                </div>
               </div>
             </motion.div>
           )}
@@ -486,46 +381,72 @@ export const Clases: React.FC<ClasesProps> = ({
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
-              className="space-y-6"
+              className="px-6 space-y-6"
             >
-              <div className="glass-card rounded-3xl p-6 border border-white/5 space-y-4">
-                <label className="text-[10px] uppercase font-bold text-primary ml-1 tracking-widest">Resumen de la Clase</label>
-                <div className="space-y-4">
-                  <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
-                    <p className="text-[10px] text-white/40 uppercase font-black tracking-widest mb-1">Grupo</p>
-                    <p className="text-white font-bold">{claseGrupo}</p>
+              <div className="flex flex-col items-center justify-center py-4">
+                <div className="w-16 h-16 bg-ios-green/10 text-ios-green rounded-full flex items-center justify-center mb-2">
+                  <span className="material-icons-outlined text-3xl">task_alt</span>
+                </div>
+                <h3 className="text-xl font-bold text-black tracking-tight">Resumen de clase</h3>
+                <p className="text-secondary text-sm">Verificá los datos antes de guardar</p>
+              </div>
+
+              <div className="bg-white rounded-3xl shadow-ios border border-black/5 overflow-hidden">
+                <div className="divide-y divide-black/5 p-2">
+                  <div className="p-4 flex justify-between items-center">
+                    <span className="text-sm font-medium text-secondary">Grupo</span>
+                    <span className="text-sm font-bold text-black">{claseGrupo}</span>
                   </div>
-                  <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
-                    <p className="text-[10px] text-white/40 uppercase font-black tracking-widest mb-1">Asistencia</p>
-                    <p className="text-white font-bold">{Object.values(asistenciasHoy).filter(Boolean).length} Alumnos Presentes</p>
+                  <div className="p-4 flex justify-between items-center">
+                    <span className="text-sm font-medium text-secondary">Fecha</span>
+                    <span className="text-sm font-bold text-black">{new Date().toLocaleDateString()}</span>
                   </div>
-                  <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
-                    <p className="text-[10px] text-white/40 uppercase font-black tracking-widest mb-1">Aparatos</p>
-                    <p className="text-white font-bold">{fasePrincipal.join(', ') || 'Ninguno'}</p>
+                  <div className="p-4 flex justify-between items-center">
+                    <span className="text-sm font-medium text-secondary">Rango de edad</span>
+                    <span className="text-sm font-bold text-primary">{claseAgeRange || 'No especificado'}</span>
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] uppercase font-bold text-white/40 ml-1 tracking-widest">Objetivos</label>
-                    <textarea 
-                      value={claseObjetivos}
-                      onChange={(e) => setClaseObjetivos(e.target.value)}
-                      className="w-full crafted-input min-h-[80px] !text-[10px]"
-                      placeholder="¿Qué buscamos lograr hoy?"
-                    />
+                  <div className="p-4 flex justify-between items-center">
+                    <span className="text-sm font-medium text-secondary">Asistencia</span>
+                    <span className="text-sm font-bold text-black">{Object.values(asistenciasHoy).filter(Boolean).length} presentes</span>
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] uppercase font-bold text-white/40 ml-1 tracking-widest">Observaciones</label>
-                    <textarea 
-                      value={claseObservaciones}
-                      onChange={(e) => setClaseObservaciones(e.target.value)}
-                      className="w-full crafted-input min-h-[80px] !text-[10px]"
-                      placeholder="Notas sobre el desempeño del grupo..."
-                    />
+                  <div className="p-4">
+                    <span className="text-sm font-medium text-secondary block mb-2">Aparatos</span>
+                    <div className="flex flex-wrap gap-2">
+                      {fasePrincipal.length > 0 ? fasePrincipal.map(a => (
+                        <span key={a} className="px-3 py-1 bg-ios-gray text-black text-[10px] font-bold rounded-full">{a}</span>
+                      )) : <span className="text-sm font-bold text-black">-</span>}
+                    </div>
+                  </div>
+                  <div className="p-4">
+                    <span className="text-sm font-medium text-secondary block mb-1">Habilidades</span>
+                    <p className="text-sm text-black line-clamp-2">{claseObjetivos || '-'}</p>
                   </div>
                 </div>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Global Footer Navigation Button */}
+        <div className="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-ios-gray via-ios-gray/95 to-transparent z-40">
+          <Button 
+            onClick={() => {
+              if (registrationStep === 1 && !claseGrupo) {
+                setNotificacion({ t: "Error", d: "Seleccioná un grupo." });
+                setTimeout(() => setNotificacion(null), 3000);
+                return;
+              }
+              if (registrationStep === 6) {
+                handleSaveManualClass();
+              } else {
+                setRegistrationStep(registrationStep + 1);
+              }
+            }}
+            className="w-full !py-6 !rounded-[2rem] text-sm tracking-[0.1em] shadow-lg active:scale-95 transition-all"
+          >
+            {registrationStep === 6 ? 'Guardar Clase' : 'Continuar'}
+          </Button>
+        </div>
       </div>
     );
   }
@@ -739,11 +660,20 @@ export const Clases: React.FC<ClasesProps> = ({
           ))}
 
           {clases.length === 0 && (
-            <div className="p-20 text-center space-y-4">
-              <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center border border-white/10 mx-auto">
-                <span className="material-icons-outlined text-white/20 text-3xl">history</span>
+            <div className="flex flex-col items-center justify-center py-20 text-center space-y-6 glass-card rounded-[2.5rem] border-dashed border-white/10 mx-2">
+              <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center border border-white/5 shadow-inner">
+                <span className="material-icons-outlined text-white/10 text-4xl">history_edu</span>
               </div>
-              <p className="text-white/40 text-sm italic">No hay clases registradas aún.</p>
+              <div className="space-y-2 px-8">
+                <h3 className="text-white font-black text-lg uppercase tracking-tight leading-tight">Sin Historial</h3>
+                <p className="text-white/40 text-xs leading-relaxed">Todavía no has registrado ninguna clase en GymCoach Pro.</p>
+              </div>
+              <button 
+                onClick={() => handleNavigation('NuevaClase')}
+                className="px-8 py-4 bg-primary text-antigravity-black font-black uppercase text-[10px] tracking-[0.2em] rounded-2xl shadow-neon-cyan hover:scale-105 active:scale-95 transition-all"
+              >
+                Registrar Primera Clase
+              </button>
             </div>
           )}
         </div>

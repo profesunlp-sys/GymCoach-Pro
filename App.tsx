@@ -28,9 +28,9 @@ const BulkPaymentImport = lazy(() => import('./src/components/BulkPaymentImport'
 const ControlPagos = lazy(() => import('./src/components/ControlPagos').then(module => ({ default: module.ControlPagos })));
 
 const LoadingFallback = () => (
-  <div className="flex flex-col items-center justify-center p-20 space-y-4">
-    <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin shadow-neon-cyan"></div>
-    <p className="text-primary text-[10px] font-black uppercase tracking-[0.3em] animate-pulse">Cargando Módulo...</p>
+  <div className="flex flex-col items-center justify-center p-20 space-y-6">
+    <div className="w-12 h-12 border-4 border-ios-blue border-t-transparent rounded-full animate-spin"></div>
+    <p className="text-secondary text-[10px] font-bold uppercase tracking-[0.2em] animate-pulse">Cargando Módulo</p>
   </div>
 );
 
@@ -46,12 +46,12 @@ export const Tooltip = ({ children, text }: { children: React.ReactNode, text: s
       <AnimatePresence>
         {isVisible && (
           <motion.div 
-            initial={{ opacity: 0, y: 5, scale: 0.9 }}
+            initial={{ opacity: 0, y: 5, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 5, scale: 0.9 }}
-            className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 px-2.5 py-1.5 bg-antigravity-black/95 backdrop-blur-md border border-white/10 text-[9px] font-bold uppercase tracking-wider text-white rounded-lg pointer-events-none whitespace-nowrap z-[100] shadow-2xl flex items-center gap-2 border-primary/20"
+            exit={{ opacity: 0, y: 5, scale: 0.95 }}
+            className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 px-4 py-2 bg-black/90 backdrop-blur-xl text-[10px] font-bold uppercase tracking-widest text-white rounded-2xl pointer-events-none whitespace-nowrap z-[100] shadow-2xl flex items-center gap-2 border border-white/10"
           >
-            <div className="w-1 h-1 bg-primary rounded-full animate-pulse shadow-neon-cyan"></div>
+            <div className="w-1.5 h-1.5 bg-ios-blue rounded-full animate-pulse shadow-ios"></div>
             {text}
           </motion.div>
         )}
@@ -78,13 +78,13 @@ export const Button = ({
   title?: string
 }) => {
   const variants = {
-    primary: 'bg-primary text-antigravity-black shadow-neon-cyan hover:brightness-110',
-    secondary: 'bg-antigravity-charcoal text-white border border-white/10 hover:bg-white/5',
-    outline: 'bg-transparent text-primary border border-primary/30 hover:bg-primary/5',
-    ghost: 'bg-transparent text-white/60 hover:text-white hover:bg-white/5',
-    danger: 'bg-rose-500/10 text-rose-500 border border-rose-500/20 hover:bg-rose-500/20',
-    success: 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 hover:bg-emerald-500/20',
-    warning: 'bg-amber-500/10 text-amber-500 border border-amber-500/20 hover:bg-amber-500/20'
+    primary: 'bg-ios-blue text-white shadow-lg active:scale-95',
+    secondary: 'bg-ios-gray text-secondary border border-black/5 hover:bg-black/5 active:scale-95',
+    outline: 'bg-transparent text-ios-blue border border-ios-blue/30 hover:bg-ios-blue/5 active:scale-95',
+    ghost: 'bg-transparent text-secondary hover:text-black hover:bg-ios-gray active:scale-95',
+    danger: 'bg-ios-red/10 text-ios-red border border-ios-red/10 hover:bg-ios-red/20 active:scale-95',
+    success: 'bg-ios-green/10 text-ios-green border border-ios-green/10 hover:bg-ios-green/20 active:scale-95',
+    warning: 'bg-ios-orange/10 text-ios-orange border border-ios-orange/10 hover:bg-ios-orange/20 active:scale-95'
   };
 
   const content = (
@@ -92,9 +92,7 @@ export const Button = ({
       type={type}
       onClick={onClick}
       disabled={disabled}
-      whileHover={{ scale: disabled ? 1 : 1.02 }}
-      whileTap={{ scale: disabled ? 1 : 0.98 }}
-      className={`px-4 py-2 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${variants[variant]} ${className}`}
+      className={`px-6 py-4 rounded-[1.2rem] font-bold uppercase tracking-widest text-[10px] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${variants[variant]} ${className}`}
     >
       {children}
     </motion.button>
@@ -131,12 +129,12 @@ export const EditableDropdown = ({
 
   return (
     <div className="space-y-1 relative">
-      <label className="text-[10px] uppercase font-bold text-white/90 ml-1">{label}</label>
+      <label className="text-[10px] uppercase font-bold text-secondary ml-1 tracking-widest leading-none">{label}</label>
       <div className="relative group">
         <select 
           value={value} 
           onChange={(e) => onChange(e.target.value)}
-          className="w-full bg-antigravity-charcoal border rounded-xl pl-4 pr-16 py-3 text-sm text-white appearance-none border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none transition-all overflow-hidden text-ellipsis text-left"
+          className="w-full bg-ios-gray border-none rounded-2xl pl-4 pr-24 py-4 text-sm font-medium text-black appearance-none outline-none focus:ring-2 focus:ring-ios-blue/10 transition-all overflow-hidden text-ellipsis text-left cursor-pointer"
         >
           <option value="">{placeholder}</option>
           {options.map((opt, idx) => (
@@ -150,7 +148,7 @@ export const EditableDropdown = ({
         <div className="absolute right-0 top-0 bottom-0 flex items-center pr-2 pointer-events-none">
           <div className="flex items-center gap-1 pointer-events-auto">
             {value && (
-              <div className="flex items-center gap-0.5 mr-1 pr-1 border-r border-white/10">
+              <div className="flex items-center gap-0.5 mr-1 pr-1 border-r border-black/5">
                 <button 
                   type="button"
                   onClick={(e) => {
@@ -164,9 +162,9 @@ export const EditableDropdown = ({
                       }
                     }
                   }}
-                  className="w-6 h-6 flex items-center justify-center text-primary/60 hover:text-primary hover:bg-primary/20 rounded-lg transition-all active:scale-90"
+                  className="w-8 h-8 flex items-center justify-center text-secondary/60 hover:text-ios-blue hover:bg-ios-blue/10 rounded-xl transition-all active:scale-90"
                 >
-                  <span className="material-icons-outlined text-[14px]">edit</span>
+                  <span className="material-icons-outlined text-base">edit</span>
                 </button>
                 <button 
                   type="button"
@@ -180,16 +178,16 @@ export const EditableDropdown = ({
                       }
                     }
                   }}
-                  className="w-6 h-6 flex items-center justify-center text-rose-500/60 hover:text-rose-500 hover:bg-rose-500/20 rounded-lg transition-all active:scale-90"
+                  className="w-8 h-8 flex items-center justify-center text-ios-red/60 hover:text-ios-red hover:bg-ios-red/10 rounded-xl transition-all active:scale-90"
                 >
-                  <span className="material-icons-outlined text-[14px]">delete</span>
+                  <span className="material-icons-outlined text-base">delete</span>
                 </button>
               </div>
             )}
             <button 
               type="button"
               onClick={() => setIsAdding(!isAdding)}
-              className={`w-7 h-7 flex items-center justify-center rounded-full transition-all active:scale-90 ${isAdding ? 'bg-rose-500/20 text-rose-500' : 'bg-primary/20 text-primary hover:bg-primary/30'}`}
+              className={`w-8 h-8 flex items-center justify-center rounded-full transition-all active:scale-90 shadow-sm ${isAdding ? 'bg-white text-ios-red border border-ios-red/20' : 'bg-ios-blue text-white shadow-ios'}`}
             >
               <span className="material-icons-outlined text-base">{isAdding ? 'close' : 'add'}</span>
             </button>
@@ -200,21 +198,21 @@ export const EditableDropdown = ({
       <AnimatePresence>
         {isAdding && (
           <motion.div 
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="absolute left-0 right-0 z-50 mt-2 p-4 bg-antigravity-charcoal border border-primary/30 rounded-2xl shadow-2xl backdrop-blur-md"
+            initial={{ opacity: 0, scale: 0.9, y: -10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: -10 }}
+            className="absolute left-0 right-0 z-50 mt-2 p-6 bg-white border border-black/5 rounded-[2.5rem] shadow-2xl backdrop-blur-3xl"
           >
-            <div className="space-y-3">
-              <div className="space-y-1">
-                <label className="text-[9px] uppercase font-bold text-primary ml-1">Nuevo {label}</label>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-[10px] uppercase font-bold text-ios-blue ml-1 tracking-widest">Nuevo {label}</label>
                 <input 
                   type="text" 
                   value={newItem} 
                   onChange={(e) => setNewItem(e.target.value)}
                   placeholder="Escribir nombre..."
                   autoFocus
-                  className="w-full bg-antigravity-black border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-primary transition-all"
+                  className="w-full bg-ios-gray border-none rounded-xl px-4 py-4 text-sm text-black font-medium outline-none focus:ring-2 focus:ring-ios-blue/10 transition-all font-medium"
                 />
               </div>
               <Button 
@@ -226,9 +224,9 @@ export const EditableDropdown = ({
                     setIsAdding(false);
                   }
                 }}
-                className="w-full !py-3 rounded-xl shadow-lg border border-primary/20"
+                className="w-full !rounded-2xl"
               >
-                Guardar {label}
+                Guardar
               </Button>
             </div>
           </motion.div>
@@ -237,6 +235,16 @@ export const EditableDropdown = ({
     </div>
   );
 };
+
+export const BackButton = ({ onClick }: { onClick: () => void }) => (
+  <button 
+    onClick={onClick}
+    className="absolute top-8 left-6 flex items-center gap-2 text-secondary hover:text-black transition-all text-[10px] font-bold uppercase tracking-widest z-50 active:scale-95 px-4 py-2 bg-white rounded-full shadow-sm border border-black/5"
+  >
+    <span className="material-icons-outlined text-base">arrow_back</span>
+    Volver
+  </button>
+);
 
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -311,6 +319,7 @@ const App: React.FC = () => {
   const [faseInicialDuration, setFaseInicialDuration] = useState("15");
   const [fasePrincipalDuration, setFasePrincipalDuration] = useState("60");
   const [faseFinalDuration, setFaseFinalDuration] = useState("15");
+  const [claseAgeRange, setClaseAgeRange] = useState<string>("");
   const [objetivos, setObjetivos] = useState("");
   const [observaciones, setObservaciones] = useState("");
   const [habilidadesPorAparato, setHabilidadesPorAparato] = useState<Record<string, string[]>>({});
@@ -357,6 +366,7 @@ const App: React.FC = () => {
   } | null>(null);
 
   const [isFocusMode, setIsFocusMode] = useState(false);
+  const [groupCreatedSuccess, setGroupCreatedSuccess] = useState<string | null>(null);
 
   const translateFirebaseError = (error: any) => {
     const code = error.code;
@@ -1105,22 +1115,20 @@ const App: React.FC = () => {
     }
     
     try {
+      let groupData: any = {
+        nombre: newGroupName,
+        entrenador: newCoachName,
+        dias: selectedDays,
+        horario: `${startTime} - ${endTime}`
+      };
+
       if (editingGroup && editingGroup.id) {
-        await updateDocument(COLLECTIONS.GRUPOS, editingGroup.id, {
-          nombre: newGroupName,
-          entrenador: newCoachName,
-          dias: selectedDays,
-          horario: `${startTime} - ${endTime}`
-        });
+        await updateDocument(COLLECTIONS.GRUPOS, editingGroup.id, groupData);
         setNotificacion({ t: "Éxito", d: `Grupo ${newGroupName} actualizado.` });
       } else {
-        await addDocument(COLLECTIONS.GRUPOS, {
-          nombre: newGroupName,
-          entrenador: newCoachName,
-          dias: selectedDays,
-          horario: `${startTime} - ${endTime}`
-        });
+        await addDocument(COLLECTIONS.GRUPOS, groupData);
         setNotificacion({ t: "Éxito", d: `Grupo ${newGroupName} configurado.` });
+        setGroupCreatedSuccess(newGroupName);
       }
       setNewGroupName("");
       setNewCoachName("");
@@ -1547,10 +1555,12 @@ const App: React.FC = () => {
   const handleUpdateStudentGroup = async (studentId: string, groupName: string) => {
     try {
       await updateDocument(COLLECTIONS.ALUMNOS, studentId, { grupo: groupName });
+      setNotificacion({ t: '¡Éxito!', d: groupName === 'Sin Grupo' ? 'Gimnasta desvinculada.' : 'Gimnasta reasignada correctamente.' });
       // Update local state directly for immediate feedback
       setAlumnos(prev => prev.map(a => a.id === studentId ? { ...a, grupo: groupName } : a));
     } catch (error) {
       console.error("Error updating student group:", error);
+      setNotificacion({ t: 'Error', d: 'No se pudo realizar el cambio.' });
     }
   };
 
@@ -2447,6 +2457,7 @@ const App: React.FC = () => {
         fecha: editingClaseId ? (clases.find(c => c.id === editingClaseId)?.fecha || new Date().toISOString()) : new Date().toISOString(),
         grupo: finalGroupName,
         horario: editingClaseId ? (clases.find(c => c.id === editingClaseId)?.horario || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })) : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        ageRange: claseAgeRange,
         entrenador: finalCoachName,
         faseInicial: faseInicial,
         fasePrincipal: fasePrincipal,
@@ -2479,6 +2490,7 @@ const App: React.FC = () => {
       setFaseInicialDuration("15");
       setFasePrincipalDuration("60");
       setFaseFinalDuration("15");
+      setClaseAgeRange("");
       setObjetivos("");
       setObservaciones("");
       setHabilidadesPorAparato({});
@@ -2868,6 +2880,8 @@ const App: React.FC = () => {
             setClaseObjetivos={setObjetivos}
             claseObservaciones={observaciones}
             setClaseObservaciones={setObservaciones}
+            claseAgeRange={claseAgeRange}
+            setClaseAgeRange={setClaseAgeRange}
             habilidadesPorAparato={habilidadesPorAparato}
             setHabilidadesPorAparato={setHabilidadesPorAparato}
             customHabilidad={customHabilidad}
@@ -3058,204 +3072,201 @@ const App: React.FC = () => {
         )}
 
         {vista === 'Emergencias' && (
-          <div className="px-6 py-8 space-y-8 page-transition pb-24">
-            <header className="flex items-center gap-4">
-              <button onClick={() => handleNavigation('Dashboard')} className="w-10 h-10 rounded-full bg-antigravity-charcoal flex items-center justify-center text-primary border border-white/5 active:scale-90 transition-all">
-                <span className="material-icons-outlined">arrow_back</span>
-              </button>
+          <div className="min-h-screen bg-ios-gray px-6 py-8 space-y-8 page-transition pb-24 relative max-w-[600px] mx-auto">
+            <BackButton onClick={() => handleNavigation('Dashboard')} />
+            <header className="flex items-center gap-4 pt-16">
+              <div className="w-14 h-14 bg-ios-red/10 rounded-2xl flex items-center justify-center text-ios-red shadow-sm">
+                <span className="material-icons-outlined text-3xl">emergency</span>
+              </div>
               <div>
-                <h2 className="text-3xl font-black text-white uppercase tracking-tighter">Emergencias</h2>
-                <p className="text-rose-500 text-[10px] font-black uppercase tracking-widest mt-1">Contacto Médico de Urgencia</p>
+                <h2 className="text-2xl font-bold text-black tracking-tight">Emergencias</h2>
+                <p className="text-secondary text-[10px] font-bold uppercase tracking-widest mt-1">Contacto Médico de Urgencia</p>
               </div>
             </header>
 
-            <div className="glass-card rounded-[2.5rem] p-8 space-y-8 border border-rose-500/20 shadow-neon-rose overflow-hidden relative">
-              <div className="absolute -top-20 -right-20 w-64 h-64 bg-rose-500/10 rounded-full blur-3xl"></div>
-              
+            <div className="bg-white rounded-[2.5rem] p-8 space-y-8 border border-black/5 shadow-ios overflow-hidden relative">
               <div className="relative z-10 space-y-8">
-                <div className="flex justify-center">
-                  <div className="w-24 h-24 bg-rose-500/20 rounded-full flex items-center justify-center border-4 border-rose-500/30 shadow-neon-rose animate-pulse">
-                    <span className="material-icons-outlined text-rose-500 text-5xl">emergency</span>
-                  </div>
-                </div>
-
                 {isEditingEmergency ? (
                   <div className="space-y-6">
                     <div className="space-y-4">
-                      <h4 className="text-white font-bold text-sm border-b border-white/10 pb-2">Servicio Público</h4>
+                      <h4 className="text-black font-bold text-xs uppercase tracking-widest border-b border-black/5 pb-2">Servicio Público</h4>
                       <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-white/70 uppercase tracking-widest px-2">Nombre</label>
+                        <label className="text-[10px] font-bold text-secondary uppercase tracking-widest px-2">Nombre</label>
                         <input 
                           type="text" 
                           value={emergencyInfo.publicProvider}
                           onChange={(e) => setEmergencyInfo({...emergencyInfo, publicProvider: e.target.value})}
-                          className="w-full bg-white/10 border rounded-2xl px-4 py-3 text-white text-sm transition-colors border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
+                          className="w-full bg-ios-gray border-none rounded-2xl px-4 py-4 text-black text-sm font-medium outline-none focus:ring-2 focus:ring-ios-blue/10 transition-all"
                           placeholder="Ej. SAME"
                         />
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-white/70 uppercase tracking-widest px-2">Teléfono</label>
+                        <label className="text-[10px] font-bold text-secondary uppercase tracking-widest px-2">Teléfono</label>
                         <input 
                           type="tel" 
                           value={emergencyInfo.publicPhone}
                           onChange={(e) => setEmergencyInfo({...emergencyInfo, publicPhone: e.target.value})}
-                          className="w-full bg-white/10 border rounded-2xl px-4 py-3 text-white text-sm transition-colors border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
+                          className="w-full bg-ios-gray border-none rounded-2xl px-4 py-4 text-black text-sm font-medium outline-none focus:ring-2 focus:ring-ios-blue/10 transition-all font-mono"
                           placeholder="Ej. 107"
                         />
                       </div>
                     </div>
 
                     <div className="space-y-4">
-                      <h4 className="text-white font-bold text-sm border-b border-white/10 pb-2">Servicio Privado</h4>
+                      <h4 className="text-black font-bold text-xs uppercase tracking-widest border-b border-black/5 pb-2">Servicio Privado</h4>
                       <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-white/70 uppercase tracking-widest px-2">Nombre</label>
+                        <label className="text-[10px] font-bold text-secondary uppercase tracking-widest px-2">Nombre</label>
                         <input 
                           type="text" 
                           value={emergencyInfo.privateProvider}
                           onChange={(e) => setEmergencyInfo({...emergencyInfo, privateProvider: e.target.value})}
-                          className="w-full bg-white/10 border rounded-2xl px-4 py-3 text-white text-sm transition-colors border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
+                          className="w-full bg-ios-gray border-none rounded-2xl px-4 py-4 text-black text-sm font-medium outline-none focus:ring-2 focus:ring-ios-blue/10 transition-all"
                           placeholder="Ej. SIPEM, OSDE..."
                         />
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-white/70 uppercase tracking-widest px-2">Teléfono</label>
+                        <label className="text-[10px] font-bold text-secondary uppercase tracking-widest px-2">Teléfono</label>
                         <input 
                           type="tel" 
                           value={emergencyInfo.privatePhone}
                           onChange={(e) => setEmergencyInfo({...emergencyInfo, privatePhone: e.target.value})}
-                          className="w-full bg-white/10 border rounded-2xl px-4 py-3 text-white text-sm transition-colors border-neon-blue focus:border-neon-blue focus:ring-1 focus:ring-neon-blue/50 outline-none"
+                          className="w-full bg-ios-gray border-none rounded-2xl px-4 py-4 text-black text-sm font-medium outline-none focus:ring-2 focus:ring-ios-blue/10 transition-all font-mono"
                           placeholder="Ej. 0800-..."
                         />
                       </div>
                     </div>
 
-                    <button 
+                    <Button 
                       onClick={async () => {
                         try {
                           await setDoc(doc(firestore, COLLECTIONS.CONFIG, 'emergency'), emergencyInfo);
                           setIsEditingEmergency(false);
-                          setNotificacion({ t: "Configuración Guardada", d: "Números de emergencia actualizados." });
+                          setNotificacion({ t: "Guardado", d: "Números de emergencia actualizados." });
                           setTimeout(() => setNotificacion(null), 3000);
                         } catch (e) {
                           console.error("Error saving emergency info", e);
                         }
                       }}
-                      className="w-full py-4 rounded-2xl bg-rose-500 text-white font-black uppercase text-xs tracking-widest shadow-neon-rose active:scale-95 transition-all mt-4"
+                      className="w-full !rounded-[1.5rem]"
                     >
                       Guardar Configuración
-                    </button>
+                    </Button>
                   </div>
                 ) : (
-                  <div className="text-center space-y-8">
-                    {/* Public Emergency */}
-                    <div className="space-y-4">
+                  <div className="text-center space-y-10">
+                    <div className="space-y-6">
                       <div>
-                        <h3 className="text-white/60 text-sm font-bold uppercase tracking-widest mb-1">{emergencyInfo.publicProvider}</h3>
+                        <h3 className="text-secondary text-[10px] font-bold uppercase tracking-[0.2em] mb-2">{emergencyInfo.publicProvider}</h3>
                         <a 
                           href={`tel:${emergencyInfo.publicPhone}`}
-                          className="block text-5xl font-black text-white tracking-tighter hover:text-rose-400 transition-colors"
+                          className="block text-6xl font-bold text-black tracking-tighter active:scale-95 transition-all"
                         >
                           {emergencyInfo.publicPhone}
                         </a>
                       </div>
-                      
                       <a 
                         href={`tel:${emergencyInfo.publicPhone}`}
-                        className="w-full py-4 rounded-2xl bg-rose-500 text-white font-black uppercase text-sm tracking-widest shadow-neon-rose active:scale-95 transition-all flex items-center justify-center gap-3"
+                        className="w-full py-5 rounded-[1.5rem] bg-ios-red text-white font-bold uppercase text-xs tracking-widest shadow-lg active:scale-95 transition-all flex items-center justify-center gap-3"
                       >
                         <span className="material-icons-outlined">call</span>
-                        Llamar a {emergencyInfo.publicProvider}
+                        Llamar ahora
                       </a>
                     </div>
-
-                    <div className="h-px w-full bg-white/10"></div>
-
-                    {/* Private Emergency */}
-                    <div className="space-y-4">
+                    <div className="h-px w-full bg-black/5"></div>
+                    <div className="space-y-6">
                       <div>
-                        <h3 className="text-white/60 text-sm font-bold uppercase tracking-widest mb-1">{emergencyInfo.privateProvider}</h3>
+                        <h3 className="text-secondary text-[10px] font-bold uppercase tracking-[0.2em] mb-2">{emergencyInfo.privateProvider}</h3>
                         <a 
                           href={`tel:${emergencyInfo.privatePhone}`}
-                          className="block text-4xl font-black text-white tracking-tighter hover:text-rose-400 transition-colors"
+                          className="block text-4xl font-bold text-black tracking-tight active:scale-95 transition-all"
                         >
                           {emergencyInfo.privatePhone}
                         </a>
                       </div>
-                      
                       <a 
                         href={`tel:${emergencyInfo.privatePhone}`}
-                        className="w-full py-4 rounded-2xl bg-white/10 text-white border border-white/20 font-black uppercase text-sm tracking-widest active:scale-95 transition-all flex items-center justify-center gap-3"
+                        className="w-full py-5 rounded-[1.5rem] bg-ios-gray text-secondary border border-black/5 font-bold uppercase text-xs tracking-widest active:scale-95 transition-all flex items-center justify-center gap-3"
                       >
                         <span className="material-icons-outlined">call</span>
-                        Llamar a {emergencyInfo.privateProvider}
+                        {emergencyInfo.privateProvider}
                       </a>
                     </div>
-
                     <button 
                       onClick={() => setIsEditingEmergency(true)}
-                      className="text-[10px] text-white/70 uppercase tracking-widest font-bold hover:text-white transition-colors flex items-center justify-center gap-1 mx-auto pt-4"
+                      className="text-[10px] text-ios-blue font-bold uppercase tracking-widest hover:underline flex items-center justify-center gap-1 mx-auto pt-4"
                     >
-                      <span className="material-icons-outlined text-[14px]">edit</span>
+                      <span className="material-icons-outlined text-sm">edit</span>
                       Configurar Números
                     </button>
                   </div>
                 )}
               </div>
             </div>
-
             <div className="p-6 text-center opacity-40">
-              <p className="text-[10px] text-white/60">En caso de emergencia médica grave, contacte inmediatamente a los servicios de salud locales.</p>
+              <p className="text-[10px] text-secondary font-medium italic">En caso de emergencia médica grave, contacte inmediatamente a los servicios de salud locales.</p>
             </div>
           </div>
         )}
 
         {vista === 'Ajustes' && (
-          <div className="px-6 py-8 space-y-8 page-transition pb-24">
-            <header>
-              <h2 className="text-3xl font-black text-white uppercase tracking-tighter">Ajustes</h2>
-              <p className="text-primary text-[10px] font-black uppercase tracking-widest mt-1">Configuración del Sistema</p>
+          <div className="min-h-screen bg-ios-gray px-6 py-8 space-y-8 page-transition pb-24 relative max-w-[600px] mx-auto">
+            <BackButton onClick={() => handleNavigation('Dashboard')} />
+            <header className="flex items-center gap-4 pt-16">
+              <div className="w-14 h-14 bg-ios-blue/10 rounded-2xl flex items-center justify-center text-ios-blue shadow-sm">
+                <span className="material-icons-outlined text-3xl">settings</span>
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-black tracking-tight">Ajustes</h2>
+                <p className="text-secondary text-[10px] font-bold uppercase tracking-widest mt-1">Configuración del Sistema</p>
+              </div>
             </header>
 
-            <div className="glass-card rounded-[2.5rem] p-8 space-y-8">
+            <div className="bg-white rounded-[2.5rem] p-8 space-y-10 border border-black/5 shadow-ios">
               {/* Perfil */}
               <div className="space-y-4">
-                <h3 className="text-white/70 text-[10px] font-bold uppercase tracking-widest px-2">Perfil de Usuario</h3>
-                <div className="flex items-center gap-4 p-4 bg-white/5 rounded-2xl border border-white/10">
-                  <div className="w-12 h-12 bg-primary/20 rounded-xl flex items-center justify-center border border-primary/30">
-                    <span className="material-icons-outlined text-primary text-2xl">person</span>
+                <h3 className="text-secondary text-[10px] font-bold uppercase tracking-widest px-2">Perfil de Usuario</h3>
+                <div className="flex items-center gap-5 p-5 bg-ios-gray rounded-[1.5rem] border border-black/5">
+                  <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center text-secondary shadow-sm">
+                    <span className="material-icons-outlined text-3xl">person</span>
                   </div>
                   <div className="flex-1 overflow-hidden">
-                    <p className="text-sm font-bold text-white uppercase tracking-wider truncate">{user?.displayName || (userRole === 'Coordinator' ? 'Coordinador General' : 'Entrenador Pro')}</p>
-                    <p className="text-[10px] text-white/60 truncate mt-0.5">{user?.email || 'usuario@gymcoach.pro'}</p>
+                    <p className="text-base font-bold text-black tracking-tight truncate">{user?.displayName || (userRole === 'Coordinator' ? 'Coordinador General' : 'Entrenador Pro')}</p>
+                    <p className="text-xs text-secondary truncate mt-0.5">{user?.email || 'usuario@gymcoach.pro'}</p>
                   </div>
                 </div>
               </div>
 
               {/* Preferencias */}
               <div className="space-y-4">
-                <h3 className="text-white/70 text-[10px] font-bold uppercase tracking-widest px-2">Preferencias</h3>
+                <div className="flex justify-between items-center px-2">
+                  <h3 className="text-secondary text-[10px] font-bold uppercase tracking-widest">Preferencias</h3>
+                </div>
                 
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/10">
-                    <div className="flex items-center gap-3">
-                      <span className="material-icons-outlined text-white/60 text-lg">dark_mode</span>
-                      <span className="text-xs font-medium text-white">Modo Oscuro</span>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between p-5 bg-ios-gray rounded-2xl border border-black/5">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-secondary shadow-sm">
+                        <span className="material-icons-outlined text-xl">dark_mode</span>
+                      </div>
+                      <span className="text-sm font-bold text-black">Modo Claro (iOS Style)</span>
                     </div>
-                    <div className="w-10 h-6 bg-primary rounded-full relative shadow-neon-cyan">
-                      <div className="absolute right-1 top-1 w-4 h-4 bg-antigravity-black rounded-full"></div>
+                    <div className="w-12 h-6 bg-ios-blue rounded-full relative transition-all">
+                      <div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full shadow-sm"></div>
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/10">
-                    <div className="flex items-center gap-3">
-                      <span className="material-icons-outlined text-white/60 text-lg">notifications</span>
-                      <span className="text-xs font-medium text-white">Notificaciones Push</span>
+                  <div className="flex items-center justify-between p-5 bg-ios-gray rounded-2xl border border-black/5">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-secondary shadow-sm">
+                        <span className="material-icons-outlined text-xl">notifications</span>
+                      </div>
+                      <span className="text-sm font-bold text-black">Notificaciones Push</span>
                     </div>
-                    <div className="w-10 h-6 bg-primary rounded-full relative shadow-neon-cyan cursor-pointer" onClick={() => {
-                      setNotificacion({ t: "Info", d: "Las notificaciones están activadas." });
+                    <div className="w-12 h-6 bg-ios-blue rounded-full relative cursor-pointer shadow-inner" onClick={() => {
+                      setNotificacion({ t: "Info", d: "Notificaciones activadas." });
                       setTimeout(() => setNotificacion(null), 3000);
                     }}>
-                      <div className="absolute right-1 top-1 w-4 h-4 bg-antigravity-black rounded-full"></div>
+                      <div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full shadow-sm"></div>
                     </div>
                   </div>
                 </div>
@@ -3263,126 +3274,125 @@ const App: React.FC = () => {
 
               {/* Datos */}
               <div className="space-y-4">
-                <h3 className="text-white/70 text-[10px] font-bold uppercase tracking-widest px-2">Gestión de Datos</h3>
-                <button 
-                  onClick={() => {
-                    const data = { alumnos, clases, grupos, profesores: profesoresList };
-                    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `gymcoach_backup_${new Date().toISOString().split('T')[0]}.json`;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    URL.revokeObjectURL(url);
-                    setNotificacion({ t: "Éxito", d: "Copia de seguridad descargada." });
-                    setTimeout(() => setNotificacion(null), 3000);
-                  }}
-                  className="w-full flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/10 active:scale-95 transition-all"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="material-icons-outlined text-neon-cyan text-lg">cloud_download</span>
-                    <span className="text-xs font-medium text-white">Exportar Copia de Seguridad</span>
-                  </div>
-                  <span className="material-icons-outlined text-white/60 text-sm">chevron_right</span>
-                </button>
-
-                <div className="relative">
-                  <input 
-                    type="file" 
-                    id="import-backup" 
-                    className="hidden" 
-                    accept=".json"
-                    onChange={handleImportBackup}
-                  />
-                  <label 
-                    htmlFor="import-backup"
-                    className="w-full flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/10 active:scale-95 transition-all cursor-pointer"
+                <h3 className="text-secondary text-[10px] font-bold uppercase tracking-widest px-2">Copias de Seguridad</h3>
+                
+                <div className="grid grid-cols-1 gap-3">
+                  <button 
+                    onClick={() => {
+                      const data = { alumnos, clases, grupos, profesores: profesoresList };
+                      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `gymcoach_backup_${new Date().toISOString().split('T')[0]}.json`;
+                      document.body.appendChild(a);
+                      a.click();
+                      document.body.removeChild(a);
+                      URL.revokeObjectURL(url);
+                      setNotificacion({ t: "Éxito", d: "Backup descargado." });
+                      setTimeout(() => setNotificacion(null), 3000);
+                    }}
+                    className="w-full flex items-center justify-between p-5 bg-ios-gray rounded-2xl border border-black/5 active:bg-black/5 transition-all text-left group"
                   >
-                    <div className="flex items-center gap-3">
-                      <span className="material-icons-outlined text-primary text-lg">cloud_upload</span>
-                      <span className="text-xs font-medium text-white">Importar Copia de Seguridad</span>
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-ios-blue shadow-sm group-hover:scale-110 transition-transform">
+                        <span className="material-icons-outlined text-xl">cloud_download</span>
+                      </div>
+                      <span className="text-sm font-bold text-black">Exportar JSON</span>
                     </div>
-                    <span className="material-icons-outlined text-white/60 text-sm">chevron_right</span>
-                  </label>
+                    <span className="material-icons-outlined text-black/10">chevron_right</span>
+                  </button>
+
+                  <div className="relative">
+                    <input 
+                      type="file" 
+                      id="import-backup" 
+                      className="hidden" 
+                      accept=".json"
+                      onChange={handleImportBackup}
+                    />
+                    <label 
+                      htmlFor="import-backup"
+                      className="w-full flex items-center justify-between p-5 bg-ios-gray rounded-2xl border border-black/5 active:bg-black/5 transition-all cursor-pointer group"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-secondary shadow-sm group-hover:scale-110 transition-transform">
+                          <span className="material-icons-outlined text-xl">cloud_upload</span>
+                        </div>
+                        <span className="text-sm font-bold text-black">Importar JSON</span>
+                      </div>
+                      <span className="material-icons-outlined text-black/10">chevron_right</span>
+                    </label>
+                  </div>
                 </div>
               </div>
 
               {/* Configuración de Listas */}
-              <div className="space-y-4">
-                <h3 className="text-white/70 text-[10px] font-bold uppercase tracking-widest px-2">Configuración de Listas</h3>
+              <div className="space-y-6">
+                <h3 className="text-secondary text-[10px] font-bold uppercase tracking-widest px-2">Opciones de Listas</h3>
                 
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <EditableDropdown 
-                      label="Niveles"
-                      options={niveles}
-                      value={selectedNivelToManage}
-                      onChange={setSelectedNivelToManage}
-                      onAdd={handleSaveLevel}
-                      onEdit={handleUpdateLevel}
-                      onDelete={handleDeleteLevel}
-                      placeholder="Gestionar Niveles..."
-                    />
-                  </div>
+                <div className="space-y-6">
+                  <EditableDropdown 
+                    label="Niveles Deportivos"
+                    options={niveles}
+                    value={selectedNivelToManage}
+                    onChange={setSelectedNivelToManage}
+                    onAdd={handleSaveLevel}
+                    onEdit={handleUpdateLevel}
+                    onDelete={handleDeleteLevel}
+                    placeholder="Gestionar..."
+                  />
 
-                  <div className="space-y-2">
-                    <EditableDropdown 
-                      label="Disciplinas"
-                      options={disciplinas}
-                      value={selectedDisciplinaToManage}
-                      onChange={setSelectedDisciplinaToManage}
-                      onAdd={handleSaveDiscipline}
-                      onEdit={handleUpdateDiscipline}
-                      onDelete={handleDeleteDiscipline}
-                      placeholder="Gestionar Disciplinas..."
-                    />
-                  </div>
+                  <EditableDropdown 
+                    label="Disciplinas"
+                    options={disciplinas}
+                    value={selectedDisciplinaToManage}
+                    onChange={setSelectedDisciplinaToManage}
+                    onAdd={handleSaveDiscipline}
+                    onEdit={handleUpdateDiscipline}
+                    onDelete={handleDeleteDiscipline}
+                    placeholder="Gestionar..."
+                  />
 
-                  <div className="space-y-2">
-                    <EditableDropdown 
-                      label="Opciones de Entrada en Calor"
-                      options={warmupOptions}
-                      value={selectedWarmupToManage}
-                      onChange={setSelectedWarmupToManage}
-                      onAdd={handleSaveWarmupOption}
-                      onEdit={handleUpdateWarmupOption}
-                      onDelete={handleDeleteWarmupOption}
-                      placeholder="Gestionar Entrada en Calor..."
-                    />
-                  </div>
+                  <EditableDropdown 
+                    label="Entradas en Calor"
+                    options={warmupOptions}
+                    value={selectedWarmupToManage}
+                    onChange={setSelectedWarmupToManage}
+                    onAdd={handleSaveWarmupOption}
+                    onEdit={handleUpdateWarmupOption}
+                    onDelete={handleDeleteWarmupOption}
+                    placeholder="Gestionar..."
+                  />
 
-                  <div className="space-y-2">
-                    <EditableDropdown 
-                      label="Opciones de Vuelta a la Calma"
-                      options={cooldownOptions}
-                      value={selectedCooldownToManage}
-                      onChange={setSelectedCooldownToManage}
-                      onAdd={handleSaveCooldownOption}
-                      onEdit={handleUpdateCooldownOption}
-                      onDelete={handleDeleteCooldownOption}
-                      placeholder="Gestionar Vuelta a la Calma..."
-                    />
-                  </div>
+                  <EditableDropdown 
+                    label="Vueltas a la Calma"
+                    options={cooldownOptions}
+                    value={selectedCooldownToManage}
+                    onChange={setSelectedCooldownToManage}
+                    onAdd={handleSaveCooldownOption}
+                    onEdit={handleUpdateCooldownOption}
+                    onDelete={handleDeleteCooldownOption}
+                    placeholder="Gestionar..."
+                  />
                 </div>
               </div>
 
               {/* Sesión */}
-              <div className="pt-4 border-t border-white/10">
+              <div className="pt-8 border-t border-black/5">
                 <button 
                   onClick={handleLogout}
-                  className="w-full py-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-500 font-black uppercase text-[10px] tracking-[0.2em] flex items-center justify-center gap-3 active:scale-95 transition-all"
+                  className="w-full py-5 rounded-[1.5rem] bg-ios-red/10 text-ios-red font-bold uppercase text-[10px] tracking-widest flex items-center justify-center gap-3 active:scale-95 transition-all shadow-sm"
                 >
-                  <span className="material-icons-outlined text-sm">logout</span>
-                  Cerrar Sesión
+                  <span className="material-icons-outlined text-lg">logout_variant</span>
+                  Cerrar sesión segura
                 </button>
               </div>
             </div>
 
-            <div className="p-6 text-center opacity-40">
-              <p className="text-[9px] font-black uppercase tracking-[0.5em] text-white mb-2">GymCoach Pro v2.0 Cloud</p>
-              <p className="text-[8px] text-white/40 uppercase tracking-widest">© 2026 Antigravity Labs • Todos los derechos reservados</p>
+            <div className="p-10 text-center opacity-30 space-y-1">
+              <p className="text-[10px] font-bold text-black uppercase tracking-[0.3em]">GymCoach Pro 2.0</p>
+              <p className="text-[9px] text-secondary font-medium uppercase tracking-widest">Plataforma de Alto Rendimiento</p>
             </div>
           </div>
         )}
@@ -3396,30 +3406,78 @@ const App: React.FC = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20 }}
-            className="fixed bottom-28 left-6 right-6 z-[80] glass-card rounded-3xl p-6 border border-primary/30 shadow-neon-cyan overflow-hidden"
+            className="fixed bottom-28 left-6 right-6 z-[80] bg-white rounded-[2rem] p-6 border border-black/5 shadow-2xl overflow-hidden"
           >
-            <div className="absolute top-0 right-0 p-2">
+            <div className="absolute top-0 right-0 p-4">
               <button 
                 onClick={() => {
                   setStudentGuideCount(3);
                   localStorage.setItem('student_guide_count', '3');
                 }} 
-                className="text-white/30 hover:text-white"
+                className="text-black/10 hover:text-black transition-all"
               >
                 <span className="material-icons-outlined text-sm">close</span>
               </button>
             </div>
-            <div className="flex gap-4">
-              <div className="w-12 h-12 bg-primary/20 rounded-2xl flex items-center justify-center border border-primary/30 shrink-0">
-                <span className="material-icons-outlined text-primary">info</span>
+            <div className="flex gap-5">
+              <div className="w-12 h-12 bg-ios-blue/10 rounded-2xl flex items-center justify-center text-ios-blue shrink-0">
+                <span className="material-icons-outlined">info</span>
               </div>
-              <div className="space-y-1">
-                <h4 className="text-sm font-black text-white uppercase tracking-tight">Datos Importantes</h4>
-                <p className="text-[10px] text-white/70 leading-relaxed italic">
-                  Es clave cargar: <span className="text-primary font-bold">Nombre completo, fecha de nacimiento, contacto de emergencia, observaciones de salud</span> y datos deportivos como <span className="text-primary font-bold">nivel y grupo</span>.
+              <div className="space-y-1 pr-6">
+                <h4 className="text-sm font-bold text-black tracking-tight">Consejo de Registro</h4>
+                <p className="text-xs text-secondary leading-relaxed">
+                  Asegúrate de incluir <span className="font-bold text-black">contacto de salud</span> y <span className="font-bold text-black">nivel deportivo</span> para un seguimiento preciso.
                 </p>
               </div>
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Group Created Success Overlay */}
+      <AnimatePresence>
+        {groupCreatedSuccess && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[110] bg-white/80 backdrop-blur-xl flex items-center justify-center p-6"
+          >
+            <motion.div 
+              initial={{ scale: 0.9, y: 30 }}
+              animate={{ scale: 1, y: 0 }}
+              className="bg-white w-full max-w-sm rounded-[3rem] p-10 border border-black/5 text-center space-y-8 shadow-2xl"
+            >
+              <div className="w-24 h-24 bg-ios-green/10 rounded-full flex items-center justify-center text-ios-green mx-auto border-4 border-ios-green/10">
+                <span className="material-icons-outlined text-5xl">check_circle</span>
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-2xl font-bold text-black tracking-tight leading-none">¡Grupo Creado!</h3>
+                <p className="text-secondary text-xs">Has creado el grupo <span className="text-black font-bold">{groupCreatedSuccess}</span> con éxito.</p>
+              </div>
+              <div className="space-y-3">
+                <Button 
+                  onClick={() => {
+                    const group = groupCreatedSuccess;
+                    setGroupCreatedSuccess(null);
+                    setStudentForm({ ...studentForm, grupo: group });
+                    setVista('RegistroAlumno');
+                  }}
+                  className="w-full !py-6"
+                >
+                  Inscribir Alumnas ahora
+                </Button>
+                <button 
+                  onClick={() => {
+                    setGroupCreatedSuccess(null);
+                    setVista('Dashboard');
+                  }}
+                  className="w-full py-4 text-[10px] font-bold uppercase tracking-widest text-secondary hover:text-black transition-all"
+                >
+                  Volver al Inicio
+                </button>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -3431,80 +3489,80 @@ const App: React.FC = () => {
             initial={{ opacity: 0 }} 
             animate={{ opacity: 1 }} 
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[1000] bg-antigravity-black flex items-center justify-center p-6"
+            className="fixed inset-0 z-[1000] bg-white/80 backdrop-blur-3xl flex items-center justify-center p-6"
           >
             <motion.div 
               initial={{ scale: 0.9, y: 20 }}
               animate={{ scale: 1, y: 0 }}
-              className="glass-card w-full max-w-lg rounded-[3rem] p-10 border border-white/10 space-y-8"
+              className="bg-white w-full max-w-lg rounded-[3rem] p-10 border border-black/5 space-y-8 shadow-2xl"
             >
               {onboardingStep === 1 && (
-                <div className="text-center space-y-6">
-                  <div className="w-20 h-20 bg-gradient-to-br from-primary to-neon-blue rounded-3xl flex items-center justify-center shadow-neon-cyan border border-white/20 mx-auto">
-                    <span className="material-icons-outlined text-antigravity-black text-4xl">fitness_center</span>
+                <div className="text-center space-y-8">
+                  <div className="w-24 h-24 bg-ios-blue/10 rounded-[2rem] flex items-center justify-center text-ios-blue shadow-sm mx-auto border border-ios-blue/5">
+                    <span className="material-icons-outlined text-5xl">rocket_launch</span>
                   </div>
                   <div className="space-y-3">
-                    <h2 className="text-3xl font-black text-white uppercase tracking-tighter">¡Bienvenido/a, {user?.displayName?.split(' ')[0] || 'Profesor'}!</h2>
-                    <p className="text-white/60 text-sm leading-relaxed">En 4 pasos simples vas a tener tu gimnasio configurado y listo para usar.</p>
+                    <h2 className="text-3xl font-bold text-black tracking-tight">¡Bienvenido/a!</h2>
+                    <p className="text-secondary text-sm leading-relaxed px-4">Configura tu gimnasio en solo 4 pasos para comenzar a gestionar tus clases de forma profesional.</p>
                   </div>
                   <div className="space-y-4">
-                    <button 
+                    <Button 
                       onClick={() => setOnboardingStep(2)}
-                      className="w-full py-5 rounded-[2rem] bg-primary text-antigravity-black font-black uppercase tracking-[0.2em] shadow-neon-cyan-strong active:scale-95 transition-all"
+                      className="w-full !py-6 !rounded-[1.5rem]"
                     >
-                      Empezar configuración
-                    </button>
+                      Empezar Configuración
+                    </Button>
                     <button 
                       onClick={() => setOnboardingStep(0)}
-                      className="w-full py-4 text-[10px] font-black text-white/40 uppercase tracking-[0.2em] bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 transition-all"
+                      className="w-full py-2 text-[10px] font-bold text-secondary uppercase tracking-widest hover:text-black transition-all"
                     >
-                      Omitir — ya tengo grupos
+                      Omitir por ahora
                     </button>
                   </div>
                 </div>
               )}
 
               {onboardingStep === 2 && (
-                <div className="space-y-6">
+                <div className="space-y-8">
                   <div className="space-y-2">
-                    <h2 className="text-2xl font-black text-white uppercase tracking-tighter">Primero, creá tu grupo</h2>
-                    <p className="text-white/60 text-xs">Un grupo es el conjunto de alumnos que entrenan juntos en el mismo horario. Por ejemplo: 'Lunes y Miércoles 17hs'.</p>
+                    <h2 className="text-2xl font-bold text-black tracking-tight">Crea tu primer grupo</h2>
+                    <p className="text-secondary text-xs">Un grupo organiza a tus gimnastas por horario o nivel. <br/>Ej: 'Escuelita Martes y Jueves'.</p>
                   </div>
-                  <div className="space-y-4">
-                    <input 
-                      placeholder="Nombre del grupo (ej: Principiantes)" 
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-white placeholder:text-white/20 outline-none focus:border-primary/50 transition-all font-bold"
-                      value={nuevoGrupoNombre}
-                      onChange={(e) => setNuevoGrupoNombre(e.target.value)}
-                    />
-                    <div className="grid grid-cols-2 gap-4">
-                       <input 
-                        placeholder="Días (ej: Lu, Mi)" 
-                        className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-white placeholder:text-white/20 outline-none focus:border-primary/50 transition-all text-xs font-bold"
-                        value={nuevoGrupoDias}
-                        onChange={(e) => setNuevoGrupoDias(e.target.value)}
-                      />
+                  <div className="space-y-5">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-secondary uppercase tracking-widest ml-2">Nombre del Grupo</label>
                       <input 
-                        placeholder="Horario (ej: 17:00)" 
-                        className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-white placeholder:text-white/20 outline-none focus:border-primary/50 transition-all text-xs font-bold font-mono"
-                        value={nuevoGrupoHorario}
-                        onChange={(e) => setNuevoGrupoHorario(e.target.value)}
+                        placeholder="Ej: Nivel Inicial" 
+                        className="w-full bg-ios-gray border-none rounded-2xl p-5 text-black placeholder:text-secondary/40 outline-none focus:ring-2 focus:ring-ios-blue/10 transition-all font-bold"
+                        value={nuevoGrupoNombre}
+                        onChange={(e) => setNuevoGrupoNombre(e.target.value)}
                       />
                     </div>
+                    <div className="grid grid-cols-2 gap-4">
+                       <div className="space-y-1">
+                          <label className="text-[10px] font-bold text-secondary uppercase tracking-widest ml-2">Días</label>
+                          <input 
+                            placeholder="Ej: Lu, Mi, Vi" 
+                            className="w-full bg-ios-gray border-none rounded-2xl p-5 text-black placeholder:text-secondary/40 outline-none focus:ring-2 focus:ring-ios-blue/10 transition-all text-xs font-bold"
+                            value={nuevoGrupoDias}
+                            onChange={(e) => setNuevoGrupoDias(e.target.value)}
+                          />
+                       </div>
+                       <div className="space-y-1">
+                          <label className="text-[10px] font-bold text-secondary uppercase tracking-widest ml-2">Horario</label>
+                          <input 
+                            placeholder="Ej: 17:00" 
+                            className="w-full bg-ios-gray border-none rounded-2xl p-5 text-black placeholder:text-secondary/40 outline-none focus:ring-2 focus:ring-ios-blue/10 transition-all text-xs font-bold font-mono"
+                            value={nuevoGrupoHorario}
+                            onChange={(e) => setNuevoGrupoHorario(e.target.value)}
+                          />
+                       </div>
+                    </div>
                   </div>
-                  <button 
+                  <Button 
                     onClick={async () => {
                       if (nuevoGrupoNombre.trim()) {
-                        // Prepare state for handleSaveGroup
-                        setNewGroupName(nuevoGrupoNombre);
-                        setNewCoachName(user?.displayName || "Profesor");
-                        // We need to convert dias to array for the existing function
                         const daysArray = nuevoGrupoDias.split(',').map(d => d.trim()).filter(d => d);
-                        setSelectedDays(daysArray.length > 0 ? daysArray : ['Lu', 'Mi']);
-                        setStartTime(nuevoGrupoHorario);
-                        
-                        // Small delay to ensure state updates (or we can just call the logic directly)
-                        // Actually, better to just implement the logic here for onboarding to be safe
                         try {
                           await addDocument(COLLECTIONS.GRUPOS, {
                             nombre: nuevoGrupoNombre,
@@ -3514,62 +3572,72 @@ const App: React.FC = () => {
                           });
                           loadData();
                           setOnboardingStep(3);
-                        } catch (e) {
-                          console.error("Onboarding group error:", e);
-                        }
+                        } catch (e) { console.error(e); }
                       }
                     }}
-                    className="w-full py-5 rounded-[2rem] bg-emerald-500 text-antigravity-black font-black uppercase tracking-[0.2em] shadow-neon-cyan active:scale-95 transition-all"
+                    className="w-full !py-6 !rounded-[1.5rem]"
                   >
-                    Crear grupo y continuar
-                  </button>
+                    Crear y Continuar
+                  </Button>
                 </div>
               )}
 
               {onboardingStep === 3 && (
-                <div className="text-center space-y-8">
-                  <div className="space-y-3">
-                    <h2 className="text-2xl font-black text-white uppercase tracking-tighter">Ahora agregá tus gimnastas</h2>
-                    <p className="text-white/60 text-xs leading-relaxed">Podés agregar de a uno o importar una lista desde un archivo CSV.</p>
-                  </div>
+                <div className="text-center space-y-10">
                   <div className="space-y-4">
+                    <h2 className="text-3xl font-bold text-black tracking-tight">Agrega gimnastas</h2>
+                    <p className="text-secondary text-sm px-6">Ahora que tienes un grupo, ¡falta el equipo! Elige cómo quieres registrarlas.</p>
+                  </div>
+                  <div className="space-y-4 px-2">
                     <button 
                       onClick={() => { setVista('RegistroAlumno'); setOnboardingStep(0); }}
-                      className="w-full py-5 rounded-2xl bg-white/5 border border-white/10 text-white font-bold uppercase tracking-widest hover:bg-white/10 transition-all"
+                      className="w-full flex items-center justify-between p-6 bg-ios-gray rounded-[1.5rem] border border-black/5 hover:bg-black/5 transition-all text-left"
                     >
-                      Agregar una por una
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-ios-blue shadow-sm">
+                          <span className="material-icons-outlined">person_add</span>
+                        </div>
+                        <span className="text-sm font-bold text-black">Una por una</span>
+                      </div>
+                      <span className="material-icons-outlined text-black/10">chevron_right</span>
                     </button>
                     <button 
                       onClick={() => { setIsBulkImporting(true); setOnboardingStep(4); }}
-                      className="w-full py-5 rounded-2xl bg-white/5 border border-white/10 text-white font-bold uppercase tracking-widest hover:bg-white/10 transition-all"
+                      className="w-full flex items-center justify-between p-6 bg-ios-gray rounded-[1.5rem] border border-black/5 hover:bg-black/5 transition-all text-left"
                     >
-                      Importar lista CSV
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-secondary shadow-sm">
+                          <span className="material-icons-outlined">upload_file</span>
+                        </div>
+                        <span className="text-sm font-bold text-black">Importar Excel/CSV</span>
+                      </div>
+                      <span className="material-icons-outlined text-black/10">chevron_right</span>
                     </button>
                     <button 
-                      onClick={() => setOnboardingStep(4)}
-                      className="w-full py-2 text-[10px] font-black text-white/30 uppercase tracking-[0.3em] hover:text-white transition-all"
+                      onClick={() => setOnboardingStep(0)}
+                      className="text-[10px] font-bold text-secondary uppercase tracking-widest hover:text-black transition-all pt-4"
                     >
-                      Omitir por ahora, lo hago después
+                      Lo haré más tarde
                     </button>
                   </div>
                 </div>
               )}
 
               {onboardingStep === 4 && (
-                <div className="text-center space-y-8">
-                  <div className="w-24 h-24 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto border border-emerald-500/30 animate-in zoom-in duration-500">
-                    <span className="material-icons-outlined text-emerald-500 text-6xl">check_circle</span>
+                <div className="text-center space-y-10">
+                  <div className="w-28 h-28 bg-ios-green/10 rounded-full flex items-center justify-center mx-auto border-4 border-ios-green/10">
+                    <span className="material-icons-outlined text-ios-green text-6xl">verified</span>
                   </div>
                   <div className="space-y-3">
-                    <h2 className="text-3xl font-black text-white uppercase tracking-tighter">¡Todo listo!</h2>
-                    <p className="text-white/60 text-sm leading-relaxed">Ya podés empezar a usar GymCoach Pro. <br/>Recordá que podés completar los datos de tus alumnas en cualquier momento.</p>
+                    <h2 className="text-3xl font-bold text-black tracking-tight">¡Genial!</h2>
+                    <p className="text-secondary text-sm leading-relaxed px-4">Ya tienes todo configurado. Recuerda que siempre puedes editar tus grupos y gimnastas en el menú.</p>
                   </div>
-                  <button 
+                  <Button 
                     onClick={() => { setOnboardingStep(0); setVista('Dashboard'); }}
-                    className="w-full py-5 rounded-[2rem] bg-primary text-antigravity-black font-black uppercase tracking-[0.2em] shadow-neon-cyan-strong active:scale-95 transition-all"
+                    className="w-full !py-6 !rounded-[1.5rem]"
                   >
-                    Ir al inicio
-                  </button>
+                    Ir al Dashboard
+                  </Button>
                 </div>
               )}
             </motion.div>
@@ -3591,14 +3659,14 @@ const App: React.FC = () => {
               initial={{ y: 100, opacity: 0, scale: 0.95 }}
               animate={{ y: 0, opacity: 1, scale: 1 }}
               exit={{ y: 100, opacity: 0, scale: 0.95 }}
-              className="relative w-full max-w-[400px] glass-card p-6 grid grid-cols-3 gap-4 border border-white/10"
+              className="relative w-full max-w-[400px] bg-white rounded-[2.5rem] p-6 grid grid-cols-3 gap-4 shadow-2xl border border-black/5"
             >
               {[
-                { v: 'AsistenciaLista', i: 'fact_check', l: 'Asistencia', c: 'text-emerald-400' },
-                { v: 'Horario', i: 'event_note', l: 'Grupos', c: 'text-amber-400' },
-                { v: 'AsistenciaStats', i: 'analytics', l: 'Estadísticas', c: 'text-sky-400' },
-                { v: 'Planes', i: 'psychology', l: 'Manuales', c: 'text-violet-400' },
-                { v: 'Profesores', i: 'badge', l: 'Staff', c: 'text-rose-400' },
+                { v: 'AsistenciaLista', i: 'fact_check', l: 'Asistencia', c: 'text-emerald-600' },
+                { v: 'Horario', i: 'event_note', l: 'Grupos', c: 'text-amber-600' },
+                { v: 'AsistenciaStats', i: 'analytics', l: 'Estadísticas', c: 'text-sky-600' },
+                { v: 'Planes', i: 'psychology', l: 'Manuales', c: 'text-violet-600' },
+                { v: 'Profesores', i: 'badge', l: 'Staff', c: 'text-rose-600' },
                 { v: 'Habilidades', i: 'trending_up', l: 'Habilidades', c: 'text-primary' },
               ].map(opt => (
                 <button
@@ -3607,10 +3675,10 @@ const App: React.FC = () => {
                     handleNavigation(opt.v as ViewMode);
                     setShowMoreOptions(false);
                   }}
-                  className="flex flex-col items-center gap-3 p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 transition-all active:scale-95"
+                  className="flex flex-col items-center gap-3 p-4 rounded-2xl bg-ios-gray hover:bg-black/5 transition-all active:scale-95 border border-transparent"
                 >
                   <span className={`material-symbols-outlined text-[32px] ${opt.c}`}>{opt.i}</span>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-white/80">{opt.l}</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-secondary">{opt.l}</span>
                 </button>
               ))}
             </motion.div>
@@ -3620,7 +3688,7 @@ const App: React.FC = () => {
 
       {/* Navegación Inferior (Refined for Antigravity) */}
       {vista !== 'ReportePDF' && onboardingStep === 0 && (
-        <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-antigravity-charcoal/80 backdrop-blur-md border-t border-white/5 px-6 pt-4 pb-2 flex justify-between items-center z-50">
+        <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-white/80 backdrop-blur-xl border-t border-black/5 px-6 pt-4 pb-2 flex justify-between items-center z-50">
           {[
             { v: 'Dashboard', i: 'home', l: 'Inicio' },
             { v: 'Alumnos', i: 'group', l: 'Gimnastas' },
@@ -3643,19 +3711,19 @@ const App: React.FC = () => {
                 ((vista as string) === item.v || 
                 (item.v === 'Alumnos' && (vista === 'AlumnoDetalle' || vista === 'RegistroAlumno')) ||
                 (item.v === 'Horario' && (vista === 'NuevaClase' || vista === 'ClaseDetalle' || vista === 'HistorialClases'))) && item.v !== 'Menu'
-                ? 'text-neon-cyan active-glow' 
+                ? 'text-primary' 
                 : showMoreOptions && item.v === 'Menu'
-                ? 'text-primary active-glow'
-                : 'text-white/60 hover:text-white'
+                ? 'text-primary'
+                : 'text-secondary hover:text-black'
               }`}
             >
               <span className={`material-symbols-outlined text-[26px] font-light ${
                 ((vista as string) === item.v || 
                 (item.v === 'Alumnos' && (vista === 'AlumnoDetalle' || vista === 'RegistroAlumno')) ||
                 (item.v === 'Horario' && (vista === 'NuevaClase' || vista === 'ClaseDetalle' || vista === 'HistorialClases'))) && item.v !== 'Menu'
-                ? 'neon-glow-cyan' 
+                ? 'fill-current' 
                 : showMoreOptions && item.v === 'Menu'
-                ? 'neon-glow-primary'
+                ? 'fill-current'
                 : ''
               }`}>{item.i}</span>
               <span className={`text-[9px] uppercase tracking-wide ${
@@ -3674,22 +3742,22 @@ const App: React.FC = () => {
 
       {/* Safe Area Indicator */}
       {vista !== 'ReportePDF' && (
-        <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-antigravity-charcoal pb-3 pt-1 z-[60]">
-          <div className="h-1.5 w-32 bg-white/10 rounded-full mx-auto shrink-0"></div>
+        <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-white pb-3 pt-1 z-[60]">
+          <div className="h-1.5 w-32 bg-black/10 rounded-full mx-auto shrink-0"></div>
         </div>
       )}
 
         {hasNewData && (
-          <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[110] animate-in slide-in-from-top-4 duration-300">
+          <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[110] animate-in slide-in-from-top-4 duration-300">
             <button 
               onClick={() => {
                 loadData();
                 setHasNewData(false);
               }}
-              className="bg-primary text-antigravity-black px-6 py-2 rounded-full font-bold text-[10px] uppercase tracking-widest shadow-neon-cyan flex items-center gap-2 border border-white/20"
+              className="bg-ios-blue text-white px-8 py-3 rounded-full font-bold text-[10px] uppercase tracking-widest shadow-2xl flex items-center gap-3 border border-white/20 active:scale-95 transition-all"
             >
               <span className="material-icons-outlined text-sm">refresh</span>
-              Nuevos datos disponibles. ¿Actualizar?
+              Nuevos datos disponibles
             </button>
           </div>
         )}
@@ -3697,39 +3765,36 @@ const App: React.FC = () => {
 
         {/* Focus Mode Overlay */}
         {isFocusMode && (
-          <div className="focus-mode-active">
-            <div className="max-w-4xl mx-auto space-y-12">
-              <header className="flex justify-between items-center border-b border-white/10 pb-6 px-4">
+          <div className="fixed inset-0 z-[1000] bg-ios-gray overflow-y-auto">
+            <div className="max-w-[800px] mx-auto px-6 py-20 space-y-12">
+              <header className="flex justify-between items-center bg-white p-8 rounded-[2.5rem] shadow-ios">
                 <div>
-                  <h1 className="title-antigravity text-6xl tracking-tighter">MODO ENFOQUE</h1>
-                  <p className="text-neon-cyan text-xs font-black uppercase tracking-[0.3em] mt-2 flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 bg-neon-cyan rounded-full animate-pulse shadow-neon-cyan"></span>
-                    CONCENTRACIÓN TOTAL • {vista}
+                  <h1 className="text-3xl font-bold text-black tracking-tight">Modo Enfoque</h1>
+                  <p className="text-ios-blue text-[10px] font-bold uppercase tracking-[0.3em] mt-2 flex items-center gap-2">
+                    <span className="w-2 h-2 bg-ios-blue rounded-full animate-pulse shadow-ios"></span>
+                    {vista} • Concentración Total
                   </p>
                 </div>
                 <button 
                   onClick={() => setIsFocusMode(false)}
-                  className="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center text-white border border-white/10 hover:bg-white/10 transition-all group"
+                  className="w-12 h-12 rounded-full bg-ios-gray flex items-center justify-center text-secondary active:scale-90 transition-all"
                 >
-                  <span className="material-icons-outlined group-hover:scale-110 transition-transform">close</span>
+                  <span className="material-icons-outlined">close</span>
                 </button>
               </header>
 
-              <div className="animate-in fade-in zoom-in duration-500 px-4">
+              <div className="animate-in fade-in zoom-in duration-500">
                 {/* Render current view content in focus mode */}
                 {vista === 'Dashboard' && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     {/* Tarjeta 1: Próximas Clases */}
-                    <motion.div 
-                      whileHover={{ scale: 1.02 }}
-                      className="glass-card p-10 rounded-[3rem] border-primary/20 flex flex-col h-full cursor-default"
-                    >
+                    <div className="bg-white p-10 rounded-[3rem] shadow-ios flex flex-col h-full">
                       <div className="flex justify-between items-center mb-8">
-                        <h3 className="title-antigravity text-3xl">PRÓXIMAS CLASES</h3>
-                        <span className="text-primary material-icons-outlined text-3xl">schedule</span>
+                        <h3 className="text-2xl font-bold text-black tracking-tight uppercase tracking-tighter">PRÓXIMAS CLASES</h3>
+                        <span className="text-ios-blue material-icons-outlined text-4xl">schedule</span>
                       </div>
                       
-                      <div className="space-y-4 flex-1">
+                      <div className="space-y-5 flex-1">
                         {(() => {
                           const daysMap: Record<number, string> = { 0: 'Do', 1: 'Lu', 2: 'Ma', 3: 'Mi', 4: 'Ju', 5: 'Vi', 6: 'Sa' };
                           const todayStr = daysMap[new Date().getDay()];
@@ -3747,253 +3812,238 @@ const App: React.FC = () => {
                                 setVista('AsistenciaLista');
                                 setIsFocusMode(false);
                               }}
-                              className="w-full flex justify-between items-center p-6 bg-white/5 hover:bg-primary/20 border border-white/5 hover:border-primary/30 rounded-3xl transition-all group"
+                              className="w-full flex justify-between items-center p-6 bg-ios-gray hover:bg-black/5 rounded-[1.5rem] transition-all group"
                             >
                               <div className="flex flex-col items-start">
-                                <span className="font-black text-xl text-white group-hover:text-primary transition-colors uppercase tracking-tight">{g.nombre}</span>
-                                <span className="text-[10px] text-white/40 uppercase font-bold tracking-widest">{g.entrenador}</span>
+                                <span className="font-bold text-lg text-black group-hover:text-ios-blue transition-colors uppercase tracking-tight">{g.nombre}</span>
+                                <span className="text-[10px] text-secondary uppercase font-bold tracking-widest">{g.entrenador}</span>
                               </div>
                               <div className="flex flex-col items-end">
-                                <span className="text-primary font-mono text-xl font-black">{g.horario}</span>
-                                <span className="text-[9px] text-primary/60 font-black uppercase tracking-tighter">Pasar Lista</span>
+                                <span className="text-ios-blue font-mono text-xl font-bold">{g.horario}</span>
                               </div>
                             </button>
                           )) : (
-                            <div className="py-12 text-center text-white/30 italic">No hay clases programadas para hoy.</div>
+                            <div className="py-12 text-center text-secondary/40 italic">No hay clases programadas para hoy.</div>
                           );
                         })()}
                       </div>
-                    </motion.div>
+                    </div>
 
                     {/* Tarjeta 2: Alertas Críticas */}
-                    <motion.div 
-                      whileHover={{ scale: 1.02 }}
-                      className="glass-card p-10 rounded-[3rem] border-rose-500/20 flex flex-col h-full"
-                    >
+                    <div className="bg-white p-10 rounded-[3rem] shadow-ios flex flex-col h-full">
                       <div className="flex justify-between items-center mb-8">
-                        <h3 className="title-antigravity text-3xl text-rose-500">ALERTAS CRÍTICAS</h3>
-                        <span className="text-rose-500 material-icons-outlined text-3xl">priority_high</span>
-                      </div>
-
-                      <div className="space-y-4 flex-1">
-                        {(() => {
-                          const alertedStudents = alumnos.filter(a => a.alertas && a.alertas.length > 0);
-                          return alertedStudents.length > 0 ? alertedStudents.slice(0, 4).map(a => (
-                            <button 
-                              key={a.id} 
-                              onClick={() => {
-                                setSelectedAlumno(a);
-                                setVista('AlumnoDetalle');
-                                setIsFocusMode(false);
-                              }}
-                              className="w-full flex items-center gap-5 p-6 bg-rose-500/5 hover:bg-rose-500/20 border border-rose-500/10 hover:border-rose-500/30 rounded-3xl transition-all group"
-                            >
-                              <div className="w-12 h-12 rounded-2xl bg-rose-500/20 flex items-center justify-center">
-                                <span className="material-icons-outlined text-rose-500">warning</span>
-                              </div>
-                              <div className="flex-1 text-left">
-                                <span className="font-black text-white group-hover:text-rose-500 transition-colors uppercase">{a.nombre}</span>
-                                <div className="flex flex-wrap gap-2 mt-1">
-                                  {a.alertas.slice(0, 2).map((al, idx) => (
-                                    <span key={idx} className="text-[8px] bg-rose-500/20 text-rose-300 px-2 py-0.5 rounded-full font-black uppercase tracking-tighter">
-                                      {al}
-                                    </span>
-                                  ))}
-                                </div>
-                              </div>
-                              <span className="material-icons-outlined text-white/20 group-hover:text-rose-500">chevron_right</span>
-                            </button>
-                          )) : (
-                            <div className="py-12 text-center text-white/30 italic">No hay alertas críticas pendientes.</div>
-                          );
-                        })()}
+                        <h3 className="text-2xl font-bold text-black tracking-tight uppercase tracking-tighter">ALERTAS CRÍTICAS</h3>
+                        <span className="text-ios-red material-icons-outlined text-4xl">priority_high</span>
                       </div>
                       
-                      {alumnos.filter(a => a.alertas && a.alertas.length > 0).length > 4 && (
-                        <button 
-                          onClick={() => {
-                            setVista('Alumnos');
-                            // Podríamos añadir un filtro aquí si la vista Alumnos lo soporta
-                            setIsFocusMode(false);
-                          }}
-                          className="mt-6 text-center text-[10px] text-rose-500/60 font-black uppercase tracking-widest hover:text-rose-500 hover:underline"
-                        >
-                          Ver todas las {alumnos.filter(a => a.alertas && a.alertas.length > 0).length} alertas
-                        </button>
-                      )}
-                    </motion.div>
-                  </div>
-                )}
-                {vista !== 'Dashboard' && (
-                  <div className="text-center py-24 glass-card rounded-[3rem] border-white/5">
-                    <span className="material-icons-outlined text-6xl text-white/10 mb-6 font-light">auto_awesome</span>
-                    <p className="text-xl italic text-white/50 mb-8 max-w-sm mx-auto">El Modo Enfoque está optimizado para el Dashboard en esta versión.</p>
-                    <button 
-                      onClick={() => setIsFocusMode(false)} 
-                      className="px-12 py-5 rounded-[2rem] bg-white/5 text-white font-black uppercase tracking-[0.3em] border border-white/10 hover:bg-white/10 transition-all"
-                    >
-                      Volver al {vista}
-                    </button>
+                      <div className="space-y-4 flex-1 overflow-y-auto max-h-[400px] pr-2">
+                        {alumnos.filter(a => a.alertas && a.alertas.length > 0 && a.alertas[0] !== '').length > 0 ? (
+                          alumnos.filter(a => a.alertas && a.alertas.length > 0 && a.alertas[0] !== '').map(a => (
+                            <div key={a.id} className="p-6 bg-ios-red/5 border border-ios-red/10 rounded-[1.5rem] space-y-2">
+                              <h5 className="font-bold text-black text-sm uppercase">{a.nombre}</h5>
+                              <p className="text-[10px] text-ios-red leading-relaxed font-medium">{a.alertas?.join(' • ')}</p>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="h-full flex flex-col items-center justify-center text-center py-10 space-y-4">
+                            <div className="w-16 h-16 bg-ios-green/10 rounded-full flex items-center justify-center text-ios-green">
+                              <span className="material-icons-outlined text-4xl">check_circle</span>
+                            </div>
+                            <p className="text-xs text-secondary/40 font-bold uppercase tracking-widest leading-loose">Todo tranquilo.<br/>No hay alertas críticas.</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
-            </div>
-            
-            {/* Widget Flotante del Asistente Coach (Si está habilitado) */}
-            <div className="fixed top-8 right-8 z-[210] flex flex-col gap-4">
-               <motion.div 
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="bg-white/95 backdrop-blur-xl p-4 rounded-3xl shadow-2xl flex items-center gap-4 border border-white"
-               >
-                 <button className="w-10 h-10 rounded-2xl bg-antigravity-charcoal/5 flex items-center justify-center text-antigravity-black/40 hover:text-antigravity-black transition-colors">
-                    <span className="material-icons-outlined text-xl">settings</span>
-                 </button>
-                 <button 
-                    onClick={() => {
-                        setIsFocusMode(false);
-                        setVista('Habilidades'); // O donde esté el Coach
-                    }}
-                    className="w-14 h-14 rounded-full bg-white shadow-xl flex items-center justify-center text-neon-blue border border-neon-blue/10 active:scale-95 transition-all"
-                 >
-                    <span className="material-symbols-outlined text-3xl">mic</span>
-                 </button>
-               </motion.div>
+
+              <div className="text-center pt-8">
+               <button 
+                  onClick={() => setIsFocusMode(false)}
+                  className="px-10 py-5 rounded-[2rem] bg-black text-white font-bold uppercase tracking-widest text-[10px] shadow-2xl active:scale-95 transition-all"
+                >
+                  Salir de Modo Enfoque
+                </button>
+              </div>
             </div>
           </div>
         )}
 
         {aiAnalysis && (
-          <div className="fixed inset-0 z-[110] bg-antigravity-black/95 backdrop-blur-md flex items-center justify-center p-6">
-            <div className="glass-card w-full max-w-2xl rounded-[2.5rem] p-8 border border-white/10 space-y-6 animate-in zoom-in duration-300 max-h-[80vh] overflow-y-auto">
-              <div className="flex justify-between items-center sticky top-0 bg-antigravity-black/80 backdrop-blur-md py-2 z-10">
-                <div className="flex items-center gap-3">
-                  <span className="material-icons-outlined text-primary">psychology</span>
-                  <h3 className="text-xl font-black text-white uppercase tracking-tighter">Insights de IA</h3>
+          <div className="fixed inset-0 z-[110] bg-white/80 backdrop-blur-xl flex items-center justify-center p-6">
+            <div className="bg-white w-full max-w-2xl rounded-[3rem] p-10 border border-black/5 space-y-8 shadow-2xl animate-in zoom-in duration-300 max-h-[85vh] overflow-hidden flex flex-col">
+              <div className="flex justify-between items-center bg-white py-2 z-10">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 bg-ios-blue/10 rounded-xl flex items-center justify-center text-ios-blue shadow-sm">
+                    <span className="material-icons-outlined text-2xl">psychology</span>
+                  </div>
+                  <div className="flex flex-col">
+                    <h3 className="text-xl font-bold text-black tracking-tight uppercase tracking-tighter">Insights de Coach IA</h3>
+                    <p className="text-[10px] text-secondary font-bold uppercase tracking-widest">Análisis Inteligente</p>
+                  </div>
                 </div>
-                <button onClick={() => setAiAnalysis(null)} className="text-white/70 hover:text-white">
+                <button 
+                  onClick={() => setAiAnalysis(null)} 
+                  className="w-10 h-10 rounded-full bg-ios-gray flex items-center justify-center text-secondary active:scale-90 transition-all shadow-sm"
+                >
                   <span className="material-icons-outlined">close</span>
                 </button>
               </div>
-              <div className="prose prose-invert prose-sm max-w-none text-white/90 leading-relaxed">
-                <Markdown>{aiAnalysis}</Markdown>
+              <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
+                <div className="prose prose-sm max-w-none text-black leading-relaxed font-medium">
+                  <Markdown>{aiAnalysis}</Markdown>
+                </div>
               </div>
-              <button 
+              <Button 
                 onClick={() => setAiAnalysis(null)}
-                className="w-full py-4 rounded-2xl bg-primary text-antigravity-black font-black text-[10px] uppercase tracking-widest shadow-neon-cyan active:scale-95 transition-all"
+                className="w-full !py-6 !rounded-[1.5rem]"
               >
                 Entendido
-              </button>
+              </Button>
             </div>
           </div>
         )}
 
         {isBulkImporting && (
-          <div className="fixed inset-0 z-[100] bg-antigravity-black/90 backdrop-blur-sm flex items-center justify-center p-6">
-            <div className="glass-card w-full max-w-lg rounded-[2.5rem] p-8 border border-white/10 space-y-6 animate-in zoom-in duration-300">
+          <div className="fixed inset-0 z-[120] bg-white/80 backdrop-blur-xl flex items-center justify-center p-6">
+            <div className="bg-white w-full max-w-lg rounded-[3.5rem] p-10 border border-black/5 space-y-8 shadow-2xl animate-in zoom-in duration-300">
               <div className="flex justify-between items-center">
-                <h3 className="text-xl font-black text-white uppercase tracking-tighter">Importación Masiva</h3>
-                <button onClick={() => setIsBulkImporting(false)} className="text-white/70 hover:text-white">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 bg-black rounded-2xl flex items-center justify-center text-white">
+                    <span className="material-icons-outlined">upload_file</span>
+                  </div>
+                  <h3 className="text-xl font-bold text-black tracking-tight uppercase tracking-tighter">Importación Masiva</h3>
+                </div>
+                <button 
+                    onClick={() => setIsBulkImporting(false)} 
+                    className="w-10 h-10 rounded-full bg-ios-gray flex items-center justify-center text-secondary active:scale-90 transition-all shadow-sm"
+                  >
                   <span className="material-icons-outlined">close</span>
                 </button>
               </div>
-              <div className="bg-primary/5 border border-primary/20 rounded-2xl p-4 flex flex-col gap-4">
-                <p className="text-[10px] text-primary font-black uppercase tracking-widest leading-relaxed">
-                  Pega los datos desde Excel o sube un archivo CSV/Excel. <br/>
-                  Formato Sugerido: <span className="text-white">Nombre, DNI, Grupo, Nivel, Teléfono</span>
-                </p>
-                <div className="flex items-center gap-3">
-                  <input 
-                    type="file" 
-                    accept=".csv, .xlsx, .xls" 
-                    onChange={handleCsvImport} 
-                    ref={fileInputRef}
-                    className="hidden"
-                  />
+              
+              <div className="space-y-6">
+                <div className="p-6 bg-ios-blue/5 border border-ios-blue/10 rounded-[2rem] space-y-4">
+                  <p className="text-[10px] text-ios-blue font-bold uppercase tracking-widest leading-loose">
+                    Pega los datos desde Excel o sube un archivo CSV/Excel. <br/>
+                    <span className="text-black/40">Formato: Nombre, DNI, Grupo, Nivel, Teléfono</span>
+                  </p>
+                  <div className="flex items-center gap-3">
+                    <input 
+                      type="file" 
+                      accept=".csv, .xlsx, .xls" 
+                      onChange={handleCsvImport} 
+                      ref={fileInputRef}
+                      className="hidden"
+                    />
+                    <button 
+                      onClick={() => fileInputRef.current?.click()}
+                      className="flex-1 py-4 px-6 rounded-2xl bg-white border border-black/5 text-black text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-3 shadow-md hover:bg-ios-gray transition-all active:scale-95"
+                    >
+                      <span className="material-icons-outlined text-sm text-ios-blue">file_open</span>
+                      Sube tu archivo
+                    </button>
+                  </div>
+                </div>
+
+                <textarea 
+                  className="w-full h-56 bg-ios-gray border-none rounded-[2rem] p-6 text-xs text-black placeholder:text-black/20 outline-none focus:ring-2 focus:ring-ios-blue/10 transition-all font-mono font-bold"
+                  placeholder="Juan Perez, 12, Grupo A, Escuela, 11223344&#10;Maria Gomez, 87, Grupo B, Escuela, 55443322"
+                  value={bulkImportText}
+                  onChange={(e) => setBulkImportText(e.target.value)}
+                />
+
+                <div className="grid grid-cols-2 gap-4 pt-4">
                   <button 
-                    onClick={() => fileInputRef.current?.click()}
-                    className="flex-1 py-3 px-4 rounded-xl bg-white/5 border border-white/10 text-white text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-white/10 transition-all"
+                    onClick={() => setIsBulkImporting(false)}
+                    className="py-5 rounded-[1.5rem] bg-ios-gray text-secondary font-bold text-[10px] uppercase tracking-widest active:scale-95 transition-all"
                   >
-                    <span className="material-icons-outlined text-sm">upload_file</span>
-                    Seleccionar CSV o Excel
+                    Cancelar
+                  </button>
+                  <button 
+                    onClick={() => {
+                      if (bulkImportText.trim()) {
+                        handleBulkImportSubmit(bulkImportText);
+                        setIsBulkImporting(false);
+                      }
+                    }}
+                    className="py-5 rounded-[1.5rem] bg-ios-blue text-white font-bold text-[10px] uppercase tracking-widest shadow-ios active:scale-95 transition-all"
+                  >
+                    Confirmar Importación
                   </button>
                 </div>
               </div>
-              <textarea 
-                className="w-full h-64 bg-antigravity-charcoal border border-white/10 rounded-2xl p-4 text-xs text-white placeholder:text-white/20 outline-none focus:border-primary/50 transition-all font-mono"
-                placeholder="Juan Perez, 12345678, Grupo A, Escuela, 1122334455&#10;Maria Gomez, 87654321, Grupo B, Escuela, 5544332211"
-                value={bulkImportText}
-                onChange={(e) => setBulkImportText(e.target.value)}
-              />
-              <div className="flex gap-3">
+            </div>
+          </div>
+        )}
+
+        {/* Modal de Confirmación */}
+        {confirmModal && confirmModal.show && (
+          <div className="fixed inset-0 z-[200] bg-white/80 backdrop-blur-xl flex items-center justify-center p-6">
+            <div className="bg-white w-full max-w-sm rounded-[3rem] p-10 border border-black/5 space-y-8 shadow-2xl animate-in zoom-in duration-300">
+              <div className="flex flex-col items-center text-center space-y-6">
+                <div className="w-20 h-20 bg-ios-red/10 rounded-3xl flex items-center justify-center border border-ios-red/10 shadow-sm">
+                  <span className="material-icons-outlined text-ios-red text-4xl">warning_amber</span>
+                </div>
+                <div className="space-y-2">
+                  <h3 className="text-2xl font-bold text-black tracking-tight uppercase tracking-tighter">{confirmModal.title}</h3>
+                  <p className="text-secondary text-sm leading-relaxed px-2">{confirmModal.message}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
                 <button 
-                  onClick={() => setIsBulkImporting(false)}
-                  className="flex-1 py-4 rounded-2xl border border-white/10 text-white font-bold text-[10px] uppercase tracking-widest"
+                  onClick={() => setConfirmModal(null)}
+                  className="py-5 rounded-[1.5rem] bg-ios-gray text-secondary font-bold text-[10px] uppercase tracking-widest active:scale-95 transition-all"
                 >
                   Cancelar
                 </button>
                 <button 
-                  onClick={handleBulkImport}
-                  disabled={!bulkImportText.trim() || isLoading}
-                  className="flex-1 py-4 rounded-2xl bg-primary text-antigravity-black font-black text-[10px] uppercase tracking-widest shadow-neon-cyan active:scale-95 transition-all disabled:opacity-50"
+                  onClick={() => {
+                    confirmModal.onConfirm();
+                    setConfirmModal(null);
+                  }}
+                  className="py-5 rounded-[1.5rem] bg-ios-red text-white font-bold text-[10px] uppercase tracking-widest shadow-ios active:scale-95 transition-all"
                 >
-                  {isLoading ? 'Procesando...' : 'Importar Lista'}
+                  Confirmar
                 </button>
               </div>
             </div>
           </div>
         )}
 
-      {/* Modal de Confirmación */}
-      {confirmModal && confirmModal.show && (
-        <div className="fixed inset-0 z-[200] bg-antigravity-black/90 backdrop-blur-md flex items-center justify-center p-6">
-          <div className="glass-card w-full max-w-sm rounded-[2.5rem] p-8 border border-white/10 space-y-6 animate-in zoom-in duration-300 shadow-neon-rose">
-            <div className="flex flex-col items-center text-center space-y-4">
-              <div className="w-16 h-16 bg-rose-500/20 rounded-2xl flex items-center justify-center border border-rose-500/30 shadow-neon-rose">
-                <span className="material-icons-outlined text-rose-500 text-3xl">warning</span>
+        {/* Notificaciones */}
+        <AnimatePresence>
+          {notificacion && (
+            <motion.div 
+              initial={{ opacity: 0, y: -50, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -50, scale: 0.9 }}
+              className="fixed top-8 left-1/2 -translate-x-1/2 z-[1000] w-[90%] max-w-[400px]"
+            >
+              <div className="bg-white/90 backdrop-blur-2xl p-5 rounded-[2rem] shadow-2xl border border-black/5 flex items-center gap-5">
+                <div className="w-12 h-12 bg-ios-blue/10 rounded-2xl flex items-center justify-center text-ios-blue shadow-sm shrink-0 border border-ios-blue/5">
+                  <span className="material-icons-outlined text-2xl">verified</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-ios-blue truncate">{notificacion.t}</p>
+                  <p className="text-xs text-black font-medium mt-0.5 leading-tight line-clamp-1 italic">"{notificacion.d}"</p>
+                </div>
+                <button 
+                  onClick={() => setNotificacion(null)}
+                  className="w-10 h-10 rounded-full bg-ios-gray flex items-center justify-center text-secondary active:scale-90 transition-all hover:bg-black/5"
+                >
+                  <span className="material-icons-outlined text-sm">close</span>
+                </button>
               </div>
-              <h3 className="text-xl font-black text-white uppercase tracking-tighter">{confirmModal.title}</h3>
-              <p className="text-white/70 text-sm leading-relaxed">{confirmModal.message}</p>
-            </div>
-            <div className="flex gap-3 pt-2">
-              <button 
-                onClick={() => setConfirmModal(null)}
-                className="flex-1 py-4 rounded-2xl border border-white/10 text-white font-bold text-[10px] uppercase tracking-widest active:scale-95 transition-all"
-              >
-                Cancelar
-              </button>
-              <button 
-                onClick={() => {
-                  confirmModal.onConfirm();
-                  setConfirmModal(null);
-                }}
-                className="flex-1 py-4 rounded-2xl bg-rose-500 text-white font-black text-[10px] uppercase tracking-widest shadow-neon-rose active:scale-95 transition-all"
-              >
-                Confirmar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-        {/* Floating AI Assistant - REMOVED per user request */}
-
-      {/* Notificaciones */}
-
-      {notificacion && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[150] w-[90%] max-w-[380px] bg-antigravity-charcoal/95 backdrop-blur-2xl text-white p-5 rounded-[2rem] shadow-neon-cyan-strong border border-white/10 flex items-center gap-4 animate-in slide-in-from-top-12 duration-500">
-          <div className="w-12 h-12 bg-primary/20 rounded-2xl flex items-center justify-center border border-primary/30 active-glow shrink-0">
-            <span className="material-icons-outlined text-primary text-2xl">verified</span>
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-primary truncate">{notificacion.t}</p>
-            <p className="text-[11px] text-white/90 font-medium mt-0.5 leading-tight italic line-clamp-2">"{notificacion.d}"</p>
-          </div>
-          <button 
-            onClick={() => setNotificacion(null)}
-            className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-white/40 hover:text-white transition-colors shrink-0"
-          >
-            <span className="material-icons-outlined text-sm">close</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    );
+  };
+  
+              <span className="material-icons-outlined text-sm">close</span>
           </button>
         </div>
       )}

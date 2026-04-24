@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html class="dark" lang="es">
+<html class="light" lang="es">
 <head>
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
     <title>GymCoach Pro - Antigravity Suite</title>
     <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Lexend:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
     <script>
@@ -14,22 +14,29 @@
         theme: {
           extend: {
             colors: {
-              primary: "#00F5FF", // Neon Cyan
-              secondary: "#7C3AED", // Lilac / Purple
-              "antigravity-black": "#0A0A0B",
-              "antigravity-charcoal": "#121214",
-              "neon-cyan": "#00F5FF",
-              "neon-blue": "#2E5BFF",
-              "accent-purple": "#8B5CF6",
-              "background-dark": "#0A0A0B",
+              primary: "#007AFF", // iOS Blue
+              secondary: "#8E8E93", // iOS Gray
+              "antigravity-black": "#1C1C1E", // iOS Dark Text
+              "antigravity-charcoal": "#F2F2F7", // iOS Light Background
+              "neon-cyan": "#007AFF",
+              "neon-blue": "#007AFF",
+              "accent-purple": "#AF52DE", // iOS Purple
+              "background-dark": "#F2F2F7",
+              "ios-gray": "#F2F2F7",
+              "ios-blue": "#007AFF",
+              "ios-green": "#34C759",
+              "ios-orange": "#FF9500",
+              "ios-red": "#FF3B30",
             },
             fontFamily: {
-              display: ["Lexend", "sans-serif"],
+              display: ["Inter", "Lexend", "sans-serif"],
+              sans: ["Inter", "sans-serif"],
             },
             boxShadow: {
-              'neon-cyan': '0 0 15px rgba(0, 245, 255, 0.3)',
-              'neon-purple': '0 0 15px rgba(139, 92, 246, 0.4)',
-              'neon-fab-blue': '0 0 20px rgba(46, 91, 255, 0.6)',
+              'ios': '0 2px 12px rgba(0, 0, 0, 0.08)',
+              'neon-cyan': '0 0 10px rgba(0, 122, 255, 0.2)',
+              'neon-purple': '0 0 10px rgba(175, 82, 222, 0.2)',
+              'neon-fab-blue': '0 4px 14px rgba(0, 122, 255, 0.4)',
             }
           },
         },
@@ -38,76 +45,77 @@
     <style type="text/tailwindcss">
         @layer utilities {
             .glass-card {
-                background: rgba(255, 255, 255, 0.05);
-                backdrop-filter: blur(16px);
-                border: 1px solid rgba(255, 255, 255, 0.15);
+                background: rgba(255, 255, 255, 0.95);
+                backdrop-filter: blur(20px);
+                border: 1px solid rgba(0, 0, 0, 0.05);
+                box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05);
             }
             .auth-bg {
-                background: radial-gradient(circle at 50% 40%, #5c59f0 0%, #312e81 40%, #0a0a0b 100%);
+                background: #F2F2F7;
             }
             .gradient-header {
-                background: linear-gradient(135deg, #4338ca 0%, #6d28d9 100%);
+                background: linear-gradient(180deg, #FFFFFF 0%, #F2F2F7 100%);
             }
             .neon-border {
-                border: 1px solid #00F5FF;
-                box-shadow: 0 0 8px rgba(0, 245, 255, 0.3);
+                border: 1.5px solid #007AFF;
+                box-shadow: 0 0 8px rgba(0, 122, 255, 0.2);
             }
             .neon-border-cyan {
-                box-shadow: 0 0 5px rgba(0, 245, 255, 0.3);
+                box-shadow: 0 0 5px rgba(0, 122, 255, 0.1);
             }
             .neon-fab-blue {
-                box-shadow: 0 0 20px rgba(46, 91, 255, 0.6);
+                box-shadow: 0 4px 15px rgba(0, 122, 255, 0.4);
             }
             .active-glow {
-                filter: drop-shadow(0 0 5px #00F5FF);
+                filter: drop-shadow(0 0 2px #007AFF);
             }
             .neon-glow-cyan {
-                text-shadow: 0 0 10px rgba(0, 245, 255, 0.5), 0 0 20px rgba(0, 245, 255, 0.2);
+                text-shadow: none;
+                color: #007AFF;
             }
             .ios-toggle:checked + .ios-toggle-label {
-                background-color: #00F5FF;
-                box-shadow: 0 0 8px rgba(0, 245, 255, 0.6);
+                background-color: #34C759;
             }
             .ios-toggle:checked + .ios-toggle-label::after {
                 transform: translateX(20px);
-                background-color: #0A0A0B;
+                background-color: #FFFFFF;
             }
             .crafted-input {
-                @apply bg-antigravity-charcoal border border-neon-blue/30 rounded-2xl px-5 py-4 text-sm text-white transition-all outline-none shadow-inner placeholder:text-white/70;
+                @apply bg-white border border-black/10 rounded-2xl px-5 py-4 text-sm text-black transition-all outline-none placeholder:text-black/40;
             }
             .crafted-input:focus {
-                @apply border-neon-blue ring-1 ring-neon-blue/50 shadow-[0_0_15px_rgba(46,91,255,0.2)];
+                @apply border-primary ring-1 ring-primary/30;
             }
             .title-antigravity {
-                @apply font-black uppercase tracking-tighter text-white;
+                @apply font-black uppercase tracking-tighter text-black;
             }
             .btn-primary {
-                @apply bg-primary text-antigravity-black font-black uppercase tracking-widest px-6 py-3 rounded-2xl shadow-neon-cyan active:scale-95 transition-all flex items-center justify-center gap-2;
+                @apply bg-primary text-white font-black uppercase tracking-widest px-6 py-3 rounded-2xl shadow-ios active:scale-95 transition-all flex items-center justify-center gap-2;
             }
             .btn-secondary {
-                @apply bg-white/5 border border-white/10 text-white font-bold uppercase tracking-wider px-6 py-3 rounded-2xl hover:bg-white/10 active:scale-95 transition-all flex items-center justify-center gap-2;
+                @apply bg-white border border-black/5 text-black font-bold uppercase tracking-wider px-6 py-3 rounded-2xl hover:bg-black/5 active:scale-95 transition-all flex items-center justify-center gap-2;
             }
             .focus-mode-active {
-                @apply fixed inset-0 z-[200] bg-antigravity-black overflow-y-auto p-6 md:p-12;
+                @apply fixed inset-0 z-[200] bg-ios-gray overflow-y-auto p-6 md:p-12;
             }
             .alert-icon {
-                @apply w-8 h-8 rounded-full flex items-center justify-center shadow-lg;
+                @apply w-8 h-8 rounded-full flex items-center justify-center shadow-sm;
             }
             .alert-icon-danger {
-                @apply bg-rose-500/20 text-rose-500 border border-rose-500/30;
+                @apply bg-ios-red/10 text-ios-red border border-ios-red/20;
             }
             .alert-icon-warning {
-                @apply bg-amber-500/20 text-amber-500 border border-amber-500/30;
+                @apply bg-ios-orange/10 text-ios-orange border border-ios-orange/20;
             }
             .alert-icon-info {
-                @apply bg-primary/20 text-primary border border-primary/30;
+                @apply bg-ios-blue/10 text-ios-blue border border-ios-blue/20;
             }
         }
         body {
-            font-family: 'Lexend', sans-serif;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             -webkit-tap-highlight-color: transparent;
-            background-color: #0A0A0B;
-            color: #ffffff;
+            background-color: #F2F2F7;
+            color: #1C1C1E;
         }
         .page-transition { 
             animation: slideUp 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); 
@@ -140,7 +148,7 @@
     }
     </script>
 </head>
-<body class="bg-antigravity-black">
+<body class="bg-ios-gray">
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
 </body>

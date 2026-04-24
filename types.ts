@@ -78,6 +78,7 @@ export interface Clase {
   fecha: string;
   grupo: string;
   horario?: string;
+  ageRange?: string;
   entrenador?: string;
   faseInicial?: string[];
   fasePrincipal?: string[];

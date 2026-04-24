@@ -6,6 +6,7 @@ import {
   Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis
 } from 'recharts';
 import { Alumno, Clase, GrupoConfig, ViewMode } from '../../types';
+import { BackButton } from '../../App';
 
 interface ReportesProps {
   alumnos: Alumno[];
@@ -159,89 +160,104 @@ export const Reportes: React.FC<ReportesProps> = ({ alumnos, clases, grupos, vis
   const COLORS = ['#00F5FF', '#7000FF', '#FF00E5', '#FFB800', '#00FF85'];
 
   return (
-    <div className="space-y-8 pb-24">
+    <div className="min-h-screen bg-ios-gray space-y-8 pb-24 relative pt-12 focus-mode-parent">
+      <BackButton onClick={() => {
+        if (vista === 'ReportePDF' || vista === 'ReporteGrupal' || vista === 'ReporteBiometrico') {
+          setVista('AsistenciaStats');
+        } else {
+          setVista('Dashboard');
+        }
+      }} />
+      
       {/* Header Selector for Group Reports */}
       {(vista === 'ReporteGrupal' || vista === 'ReporteBiometrico') && (
-        <div className="flex items-center gap-4 overflow-x-auto pb-2 scrollbar-hide px-6">
+        <div className="flex items-center gap-3 overflow-x-auto pb-4 no-scrollbar px-6">
           {grupos.map(g => (
-            <button
+            <motion.button
               key={g.id}
+              whileTap={{ scale: 0.95 }}
               onClick={() => setSelectedGrupo(g.nombre)}
-              className={`px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all whitespace-nowrap border ${
+              className={`px-6 py-2.5 rounded-full font-bold text-[10px] uppercase tracking-widest transition-all whitespace-nowrap border ${
                 selectedGrupo === g.nombre 
-                  ? 'bg-primary/10 border-primary text-primary shadow-neon-cyan' 
-                  : 'bg-white/5 border-white/5 text-white/40 hover:border-white/20'
+                  ? 'bg-ios-blue border-transparent text-white shadow-lg' 
+                  : 'bg-white border-black/5 text-secondary hover:border-black/10'
               }`}
             >
               {g.nombre}
-            </button>
+            </motion.button>
           ))}
         </div>
       )}
 
       {/* View: AsistenciaStats (General Dashboard) */}
       {vista === 'AsistenciaStats' && (
-        <div className="space-y-6">
+        <div className="space-y-6 px-6">
+          <header className="px-1">
+            <h2 className="text-3xl font-bold text-black tracking-tight">Estadísticas</h2>
+            <p className="text-secondary text-sm font-medium">Resumen general de tu club</p>
+          </header>
+
           <div className="grid grid-cols-2 gap-4">
-            <div className="glass-card p-6 rounded-3xl border border-white/5 space-y-2">
-              <p className="text-[10px] font-black text-white/40 uppercase tracking-widest">Total Alumnos</p>
-              <h3 className="text-3xl font-black text-white tracking-tighter">{generalStats.totalAlumnos}</h3>
-              <div className="flex items-center gap-1 text-primary">
+            <div className="bg-white p-6 rounded-[2rem] shadow-ios border border-black/5 space-y-1">
+              <p className="text-[10px] font-bold text-secondary uppercase tracking-widest">Total Alumnos</p>
+              <h3 className="text-3xl font-bold text-black tracking-tight">{generalStats.totalAlumnos}</h3>
+              <div className="flex items-center gap-1 text-ios-green font-bold text-[10px] pt-1">
                 <span className="material-icons-outlined text-sm">trending_up</span>
-                <span className="text-[10px] font-bold">+12% este mes</span>
+                <span>+12% este mes</span>
               </div>
             </div>
-            <div className="glass-card p-6 rounded-3xl border border-white/5 space-y-2">
-              <p className="text-[10px] font-black text-white/40 uppercase tracking-widest">Alumnos Activos</p>
-              <h3 className="text-3xl font-black text-white tracking-tighter">{generalStats.alumnosActivos}</h3>
-              <div className="flex items-center gap-1 text-primary">
+            <div className="bg-white p-6 rounded-[2rem] shadow-ios border border-black/5 space-y-1">
+              <p className="text-[10px] font-bold text-secondary uppercase tracking-widest">Al día</p>
+              <h3 className="text-3xl font-bold text-black tracking-tight">{generalStats.alumnosActivos}</h3>
+              <div className="flex items-center gap-1 text-ios-blue font-bold text-[10px] pt-1">
                 <span className="material-icons-outlined text-sm">check_circle</span>
-                <span className="text-[10px] font-bold">Al día con pagos</span>
+                <span>Pagos al día</span>
               </div>
             </div>
           </div>
 
-          <div className="glass-card p-6 rounded-3xl border border-white/5 space-y-6">
+          <div className="bg-white p-8 rounded-[2.5rem] shadow-ios border border-black/5 space-y-8">
             <div className="flex justify-between items-center">
-              <h4 className="text-sm font-black text-white uppercase tracking-widest">Tendencia de Asistencia</h4>
-              <div className="flex gap-2">
-                <button 
-                  onClick={() => setVista?.('ReportePDF')}
-                  className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-[9px] font-black text-white uppercase tracking-widest hover:bg-white/10 transition-all flex items-center gap-2"
-                >
-                  <span className="material-icons-outlined text-sm">picture_as_pdf</span>
-                  Generar PDF
-                </button>
-                <span className="text-[10px] font-bold text-white/40 uppercase">Últimos 7 días</span>
+              <div className="space-y-0.5">
+                <h4 className="text-sm font-bold text-black uppercase tracking-widest">Asistencia</h4>
+                <p className="text-[10px] font-bold text-secondary uppercase tracking-widest opacity-60">Últimos 7 días</p>
               </div>
+              <motion.button 
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setVista?.('ReportePDF')}
+                className="w-10 h-10 rounded-full bg-ios-gray flex items-center justify-center text-ios-blue active:bg-ios-blue active:text-white transition-all shadow-sm"
+              >
+                <span className="material-icons-outlined text-lg">picture_as_pdf</span>
+              </motion.button>
             </div>
             <div className="h-64 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={generalStats.attendanceTrend}>
                   <defs>
                     <linearGradient id="colorPresent" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#00F5FF" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="#00F5FF" stopOpacity={0}/>
+                      <stop offset="5%" stopColor="#007AFF" stopOpacity={0.15}/>
+                      <stop offset="95%" stopColor="#007AFF" stopOpacity={0}/>
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" vertical={false} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#00000005" vertical={false} />
                   <XAxis 
                     dataKey="date" 
                     axisLine={false} 
                     tickLine={false} 
-                    tick={{fill: '#ffffff40', fontSize: 10, fontWeight: 900}}
+                    tick={{fill: '#6E6E73', fontSize: 10, fontWeight: 700}}
                     dy={10}
                   />
                   <YAxis hide />
                   <Tooltip 
-                    contentStyle={{backgroundColor: '#151619', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px'}}
-                    itemStyle={{color: '#00F5FF', fontWeight: 900, fontSize: 12}}
+                    contentStyle={{backgroundColor: '#FFFFFF', border: '1px solid rgba(0,0,0,0.05)', borderRadius: '16px', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)'}}
+                    itemStyle={{color: '#007AFF', fontWeight: 700, fontSize: 12}}
+                    labelStyle={{color: '#6E6E73', fontSize: 10, fontWeight: 700, marginBottom: 4}}
                   />
                   <Area 
                     type="monotone" 
                     dataKey="presentes" 
-                    stroke="#00F5FF" 
-                    strokeWidth={3}
+                    stroke="#007AFF" 
+                    strokeWidth={4}
                     fillOpacity={1} 
                     fill="url(#colorPresent)" 
                   />
@@ -254,42 +270,47 @@ export const Reportes: React.FC<ReportesProps> = ({ alumnos, clases, grupos, vis
 
       {/* View: ReporteGrupal */}
       {vista === 'ReporteGrupal' && grupoStats && (
-        <div className="space-y-6">
-          <div className="grid grid-cols-3 gap-4">
-            <div className="glass-card p-4 rounded-2xl border border-white/5 text-center space-y-1">
-              <p className="text-[8px] font-black text-white/40 uppercase tracking-widest">Alumnos</p>
-              <p className="text-xl font-black text-white">{grupoStats.alumnosCount}</p>
+        <div className="space-y-6 px-6">
+          <header className="px-1">
+            <h2 className="text-2xl font-bold text-black tracking-tight">{selectedGrupo}</h2>
+            <p className="text-secondary text-sm font-medium">Análisis de rendimiento grupal</p>
+          </header>
+
+          <div className="grid grid-cols-3 gap-3">
+            <div className="bg-white p-5 rounded-3xl shadow-sm border border-black/5 text-center space-y-1">
+              <p className="text-[8px] font-bold text-secondary uppercase tracking-widest">Alumnas</p>
+              <p className="text-xl font-bold text-black">{grupoStats.alumnosCount}</p>
             </div>
-            <div className="glass-card p-4 rounded-2xl border border-white/5 text-center space-y-1">
-              <p className="text-[8px] font-black text-white/40 uppercase tracking-widest">Clases</p>
-              <p className="text-xl font-black text-white">{grupoStats.clasesCount}</p>
+            <div className="bg-white p-5 rounded-3xl shadow-sm border border-black/5 text-center space-y-1">
+              <p className="text-[8px] font-bold text-secondary uppercase tracking-widest">Clases</p>
+              <p className="text-xl font-bold text-black">{grupoStats.clasesCount}</p>
             </div>
-            <div className="glass-card p-4 rounded-2xl border border-white/5 text-center space-y-1">
-              <p className="text-[8px] font-black text-white/40 uppercase tracking-widest">Asistencia</p>
-              <p className="text-xl font-black text-primary">{grupoStats.asistenciaPromedio}%</p>
+            <div className="bg-white p-5 rounded-3xl shadow-sm border border-black/5 text-center space-y-1">
+              <p className="text-[8px] font-bold text-secondary uppercase tracking-widest">Promedio</p>
+              <p className="text-xl font-bold text-ios-blue">{grupoStats.asistenciaPromedio}%</p>
             </div>
           </div>
 
-          <div className="glass-card p-6 rounded-3xl border border-white/5 space-y-6">
-            <h4 className="text-sm font-black text-white uppercase tracking-widest">Habilidades más Logradas</h4>
+          <div className="bg-white p-8 rounded-[2.5rem] shadow-ios border border-black/5 space-y-8">
+            <h4 className="text-sm font-bold text-black uppercase tracking-widest opacity-60">Habilidades más Logradas</h4>
             <div className="h-64 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={grupoStats.skillsData} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" horizontal={false} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#00000005" horizontal={false} />
                   <XAxis type="number" hide />
                   <YAxis 
                     dataKey="name" 
                     type="category" 
                     axisLine={false} 
                     tickLine={false} 
-                    tick={{fill: '#ffffff60', fontSize: 10, fontWeight: 700}}
+                    tick={{fill: '#6E6E73', fontSize: 10, fontWeight: 700}}
                     width={100}
                   />
                   <Tooltip 
-                    cursor={{fill: 'rgba(255,255,255,0.05)'}}
-                    contentStyle={{backgroundColor: '#151619', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px'}}
+                    cursor={{fill: '#F2F2F7'}}
+                    contentStyle={{backgroundColor: '#FFFFFF', border: '1px solid rgba(0,0,0,0.05)', borderRadius: '16px', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)'}}
                   />
-                  <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+                  <Bar dataKey="value" radius={[0, 10, 10, 0]}>
                     {grupoStats.skillsData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
@@ -301,75 +322,39 @@ export const Reportes: React.FC<ReportesProps> = ({ alumnos, clases, grupos, vis
         </div>
       )}
 
-      {/* View: TendenciasHabilidades */}
-      {vista === 'TendenciasHabilidades' && (
-        <div className="space-y-6">
-          <div className="glass-card p-6 rounded-3xl border border-white/5 space-y-6">
-            <h4 className="text-sm font-black text-white uppercase tracking-widest">Evolución de Niveles</h4>
-            <div className="h-80 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={skillTrends}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" vertical={false} />
-                  <XAxis 
-                    dataKey="month" 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{fill: '#ffffff40', fontSize: 10, fontWeight: 900}}
-                  />
-                  <YAxis axisLine={false} tickLine={false} tick={{fill: '#ffffff40', fontSize: 10}} />
-                  <Tooltip 
-                    contentStyle={{backgroundColor: '#151619', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px'}}
-                  />
-                  <Legend verticalAlign="top" align="right" iconType="circle" wrapperStyle={{paddingBottom: 20, fontSize: 10, fontWeight: 900, textTransform: 'uppercase'}} />
-                  <Bar dataKey="basico" name="Básico" stackId="a" fill="#00F5FF" radius={[0, 0, 0, 0]} />
-                  <Bar dataKey="intermedio" name="Intermedio" stackId="a" fill="#7000FF" radius={[0, 0, 0, 0]} />
-                  <Bar dataKey="avanzado" name="Avanzado" stackId="a" fill="#FF00E5" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4">
-            <div className="glass-card p-6 rounded-3xl border border-white/5 flex items-center justify-between">
-              <div className="space-y-1">
-                <p className="text-[10px] font-black text-white/40 uppercase tracking-widest">Tasa de Progresión</p>
-                <h3 className="text-2xl font-black text-white">24.5%</h3>
-              </div>
-              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary shadow-neon-cyan">
-                <span className="material-icons-outlined">trending_up</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
       {/* View: ReporteBiometrico */}
       {vista === 'ReporteBiometrico' && biometricStats && (
         <div className="space-y-6 px-6">
-          <div className="glass-card p-6 rounded-[2.5rem] border border-white/5 space-y-6">
-            <h4 className="text-sm font-black text-white uppercase tracking-widest">Promedio Biométrico: {selectedGrupo}</h4>
+          <header className="px-1">
+            <h2 className="text-2xl font-bold text-black tracking-tight">Biometría Grupal</h2>
+            <p className="text-secondary text-sm font-medium">Equilibrio físico del grupo {selectedGrupo}</p>
+          </header>
+
+          <div className="bg-white p-8 rounded-[2.5rem] shadow-ios border border-black/5 space-y-8">
+            <h4 className="text-xs font-bold text-secondary uppercase tracking-widest text-center">Score Promedio del Equipo</h4>
             <div className="h-80 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <RadarChart cx="50%" cy="50%" outerRadius="80%" data={biometricStats.radarData}>
-                  <PolarGrid stroke="#ffffff10" />
-                  <PolarAngleAxis dataKey="subject" tick={{ fill: '#ffffff40', fontSize: 10, fontWeight: 900 }} />
+                  <PolarGrid stroke="#00000005" />
+                  <PolarAngleAxis dataKey="subject" tick={{ fill: '#6E6E73', fontSize: 12, fontWeight: 700 }} />
                   <Radar
-                    name="Group Average"
+                    name="Promedio Grupal"
                     dataKey="A"
-                    stroke="#00F5FF"
-                    fill="#00F5FF"
-                    fillOpacity={0.3}
+                    stroke="#007AFF"
+                    fill="#007AFF"
+                    fillOpacity={0.15}
                   />
                   <Tooltip 
-                    contentStyle={{backgroundColor: '#151619', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px'}}
+                    contentStyle={{backgroundColor: '#FFFFFF', border: '1px solid rgba(0,0,0,0.05)', borderRadius: '16px', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)'}}
                   />
                 </RadarChart>
               </ResponsiveContainer>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="glass-card p-6 rounded-3xl border border-white/5 space-y-6">
-              <h4 className="text-sm font-black text-white uppercase tracking-widest">Distribución por Edades</h4>
+          <div className="grid grid-cols-1 gap-6">
+            <div className="bg-white p-8 rounded-[2.5rem] shadow-ios border border-black/5 space-y-8">
+              <h4 className="text-xs font-bold text-secondary uppercase tracking-widest text-center">Distribución por Edades</h4>
               <div className="h-64 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
@@ -381,30 +366,33 @@ export const Reportes: React.FC<ReportesProps> = ({ alumnos, clases, grupos, vis
                       outerRadius={80}
                       paddingAngle={5}
                       dataKey="value"
+                      stroke="none"
                     >
                       {biometricStats.ageData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
                     <Tooltip 
-                      contentStyle={{backgroundColor: '#151619', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px'}}
+                      contentStyle={{backgroundColor: '#FFFFFF', border: '1px solid rgba(0,0,0,0.05)', borderRadius: '16px', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)'}}
                     />
-                    <Legend verticalAlign="bottom" iconType="circle" wrapperStyle={{fontSize: 10, fontWeight: 900, textTransform: 'uppercase'}} />
+                    <Legend verticalAlign="bottom" iconType="circle" wrapperStyle={{fontSize: 10, fontWeight: 700, textTransform: 'uppercase', paddingTop: 20}} />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
             </div>
 
-            <div className="glass-card p-6 rounded-3xl border border-white/5 flex flex-col justify-center gap-4">
-              <div className="text-center space-y-1">
-                <p className="text-[10px] font-black text-white/40 uppercase tracking-widest">Alumnos en el Grupo</p>
-                <h3 className="text-4xl font-black text-white">{biometricStats.totalAlumnos}</h3>
+            <div className="bg-ios-blue p-8 rounded-[2.5rem] text-white space-y-4 shadow-lg overflow-hidden relative">
+              <div className="absolute -right-8 -bottom-8 opacity-10">
+                <span className="material-icons-outlined text-[160px]">insights</span>
               </div>
-              <div className="p-4 bg-primary/10 rounded-2xl border border-primary/20 text-center">
-                <p className="text-[10px] font-black text-primary uppercase tracking-widest mb-1">Potencial del Grupo</p>
-                <p className="text-xs text-white font-medium italic">"El grupo muestra un fuerte desarrollo en {
-                  biometricStats.radarData.reduce((prev, current) => (prev.A > current.A) ? prev : current).subject
-                }."</p>
+              <div className="relative z-10 space-y-4">
+                <div className="flex items-center gap-3">
+                  <span className="material-icons-outlined">psychology</span>
+                  <p className="text-[10px] font-bold uppercase tracking-widest">Análisis de CoachAI</p>
+                </div>
+                <p className="text-xl font-bold italic tracking-tight leading-snug">
+                  "El equipo de {selectedGrupo} muestra un desarrollo excepcional en {biometricStats.radarData.reduce((prev, current) => (prev.A > current.A) ? prev : current).subject}. Se recomienda enfocar los próximos entrenamientos en fortalecer el área de {biometricStats.radarData.reduce((prev, current) => (prev.A < current.A) ? prev : current).subject}."
+                </p>
               </div>
             </div>
           </div>

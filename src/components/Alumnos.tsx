@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Alumno, GrupoConfig, Skill, AsistenciaRecord, Feedback } from '../../types';
-import { Button, EditableDropdown, Tooltip } from '../../App';
+import { Button, EditableDropdown, Tooltip, BackButton } from '../../App';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
 
 interface AlumnosProps {
@@ -207,37 +207,38 @@ const Alumnos: React.FC<AlumnosProps> = ({
 
   if (vista === 'Alumnos') {
     return (
-      <div className="px-6 py-8 space-y-8 page-transition pb-24">
-        <header className="flex justify-between items-end">
+      <div className="min-h-screen bg-ios-gray px-6 py-8 space-y-6 page-transition pb-24 relative pt-12 focus-mode-parent">
+        <BackButton onClick={() => setVista('Dashboard')} />
+        <header className="flex justify-between items-end px-1">
           <div>
-            <h2 className="title-antigravity text-3xl">
-              {alumnosFilterMode === 'alerts' ? 'Obs. de Salud' : 'Gimnastas'}
+            <h2 className="text-3xl font-bold text-black tracking-tight">
+              {alumnosFilterMode === 'alerts' ? 'Salud y Alertas' : 'Gimnastas'}
             </h2>
-            <p className="text-primary text-[10px] font-black uppercase tracking-widest mt-1">
-              {alumnosFilterMode === 'alerts' ? 'Gimnastas con Alertas Médicas' : 'Tus alumnas registradas'}
+            <p className="text-secondary text-sm font-medium mt-1">
+              {alumnosFilterMode === 'alerts' ? 'Gimnastas con observaciones' : 'Listado general de alumnas'}
             </p>
           </div>
           <div className="flex items-center gap-4">
             <div className="text-right">
-              <p className="text-[10px] font-bold text-white/70 uppercase tracking-widest">Total</p>
-              <p className="text-2xl font-black text-white">{filteredAlumnos.length}</p>
+              <p className="text-[10px] font-bold text-secondary uppercase tracking-widest">Total</p>
+              <p className="text-2xl font-bold text-black">{filteredAlumnos.length}</p>
             </div>
             {alumnosFilterMode === 'all' && (
               <div className="flex gap-2">
-                <Button 
+                <motion.button 
+                  whileTap={{ scale: 0.95 }}
                   onClick={() => setIsBulkImporting(true)}
-                  variant="secondary"
-                  className="w-10 h-10 !p-0 rounded-full"
+                  className="w-10 h-10 rounded-full bg-white shadow-sm border border-black/5 text-secondary flex items-center justify-center transition-all"
                 >
-                  <span className="material-icons-outlined text-sm">upload_file</span>
-                </Button>
-                <Button 
+                  <span className="material-icons-outlined text-lg">upload_file</span>
+                </motion.button>
+                <motion.button 
+                  whileTap={{ scale: 0.95 }}
                   onClick={() => setIsAddingAlumno(!isAddingAlumno)}
-                  variant={isAddingAlumno ? 'danger' : 'primary'}
-                  className="w-10 h-10 !p-0 rounded-full"
+                  className={`w-10 h-10 rounded-full shadow-sm border flex items-center justify-center transition-all ${isAddingAlumno ? 'bg-ios-red border-ios-red text-white' : 'bg-ios-blue border-ios-blue text-white'}`}
                 >
-                  <span className="material-icons-outlined text-sm">{isAddingAlumno ? 'close' : 'person_add'}</span>
-                </Button>
+                  <span className="material-icons-outlined text-lg">{isAddingAlumno ? 'close' : 'person_add'}</span>
+                </motion.button>
               </div>
             )}
           </div>
@@ -245,39 +246,39 @@ const Alumnos: React.FC<AlumnosProps> = ({
 
         {/* Filters and Search */}
         <div className="space-y-4">
-          <div className="flex gap-2 p-1 bg-white/5 rounded-2xl">
+          <div className="flex gap-1 p-1 bg-black/5 rounded-2xl">
             <button 
               onClick={() => setAlumnosFilterMode('all')}
-              className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${alumnosFilterMode === 'all' ? 'bg-primary text-antigravity-black shadow-neon-cyan' : 'text-white/40 hover:text-white/60'}`}
+              className={`flex-1 py-2 px-4 rounded-xl text-xs font-bold transition-all ${alumnosFilterMode === 'all' ? 'bg-white text-black shadow-sm' : 'text-secondary hover:text-black/60'}`}
             >
-              Todos
+              Cualquiera
             </button>
             <button 
               onClick={() => setAlumnosFilterMode('alerts')}
-              className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${alumnosFilterMode === 'alerts' ? 'bg-rose-500 text-white shadow-neon-rose' : 'text-white/40 hover:text-white/60'}`}
+              className={`flex-1 py-2 px-4 rounded-xl text-xs font-bold transition-all ${alumnosFilterMode === 'alerts' ? 'bg-ios-red text-white shadow-sm' : 'text-secondary hover:text-black/60'}`}
             >
               Alertas
             </button>
           </div>
 
           <div className="relative group">
-            <span className="material-icons-outlined absolute left-4 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-primary transition-colors">search</span>
+            <span className="material-icons-outlined absolute left-4 top-1/2 -translate-y-1/2 text-secondary group-focus-within:text-primary transition-colors">search</span>
             <input 
               type="text" 
               placeholder="Buscar por nombre o DNI..." 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-antigravity-charcoal border border-white/10 rounded-2xl pl-12 pr-4 py-4 text-sm text-white outline-none focus:border-primary/50 transition-all placeholder:text-white/20"
+              className="w-full bg-white border border-transparent rounded-[1.2rem] pl-12 pr-4 py-4 text-sm text-black outline-none focus:border-primary/20 shadow-sm transition-all placeholder:text-secondary/50"
             />
           </div>
         </div>
 
-        {/* Alumnos List - Moved up as per user request */}
-        <div className="space-y-4 pt-2">
+        {/* Alumnos List */}
+        <div className="space-y-3 pt-2">
           {filteredAlumnos.length === 0 ? (
-            <div className="text-center py-12 opacity-30">
-              <span className="material-icons-outlined text-4xl mb-2">person_off</span>
-              <p className="text-xs uppercase font-black tracking-widest">No se encontraron gimnastas</p>
+            <div className="text-center py-16 text-secondary/40 space-y-2">
+              <span className="material-icons-outlined text-5xl">person_off</span>
+              <p className="text-xs font-bold uppercase tracking-widest">No se encontraron gimnastas</p>
             </div>
           ) : (
             filteredAlumnos.map((alumno, idx) => (
@@ -285,87 +286,93 @@ const Alumnos: React.FC<AlumnosProps> = ({
                 key={alumno.id}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: idx * 0.03 }}
+                transition={{ delay: idx * 0.02 }}
                 onClick={() => { setSelectedAlumno(alumno); setVista('AlumnoDetalle'); }}
-                className="glass-card rounded-2xl p-4 border border-white/5 flex items-center justify-between group active:scale-[0.98] transition-all cursor-pointer hover:border-primary/30"
+                className="bg-white rounded-[1.5rem] p-4 shadow-sm border border-black/5 flex items-center justify-between group active:bg-ios-gray transition-all cursor-pointer"
               >
                 <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center border border-white/10 group-hover:border-primary/30 transition-colors">
-                    <span className="text-xs font-black text-white/40 group-hover:text-primary">{alumno.nombre.charAt(0)}</span>
+                  <div className="w-11 h-11 rounded-full bg-ios-gray flex items-center justify-center">
+                    <span className="text-sm font-bold text-secondary">{alumno.nombre.charAt(0)}</span>
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold text-white group-hover:text-primary transition-colors">{alumno.nombre}</h4>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-[8px] font-black uppercase tracking-widest text-white/40">{alumno.grupo}</span>
-                      <span className="w-1 h-1 rounded-full bg-white/10"></span>
-                      <span className="text-[8px] font-black uppercase tracking-widest text-primary/60">{alumno.nivel}</span>
+                    <h4 className="text-sm font-bold text-black leading-tight">{alumno.nombre}</h4>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-[10px] font-bold text-secondary uppercase tracking-tight">{alumno.grupo}</span>
+                      <span className="w-0.5 h-0.5 rounded-full bg-black/10"></span>
+                      <span className="text-[10px] font-bold text-primary uppercase tracking-tight">{alumno.nivel}</span>
                     </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
                   {alumno.alertas && alumno.alertas.length > 0 && alumno.alertas[0] !== '' && (
-                    <div className="w-6 h-6 rounded-lg bg-rose-500/20 flex items-center justify-center border border-rose-500/30">
-                      <span className="material-icons-outlined text-rose-500 text-[14px]">warning</span>
+                    <div className="w-7 h-7 rounded-full bg-ios-red/10 flex items-center justify-center border border-ios-red/10">
+                      <span className="material-icons-outlined text-ios-red text-sm">warning</span>
                     </div>
                   )}
-                  <span className="material-icons-outlined text-white/20 group-hover:text-primary transition-colors">chevron_right</span>
+                  <span className="material-icons-outlined text-black/10 text-lg">chevron_right</span>
                 </div>
               </motion.div>
             ))
           )}
         </div>
 
-        {/* Filters Grid - Moved down as per user request */}
-        <div className="pt-8 mt-4 border-t border-white/5 grid grid-cols-2 gap-x-6 gap-y-16 pb-40">
-          <EditableDropdown 
-            label="Grupo"
-            value={selectedGrupoFilter === 'Todos' ? '' : selectedGrupoFilter}
-            onChange={(val) => setSelectedGrupoFilter(val || 'Todos')}
-            options={grupos}
-            onAdd={handleQuickSaveGroup}
-            onEdit={handleUpdateGroupQuick}
-            onDelete={(id) => {
-              const g = grupos.find(group => group.id === id);
-              if (g) handleDeleteGroup(g);
-            }}
-            placeholder="Todos los Grupos"
-          />
-          <EditableDropdown 
-            label="Nivel"
-            value={selectedNivelFilter === 'Todos' ? '' : selectedNivelFilter}
-            onChange={(val) => setSelectedNivelFilter(val || 'Todos')}
-            options={niveles}
-            onAdd={handleSaveLevel}
-            onEdit={handleUpdateLevel}
-            onDelete={handleDeleteLevel}
-            placeholder="Todos los Niveles"
-          />
-          
-          {ageCategories.length > 0 && (
-            <EditableDropdown 
-              label="Categoría Edad"
-              value={selectedAgeFilter === 'Todos' ? '' : selectedAgeFilter}
-              onChange={(val) => setSelectedAgeFilter(val || 'Todos')}
-              options={ageCategories}
-              onAdd={handleSaveAgeCategory}
-              onEdit={handleUpdateAgeCategory}
-              onDelete={handleDeleteAgeCategory}
-              placeholder="Todas las Edades"
-            />
-          )}
+        {/* Filters Grid */}
+        <div className="pt-6 border-t border-black/5 space-y-6 pb-40">
+           <div className="flex justify-between items-center px-1">
+              <h3 className="text-xs font-bold text-secondary uppercase tracking-widest">Otros Filtros</h3>
+           </div>
+           
+           <div className="grid grid-cols-2 gap-x-4 gap-y-4">
+              <EditableDropdown 
+                label="Grupo"
+                value={selectedGrupoFilter === 'Todos' ? '' : selectedGrupoFilter}
+                onChange={(val) => setSelectedGrupoFilter(val || 'Todos')}
+                options={grupos}
+                onAdd={handleQuickSaveGroup}
+                onEdit={handleUpdateGroupQuick}
+                onDelete={(id) => {
+                  const g = grupos.find(group => group.id === id);
+                  if (g) handleDeleteGroup(g);
+                }}
+                placeholder="Todos"
+              />
+              <EditableDropdown 
+                label="Nivel"
+                value={selectedNivelFilter === 'Todos' ? '' : selectedNivelFilter}
+                onChange={(val) => setSelectedNivelFilter(val || 'Todos')}
+                options={niveles}
+                onAdd={handleSaveLevel}
+                onEdit={handleUpdateLevel}
+                onDelete={handleDeleteLevel}
+                placeholder="Todos"
+              />
+              
+              {ageCategories.length > 0 && (
+                <EditableDropdown 
+                  label="Categoría Edad"
+                  value={selectedAgeFilter === 'Todos' ? '' : selectedAgeFilter}
+                  onChange={(val) => setSelectedAgeFilter(val || 'Todos')}
+                  options={ageCategories}
+                  onAdd={handleSaveAgeCategory}
+                  onEdit={handleUpdateAgeCategory}
+                  onDelete={handleDeleteAgeCategory}
+                  placeholder="Todas"
+                />
+              )}
 
-          {physicalCategories.length > 0 && (
-            <EditableDropdown 
-              label="Condición Física"
-              value={selectedPhysicalFilter === 'Cualquiera' ? '' : selectedPhysicalFilter}
-              onChange={(val) => setSelectedPhysicalFilter(val || 'Cualquiera')}
-              options={physicalCategories}
-              onAdd={handleSavePhysicalCategory}
-              onEdit={handleUpdatePhysicalCategory}
-              onDelete={handleDeletePhysicalCategory}
-              placeholder="Cualquiera"
-            />
-          )}
+              {physicalCategories.length > 0 && (
+                <EditableDropdown 
+                  label="Condición Física"
+                  value={selectedPhysicalFilter === 'Cualquiera' ? '' : selectedPhysicalFilter}
+                  onChange={(val) => setSelectedPhysicalFilter(val || 'Cualquiera')}
+                  options={physicalCategories}
+                  onAdd={handleSavePhysicalCategory}
+                  onEdit={handleUpdatePhysicalCategory}
+                  onDelete={handleDeletePhysicalCategory}
+                  placeholder="Cualquiera"
+                />
+              )}
+           </div>
         </div>
 
         {/* Add Alumno Form */}
@@ -375,30 +382,42 @@ const Alumnos: React.FC<AlumnosProps> = ({
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              className="overflow-hidden"
+              className="overflow-hidden fixed inset-x-0 bottom-0 z-50 px-6 pb-24 bg-gradient-to-t from-ios-gray via-ios-gray to-transparent pt-32"
             >
-              <div className="glass-card rounded-[2rem] p-6 border border-primary/30 bg-primary/5 space-y-6">
-                <h3 className="text-sm font-black text-white uppercase tracking-widest">{isEditingStudent ? 'Editar Gimnasta' : 'Nuevo Gimnasta'}</h3>
-                <div className="grid grid-cols-1 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-[10px] uppercase font-bold text-white/60 ml-1">Nombre Completo</label>
+              <div className="bg-white rounded-[2.5rem] p-8 shadow-2xl border border-black/5 space-y-6 max-h-[80vh] overflow-y-auto">
+                <div className="flex justify-between items-center mb-2">
+                  <h3 className="text-xl font-bold text-black tracking-tight">{isEditingStudent ? 'Editar Perfil' : 'Nueva Gimnasta'}</h3>
+                  <button 
+                    onClick={() => {
+                      setIsAddingAlumno(false);
+                      setIsEditingStudent(false);
+                    }}
+                    className="w-8 h-8 rounded-full bg-ios-gray flex items-center justify-center text-secondary"
+                  >
+                    <span className="material-icons-outlined text-sm">close</span>
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-[10px] uppercase font-bold text-secondary ml-1 tracking-widest">Nombre Completo</label>
                     <input 
                       type="text" 
                       value={studentForm.nombre}
                       onChange={(e) => setStudentForm({ ...studentForm, nombre: e.target.value })}
-                      className="w-full bg-antigravity-charcoal border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-primary/50 transition-all"
-                      placeholder="Ej: Juan Perez"
+                      className="w-full bg-ios-gray rounded-xl px-4 py-4 text-sm text-black outline-none border border-transparent focus:border-primary/20 transition-all font-medium"
+                      placeholder="Ej: Sofía González"
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-14">
-                    <div className="space-y-1">
-                      <label className="text-[10px] uppercase font-bold text-white/60 ml-1">DNI</label>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-[10px] uppercase font-bold text-secondary ml-1 tracking-widest">DNI / Documento</label>
                       <input 
                         type="text" 
                         value={studentForm.dni}
                         onChange={(e) => setStudentForm({ ...studentForm, dni: e.target.value })}
-                        className="w-full bg-antigravity-charcoal border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-primary/50 transition-all"
-                        placeholder="Sin puntos"
+                        className="w-full bg-ios-gray rounded-xl px-4 py-4 text-sm text-black outline-none border border-transparent focus:border-primary/20 transition-all font-medium"
+                        placeholder="Nro de Documento"
                       />
                     </div>
                     <EditableDropdown 
@@ -412,7 +431,7 @@ const Alumnos: React.FC<AlumnosProps> = ({
                       placeholder="Seleccionar..."
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-14">
+                  <div className="grid grid-cols-2 gap-4">
                     <EditableDropdown 
                       label="Grupo"
                       value={studentForm.grupo || ''}
@@ -437,87 +456,79 @@ const Alumnos: React.FC<AlumnosProps> = ({
                       placeholder="Seleccionar..."
                     />
                   </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] uppercase font-bold text-white/60 ml-1">Alertas Médicas (Opcional)</label>
+                  <div className="space-y-2">
+                    <label className="text-[10px] uppercase font-bold text-secondary ml-1 tracking-widest">Observaciones Médicas</label>
                     <textarea 
                       value={studentForm.alertas?.[0] || ''}
                       onChange={(e) => setStudentForm({ ...studentForm, alertas: [e.target.value] })}
-                      className="w-full bg-antigravity-charcoal border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-primary/50 transition-all h-20"
+                      className="w-full bg-ios-gray rounded-xl px-4 py-4 text-sm text-black outline-none border border-transparent focus:border-primary/20 transition-all font-medium h-24"
                       placeholder="Alergias, asma, lesiones previas..."
                     />
                   </div>
                 </div>
-                <div className="flex gap-3">
-                  <Button 
-                    onClick={() => {
-                      setIsAddingAlumno(false);
-                      setIsEditingStudent(false);
-                      setStudentForm({
-                        nombre: '', dni: '', disciplina: 'GAF', nivel: 'Escuela',
-                        fechaNacimiento: '', fechaPrimeraClase: new Date().toISOString().split('T')[0],
-                        alertas: [], contacto: { padreNombre: '', padreTelefono: '', madreNombre: '', madreTelefono: '', emergenciaNombre: '', emergenciaTelefono: '' }
-                      });
-                    }}
-                    variant="secondary"
-                    className="flex-1 py-4 rounded-2xl"
-                  >
-                    Cancelar
-                  </Button>
-                  <Button 
+                <div className="flex gap-3 pt-4">
+                  <motion.button 
+                    whileTap={{ scale: 0.95 }}
                     onClick={() => {
                       handleSaveStudent();
                       setIsEditingStudent(false);
                     }}
-                    className="flex-1 py-4 rounded-2xl shadow-neon-cyan"
+                    className="flex-1 py-5 rounded-[1.2rem] bg-ios-blue text-white text-sm font-bold shadow-lg"
                   >
-                    {isEditingStudent ? 'Actualizar' : 'Guardar Gimnasta'}
-                  </Button>
+                    {isEditingStudent ? 'Guardar Cambios' : 'Registrar Gimnasta'}
+                  </motion.button>
                 </div>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
-
       </div>
     );
   }
 
   if (vista === 'AlumnoDetalle' && selectedAlumno) {
     return (
-      <div className="min-h-screen bg-antigravity-black page-transition pb-24">
+      <div className="min-h-screen bg-ios-gray page-transition pb-24 focus-mode-parent">
         {/* Header Hero */}
-        <div className="relative h-64 bg-gradient-to-b from-primary/20 to-antigravity-black px-6 pt-12">
-          <button 
-            onClick={() => setVista('Alumnos')}
-            className="w-10 h-10 rounded-full bg-antigravity-black/50 backdrop-blur-md border border-white/10 flex items-center justify-center text-white mb-6 active:scale-90 transition-all"
-          >
-            <span className="material-icons-outlined">arrow_back</span>
-          </button>
+        <div className="relative h-64 bg-white px-6 pt-12 shadow-sm border-b border-black/5">
+          <BackButton onClick={() => setVista('Alumnos')} />
           
-          <div className="flex items-end gap-6">
-            <div className="w-24 h-24 rounded-3xl bg-antigravity-charcoal border-2 border-primary shadow-neon-cyan flex items-center justify-center relative overflow-hidden">
-              <span className="text-4xl font-black text-primary/20 absolute inset-0 flex items-center justify-center select-none">{selectedAlumno.nombre.charAt(0)}</span>
-              <span className="text-3xl font-black text-white relative z-10">{selectedAlumno.nombre.charAt(0)}</span>
+          <div className="flex items-end gap-6 mt-10">
+            <div className="w-24 h-24 rounded-full bg-ios-gray border-4 border-white shadow-lg flex items-center justify-center relative overflow-hidden shrink-0">
+               <span className="text-4xl font-bold text-primary">{selectedAlumno.nombre.charAt(0)}</span>
             </div>
             <div className="pb-2 flex-1 flex justify-between items-end">
               <div className="space-y-1">
-                <h2 className="text-3xl font-black text-white uppercase tracking-tighter leading-none">{selectedAlumno.nombre}</h2>
+                <h2 className="text-3xl font-bold text-black tracking-tight leading-none truncate max-w-[200px]">{selectedAlumno.nombre}</h2>
                 <div className="flex items-center gap-3">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-primary">{selectedAlumno.grupo}</span>
-                  <span className="w-1 h-1 rounded-full bg-white/20"></span>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-white/60">{selectedAlumno.nivel}</span>
+                  <div className="flex items-center gap-1 group cursor-pointer" onClick={() => {
+                    const groupNames = grupos.map(g => g.nombre);
+                    const newGroup = prompt(`Cambiar grupo de ${selectedAlumno.nombre}.\nGrupos disponibles: ${groupNames.join(', ')}`, selectedAlumno.grupo);
+                    if (newGroup && newGroup !== selectedAlumno.grupo && groupNames.includes(newGroup)) {
+                      setStudentForm({ ...selectedAlumno, grupo: newGroup });
+                      setTimeout(() => handleSaveStudent(), 100);
+                    } else if (newGroup && !groupNames.includes(newGroup)) {
+                      alert("El grupo ingresado no existe.");
+                    }
+                  }}>
+                    <span className="text-xs font-bold text-primary hover:underline">{selectedAlumno.grupo}</span>
+                    <span className="material-icons-outlined text-[12px] text-primary/60">swap_horiz</span>
+                  </div>
+                  <span className="w-1 h-1 rounded-full bg-black/10"></span>
+                  <span className="text-xs font-medium text-secondary">{selectedAlumno.nivel}</span>
                 </div>
               </div>
-              <button 
+              <motion.button 
+                whileTap={{ scale: 0.95 }}
                 onClick={() => {
                   setStudentForm(selectedAlumno);
                   setIsEditingStudent(true);
                   setIsAddingAlumno(true);
                 }}
-                className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary active:scale-90 transition-all"
+                className="w-10 h-10 rounded-full bg-ios-gray flex items-center justify-center text-secondary active:scale-90 transition-all"
               >
-                <span className="material-icons-outlined">edit</span>
-              </button>
+                <span className="material-icons-outlined text-lg">edit</span>
+              </motion.button>
             </div>
           </div>
         </div>
@@ -525,66 +536,45 @@ const Alumnos: React.FC<AlumnosProps> = ({
         <div className="px-6 -mt-6 space-y-8">
           {/* Quick Stats */}
           <div className="grid grid-cols-3 gap-3">
-            <div className="glass-card rounded-2xl p-4 border border-white/5 text-center space-y-1">
-              <span className="text-[8px] font-black uppercase tracking-widest text-white/40 block">Asistencia</span>
-              <span className="text-lg font-black text-primary">85%</span>
+            <div className="bg-white rounded-2xl p-4 shadow-sm border border-black/5 text-center space-y-1">
+              <span className="text-[8px] font-bold uppercase tracking-widest text-secondary block">Asistencia</span>
+              <span className="text-xl font-bold text-black">85%</span>
             </div>
-            <div className="glass-card rounded-2xl p-4 border border-white/5 text-center space-y-1">
-              <span className="text-[8px] font-black uppercase tracking-widest text-white/40 block">Skills</span>
-              <span className="text-lg font-black text-emerald-500">12</span>
+            <div className="bg-white rounded-2xl p-4 shadow-sm border border-black/5 text-center space-y-1">
+              <span className="text-[8px] font-bold uppercase tracking-widest text-secondary block">Skills</span>
+              <span className="text-xl font-bold text-ios-green">12</span>
             </div>
-            <div className="glass-card rounded-2xl p-4 border border-white/5 text-center space-y-1">
-              <span className="text-[8px] font-black uppercase tracking-widest text-white/40 block">Nivel</span>
-              <span className="text-lg font-black text-amber-500">{selectedAlumno.nivel.split(' ')[1] || '1'}</span>
+            <div className="bg-white rounded-2xl p-4 shadow-sm border border-black/5 text-center space-y-1">
+              <span className="text-[8px] font-bold uppercase tracking-widest text-secondary block">Nivel</span>
+              <span className="text-xl font-bold text-ios-orange">{selectedAlumno.nivel.split(' ')[1] || '1'}</span>
             </div>
           </div>
 
           {/* Alertas Médicas */}
           {selectedAlumno.alertas && selectedAlumno.alertas.length > 0 && selectedAlumno.alertas[0] !== '' && (
-            <div className="bg-rose-500/10 border border-rose-500/20 rounded-3xl p-6 flex items-start gap-4">
-              <div className="w-10 h-10 rounded-xl bg-rose-500/20 flex items-center justify-center border border-rose-500/30 shrink-0">
-                <span className="material-icons-outlined text-rose-500">warning</span>
+            <div className="bg-ios-red/10 border border-ios-red/10 rounded-3xl p-6 flex items-start gap-4 shadow-sm">
+              <div className="w-10 h-10 rounded-full bg-ios-red/20 flex items-center justify-center border border-ios-red/10 shrink-0">
+                <span className="material-icons-outlined text-ios-red">warning</span>
               </div>
               <div>
-                <h4 className="text-[10px] font-black uppercase tracking-widest text-rose-500 mb-1">Observación Médica</h4>
-                <p className="text-sm text-rose-200/80 leading-relaxed italic">"{selectedAlumno.alertas[0]}"</p>
+                <h4 className="text-[10px] font-bold uppercase tracking-widest text-ios-red mb-1">Observación Médica</h4>
+                <p className="text-sm font-medium text-ios-red/80 leading-relaxed italic">"{selectedAlumno.alertas[0]}"</p>
               </div>
             </div>
           )}
 
           {/* Tabs Section */}
           <div className="space-y-6">
-            <div className="flex border-b border-white/5">
-              <button 
-                onClick={() => setActiveTab('Progreso')}
-                className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'Progreso' ? 'text-primary border-b-2 border-primary' : 'text-white/40'}`}
-              >
-                Progreso
-              </button>
-              <button 
-                onClick={() => setActiveTab('Asistencia')}
-                className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'Asistencia' ? 'text-primary border-b-2 border-primary' : 'text-white/40'}`}
-              >
-                Asistencia
-              </button>
-              <button 
-                onClick={() => setActiveTab('Bio')}
-                className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'Bio' ? 'text-primary border-b-2 border-primary' : 'text-white/40'}`}
-              >
-                Bio
-              </button>
-              <button 
-                onClick={() => setActiveTab('Contacto')}
-                className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'Contacto' ? 'text-primary border-b-2 border-primary' : 'text-white/40'}`}
-              >
-                Contacto
-              </button>
-              <button 
-                onClick={() => setActiveTab('Pagos')}
-                className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'Pagos' ? 'text-primary border-b-2 border-primary' : 'text-white/40'}`}
-              >
-                Pagos
-              </button>
+            <div className="flex border-b border-black/5 overflow-x-auto no-scrollbar">
+              {['Progreso', 'Asistencia', 'Bio', 'Contacto', 'Pagos'].map((tab) => (
+                <button 
+                  key={tab}
+                  onClick={() => setActiveTab(tab as any)}
+                  className={`px-4 py-3 text-[10px] font-bold uppercase tracking-widest whitespace-nowrap transition-all ${activeTab === tab ? 'text-primary border-b-2 border-primary' : 'text-secondary'}`}
+                >
+                  {tab}
+                </button>
+              ))}
             </div>
 
             {activeTab === 'Progreso' && (
@@ -592,52 +582,52 @@ const Alumnos: React.FC<AlumnosProps> = ({
                 {/* Skills Section */}
                 <div className="space-y-4">
                   <div className="flex justify-between items-center px-1">
-                    <h3 className="text-sm font-black text-white uppercase tracking-widest">Habilidades</h3>
-                    <Button 
+                    <h3 className="text-xs font-bold text-secondary uppercase tracking-widest">Habilidades</h3>
+                    <button 
                       onClick={() => setIsAddingSkill(true)}
-                      className="!py-1.5 !px-3 !text-[8px]"
+                      className="text-primary text-[10px] font-bold uppercase tracking-widest"
                     >
-                      Añadir Skill
-                    </Button>
+                      + Añadir
+                    </button>
                   </div>
 
                   {/* Skill Filters */}
-                  <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
+                  <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
                     {['Todos', 'Suelo', 'Salto', 'Viga', 'Paralelas'].map(app => (
                       <button 
                         key={app}
                         onClick={() => setSkillApparatusFilter(app)}
-                        className={`px-4 py-2 rounded-full text-[8px] font-black uppercase tracking-widest whitespace-nowrap transition-all ${skillApparatusFilter === app ? 'bg-primary text-antigravity-black' : 'bg-white/5 text-white/40'}`}
+                        className={`px-5 py-2 rounded-full text-[10px] font-bold tracking-tight whitespace-nowrap transition-all ${skillApparatusFilter === app ? 'bg-primary text-white shadow-sm' : 'bg-white text-secondary border border-black/5'}`}
                       >
                         {app}
                       </button>
                     ))}
                   </div>
 
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     {selectedAlumno.habilidades?.filter((s: Skill) => skillApparatusFilter === 'Todos' || s.apparatus === skillApparatusFilter).map((skill: Skill) => (
-                      <div key={skill.id} className="glass-card rounded-2xl p-4 border border-white/5 flex items-center justify-between group">
+                      <div key={skill.id} className="bg-white rounded-2xl p-5 shadow-sm border border-black/5 flex items-center justify-between group">
                         <div className="flex items-center gap-4">
-                          <div className={`w-2 h-2 rounded-full ${skill.status === 'Logrado' ? 'bg-emerald-500 shadow-neon-emerald' : skill.status === 'En Proceso' ? 'bg-amber-500 shadow-neon-amber' : 'bg-white/20'}`}></div>
+                          <div className={`w-3 h-3 rounded-full ${skill.status === 'Logrado' ? 'bg-ios-green shadow-sm shadow-ios-green' : skill.status === 'En Proceso' ? 'bg-ios-orange shadow-sm shadow-ios-orange' : 'bg-ios-gray'}`}></div>
                           <div>
-                            <h4 className="text-xs font-bold text-white">{skill.name}</h4>
-                            <span className="text-[8px] font-black uppercase tracking-widest text-white/40">{skill.apparatus} • Nivel {skill.level}</span>
+                            <h4 className="text-sm font-bold text-black">{skill.name}</h4>
+                            <span className="text-[10px] font-medium text-secondary uppercase tracking-tight">{skill.apparatus} • Nivel {skill.level}</span>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex items-center gap-2">
                           <button 
                             onClick={() => {
                               setEditingSkillId(skill.id);
                               setEditingSkillData(skill);
                               setIsAddingSkill(true);
                             }}
-                            className="p-2 text-white/40 hover:text-primary transition-colors"
+                            className="w-8 h-8 rounded-full bg-ios-gray flex items-center justify-center text-secondary active:scale-90 transition-all"
                           >
                             <span className="material-icons-outlined text-sm">edit</span>
                           </button>
                           <button 
                             onClick={() => handleDeleteSkill(skill.id)}
-                            className="p-2 text-white/40 hover:text-rose-500 transition-colors"
+                            className="w-8 h-8 rounded-full bg-ios-red/10 flex items-center justify-center text-ios-red active:scale-90 transition-all"
                           >
                             <span className="material-icons-outlined text-sm">delete</span>
                           </button>
@@ -649,7 +639,7 @@ const Alumnos: React.FC<AlumnosProps> = ({
 
                 {/* Feedback Section */}
                 <div className="space-y-4">
-                  <h3 className="text-sm font-black text-white uppercase tracking-widest px-1">Observaciones del Coach</h3>
+                  <h3 className="text-xs font-bold text-secondary uppercase tracking-widest px-1">Observaciones del Coach</h3>
                   <div className="space-y-4">
                     <div className="flex gap-2">
                       <input 
@@ -657,18 +647,22 @@ const Alumnos: React.FC<AlumnosProps> = ({
                         value={newFeedback}
                         onChange={(e) => setNewFeedback(e.target.value)}
                         placeholder="Escribir observación..."
-                        className="flex-1 bg-antigravity-charcoal border border-white/10 rounded-xl px-4 py-3 text-xs text-white outline-none focus:border-primary/50 transition-all"
+                        className="flex-1 bg-white border border-black/5 rounded-2xl px-5 py-4 text-sm text-black outline-none focus:border-primary/20 shadow-sm transition-all"
                       />
-                      <Button onClick={handleAddFeedback} className="!px-4">
-                        <span className="material-icons-outlined text-sm">send</span>
-                      </Button>
+                      <motion.button 
+                        whileTap={{ scale: 0.95 }}
+                        onClick={handleAddFeedback} 
+                        className="w-14 h-14 bg-ios-blue text-white rounded-2xl flex items-center justify-center shadow-lg"
+                      >
+                        <span className="material-icons-outlined">send</span>
+                      </motion.button>
                     </div>
                     <div className="space-y-3">
                       {feedbacks.map((f) => (
-                        <div key={f.id} className="glass-card rounded-2xl p-4 border border-white/5 space-y-2 relative group">
-                          <div className="flex justify-between items-start">
-                            <span className="text-[8px] font-black uppercase tracking-widest text-primary">{new Date(f.timestamp).toLocaleDateString()}</span>
-                            <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div key={f.id} className="bg-white rounded-[1.5rem] p-5 shadow-sm border border-black/5 space-y-2 relative group">
+                          <div className="flex justify-between items-center mb-1">
+                            <span className="text-[10px] font-bold text-primary uppercase tracking-widest">{new Date(f.timestamp).toLocaleDateString()}</span>
+                            <div className="flex gap-2">
                               <button 
                                 onClick={() => {
                                   const newText = prompt("Editar observación:", f.text);
@@ -676,19 +670,19 @@ const Alumnos: React.FC<AlumnosProps> = ({
                                     handleUpdateFeedback(f.id!, newText.trim());
                                   }
                                 }}
-                                className="text-white/20 hover:text-primary transition-colors"
+                                className="w-8 h-8 rounded-full bg-ios-gray flex items-center justify-center text-secondary"
                               >
                                 <span className="material-icons-outlined text-xs">edit</span>
                               </button>
                               <button 
                                 onClick={() => handleDeleteFeedback(f.id!)}
-                                className="text-white/20 hover:text-rose-500 transition-colors"
+                                className="w-8 h-8 rounded-full bg-ios-red/10 flex items-center justify-center text-ios-red"
                               >
                                 <span className="material-icons-outlined text-xs">delete</span>
                               </button>
                             </div>
                           </div>
-                          <p className="text-xs text-white/80 leading-relaxed italic">"{f.text}"</p>
+                          <p className="text-sm font-medium text-black/80 leading-relaxed italic">"{f.text}"</p>
                         </div>
                       ))}
                     </div>
@@ -699,53 +693,49 @@ const Alumnos: React.FC<AlumnosProps> = ({
 
             {activeTab === 'Asistencia' && (
               <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
-                <h3 className="text-sm font-black text-white uppercase tracking-widest px-1">Historial de Asistencia</h3>
-                <div className="space-y-2">
+                <h3 className="text-xs font-bold text-secondary uppercase tracking-widest px-1">Historial de Asistencia</h3>
+                <div className="bg-white rounded-3xl shadow-sm border border-black/5 divide-y divide-black/5 overflow-hidden">
                   {isLoadingAsistencias ? (
-                    <div className="p-10 text-center text-white/40 italic">Cargando asistencias...</div>
+                    <div className="p-10 text-center text-secondary italic">Cargando asistencias...</div>
                   ) : alumnoAsistencias.length > 0 ? (
                     alumnoAsistencias.map((a, idx) => (
-                      <div key={idx} className="glass-card rounded-2xl p-4 border border-white/5 flex justify-between items-center">
-                        <div className="flex items-center gap-3">
-                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${a.presente ? 'bg-emerald-500/20 text-emerald-500' : 'bg-rose-500/20 text-rose-500'}`}>
-                            <span className="material-icons-outlined text-sm">{a.presente ? 'check_circle' : 'cancel'}</span>
+                      <div key={idx} className="p-5 flex justify-between items-center">
+                        <div className="flex items-center gap-4">
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${a.presente ? 'bg-ios-green/10 text-ios-green' : 'bg-ios-red/10 text-ios-red'}`}>
+                            <span className="material-icons-outlined text-xl">{a.presente ? 'check_circle' : 'cancel'}</span>
                           </div>
                           <div>
-                            <p className="text-xs font-bold text-white">{new Date(a.fecha).toLocaleDateString()}</p>
-                            <p className="text-[8px] text-white/40 uppercase font-black tracking-widest">{a.grupo}</p>
+                            <p className="text-sm font-bold text-black">{new Date(a.fecha).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                            <p className="text-[10px] text-secondary font-medium uppercase tracking-tight">{a.grupo}</p>
                           </div>
                         </div>
-                        <span className={`text-[10px] font-black uppercase tracking-widest ${a.presente ? 'text-emerald-500' : 'text-rose-500'}`}>
+                        <span className={`text-[10px] font-bold uppercase tracking-widest ${a.presente ? 'text-ios-green' : 'text-ios-red'}`}>
                           {a.presente ? 'Presente' : 'Ausente'}
                         </span>
                       </div>
                     ))
                   ) : (
-                    <div className="p-10 text-center text-white/40 italic">No hay registros de asistencia.</div>
+                    <div className="p-10 text-center text-secondary text-sm italic">No hay registros de asistencia.</div>
                   )}
                 </div>
-              </div>
-            )}
-
-            {activeTab === 'Bio' && selectedAlumno.biometria && (
+              </div>            {activeTab === 'Bio' && selectedAlumno.biometria && (
               <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2">
                 <div className="flex justify-between items-center px-1">
-                  <h3 className="text-sm font-black text-white uppercase tracking-widest">Biometría Radar</h3>
-                  <Button 
-                    variant={isEditingBiometrics ? 'success' : 'outline'}
+                  <h3 className="text-xs font-bold text-secondary uppercase tracking-widest">Biometría Radar</h3>
+                  <button 
                     onClick={() => {
                       if (isEditingBiometrics) {
                         handleUpdateBiometrics(selectedAlumno.id!, selectedAlumno.biometria);
                       }
                       setIsEditingBiometrics(!isEditingBiometrics);
                     }}
-                    className="!py-1.5 !px-3 !text-[8px]"
+                    className={`text-[10px] font-bold uppercase tracking-widest px-4 py-2 rounded-full transition-all ${isEditingBiometrics ? 'bg-ios-green text-white shadow-sm' : 'bg-ios-gray text-secondary'}`}
                   >
                     {isEditingBiometrics ? 'Guardar Cambios' : 'Editar Valores'}
-                  </Button>
+                  </button>
                 </div>
 
-                <div className="glass-card rounded-[2.5rem] p-6 border border-white/5 flex flex-col items-center">
+                <div className="bg-white rounded-[2.5rem] p-8 shadow-ios border border-black/5 flex flex-col items-center">
                   <div className="w-full h-64">
                     <ResponsiveContainer width="100%" height="100%">
                       <RadarChart cx="50%" cy="50%" outerRadius="80%" data={[
@@ -755,25 +745,25 @@ const Alumnos: React.FC<AlumnosProps> = ({
                         { subject: 'Resist', A: selectedAlumno.biometria.resistencia, fullMark: 100 },
                         { subject: 'Coord', A: selectedAlumno.biometria.coordinacion, fullMark: 100 },
                       ]}>
-                        <PolarGrid stroke="#ffffff10" />
-                        <PolarAngleAxis dataKey="subject" tick={{ fill: '#ffffff40', fontSize: 10, fontWeight: 900 }} />
+                        <PolarGrid stroke="#00000010" />
+                        <PolarAngleAxis dataKey="subject" tick={{ fill: '#6E6E73', fontSize: 10, fontWeight: 700 }} />
                         <Radar
                           name={selectedAlumno.nombre}
                           dataKey="A"
-                          stroke="#00f2ff"
-                          fill="#00f2ff"
-                          fillOpacity={0.3}
+                          stroke="#007AFF"
+                          fill="#007AFF"
+                          fillOpacity={0.15}
                         />
                       </RadarChart>
                     </ResponsiveContainer>
                   </div>
                   
                   <div className="mt-4 text-center">
-                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 block mb-1">Score Físico General</span>
-                    <span className={`text-3xl font-black ${
-                      getPhysicalScore(selectedAlumno.biometria) >= 80 ? 'text-emerald-500 text-glow-emerald' :
-                      getPhysicalScore(selectedAlumno.biometria) >= 60 ? 'text-primary shadow-neon-cyan' :
-                      'text-amber-500'
+                    <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-secondary block mb-1">Score Físico General</span>
+                    <span className={`text-4xl font-bold ${
+                      getPhysicalScore(selectedAlumno.biometria) >= 80 ? 'text-ios-green' :
+                      getPhysicalScore(selectedAlumno.biometria) >= 60 ? 'text-ios-blue' :
+                      'text-ios-orange'
                     }`}>
                       {Math.round(getPhysicalScore(selectedAlumno.biometria))}%
                     </span>
@@ -781,26 +771,22 @@ const Alumnos: React.FC<AlumnosProps> = ({
                 </div>
 
                 {isEditingBiometrics && (
-                  <div className="glass-card rounded-3xl p-6 border border-primary/20 bg-primary/5 space-y-6">
+                  <div className="bg-white rounded-3xl p-8 shadow-sm border border-black/5 space-y-6">
                     {(['fuerza', 'flexibilidad', 'tecnica', 'resistencia', 'coordinacion'] as const).map((key) => (
-                      <div key={key} className="space-y-2">
+                      <div key={key} className="space-y-4">
                         <div className="flex justify-between items-center">
-                          <label className="text-[10px] uppercase font-black tracking-widest text-white/60 capitalize">{key}</label>
-                          <span className="text-xs font-black text-primary">{selectedAlumno.biometria![key]}%</span>
+                          <label className="text-xs font-bold text-black uppercase tracking-widest capitalize">{key}</label>
+                          <span className="text-sm font-bold text-primary">{selectedAlumno.biometria![key]}%</span>
                         </div>
                         <input 
                           type="range" 
-                          min="0" 
-                          max="100" 
+                          min="0" max="100" step="5"
                           value={selectedAlumno.biometria![key]}
                           onChange={(e) => {
                             const val = parseInt(e.target.value);
-                            setSelectedAlumno({
-                              ...selectedAlumno,
-                              biometria: { ...selectedAlumno.biometria!, [key]: val }
-                            });
+                            handleUpdateBiometrics(selectedAlumno.id!, { ...selectedAlumno.biometria, [key]: val });
                           }}
-                          className="w-full accent-primary bg-white/10 rounded-lg h-2 appearance-none cursor-pointer"
+                          className="w-full accent-ios-blue h-1.5 bg-ios-gray rounded-lg appearance-none cursor-pointer"
                         />
                       </div>
                     ))}
@@ -811,51 +797,66 @@ const Alumnos: React.FC<AlumnosProps> = ({
 
             {activeTab === 'Contacto' && (
               <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
-                <h3 className="text-sm font-black text-white uppercase tracking-widest px-1">Información de Contacto</h3>
+                <h3 className="text-xs font-bold text-secondary uppercase tracking-widest px-1">Información de Contacto</h3>
                 <div className="grid grid-cols-1 gap-4">
-                  <div className="glass-card rounded-3xl p-6 border border-white/5 space-y-4">
-                    <div className="flex items-center gap-3 text-primary">
+                  <div className="bg-white rounded-3xl p-6 shadow-sm border border-black/5 space-y-6">
+                    <div className="flex items-center gap-3 text-primary border-b border-black/5 pb-3">
                       <span className="material-icons-outlined">family_restroom</span>
-                      <h4 className="text-[10px] font-black uppercase tracking-widest">Familia y Emergencia</h4>
+                      <h4 className="text-[10px] font-bold uppercase tracking-widest">Familia y Emergencia</h4>
                     </div>
-                    <div className="grid grid-cols-1 gap-4">
+                    <div className="grid grid-cols-1 gap-4 divide-y divide-black/5">
                       {selectedAlumno.contacto?.padreNombre && (
-                        <div className="space-y-1">
-                          <p className="text-[8px] text-white/40 uppercase font-black tracking-widest">Padre</p>
-                          <p className="text-xs text-white font-bold">{selectedAlumno.contacto.padreNombre}</p>
-                          <p className="text-xs text-primary">{selectedAlumno.contacto.padreTelefono}</p>
+                        <div className="pt-4 first:pt-0 flex justify-between items-center">
+                          <div>
+                            <p className="text-[10px] text-secondary uppercase font-bold tracking-widest">Padre / Tutor</p>
+                            <p className="text-sm text-black font-bold">{selectedAlumno.contacto.padreNombre}</p>
+                            <p className="text-xs text-secondary">{selectedAlumno.contacto.padreTelefono}</p>
+                          </div>
+                          <a href={`tel:${selectedAlumno.contacto.padreTelefono}`} className="w-10 h-10 rounded-full bg-ios-blue/10 text-ios-blue flex items-center justify-center">
+                            <span className="material-icons-outlined text-sm">phone</span>
+                          </a>
                         </div>
                       )}
                       {selectedAlumno.contacto?.madreNombre && (
-                        <div className="space-y-1">
-                          <p className="text-[8px] text-white/40 uppercase font-black tracking-widest">Madre</p>
-                          <p className="text-xs text-white font-bold">{selectedAlumno.contacto.madreNombre}</p>
-                          <p className="text-xs text-primary">{selectedAlumno.contacto.madreTelefono}</p>
+                        <div className="pt-4 flex justify-between items-center">
+                          <div>
+                            <p className="text-[10px] text-secondary uppercase font-bold tracking-widest">Madre / Tutor</p>
+                            <p className="text-sm text-black font-bold">{selectedAlumno.contacto.madreNombre}</p>
+                            <p className="text-xs text-secondary">{selectedAlumno.contacto.madreTelefono}</p>
+                          </div>
+                          <a href={`tel:${selectedAlumno.contacto.madreTelefono}`} className="w-10 h-10 rounded-full bg-ios-blue/10 text-ios-blue flex items-center justify-center">
+                            <span className="material-icons-outlined text-sm">phone</span>
+                          </a>
                         </div>
                       )}
                       {selectedAlumno.contacto?.emergenciaNombre && (
-                        <div className="bg-rose-500/10 border border-rose-500/20 rounded-2xl p-4 space-y-1">
-                          <p className="text-[8px] text-rose-500 uppercase font-black tracking-widest">Emergencia</p>
-                          <p className="text-xs text-white font-bold">{selectedAlumno.contacto.emergenciaNombre}</p>
-                          <p className="text-xs text-rose-500 font-black">{selectedAlumno.contacto.emergenciaTelefono}</p>
+                        <div className="pt-4 flex justify-between items-center">
+                          <div>
+                            <p className="text-[10px] text-ios-red uppercase font-bold tracking-widest">Emergencia</p>
+                            <p className="text-sm text-black font-bold">{selectedAlumno.contacto.emergenciaNombre}</p>
+                            <p className="text-xs text-ios-red font-bold">{selectedAlumno.contacto.emergenciaTelefono}</p>
+                          </div>
+                          <a href={`tel:${selectedAlumno.contacto.emergenciaTelefono}`} className="w-10 h-10 rounded-full bg-ios-red text-white flex items-center justify-center shadow-sm">
+                            <span className="material-icons-outlined text-sm">phone_locked</span>
+                          </a>
                         </div>
                       )}
                     </div>
                   </div>
 
-                  <div className="glass-card rounded-3xl p-6 border border-white/5 space-y-4">
-                    <div className="flex items-center gap-3 text-primary">
+                  <div className="bg-white rounded-3xl p-6 shadow-sm border border-black/5 space-y-4">
+                    <div className="flex items-center gap-3 text-secondary border-b border-black/5 pb-3">
                       <span className="material-icons-outlined">info</span>
-                      <h4 className="text-[10px] font-black uppercase tracking-widest">Datos Generales</h4>
+                      <h4 className="text-[10px] font-bold uppercase tracking-widest">Datos Administrativos</h4>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1">
-                        <p className="text-[8px] text-white/40 uppercase font-black tracking-widest">DNI</p>
-                        <p className="text-xs text-white font-bold">{selectedAlumno.dni}</p>
+                        <p className="text-[10px] text-secondary uppercase font-bold tracking-widest">DNI / Documento</p>
+                        <p className="text-sm text-black font-bold">{selectedAlumno.dni}</p>
                       </div>
-                      <div className="space-y-1">
-                        <p className="text-[8px] text-white/40 uppercase font-black tracking-widest">Ingreso</p>
-                        <p className="text-xs text-white font-bold">{new Date(selectedAlumno.fechaIngreso).toLocaleDateString()}</p>
+                      <div className="space-y-1 text-right">
+                        <p className="text-[10px] text-secondary uppercase font-bold tracking-widest">Fecha Ingreso</p>
+                        <p className="text-sm text-black font-bold">{new Date(selectedAlumno.fechaIngreso).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })}</p>
                       </div>
                     </div>
                   </div>
@@ -866,77 +867,93 @@ const Alumnos: React.FC<AlumnosProps> = ({
             {activeTab === 'Pagos' && (
               <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
                 <div className="flex justify-between items-center px-1">
-                  <h3 className="text-sm font-black text-white uppercase tracking-widest">Historial de Pagos</h3>
-                  {sendPaymentReminder && (
-                    <Button 
-                      onClick={() => sendPaymentReminder(selectedAlumno)}
-                      variant="outline"
-                      className="!py-1.5 !px-3 !text-[8px] border-emerald-500/20 text-emerald-500 hover:bg-emerald-500/10"
-                    >
-                      Enviar Recordatorio WA
-                    </Button>
-                  )}
+                  <h3 className="text-xs font-bold text-secondary uppercase tracking-widest">Historial de Pagos</h3>
+                  <span className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest ${selectedAlumno.pagoVencido ? 'bg-ios-red text-white' : 'bg-ios-green text-white'}`}>
+                    {selectedAlumno.pagoVencido ? 'Pago Vencido' : 'Al Día'}
+                  </span>
                 </div>
-                <div className="glass-card rounded-[2.5rem] p-6 border border-white/5 space-y-4">
-                  <div className="space-y-4">
+                <div className="bg-white rounded-[2.5rem] p-6 shadow-ios border border-black/5 space-y-4">
+                  <div className="space-y-3">
                     {selectedAlumno.pagosMensuales && selectedAlumno.pagosMensuales.length > 0 ? (
                       [...selectedAlumno.pagosMensuales].sort((a,b) => b.anio !== a.anio ? b.anio - a.anio : 0).map((pago, idx) => (
-                        <div key={idx} className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
+                        <div key={idx} className="flex items-center justify-between p-4 bg-ios-gray rounded-2xl">
                           <div className="flex items-center gap-4">
-                            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20">
-                              <span className="material-icons-outlined text-emerald-500">payments</span>
+                            <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm">
+                              <span className="material-icons-outlined text-ios-blue">receipt_long</span>
                             </div>
                             <div>
-                              <p className="text-xs font-bold text-white uppercase">{pago.mes} {pago.anio}</p>
-                              <p className="text-[8px] text-white/40 uppercase font-black tracking-widest">Registrado el {new Date(pago.fechaPago).toLocaleDateString()}</p>
+                              <p className="text-sm font-bold text-black uppercase leading-tight">{pago.mes} {pago.anio}</p>
+                              <p className="text-[10px] text-secondary font-medium tracking-tight mt-0.5">Pagado el {new Date(pago.fechaPago).toLocaleDateString()}</p>
                             </div>
                           </div>
-                          <span className="text-[10px] font-black uppercase tracking-widest text-emerald-500 bg-emerald-500/10 px-3 py-1 rounded-full">Pagado</span>
+                          <span className="material-icons-outlined text-ios-green">check_circle</span>
                         </div>
                       ))
                     ) : (
-                      <div className="p-10 text-center text-white/40 italic">No hay registros de pagos mensuales.</div>
+                      <div className="p-10 text-center text-secondary text-sm italic">No hay registros de pagos mensuales.</div>
                     )}
                   </div>
+                  
+                  {selectedAlumno.pagoVencido && sendPaymentReminder && (
+                    <motion.button 
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => sendPaymentReminder(selectedAlumno)}
+                      className="w-full py-5 rounded-[1.2rem] bg-ios-blue text-white text-sm font-bold shadow-lg flex items-center justify-center gap-2 mt-4"
+                    >
+                      <span className="material-icons-outlined text-lg">notifications_active</span>
+                      Enviar Recordatorio WhatsApp
+                    </motion.button>
+                  )}
                 </div>
               </div>
             )}
 
             {/* Danger Zone */}
-            <div className="pt-8 border-t border-white/5">
-              <button 
+            <div className="pt-12">
+               <button 
                 onClick={() => handleDeleteStudent(selectedAlumno.id!)}
-                className="w-full py-4 rounded-2xl border border-rose-500/20 text-rose-500 text-[10px] font-black uppercase tracking-widest hover:bg-rose-500/5 transition-all flex items-center justify-center gap-2"
-              >
-                <span className="material-icons-outlined text-sm">person_remove</span>
-                Eliminar Gimnasta
-              </button>
+                className="w-full py-4 rounded-2xl bg-white border border-ios-red/20 text-ios-red text-xs font-bold uppercase tracking-widest active:bg-ios-red active:text-white transition-all flex items-center justify-center gap-2"
+               >
+                <span className="material-icons-outlined text-lg">person_remove</span>
+                Eliminar del Sistema
+               </button>
             </div>
           </div>
         </div>
 
         {/* Skill Modal */}
         {isAddingSkill && (
-          <div className="fixed inset-0 z-[120] bg-antigravity-black/95 backdrop-blur-md flex items-center justify-center p-6">
-            <div className="glass-card w-full max-w-sm rounded-[2.5rem] p-8 border border-white/10 space-y-6 animate-in zoom-in duration-300">
-              <h3 className="text-xl font-black text-white uppercase tracking-tighter">{editingSkillId ? 'Editar Skill' : 'Añadir Skill'}</h3>
-              <div className="space-y-4">
-                <div className="space-y-1">
-                  <label className="text-[10px] uppercase font-bold text-white/60 ml-1">Nombre de la Habilidad</label>
+          <div className="fixed inset-0 z-[120] bg-black/40 backdrop-blur-sm flex items-end justify-center">
+            <motion.div 
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              className="bg-white w-full max-w-sm rounded-t-[2.5rem] p-8 pb-12 shadow-2xl border-t border-black/5 space-y-8"
+            >
+              <div className="flex justify-between items-center">
+                 <h3 className="text-2xl font-bold text-black tracking-tight">{editingSkillId ? 'Editar Habilidad' : 'Nueva Habilidad'}</h3>
+                 <button onClick={() => { setIsAddingSkill(false); setEditingSkillId(null); }} className="w-10 h-10 rounded-full bg-ios-gray flex items-center justify-center text-secondary">
+                    <span className="material-icons-outlined">close</span>
+                 </button>
+              </div>
+              
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <label className="text-[10px] uppercase font-bold text-secondary ml-1 tracking-widest">Nombre de la Habilidad</label>
                   <input 
                     type="text" 
                     value={editingSkillId ? editingSkillData.name : newSkill.name}
                     onChange={(e) => editingSkillId ? setEditingSkillData({...editingSkillData, name: e.target.value}) : setNewSkill({...newSkill, name: e.target.value})}
-                    className="w-full bg-antigravity-charcoal border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-primary/50 transition-all"
+                    placeholder="Ej: Salto Mortal"
+                    className="w-full bg-ios-gray rounded-xl px-4 py-4 text-sm text-black outline-none font-medium border border-transparent focus:border-primary/20 transition-all"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-[10px] uppercase font-bold text-white/60 ml-1">Aparato</label>
+                  <div className="space-y-2">
+                    <label className="text-[10px] uppercase font-bold text-secondary ml-1 tracking-widest">Aparato</label>
                     <select 
                       value={editingSkillId ? editingSkillData.apparatus : newSkill.apparatus}
                       onChange={(e) => editingSkillId ? setEditingSkillData({...editingSkillData, apparatus: e.target.value as any}) : setNewSkill({...newSkill, apparatus: e.target.value as any})}
-                      className="w-full bg-antigravity-charcoal border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-primary/50 transition-all"
+                      className="w-full bg-ios-gray rounded-xl px-4 py-4 text-sm text-black outline-none font-medium appearance-none"
                     >
                       <option value="Suelo">Suelo</option>
                       <option value="Salto">Salto</option>
@@ -947,12 +964,12 @@ const Alumnos: React.FC<AlumnosProps> = ({
                       <option value="Arzones">Arzones</option>
                     </select>
                   </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] uppercase font-bold text-white/60 ml-1">Estado</label>
+                  <div className="space-y-2">
+                    <label className="text-[10px] uppercase font-bold text-secondary ml-1 tracking-widest">Estado</label>
                     <select 
                       value={editingSkillId ? editingSkillData.status : newSkill.status}
                       onChange={(e) => editingSkillId ? setEditingSkillData({...editingSkillData, status: e.target.value as any}) : setNewSkill({...newSkill, status: e.target.value as any})}
-                      className="w-full bg-antigravity-charcoal border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-primary/50 transition-all"
+                      className="w-full bg-ios-gray rounded-xl px-4 py-4 text-sm text-black outline-none font-medium appearance-none"
                     >
                       <option value="No Iniciado">No Iniciado</option>
                       <option value="En Proceso">En Proceso</option>
@@ -961,28 +978,22 @@ const Alumnos: React.FC<AlumnosProps> = ({
                   </div>
                 </div>
               </div>
-              <div className="flex gap-3">
-                <Button 
-                  onClick={() => {
-                    setIsAddingSkill(false);
-                    setEditingSkillId(null);
-                  }}
-                  variant="secondary"
-                  className="flex-1 py-4 rounded-2xl"
-                >
-                  Cancelar
-                </Button>
-                <Button 
+              <div className="flex gap-3 pt-4">
+                <motion.button 
+                  whileTap={{ scale: 0.95 }}
                   onClick={handleSaveSkill}
-                  className="flex-1 py-4 rounded-2xl shadow-neon-cyan"
+                  className="flex-1 py-5 rounded-[1.2rem] bg-ios-blue text-white text-sm font-bold shadow-lg"
                 >
-                  Guardar
-                </Button>
+                  Guardar Habilidad
+                </motion.button>
               </div>
-            </div>
+            </motion.div>
           </div>
         )}
       </div>
+    );
+  }
+    </div>
     );
   }
 

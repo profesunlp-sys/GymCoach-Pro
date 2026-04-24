@@ -3,6 +3,7 @@ import React from 'react';
 import { ViewMode, Source } from '../../types';
 import { motion, AnimatePresence } from 'motion/react';
 import Markdown from 'react-markdown';
+import { BackButton } from '../../App';
 
 interface ManualesProps {
   vista: ViewMode;
@@ -46,11 +47,9 @@ export const Manuales: React.FC<ManualesProps> = ({
   if (vista !== 'Planes') return null;
 
   return (
-    <div className="px-6 py-8 space-y-8 page-transition pb-24">
+    <div className="px-6 py-8 space-y-8 page-transition pb-24 relative pt-12">
+      <BackButton onClick={() => setVista('Dashboard')} />
       <header className="flex items-center gap-4">
-        <button onClick={() => setVista('Dashboard')} className="w-10 h-10 rounded-full bg-antigravity-charcoal flex items-center justify-center text-primary border border-white/5 active:scale-90 transition-all">
-          <span className="material-icons-outlined">arrow_back</span>
-        </button>
         <div>
           <h2 className="text-2xl font-black text-white uppercase tracking-tighter">Centro Técnico</h2>
           <p className="text-primary text-[10px] font-black uppercase tracking-widest mt-1">Manuales y Progresiones</p>

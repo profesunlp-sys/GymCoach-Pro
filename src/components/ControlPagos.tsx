@@ -236,14 +236,14 @@ export const ControlPagos: React.FC<ControlPagosProps> = ({ vista, setVista, alu
   if (vista !== 'ControlPagos') return null;
 
   return (
-    <div className="px-6 py-8 space-y-8 page-transition pb-24 max-w-[1200px] mx-auto">
+    <div className="min-h-screen bg-ios-gray px-6 py-8 space-y-8 page-transition pb-24 max-w-[1200px] mx-auto focus-mode-parent">
       <header className="flex items-center gap-4">
-        <button onClick={() => setVista('Dashboard')} className="w-10 h-10 rounded-full bg-antigravity-charcoal flex items-center justify-center text-primary border border-white/5 active:scale-90 transition-all">
+        <button onClick={() => setVista('Dashboard')} className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-secondary shadow-sm border border-black/5 active:scale-95 transition-all">
           <span className="material-icons-outlined">arrow_back</span>
         </button>
         <div>
-          <h2 className="text-2xl font-black text-white uppercase tracking-tighter leading-none">Control de Pagos</h2>
-          <p className="text-primary text-[10px] font-black uppercase tracking-widest mt-1">Gimnasia Artística Infantil</p>
+          <h2 className="text-2xl font-bold text-black tracking-tight leading-none">Control de Pagos</h2>
+          <p className="text-secondary text-[10px] font-bold uppercase tracking-widest mt-1">Gimnasia Artística Infantil</p>
         </div>
         {!importSummary && (
           <div className="ml-auto relative">
@@ -256,7 +256,7 @@ export const ControlPagos: React.FC<ControlPagosProps> = ({ vista, setVista, alu
             />
             <label 
               htmlFor="excel-upload"
-              className="flex items-center gap-2 px-4 py-2 bg-primary/10 border border-primary/30 rounded-xl text-primary text-[10px] font-black uppercase tracking-widest cursor-pointer hover:bg-primary/20 transition-all shadow-neon-cyan"
+              className="flex items-center gap-2 px-6 py-3 bg-ios-blue text-white rounded-full text-[10px] font-bold uppercase tracking-widest cursor-pointer shadow-lg active:scale-95 transition-all"
             >
               <span className="material-icons-outlined text-sm">upload_file</span>
               Importar Mensual
@@ -265,10 +265,34 @@ export const ControlPagos: React.FC<ControlPagosProps> = ({ vista, setVista, alu
         )}
       </header>
 
+      {/* Instrucciones de Uso */}
+      <section className="bg-white rounded-[2rem] p-8 shadow-ios border border-black/5 space-y-6">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 bg-ios-blue/10 rounded-2xl flex items-center justify-center text-ios-blue">
+            <span className="material-icons-outlined text-2xl">info</span>
+          </div>
+          <h3 className="text-lg font-bold text-black tracking-tight">Guía de Uso</h3>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="p-5 rounded-3xl bg-ios-gray space-y-2">
+            <div className="text-ios-blue text-[10px] font-bold uppercase tracking-widest">1. SUBIR EXCEL</div>
+            <p className="text-xs text-secondary leading-relaxed">Cargá el archivo mensual con los pagos de <span className="text-black font-bold">todos los deportes</span>.</p>
+          </div>
+          <div className="p-5 rounded-3xl bg-ios-gray space-y-2">
+            <div className="text-ios-blue text-[10px] font-bold uppercase tracking-widest">2. FILTRADO AUTO</div>
+            <p className="text-xs text-secondary leading-relaxed">La app detectará solo los registros de <span className="text-black font-bold">"Gimnasia Artística"</span>.</p>
+          </div>
+          <div className="p-5 rounded-3xl bg-ios-gray space-y-2">
+            <div className="text-ios-blue text-[10px] font-bold uppercase tracking-widest">3. SINCRO AUTO</div>
+            <p className="text-xs text-secondary leading-relaxed">Si el DNI coincide, la alumna se marcará como <span className="text-ios-green font-bold">"Al Día"</span>.</p>
+          </div>
+        </div>
+      </section>
+
       {isImporting && (
-        <div className="glass-card rounded-[2rem] p-12 flex flex-col items-center justify-center space-y-4 border border-primary/20 bg-primary/5">
-          <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-primary text-[10px] font-black uppercase tracking-widest animate-pulse">Procesando registros de Gimnasia...</p>
+        <div className="bg-white rounded-[2.5rem] p-12 flex flex-col items-center justify-center space-y-4 shadow-ios border border-black/5">
+          <div className="w-12 h-12 border-4 border-ios-blue border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-ios-blue text-[10px] font-bold uppercase tracking-widest animate-pulse">Procesando registros de Gimnasia...</p>
         </div>
       )}
 
@@ -276,41 +300,41 @@ export const ControlPagos: React.FC<ControlPagosProps> = ({ vista, setVista, alu
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="glass-card rounded-[2rem] p-8 border border-emerald-500/30 bg-emerald-500/5 space-y-6"
+          className="bg-ios-green/5 rounded-[2.5rem] p-8 border border-ios-green/20 space-y-8"
         >
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-emerald-500/20 rounded-2xl flex items-center justify-center text-emerald-400">
-                <span className="material-icons-outlined">check_circle</span>
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 bg-ios-green/20 rounded-2xl flex items-center justify-center text-ios-green">
+                <span className="material-icons-outlined text-3xl">check_circle</span>
               </div>
               <div>
-                <h3 className="text-xl font-black text-white uppercase tracking-tight">Importación Exitosa</h3>
-                <p className="text-emerald-500 text-[10px] font-black uppercase tracking-widest">{importSummary.months}</p>
+                <h3 className="text-2xl font-bold text-black tracking-tight">Importación Exitosa</h3>
+                <p className="text-ios-green text-[10px] font-bold uppercase tracking-widest">{importSummary.months}</p>
               </div>
             </div>
-            <button onClick={() => setImportSummary(null)} className="text-white/30 hover:text-white transition-all text-[10px] font-black uppercase tracking-widest">Cerrar Resumen</button>
+            <button onClick={() => setImportSummary(null)} className="text-secondary hover:text-black transition-all text-[10px] font-bold uppercase tracking-widest">Cerrar Resumen</button>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="p-4 rounded-2xl bg-white/5 border border-white/10">
-              <p className="text-[8px] text-white/40 uppercase font-bold tracking-widest mb-1">Gimnasia Artística</p>
-              <p className="text-2xl font-black text-emerald-400">{importSummary.found}</p>
-              <p className="text-[8px] text-white/20 uppercase font-medium mt-1">Registros cargados</p>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-white p-6 rounded-3xl shadow-sm border border-black/5">
+              <p className="text-[10px] text-secondary uppercase font-bold tracking-widest mb-1">Gimnasia</p>
+              <p className="text-3xl font-bold text-ios-green tracking-tight">{importSummary.found}</p>
+              <p className="text-[8px] text-secondary/60 uppercase font-bold mt-1">Registros cargados</p>
             </div>
-            <div className="p-4 rounded-2xl bg-white/5 border border-white/10">
-              <p className="text-[8px] text-white/40 uppercase font-bold tracking-widest mb-1">Otros Deportes</p>
-              <p className="text-2xl font-black text-white/50">{importSummary.ignored}</p>
-              <p className="text-[8px] text-white/20 uppercase font-medium mt-1">Registros ignorados</p>
+            <div className="bg-white p-6 rounded-3xl shadow-sm border border-black/5">
+              <p className="text-[10px] text-secondary uppercase font-bold tracking-widest mb-1">Otros</p>
+              <p className="text-3xl font-bold text-black/40 tracking-tight">{importSummary.ignored}</p>
+              <p className="text-[8px] text-secondary/60 uppercase font-bold mt-1">Registros ignorados</p>
             </div>
-            <div className="p-4 rounded-2xl bg-white/5 border border-white/10">
-              <p className="text-[8px] text-white/40 uppercase font-bold tracking-widest mb-1">Total Recaudado</p>
-              <p className="text-2xl font-black text-primary">${importSummary.totalAmount.toLocaleString()}</p>
-              <p className="text-[8px] text-white/20 uppercase font-medium mt-1">Solo gimnasia</p>
+            <div className="bg-white p-6 rounded-3xl shadow-sm border border-black/5">
+              <p className="text-[10px] text-secondary uppercase font-bold tracking-widest mb-1">Recaudado</p>
+              <p className="text-3xl font-bold text-ios-blue tracking-tight">${importSummary.totalAmount.toLocaleString()}</p>
+              <p className="text-[8px] text-secondary/60 uppercase font-bold mt-1">Solo gimnasia</p>
             </div>
-            <div className="p-4 rounded-2xl bg-white/5 border border-white/10">
-              <p className="text-[8px] text-white/40 uppercase font-bold tracking-widest mb-1">Vinculadas</p>
-              <p className="text-2xl font-black text-white">{importSummary.found} / {importSummary.found}</p>
-              <p className="text-[8px] text-white/20 uppercase font-medium mt-1">Sincronización autom.</p>
+            <div className="bg-white p-6 rounded-3xl shadow-sm border border-black/5">
+              <p className="text-[10px] text-secondary uppercase font-bold tracking-widest mb-1">Sincronización</p>
+              <p className="text-3xl font-bold text-black tracking-tight">Auto</p>
+              <p className="text-[8px] text-secondary/60 uppercase font-bold mt-1">Base de Gimnasia</p>
             </div>
           </div>
         </motion.div>
@@ -320,57 +344,65 @@ export const ControlPagos: React.FC<ControlPagosProps> = ({ vista, setVista, alu
         <div className="space-y-8">
           {/* Dashboard Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="glass-card p-6 rounded-[2rem] border border-primary/20 bg-primary/5 space-y-2">
-              <div className="w-10 h-10 bg-primary/20 rounded-xl flex items-center justify-center text-primary mb-2">
+            <div className="bg-white p-6 rounded-[2rem] border border-black/5 shadow-ios space-y-4">
+              <div className="w-11 h-11 bg-ios-blue/10 rounded-2xl flex items-center justify-center text-ios-blue">
                 <span className="material-icons-outlined">payments</span>
               </div>
-              <p className="text-[9px] font-black text-primary uppercase tracking-widest">Total Recaudado</p>
-              <h3 className="text-3xl font-black text-white">${totals.amount.toLocaleString()}</h3>
-              <p className="text-[9px] text-white/30 uppercase font-bold">{totals.count} pagos este mes</p>
+              <div>
+                <p className="text-[10px] font-bold text-secondary uppercase tracking-widest">Total Recaudado</p>
+                <h3 className="text-3xl font-bold text-black tracking-tight">${totals.amount.toLocaleString()}</h3>
+              </div>
+              <p className="text-[10px] text-ios-blue font-bold uppercase">{totals.count} pagos registrados</p>
             </div>
 
-            <div className="glass-card p-6 rounded-[2rem] border border-emerald-500/20 bg-emerald-500/5 space-y-2">
-              <div className="w-10 h-10 bg-emerald-500/20 rounded-xl flex items-center justify-center text-emerald-400 mb-2">
+            <div className="bg-white p-6 rounded-[2rem] border border-black/5 shadow-ios space-y-4">
+              <div className="w-11 h-11 bg-ios-green/10 rounded-2xl flex items-center justify-center text-ios-green">
                 <span className="material-icons-outlined">assignment_turned_in</span>
               </div>
-              <p className="text-[9px] font-black text-emerald-400 uppercase tracking-widest">Matrículas Pagas</p>
-              <h3 className="text-3xl font-black text-white">{totals.matriculaSi}</h3>
-              <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden">
+              <div>
+                <p className="text-[10px] font-bold text-secondary uppercase tracking-widest">Matrículas Pagas</p>
+                <h3 className="text-3xl font-bold text-black tracking-tight">{totals.matriculaSi}</h3>
+              </div>
+              <div className="w-full h-1.5 bg-ios-gray rounded-full overflow-hidden">
                 <div 
-                  className="h-full bg-emerald-500 shadow-neon-cyan" 
+                  className="h-full bg-ios-green" 
                   style={{ width: `${(totals.matriculaSi / totals.count) * 100}%` }}
                 ></div>
               </div>
-              <p className="text-[9px] text-white/30 uppercase font-bold">{totals.matriculaNo} Pendientes</p>
+              <p className="text-[10px] text-secondary font-bold uppercase">{totals.matriculaNo} Pendientes</p>
             </div>
 
-            <div className="glass-card p-6 rounded-[2rem] border border-rose-500/20 bg-rose-500/5 space-y-2">
-              <div className="w-10 h-10 bg-rose-500/20 rounded-xl flex items-center justify-center text-rose-500 mb-2">
+            <div className="bg-white p-6 rounded-[2rem] border border-black/5 shadow-ios space-y-4">
+              <div className="w-11 h-11 bg-ios-red/10 rounded-2xl flex items-center justify-center text-ios-red">
                 <span className="material-icons-outlined">report_problem</span>
               </div>
-              <p className="text-[9px] font-black text-rose-500 uppercase tracking-widest">Alertas de Datos</p>
-              <h3 className="text-3xl font-black text-white">{totals.conObservacion}</h3>
-              <p className="text-[9px] text-white/30 uppercase font-bold">Datos no corresponden</p>
+              <div>
+                <p className="text-[10px] font-bold text-secondary uppercase tracking-widest">Alertas de Datos</p>
+                <h3 className="text-3xl font-bold text-black tracking-tight">{totals.conObservacion}</h3>
+              </div>
+              <p className="text-[10px] text-ios-red font-bold uppercase">Datos no corresponden</p>
             </div>
 
-            <div className="glass-card p-6 rounded-[2rem] border border-amber-500/20 bg-amber-500/5 space-y-2">
-              <div className="w-10 h-10 bg-amber-500/20 rounded-xl flex items-center justify-center text-amber-500 mb-2">
+            <div className="bg-white p-6 rounded-[2rem] border border-black/5 shadow-ios space-y-4">
+              <div className="w-11 h-11 bg-ios-orange/10 rounded-2xl flex items-center justify-center text-ios-orange">
                 <span className="material-icons-outlined">sync_disabled</span>
               </div>
-              <p className="text-[9px] font-black text-amber-500 uppercase tracking-widest">Sin Coincidencia</p>
-              <h3 className="text-3xl font-black text-white">{totals.noVerificadas}</h3>
-              <p className="text-[9px] text-white/30 uppercase font-bold">Requiere gestión manual</p>
+              <div>
+                <p className="text-[10px] font-bold text-secondary uppercase tracking-widest">Sin Coincidencia</p>
+                <h3 className="text-3xl font-bold text-black tracking-tight">{totals.noVerificadas}</h3>
+              </div>
+              <p className="text-[10px] text-ios-orange font-bold uppercase">Requiere gestión manual</p>
             </div>
           </div>
 
           {/* Filtering Bar */}
-          <section className="glass-card p-4 rounded-3xl border border-white/5 bg-white/2 flex flex-wrap gap-4 items-center">
-            <div className="flex flex-col gap-1.5 flex-1 min-w-[150px]">
-              <label className="text-[8px] font-black text-white/40 uppercase tracking-widest ml-1">Filtrar por Mes</label>
+          <section className="bg-white p-5 rounded-3xl border border-black/5 shadow-sm flex flex-wrap gap-6 items-center">
+            <div className="flex flex-col gap-2 flex-1 min-w-[160px]">
+              <label className="text-[10px] font-bold text-secondary uppercase tracking-widest ml-1">Mes</label>
               <select 
                 value={filterMes}
                 onChange={(e) => setFilterMes(e.target.value)}
-                className="bg-antigravity-black border border-white/10 rounded-xl px-3 py-2 text-[10px] font-bold text-white outline-none focus:border-primary/40 transition-all"
+                className="bg-ios-gray border-none rounded-xl px-4 py-3 text-sm font-bold text-black outline-none focus:ring-2 focus:ring-ios-blue/10 transition-all cursor-pointer"
               >
                 <option value="Todas">Todos los Meses</option>
                 {availableMonths.map(m => (
@@ -379,12 +411,12 @@ export const ControlPagos: React.FC<ControlPagosProps> = ({ vista, setVista, alu
               </select>
             </div>
 
-            <div className="flex flex-col gap-1.5 flex-1 min-w-[150px]">
-              <label className="text-[8px] font-black text-white/40 uppercase tracking-widest ml-1">Categoría</label>
+            <div className="flex flex-col gap-2 flex-1 min-w-[160px]">
+              <label className="text-[10px] font-bold text-secondary uppercase tracking-widest ml-1">Categoría</label>
               <select 
                 value={filterCategoria}
                 onChange={(e) => setFilterCategoria(e.target.value)}
-                className="bg-antigravity-black border border-white/10 rounded-xl px-3 py-2 text-[10px] font-bold text-white outline-none focus:border-primary/40 transition-all"
+                className="bg-ios-gray border-none rounded-xl px-4 py-3 text-sm font-bold text-black outline-none focus:ring-2 focus:ring-ios-blue/10 transition-all cursor-pointer"
               >
                 <option value="Todas">Todas</option>
                 <option value="3 a 5 años">3 a 5 años</option>
@@ -394,12 +426,12 @@ export const ControlPagos: React.FC<ControlPagosProps> = ({ vista, setVista, alu
               </select>
             </div>
 
-            <div className="flex flex-col gap-1.5 flex-1 min-w-[150px]">
-              <label className="text-[8px] font-black text-white/40 uppercase tracking-widest ml-1">Matrícula</label>
+            <div className="flex flex-col gap-2 flex-1 min-w-[160px]">
+              <label className="text-[10px] font-bold text-secondary uppercase tracking-widest ml-1">Matrícula</label>
               <select 
                 value={filterMatricula}
                 onChange={(e) => setFilterMatricula(e.target.value)}
-                className="bg-antigravity-black border border-white/10 rounded-xl px-3 py-2 text-[10px] font-bold text-white outline-none focus:border-primary/40 transition-all"
+                className="bg-ios-gray border-none rounded-xl px-4 py-3 text-sm font-bold text-black outline-none focus:ring-2 focus:ring-ios-blue/10 transition-all cursor-pointer"
               >
                 <option value="Todas">Todas</option>
                 <option value="Pagó matrícula">Pagó Matrícula</option>
@@ -407,12 +439,12 @@ export const ControlPagos: React.FC<ControlPagosProps> = ({ vista, setVista, alu
               </select>
             </div>
 
-            <div className="flex flex-col gap-1.5 flex-1 min-w-[150px]">
-              <label className="text-[8px] font-black text-white/40 uppercase tracking-widest ml-1">Alertas</label>
+            <div className="flex flex-col gap-2 flex-1 min-w-[160px]">
+              <label className="text-[10px] font-bold text-secondary uppercase tracking-widest ml-1">Alertas</label>
               <select 
                 value={filterObservacion}
                 onChange={(e) => setFilterObservacion(e.target.value)}
-                className="bg-antigravity-black border border-white/10 rounded-xl px-3 py-2 text-[10px] font-bold text-white outline-none focus:border-primary/40 transition-all"
+                className="bg-ios-gray border-none rounded-xl px-4 py-3 text-sm font-bold text-black outline-none focus:ring-2 focus:ring-ios-blue/10 transition-all cursor-pointer"
               >
                 <option value="Todas">Todas</option>
                 <option value="Con observaciones">Con Observaciones</option>
@@ -422,7 +454,7 @@ export const ControlPagos: React.FC<ControlPagosProps> = ({ vista, setVista, alu
 
             <button 
               onClick={exportFilteredToExcel}
-              className="mt-auto h-10 px-4 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400 text-[9px] font-black uppercase tracking-widest hover:bg-emerald-500/20 transition-all flex items-center gap-2"
+              className="mt-6 h-12 px-6 bg-ios-blue/10 text-ios-blue rounded-full text-[10px] font-bold uppercase tracking-widest hover:bg-ios-blue hover:text-white transition-all flex items-center gap-2 shadow-sm"
             >
               <span className="material-icons-outlined text-sm">download</span>
               Exportar
@@ -430,37 +462,37 @@ export const ControlPagos: React.FC<ControlPagosProps> = ({ vista, setVista, alu
           </section>
 
           {/* Desglose por Edad */}
-          <section className="glass-card rounded-[2rem] border border-white/5 overflow-hidden">
-            <div className="p-6 border-b border-white/5 bg-white/2 flex justify-between items-center">
-               <h3 className="text-xs font-black text-white uppercase tracking-widest px-2">Desglose por Categoría de Edad</h3>
-               <div className="text-[9px] text-white/40 font-bold uppercase tracking-widest">Resultados Filtrados</div>
+          <section className="bg-white rounded-[2.5rem] border border-black/5 shadow-ios overflow-hidden">
+            <div className="p-8 border-b border-black/5 bg-ios-gray/30 flex justify-between items-center">
+               <h3 className="text-xs font-bold text-black uppercase tracking-widest px-2">Desglose por Categoría</h3>
+               <div className="text-[10px] text-secondary font-bold uppercase tracking-widest">{filteredPagos.length} registros filtrados</div>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
-                <thead className="bg-white/2 text-[10px] font-black uppercase tracking-widest text-white/40">
+                <thead className="bg-ios-gray/50 text-[10px] font-bold uppercase tracking-widest text-secondary">
                   <tr>
-                    <th className="px-8 py-4">Categoría</th>
-                    <th className="px-8 py-4">Cantidad</th>
-                    <th className="px-8 py-4">Total Recaudado</th>
-                    <th className="px-8 py-4">Con Matrícula</th>
-                    <th className="px-8 py-4">Sin Matrícula</th>
+                    <th className="px-8 py-5">Categoría</th>
+                    <th className="px-8 py-5">Cantidad</th>
+                    <th className="px-8 py-5">Total Recaudado</th>
+                    <th className="px-8 py-5">Con Matrícula</th>
+                    <th className="px-8 py-5">Sin Matrícula</th>
                   </tr>
                 </thead>
-                <tbody className="text-[11px] text-white/80 font-medium whitespace-nowrap">
+                <tbody className="text-sm text-secondary font-medium whitespace-nowrap">
                   {['3 a 5 años', '6 a 9 años', '10 a 15 años', 'Sin Categoría'].map(cat => {
                     const catPagos = filteredPagos.filter(p => p.categoriaEdad === cat);
                     if (catPagos.length === 0) return null;
                     return (
-                      <tr key={cat} className="border-t border-white/5 hover:bg-white/5 transition-all">
-                        <td className="px-8 py-5">
-                          <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${cat === '3 a 5 años' ? 'bg-cyan-500/10 text-cyan-400' : cat === '6 a 9 años' ? 'bg-purple-500/10 text-purple-400' : cat === '10 a 15 años' ? 'bg-pink-500/10 text-pink-400' : 'bg-white/5 text-white/40'}`}>
+                      <tr key={cat} className="border-t border-black/5 hover:bg-ios-gray/20 transition-all">
+                        <td className="px-8 py-6">
+                          <span className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest ${cat === '3 a 5 años' ? 'bg-ios-blue/10 text-ios-blue' : cat === '6 a 9 años' ? 'bg-purple-500/10 text-purple-600' : cat === '10 a 15 años' ? 'bg-pink-500/10 text-pink-600' : 'bg-ios-gray text-secondary'}`}>
                             {cat}
                           </span>
                         </td>
-                        <td className="px-8 py-5 font-black text-white">{catPagos.length}</td>
-                        <td className="px-8 py-5 text-primary font-black">${catPagos.reduce((sum, p) => sum + p.importe, 0).toLocaleString()}</td>
-                        <td className="px-8 py-5 text-emerald-400 font-bold">{catPagos.filter(p => p.matricula === 'SI').length}</td>
-                        <td className="px-8 py-5 text-rose-500 font-bold">{catPagos.filter(p => p.matricula === 'NO').length}</td>
+                        <td className="px-8 py-6 font-bold text-black">{catPagos.length}</td>
+                        <td className="px-8 py-6 text-ios-blue font-bold tracking-tight">${catPagos.reduce((sum, p) => sum + p.importe, 0).toLocaleString()}</td>
+                        <td className="px-8 py-6 text-ios-green font-bold">{catPagos.filter(p => p.matricula === 'SI').length}</td>
+                        <td className="px-8 py-6 text-ios-red font-bold">{catPagos.filter(p => p.matricula === 'NO').length}</td>
                       </tr>
                     );
                   })}
@@ -470,61 +502,60 @@ export const ControlPagos: React.FC<ControlPagosProps> = ({ vista, setVista, alu
           </section>
 
           {/* Table List of Payments */}
-          <section className="glass-card rounded-[2rem] border border-white/5 overflow-hidden">
-            <div className="p-6 border-b border-white/5 bg-white/2 flex justify-between items-center">
+          <section className="bg-white rounded-[2.5rem] border border-black/5 shadow-ios overflow-hidden">
+            <div className="p-8 border-b border-black/5 bg-ios-gray/30 flex justify-between items-center">
               <div className="flex items-center gap-3">
-                <span className="material-icons-outlined text-primary">groups</span>
-                <h3 className="text-xs font-black text-white uppercase tracking-widest">Listado de Alumnas Gimnasia Artística</h3>
+                <span className="material-icons-outlined text-ios-blue">groups</span>
+                <h3 className="text-xs font-bold text-black uppercase tracking-widest">Listado de Pagos</h3>
               </div>
-              <div className="text-[9px] text-white/40 font-bold uppercase tracking-widest">Mostrando {filteredPagos.length} registros</div>
             </div>
             
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
-                <thead className="bg-white/2 text-[10px] font-black uppercase tracking-widest text-white/40">
+                <thead className="bg-ios-gray/50 text-[10px] font-bold uppercase tracking-widest text-secondary">
                   <tr>
-                    <th className="px-8 py-4">Apellido y Nombre</th>
-                    <th className="px-8 py-4">DNI</th>
-                    <th className="px-8 py-4">Fecha Pago</th>
-                    <th className="px-8 py-4">Importe</th>
-                    <th className="px-8 py-4">Matrícula</th>
-                    <th className="px-8 py-4">Estado App</th>
-                    <th className="px-8 py-4">Observaciones</th>
+                    <th className="px-8 py-5">Alumno</th>
+                    <th className="px-8 py-5">Identificación</th>
+                    <th className="px-8 py-5">Fecha</th>
+                    <th className="px-8 py-5">Importe</th>
+                    <th className="px-8 py-5">Matrícula</th>
+                    <th className="px-8 py-5">Estado</th>
+                    <th className="px-8 py-5">Observaciones</th>
                   </tr>
                 </thead>
-                <tbody className="text-[11px] text-white/80 font-medium whitespace-nowrap">
+                <tbody className="text-sm text-secondary font-medium whitespace-nowrap">
                   {filteredPagos.map((pago, i) => (
-                    <tr key={pago.id || i} className={`border-t border-white/5 hover:bg-white/5 transition-all ${pago.observacionBase.includes('no corresponden') ? 'bg-rose-500/5' : ''}`}>
-                      <td className="px-8 py-5">
+                    <tr key={pago.id || i} className={`border-t border-black/5 hover:bg-ios-gray/20 transition-all ${pago.observacionBase.includes('no corresponden') ? 'bg-ios-red/5' : ''}`}>
+                      <td className="px-8 py-6">
                         <div className="space-y-1">
-                          <p className="font-black text-white uppercase tracking-tight">{pago.nombre}</p>
-                          <p className="text-[8px] text-white/30 uppercase font-black">{pago.categoriaEdad}</p>
+                          <p className="font-bold text-black tracking-tight">{pago.nombre}</p>
+                          <p className="text-[10px] text-secondary font-bold uppercase tracking-widest opacity-60">{pago.categoriaEdad}</p>
                         </div>
                       </td>
-                      <td className="px-8 py-5 font-mono text-white/60">{pago.dni}</td>
-                      <td className="px-8 py-5 text-white/40">{pago.fechaPago}</td>
-                      <td className="px-8 py-5 font-black text-primary">${pago.importe.toLocaleString()}</td>
-                      <td className="px-8 py-5">
-                        <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase ${pago.matricula === 'SI' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}`}>
-                          {pago.matricula === 'SI' ? 'Pagada' : 'Pendiente'}
+                      <td className="px-8 py-6 font-mono text-xs text-secondary/60">{pago.dni}</td>
+                      <td className="px-8 py-6 text-xs text-secondary/60">{pago.fechaPago}</td>
+                      <td className="px-8 py-6 font-bold text-black">${pago.importe.toLocaleString()}</td>
+                      <td className="px-8 py-6">
+                        <span className={`px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase tracking-widest ${pago.matricula === 'SI' ? 'bg-ios-green/10 text-ios-green' : 'bg-ios-red/10 text-ios-red'}`}>
+                          {pago.matricula === 'SI' ? 'Paga' : 'Pendiente'}
                         </span>
                       </td>
-                      <td className="px-8 py-5">
+                      <td className="px-8 py-6">
                         {pago.verificado ? (
-                          <div className="flex items-center gap-1.5 text-emerald-400">
-                            <span className="material-icons-outlined text-[10px]">verified</span>
-                            <span className="text-[9px] font-black uppercase tracking-widest">Al día</span>
+                          <div className="flex items-center gap-1.5 text-ios-green">
+                            <span className="material-icons-outlined text-sm">verified</span>
+                            <span className="text-[10px] font-bold uppercase tracking-widest">Al día</span>
                           </div>
                         ) : (
-                          <div className="flex items-center gap-1.5 text-amber-500">
-                            <span className="material-icons-outlined text-[10px]">help_outline</span>
-                            <span className="text-[9px] font-black uppercase tracking-widest">Sin Registro</span>
+                          <div className="flex items-center gap-1.5 text-ios-orange">
+                            <span className="material-icons-outlined text-sm">help_outline</span>
+                            <span className="text-[10px] font-bold uppercase tracking-widest">Sin Registro</span>
                           </div>
                         )}
                       </td>
-                      <td className="px-8 py-5">
+                      <td className="px-8 py-6">
                         {pago.observacionBase && (
-                          <span className={`px-2 py-1 rounded-lg text-[9px] font-bold ${pago.observacionBase.includes('no corresponden') ? 'text-rose-500 bg-rose-500/10' : 'text-white/40 bg-white/5'}`}>
+                          <span className={`px-3 py-1.5 rounded-full text-[10px] font-bold ${pago.observacionBase.includes('no corresponden') ? 'text-ios-red bg-ios-red/10' : 'text-secondary bg-ios-gray'}`}>
                             {pago.observacionBase}
                           </span>
                         )}
@@ -536,34 +567,33 @@ export const ControlPagos: React.FC<ControlPagosProps> = ({ vista, setVista, alu
             </div>
           </section>
 
-          {/* Pagos sin Alumna Registrada (Sección Alertas DNI) */}
+          {/* Pagos sin Alumna Registrada */}
           {totals.noVerificadas > 0 && (
             <motion.section 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="glass-card rounded-[2rem] border border-amber-500/30 bg-amber-500/2 overflow-hidden"
+              className="bg-ios-orange/5 rounded-[2.5rem] border border-ios-orange/20 overflow-hidden"
             >
-              <div className="p-6 border-b border-amber-500/20 bg-amber-500/5 flex items-center gap-3">
-                <span className="material-icons-outlined text-amber-500">warning</span>
+              <div className="p-8 border-b border-ios-orange/20 bg-ios-orange/10 flex items-center gap-4">
+                <span className="material-icons-outlined text-ios-orange text-3xl">warning</span>
                 <div>
-                   <h3 className="text-xs font-black text-white uppercase tracking-widest">Pagos sin Alumna Registrada en la App</h3>
-                   <p className="text-[9px] text-amber-500 font-bold uppercase tracking-widest">Estos DNIs no coinciden con ninguna gimnasta del sistema</p>
+                   <h3 className="text-lg font-bold text-black tracking-tight">Pagos sin Alumna Registrada</h3>
+                   <p className="text-[10px] text-ios-orange font-bold uppercase tracking-widest">Estos DNIs no coinciden con ninguna gimnasta del sistema</p>
                 </div>
               </div>
-              <div className="p-8">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="p-10">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                    {filteredPagos.filter(p => !p.verificado).map((p, i) => (
-                     <div key={i} className="p-4 rounded-2xl bg-white/5 border border-white/10 hover:border-amber-500/40 transition-all flex justify-between items-center group">
+                     <div key={i} className="p-6 rounded-3xl bg-white border border-black/5 hover:border-ios-blue/40 transition-all flex justify-between items-center group shadow-sm">
                         <div className="space-y-1">
-                          <p className="text-xs font-bold text-white uppercase">{p.nombre}</p>
-                          <p className="text-[9px] font-mono text-white/40">DNI: {p.dni}</p>
+                          <p className="text-sm font-bold text-black tracking-tight">{p.nombre}</p>
+                          <p className="text-[10px] font-mono text-secondary">DNI: {p.dni}</p>
                         </div>
                         <Button 
                           onClick={() => setVista('Alumnos')}
-                          variant="ghost" 
-                          className="w-8 h-8 !p-0 rounded-lg group-hover:text-primary transition-colors"
+                          className="w-10 h-10 !p-0 rounded-full bg-ios-gray text-secondary group-hover:bg-ios-blue group-hover:text-white transition-all shadow-sm"
                         >
-                          <span className="material-icons-outlined text-sm">person_add</span>
+                          <span className="material-icons-outlined text-lg">person_add</span>
                         </Button>
                      </div>
                    ))}
@@ -572,36 +602,36 @@ export const ControlPagos: React.FC<ControlPagosProps> = ({ vista, setVista, alu
             </motion.section>
           )}
 
-          {/* Alertas de Datos Incorrectos (PII/Observaciones) */}
+          {/* Alertas de Datos Incorrectos */}
           {totals.conObservacion > 0 && (
             <motion.section 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="glass-card rounded-[2rem] border border-rose-500/30 bg-rose-500/2 overflow-hidden"
+              className="bg-ios-red/5 rounded-[2.5rem] border border-ios-red/20 overflow-hidden"
             >
-              <div className="p-6 border-b border-rose-500/20 bg-rose-500/5 flex items-center gap-3">
-                <span className="material-icons-outlined text-rose-500">dangerous</span>
+              <div className="p-8 border-b border-ios-red/20 bg-ios-red/10 flex items-center gap-4">
+                <span className="material-icons-outlined text-ios-red text-3xl">dangerous</span>
                 <div>
-                  <h3 className="text-xs font-black text-white uppercase tracking-widest">Registros Erróneos (Alerta de Oficina de Pagos)</h3>
-                  <p className="text-[9px] text-rose-500 font-bold uppercase tracking-widest">Observación: "Los datos no corresponden al beneficiario"</p>
+                  <h3 className="text-lg font-bold text-black tracking-tight">Registros con Errores</h3>
+                  <p className="text-[10px] text-ios-red font-bold uppercase tracking-widest">Observación: "Los datos no corresponden al beneficiario"</p>
                 </div>
               </div>
-              <div className="p-8">
-                <div className="space-y-3">
+              <div className="p-10">
+                <div className="space-y-4">
                   {filteredPagos.filter(p => p.observacionBase.includes('no corresponden')).map((p, i) => (
-                    <div key={i} className="p-4 rounded-xl bg-rose-500/5 border border-rose-500/10 flex items-center justify-between">
-                       <div className="flex items-center gap-4">
-                         <div className="w-10 h-10 rounded-full bg-rose-500/20 flex items-center justify-center text-rose-500">
-                           <span className="material-icons-outlined text-sm">error_outline</span>
+                    <div key={i} className="p-6 rounded-3xl bg-white border border-black/5 flex items-center justify-between shadow-sm">
+                       <div className="flex items-center gap-5">
+                         <div className="w-12 h-12 rounded-2xl bg-ios-red/10 flex items-center justify-center text-ios-red">
+                           <span className="material-icons-outlined text-2xl">error_outline</span>
                          </div>
                          <div>
-                            <p className="text-xs font-black text-white uppercase">{p.nombre}</p>
-                            <p className="text-[10px] text-white/40">{p.categoriaEdad} • DNI: {p.dni} • Mes: {p.mes}</p>
+                            <p className="text-base font-bold text-black tracking-tight">{p.nombre}</p>
+                            <p className="text-xs text-secondary">{p.categoriaEdad} • DNI: {p.dni} • Mes: {p.mes}</p>
                          </div>
                        </div>
                        <div className="text-right">
-                         <p className="text-[10px] font-black text-rose-500 uppercase tracking-widest">Revisión Urgente</p>
-                         <p className="text-[9px] text-white/30">{p.fechaPago}</p>
+                         <p className="text-[10px] font-bold text-ios-red uppercase tracking-widest">Revisión Urgente</p>
+                         <p className="text-[10px] text-secondary font-bold">{p.fechaPago}</p>
                        </div>
                     </div>
                   ))}
@@ -613,13 +643,13 @@ export const ControlPagos: React.FC<ControlPagosProps> = ({ vista, setVista, alu
       )}
 
       {pagos.length === 0 && !isImporting && !importSummary && (
-        <div className="glass-card rounded-[2.5rem] p-20 text-center space-y-8 border border-white/5">
-          <div className="w-32 h-32 bg-white/5 rounded-full flex items-center justify-center mx-auto border border-white/5 shadow-2xl">
-            <span className="material-icons-outlined text-[64px] text-white/10">payments</span>
+        <div className="bg-white rounded-[3rem] p-24 text-center space-y-10 border border-black/5 shadow-ios">
+          <div className="w-40 h-40 bg-ios-gray rounded-full flex items-center justify-center mx-auto shadow-inner">
+            <span className="material-icons-outlined text-6xl text-secondary/30">payments</span>
           </div>
-          <div className="space-y-2">
-            <h3 className="text-2xl font-black text-white uppercase tracking-tight">No hay pagos importados</h3>
-            <p className="text-white/40 text-sm max-w-sm mx-auto">Importá el archivo Excel mensual para gestionar los pagos de Gimnasia Artística.</p>
+          <div className="space-y-3">
+            <h3 className="text-3xl font-bold text-black tracking-tight">Sin registros de pago</h3>
+            <p className="text-secondary text-sm max-w-sm mx-auto">Subí el archivo Excel mensual para comenzar a gestionar los pagos de las gimnastas.</p>
           </div>
           <div className="relative inline-block">
             <input 
@@ -631,7 +661,7 @@ export const ControlPagos: React.FC<ControlPagosProps> = ({ vista, setVista, alu
             />
             <label 
               htmlFor="excel-upload-empty"
-              className="flex items-center gap-3 px-8 py-5 bg-primary text-antigravity-black font-black uppercase tracking-[0.2em] rounded-[2rem] cursor-pointer shadow-neon-cyan hover:scale-105 active:scale-95 transition-all"
+              className="flex items-center gap-4 px-10 py-5 bg-ios-blue text-white font-bold uppercase tracking-widest rounded-full cursor-pointer shadow-xl hover:scale-105 active:scale-95 transition-all"
             >
               <span className="material-icons-outlined">upload_file</span>
               Subir Archivo Excel
