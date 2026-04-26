@@ -497,11 +497,11 @@ const App: React.FC = () => {
     }
   };
 
-  const getAiTechnicalSuggestions = async (nivel: string, aparato: string): Promise<string[]> => {
+  const getAiTechnicalSuggestions = async (nivel: string, aparato: string, ageRange?: string): Promise<string[]> => {
     if (sources.length === 0) return [];
     
     try {
-      const query = `Según los manuales, ¿cuáles son los ejercicios obligatorios para el Nivel ${nivel} en el aparato ${aparato}? Responde solo con una lista de ejercicios separados por comas, sin introducciones ni explicaciones.`;
+      const query = `Según los manuales, ¿cuáles son los ejercicios obligatorios para el Nivel ${nivel} en el aparato ${aparato}${ageRange ? ` para el rango de edad ${ageRange}` : ''}? Responde solo con una lista de ejercicios separados por comas, sin introducciones ni explicaciones.`;
       const response = await queryKnowledgeBase(query, sources);
       
       if (response.toLowerCase().includes("lo siento") || response.toLowerCase().includes("error")) {
@@ -1138,6 +1138,48 @@ const App: React.FC = () => {
       return () => unsub();
     }
   }, [selectedClase]);
+
+  // Sincronización automática de pagosHoy y asistenciasHoy según el grupo activo
+  useEffect(() => {
+    const syncAttendanceAndPayments = async () => {
+      if (activeGroup && isDataLoaded) {
+        const today = new Date().toISOString().split('T')[0];
+        const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+        const currentMonthName = monthNames[new Date().getMonth()];
+        const currentYear = new Date().getFullYear();
+
+        try {
+          const q = query(
+            collection(firestore, COLLECTIONS.ASISTENCIAS),
+            where('fecha', '==', today),
+            where('grupo', '==', activeGroup.nombre)
+          );
+          const querySnapshot = await getDocs(q);
+          const attMap: Record<string, boolean> = {};
+          const payMap: Record<string, boolean> = {};
+
+          querySnapshot.forEach(doc => {
+            const data = doc.data() as AsistenciaRecord;
+            attMap[data.alumnoId] = data.presente;
+          });
+
+          // Sincronizar pagos desde el historial mensual (Excel importado)
+          alumnos.forEach(alumno => {
+            if (alumno.pagosMensuales?.some(p => p.mes === currentMonthName && p.anio === currentYear)) {
+              payMap[alumno.id!] = true;
+            }
+          });
+
+          setAsistenciasHoy(attMap);
+          setPagosHoy(payMap);
+        } catch (err) {
+          console.error("Error syncing attendance/payments:", err);
+        }
+      }
+    };
+
+    syncAttendanceAndPayments();
+  }, [activeGroup, isDataLoaded, alumnos]);
 
   const handleSaveGroup = async () => {
     if (!newGroupName || !newCoachName || selectedDays.length === 0) {
@@ -4024,6 +4066,18 @@ const App: React.FC = () => {
               </div>
             </div>
           </div>
+        )}
+
+        {isBulkPaymentModalOpen && (
+          <BulkPaymentImport 
+            onComplete={(count) => {
+              setIsBulkPaymentModalOpen(false);
+              setNotificacion({ t: "Importación Completa", d: `Se sincronizaron ${count} pagos exitosamente.` });
+              loadData();
+              setTimeout(() => setNotificacion(null), 3000);
+            }}
+            onCancel={() => setIsBulkPaymentModalOpen(false)}
+          />
         )}
 
         {/* Modal de Confirmación */}

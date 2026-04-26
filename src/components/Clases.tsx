@@ -70,7 +70,7 @@ interface ClasesProps {
   handleSaveCooldownOption: (name: string) => void;
   handleUpdateCooldownOption: (id: string, name: string) => void;
   handleDeleteCooldownOption: (id: string) => void;
-  getAiTechnicalSuggestions: (nivel: string, aparato: string) => Promise<string[]>;
+  getAiTechnicalSuggestions: (nivel: string, aparato: string, ageRange?: string) => Promise<string[]>;
   isKbLoading: boolean;
 }
 
@@ -154,9 +154,9 @@ export const Clases: React.FC<ClasesProps> = ({
 
     setFetchingSuggestions(prev => ({ ...prev, [aparato]: true }));
     try {
-      // Tomamos el primer nivel predominante o consultamos para todos
+      // Tomamos el primer nivel predominante o consultamos para todos con el rango de edad
       const results = await Promise.all(
-        nivelesPresentes.map(nivel => getAiTechnicalSuggestions(nivel, aparato))
+        nivelesPresentes.map(nivel => getAiTechnicalSuggestions(nivel, aparato, claseAgeRange))
       );
       const combined = Array.from(new Set(results.flat()));
       setAiSuggestionsByApparatus(prev => ({ ...prev, [aparato]: combined }));

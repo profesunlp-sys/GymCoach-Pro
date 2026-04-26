@@ -231,6 +231,83 @@ export const Finanzas: React.FC<FinanzasProps> = ({
           </p>
         </div>
 
+        {/* Control Anual de Pagos (Grid 12 meses) */}
+        <div className="glass-card rounded-[2rem] p-8 border border-white/5 space-y-6 md:col-span-2 overflow-hidden bg-white/[0.02]">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h3 className="text-xl font-black text-white uppercase tracking-tighter">Control Anual de Cuotas</h3>
+              <p className="text-primary text-[10px] font-black uppercase tracking-widest mt-1 flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-500"></span> Pagado
+                <span className="w-2 h-2 rounded-full bg-rose-500 ml-2"></span> Pendiente
+              </p>
+            </div>
+            <div className="flex bg-antigravity-charcoal/50 p-1 rounded-xl border border-white/5">
+              {['2024', '2025', '2026'].map(y => (
+                <button 
+                  key={y}
+                  className={`px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${new Date().getFullYear().toString() === y ? 'bg-primary text-black shadow-neon-cyan' : 'text-white/40 hover:text-white'}`}
+                >
+                  {y}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="overflow-x-auto pb-4 -mx-2">
+            <table className="w-full border-separate border-spacing-y-2">
+              <thead>
+                <tr>
+                  <th className="text-left py-4 px-4 text-[9px] font-black text-white/30 uppercase tracking-[0.2em] sticky left-0 bg-antigravity-dark z-10">Alumno</th>
+                  {['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'].map(m => (
+                    <th key={m} className="text-center py-4 px-2 text-[9px] font-black text-white/40 uppercase tracking-widest">{m}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {alumnos.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || '')).map((alumno) => {
+                  const months = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+                  const currentYear = new Date().getFullYear();
+
+                  return (
+                    <tr key={alumno.id} className="group">
+                      <td className="bg-white/[0.03] rounded-l-2xl py-4 px-4 border-l border-t border-b border-white/5 sticky left-0 z-10 backdrop-blur-md">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary text-[10px] font-black border border-primary/20">
+                            {alumno.nombre?.charAt(0)}
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-white leading-none whitespace-nowrap">{alumno.nombre}</p>
+                            <p className="text-[8px] text-white/30 uppercase font-bold mt-1 tracking-widest">{alumno.grupo}</p>
+                          </div>
+                        </div>
+                      </td>
+                      {months.map((month) => {
+                        const isPaid = alumno.pagosMensuales?.some(p => p.mes === month && p.anio === currentYear);
+                        return (
+                          <td key={month} className="bg-white/[0.015] border-t border-b border-white/5 py-4 px-1 text-center">
+                            <div className="flex justify-center">
+                              {isPaid ? (
+                                <div className="w-6 h-6 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.1)]">
+                                  <span className="material-icons-outlined text-sm">check_circle</span>
+                                </div>
+                              ) : (
+                                <div className="w-6 h-6 rounded-lg bg-rose-500/5 border border-rose-500/10 flex items-center justify-center text-rose-500/40">
+                                  <span className="material-symbols-outlined text-sm font-light">radio_button_unchecked</span>
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                        );
+                      })}
+                      <td className="bg-white/[0.03] rounded-r-2xl border-r border-t border-b border-white/5 px-2"></td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
         {/* Progreso por Grupo */}
         <div className="glass-card rounded-[2rem] p-6 border border-white/5 space-y-4 md:col-span-2">
           <h3 className="text-xs font-black text-white/80 uppercase tracking-widest px-2">Progreso Técnico por Grupo (Habilidades Dominadas)</h3>
