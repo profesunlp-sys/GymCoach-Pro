@@ -69,6 +69,19 @@ export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete
 
     const currentYear = new Date().getFullYear();
     const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+    const normalizeMonth = (val: any): string => {
+      if (typeof val === 'number') {
+        return monthNames[val - 1] || monthNames[0];
+      }
+      const s = String(val).trim().toLowerCase();
+      const n = parseInt(s);
+      if (!isNaN(n)) return monthNames[n - 1] || monthNames[0];
+      
+      const found = monthNames.find(m => m.toLowerCase() === s);
+      if (found) return found;
+
+      return s.charAt(0).toUpperCase() + s.slice(1);
+    };
     const currentMonthName = monthNames[new Date().getMonth()];
 
     for (const row of data) {
@@ -85,13 +98,9 @@ export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete
       if (alumnoId) {
         const alumnoRef = doc(db, 'alumnos', alumnoId);
         
-        // Usamos update con FieldValue.arrayUnion 
-        // Importante: No podemos usar writeBatch con arrayUnion de forma sencilla si queremos enviarlo todo junto sin leer.
-        // Pero como estamos dentro de un loop, lo mejor es actualizar individualmente o enviar el batch.
-        // Como Firestore batch soporta arrayUnion, lo usaremos.
         batch.update(alumnoRef, {
           pagosMensuales: arrayUnion({
-            mes: typeof mesRaw === 'number' ? monthNames[mesRaw - 1] : mesRaw,
+            mes: normalizeMonth(mesRaw),
             anio: parseInt(añoRaw.toString()),
             fechaPago: new Date().toISOString()
           })

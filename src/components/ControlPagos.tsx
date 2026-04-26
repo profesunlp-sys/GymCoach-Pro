@@ -59,7 +59,9 @@ export const ControlPagos: React.FC<ControlPagosProps> = ({ onBack }) => {
 
   const isPaid = (alumno: Alumno, mesN: number) => {
     const mesLabel = meses.find(m => m.n === mesN)?.label || '';
-    return alumno.pagosMensuales?.some(p => p.mes === mesLabel && p.anio === selectedYear) || false;
+    return alumno.pagosMensuales?.some(p => 
+      p.mes?.toLowerCase() === mesLabel.toLowerCase() && p.anio === selectedYear
+    ) || false;
   };
 
   return (
