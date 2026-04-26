@@ -2756,12 +2756,6 @@ const App: React.FC = () => {
             />
           )}
 
-          <BulkPaymentImport 
-            isOpen={isBulkPaymentModalOpen}
-            onClose={() => setIsBulkPaymentModalOpen(false)}
-            alumnos={alumnos}
-            onConfirm={handleBulkPaymentConfirm}
-          />
 
         {vista === 'Horario' && (
           <Grupos 
@@ -2997,11 +2991,9 @@ const App: React.FC = () => {
         )}
 
         {vista === 'ControlPagos' && (
-          <ControlPagos 
-            vista={vista}
-            setVista={setVista}
-            alumnos={alumnos}
-          />
+          <Suspense fallback={<LoadingFallback />}>
+            <ControlPagos onBack={() => setVista('Dashboard')} />
+          </Suspense>
         )}
 
         {(vista === 'Profesores' || vista === 'ProfesorDetalle') && (

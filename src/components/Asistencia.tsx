@@ -60,7 +60,9 @@ interface AsistenciaProps {
   setSelectedAlumno: (alumno: Alumno) => void;
 }
 
-export const Asistencia: React.FC<AsistenciaProps> = ({
+import { BulkPaymentImport } from './BulkPaymentImport';
+
+const Asistencia: React.FC<AsistenciaProps> = ({
   vista,
   setVista,
   activeGroup,
@@ -116,6 +118,55 @@ export const Asistencia: React.FC<AsistenciaProps> = ({
   handleExportAllAttendance,
   setSelectedAlumno
 }) => {
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [pagosMensuales, setPagosMensuales] = useState<Record<string, boolean>>({});
+  const currentMonth = new Date().getMonth() + 1;
+  const currentYear = new Date().getFullYear();
+
+  // Cargar pagos del mes actual para el grupo activo
+  useEffect(() => {
+    if (activeGroup) {
+      const q = query(
+        collection(db, 'pagos'),
+        where('mes', '==', currentMonth),
+        where('año', '==', currentYear)
+      );
+      
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        const pagos: Record<string, boolean> = {};
+        snapshot.docs.forEach(doc => {
+          pagos[doc.data().alumnoId] = true;
+        });
+        setPagosMensuales(pagos);
+      }, (error) => {
+        handleFirestoreError(error, OperationType.GET, 'pagos');
+      });
+      return () => unsubscribe();
+    }
+  }, [activeGroup, currentMonth, currentYear]);
+
+  const handleTogglePayment = async (alumnoId: string) => {
+    const pagoId = `${alumnoId}_${currentYear}_${currentMonth}`;
+    const pagoRef = doc(db, 'pagos', pagoId);
+    
+    try {
+      if (pagosMensuales[alumnoId]) {
+        await deleteDoc(pagoRef);
+      } else {
+        await setDoc(pagoRef, {
+          alumnoId,
+          mes: currentMonth,
+          año: currentYear,
+          fecha: new Date().toISOString(),
+          monto: 0,
+          metodo: 'Manual_En_Clase'
+        });
+      }
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, 'pagos');
+    }
+  };
+
   if (vista === 'RegistroAlumno' && activeGroup) {
     return (
       <div className="space-y-8 page-transition pb-12 px-6 pt-4 bg-ios-gray min-h-screen">
@@ -387,6 +438,14 @@ export const Asistencia: React.FC<AsistenciaProps> = ({
           Agregar Gimnasta
         </button>
         <button 
+          onClick={() => setIsImportModalOpen(true)}
+          className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-white shadow-sm border border-black/5 text-ios-green text-[10px] font-bold uppercase tracking-widest whitespace-nowrap active:scale-95 transition-all"
+        >
+          <span className="material-icons-outlined text-sm">receipt_long</span>
+          Importar Pagos
+        </button>
+
+        <button 
           onClick={handleAIAnalysis}
           className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-white shadow-sm border border-black/5 text-ios-orange text-[10px] font-bold uppercase tracking-widest whitespace-nowrap active:scale-95 transition-all"
         >
@@ -454,10 +513,12 @@ export const Asistencia: React.FC<AsistenciaProps> = ({
                 
                 <div className="flex items-center gap-4">
                   <div className="flex flex-col items-center gap-1">
-                    <span className="text-[8px] font-bold text-secondary uppercase tracking-tighter">Pagó</span>
+                    <span className="text-[8px] font-bold text-secondary uppercase tracking-tighter">
+                      PAGO {new Date().toLocaleString('es-ES', { month: 'short' }).toUpperCase()}
+                    </span>
                     <button 
-                      onClick={() => togglePayment(alumno.id!)}
-                      className={`w-6 h-6 rounded-md border flex items-center justify-center transition-all ${pagosHoy[alumno.id!] ? 'bg-ios-green border-transparent text-white' : 'bg-ios-gray border-black/5 text-transparent'}`}
+                      onClick={() => handleTogglePayment(alumno.id!)}
+                      className={`w-6 h-6 rounded-md border flex items-center justify-center transition-all ${pagosMensuales[alumno.id!] ? 'bg-ios-green border-transparent text-white' : 'bg-ios-gray border-black/5 text-transparent'}`}
                     >
                       <span className="material-icons-outlined text-[16px]">check</span>
                     </button>

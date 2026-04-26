@@ -37,7 +37,8 @@ export const COLLECTIONS = {
   CONFIG: "config",
   SOURCES: "sources",
   AGE_CATEGORIES: "age_categories",
-  PHYSICAL_CATEGORIES: "physical_categories"
+  PHYSICAL_CATEGORIES: "physical_categories",
+  PAGOS: "pagos"
 };
 
 // Generic helpers
