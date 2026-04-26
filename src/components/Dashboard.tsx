@@ -328,6 +328,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
             // Vista de acciones para el Grupo Seleccionado
             const groupStudents = alumnos.filter(a => a.grupo === selectedGroupInternal.nombre);
+            const clasesGrupo = clases.filter(c => c.grupo === selectedGroupInternal.nombre);
 
             return (
               <div className="space-y-8 pt-2 animate-in fade-in slide-in-from-bottom-2 duration-500">
@@ -351,6 +352,24 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       </button>
                     </div>
 
+                    {clasesGrupo.length === 0 && (
+                      <motion.div 
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="bg-primary/5 border border-primary/20 rounded-3xl p-5 space-y-3"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
+                            <span className="material-icons-outlined text-primary">auto_awesome</span>
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold text-black">¡Grupo nuevo!</p>
+                            <p className="text-[10px] font-medium text-secondary">Registrá el contenido de tu primera clase abajo.</p>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+
                     <div className="grid grid-cols-2 gap-3 pt-2">
                        <motion.button 
                         whileTap={{ scale: 0.95 }}
@@ -367,10 +386,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
                           setRegistrationStep(1); 
                           setVista('NuevaClase'); 
                         }}
-                        className="flex flex-col items-center justify-center gap-3 p-6 bg-black text-white rounded-3xl shadow-lg active:scale-95 transition-all"
+                        className="flex flex-col items-center justify-center gap-3 p-6 bg-primary text-white rounded-3xl shadow-lg shadow-primary/20 active:scale-95 transition-all"
                        >
-                         <span className="material-symbols-outlined text-3xl">school</span>
-                         <span className="text-xs font-bold uppercase tracking-widest">Registrar</span>
+                         <span className="material-symbols-outlined text-3xl">add_task</span>
+                         <span className="text-xs font-bold uppercase tracking-widest text-center">Nueva Clase</span>
                        </motion.button>
                     </div>
                   </div>
