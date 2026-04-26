@@ -2894,6 +2894,9 @@ const App: React.FC = () => {
             planesFilterCoach={planesFilterCoach}
             setPlanesFilterCoach={setPlanesFilterCoach}
             setSelectedAlumno={setSelectedAlumno}
+            setClaseGrupo={setClaseGrupo}
+            setRegistrationStep={setRegistrationStep}
+            setIsEditingClase={setIsEditingClase}
           />
         )}
 

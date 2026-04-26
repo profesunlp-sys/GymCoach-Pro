@@ -58,6 +58,9 @@ interface AsistenciaProps {
   planesFilterCoach: string;
   setPlanesFilterCoach: (c: string) => void;
   setSelectedAlumno: (alumno: Alumno) => void;
+  setClaseGrupo: (grupo: string) => void;
+  setRegistrationStep: (step: number) => void;
+  setIsEditingClase: (val: boolean) => void;
 }
 
 import { BulkPaymentImport } from './BulkPaymentImport';
@@ -116,7 +119,10 @@ export const Asistencia: React.FC<AsistenciaProps> = ({
   setPlanesFilterCoach,
   handleExportGroupAttendance,
   handleExportAllAttendance,
-  setSelectedAlumno
+  setSelectedAlumno,
+  setClaseGrupo,
+  setRegistrationStep,
+  setIsEditingClase
 }) => {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const currentMonth = new Date().getMonth() + 1;
@@ -432,7 +438,7 @@ export const Asistencia: React.FC<AsistenciaProps> = ({
         </div>
       </div>
 
-      <main className="flex-1 overflow-y-auto px-6 py-2 space-y-4">
+      <main className="flex-1 overflow-y-auto px-6 py-2 space-y-4 pb-32">
         {filteredAlumnos.length > 0 ? filteredAlumnos.map(alumno => {
           const hasAlerts = alumno.alertas && alumno.alertas.length > 0 && alumno.alertas[0] !== '';
           const isExpanded = expandedAlumnoId === alumno.id;
@@ -552,43 +558,95 @@ export const Asistencia: React.FC<AsistenciaProps> = ({
               <div className="flex justify-center py-10">
                 <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
               </div>
-            ) : asistenciasClase.length > 0 ? asistenciasClase.map((asistencia, idx) => (
-              <div key={idx} className="bg-white p-4 rounded-3xl shadow-sm border border-black/5 flex items-center justify-between group hover:border-primary/30 transition-all">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-ios-gray flex flex-col items-center justify-center border border-black/5">
-                    <span className="text-[12px] font-bold text-black leading-none">{new Date(asistencia.fecha).getDate()}</span>
-                    <span className="text-[10px] font-bold text-primary uppercase tracking-tighter">{new Date(asistencia.fecha).toLocaleString('default', { month: 'short' })}</span>
+            ) : asistenciasClase.length > 0 ? (
+              <>
+                {asistenciasClase.map((asistencia, idx) => (
+                  <div key={idx} className="bg-white p-4 rounded-3xl shadow-sm border border-black/5 flex items-center justify-between group hover:border-primary/30 transition-all">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-2xl bg-ios-gray flex flex-col items-center justify-center border border-black/5">
+                        <span className="text-[12px] font-bold text-black leading-none">{new Date(asistencia.fecha).getDate()}</span>
+                        <span className="text-[10px] font-bold text-primary uppercase tracking-tighter">{new Date(asistencia.fecha).toLocaleString('default', { month: 'short' })}</span>
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-bold text-black leading-none">Clase de {new Date(asistencia.fecha).toLocaleDateString()}</h4>
+                        <p className="text-[10px] text-secondary mt-1 uppercase font-bold tracking-widest">
+                          {asistenciasGlobales[asistencia.fecha]?.presentes || 0} Presentes • {asistenciasGlobales[asistencia.fecha]?.total || 0} Total
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all">
+                      <button 
+                        onClick={() => handleEditAsistencia(asistencia)}
+                        className="w-10 h-10 rounded-full bg-ios-gray flex items-center justify-center text-secondary hover:text-primary transition-all"
+                      >
+                        <span className="material-icons-outlined text-sm">edit</span>
+                      </button>
+                      <button 
+                        onClick={() => handleDeleteAsistencia(asistencia)}
+                        className="w-10 h-10 rounded-full bg-ios-red/10 flex items-center justify-center text-ios-red"
+                      >
+                        <span className="material-icons-outlined text-sm">delete</span>
+                      </button>
+                    </div>
                   </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-black leading-none">Clase de {new Date(asistencia.fecha).toLocaleDateString()}</h4>
-                    <p className="text-[10px] text-secondary mt-1 uppercase font-bold tracking-widest">
-                      {asistenciasGlobales[asistencia.fecha]?.presentes || 0} Presentes • {asistenciasGlobales[asistencia.fecha]?.total || 0} Total
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all">
+                ))}
+                <div className="pt-4 px-2">
                   <button 
-                    onClick={() => handleEditAsistencia(asistencia)}
-                    className="w-10 h-10 rounded-full bg-ios-gray flex items-center justify-center text-secondary hover:text-primary transition-all"
+                    onClick={() => {
+                      setClaseGrupo(activeGroup.nombre);
+                      setIsEditingClase(false);
+                      setRegistrationStep(2);
+                      setVista('NuevaClase');
+                    }}
+                    className="w-full py-5 rounded-3xl bg-secondary/10 text-secondary border border-secondary/20 font-bold uppercase tracking-widest text-xs flex items-center justify-center gap-2 active:scale-95 transition-all"
                   >
-                    <span className="material-icons-outlined text-sm">edit</span>
-                  </button>
-                  <button 
-                    onClick={() => handleDeleteAsistencia(asistencia)}
-                    className="w-10 h-10 rounded-full bg-ios-red/10 flex items-center justify-center text-ios-red"
-                  >
-                    <span className="material-icons-outlined text-sm">delete</span>
+                    <span className="material-icons-outlined text-base">add_task</span>
+                    Nueva entrada de clase
                   </button>
                 </div>
-              </div>
-            )) : (
-              <div className="p-12 text-center bg-white rounded-[2.5rem] border border-dashed border-black/10 text-secondary text-[10px] font-bold uppercase tracking-widest">
-                No hay registros de clases anteriores
+              </>
+            ) : (
+              <div className="flex flex-col items-center gap-6 p-12 text-center bg-white rounded-[2.5rem] border border-dashed border-black/10">
+                <span className="text-secondary text-[10px] font-bold uppercase tracking-widest">
+                  No hay registros de clases anteriores
+                </span>
+                <button 
+                  onClick={() => {
+                    setClaseGrupo(activeGroup.nombre);
+                    setIsEditingClase(false);
+                    setRegistrationStep(2);
+                    setVista('NuevaClase');
+                  }}
+                  className="px-8 py-4 bg-primary text-white font-bold uppercase tracking-[0.2em] text-[10px] rounded-2xl shadow-ios active:scale-95 transition-all"
+                >
+                  Registrar mi primera clase
+                </button>
               </div>
             )}
           </div>
         </div>
       </main>
+
+      {/* Sticky Continue Button */}
+      <div className="fixed bottom-24 left-0 right-0 px-6 z-50">
+        <motion.button 
+          initial={{ y: 100 }}
+          animate={{ y: 0 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => {
+            setClaseGrupo(activeGroup.nombre);
+            setIsEditingClase(false);
+            setRegistrationStep(2);
+            setVista('NuevaClase');
+          }}
+          className="w-full bg-black text-white py-5 rounded-[2rem] shadow-2xl flex items-center justify-center gap-3 active:bg-primary transition-all group"
+        >
+          <div className="w-8 h-8 bg-white/10 rounded-xl flex items-center justify-center group-active:bg-white/20">
+            <span className="material-icons-outlined text-lg">play_arrow</span>
+          </div>
+          <span className="text-xs font-bold uppercase tracking-[0.3em]">Continuar a Planificación de Clase</span>
+        </motion.button>
+      </div>
     </div>
   );
 };

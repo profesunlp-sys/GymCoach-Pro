@@ -196,13 +196,13 @@ export const Clases: React.FC<ClasesProps> = ({
         {/* Progress Bar */}
         <div className="px-6 mb-8">
           <div className="flex justify-between items-center mb-2">
-            <span className="text-[10px] font-bold text-secondary uppercase tracking-widest">Paso {registrationStep} de 6</span>
-            <span className="text-[10px] font-bold text-primary">{Math.round((registrationStep/6)*100)}%</span>
+            <span className="text-[10px] font-bold text-secondary uppercase tracking-widest">Paso {registrationStep} de 8</span>
+            <span className="text-[10px] font-bold text-primary">{Math.round((registrationStep/8)*100)}%</span>
           </div>
           <div className="h-2 w-full bg-black/5 rounded-full overflow-hidden">
             <motion.div 
               initial={{ width: 0 }}
-              animate={{ width: `${(registrationStep/6)*100}%` }}
+              animate={{ width: `${(registrationStep/8)*100}%` }}
               className="h-full bg-primary"
             />
           </div>
@@ -338,16 +338,89 @@ export const Clases: React.FC<ClasesProps> = ({
             </motion.div>
           )}
 
-          {/* Paso 4: Aparatos */}
+          {/* Paso 4: Entrada en Calor */}
           {registrationStep === 4 && (
             <motion.div 
               key="step4"
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
+              className="px-6 space-y-6 pb-24"
+            >
+              <h3 className="text-2xl font-bold text-black tracking-tight">Entrada en Calor</h3>
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  {warmupOptions.map((opt) => (
+                    <button 
+                      key={opt.id}
+                      onClick={() => setFaseInicial(prev => prev.includes(opt.nombre) ? prev.filter(o => o !== opt.nombre) : [...prev, opt.nombre])}
+                      className={`p-4 rounded-2xl border text-left flex items-start gap-3 transition-all ${
+                        faseInicial.includes(opt.nombre) 
+                          ? 'border-primary bg-primary/5 ring-1 ring-primary/20 shadow-sm' 
+                          : 'border-black/5 bg-white'
+                      }`}
+                    >
+                      <div className={`mt-0.5 w-4 h-4 rounded-full border flex items-center justify-center ${faseInicial.includes(opt.nombre) ? 'bg-primary border-primary text-white' : 'border-black/10'}`}>
+                        {faseInicial.includes(opt.nombre) && <span className="material-icons-outlined text-[10px]">check</span>}
+                      </div>
+                      <span className={`text-xs font-bold uppercase tracking-tight ${faseInicial.includes(opt.nombre) ? 'text-primary' : 'text-black'}`}>{opt.nombre}</span>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="relative mt-4">
+                  <input 
+                    type="text"
+                    value={customInicial}
+                    onChange={(e) => setCustomInicial(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && customInicial.trim()) {
+                        setFaseInicial(prev => Array.from(new Set([...prev, customInicial.trim()])));
+                        setCustomInicial('');
+                      }
+                    }}
+                    placeholder="Otro ejercicio..."
+                    className="w-full bg-white border border-black/5 rounded-2xl px-5 py-4 text-xs font-medium outline-none focus:border-primary/30 transition-all pr-12 shadow-sm"
+                  />
+                  <button 
+                    onClick={() => {
+                      if (customInicial.trim()) {
+                        setFaseInicial(prev => Array.from(new Set([...prev, customInicial.trim()])));
+                        setCustomInicial('');
+                      }
+                    }}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 bg-primary rounded-xl flex items-center justify-center text-white shadow-ios active:scale-90"
+                  >
+                    <span className="material-icons-outlined text-lg">add</span>
+                  </button>
+                </div>
+
+                {faseInicial.length > 0 && (
+                  <div className="flex flex-wrap gap-2 pt-2">
+                    {faseInicial.map((item, i) => (
+                      <div key={i} className="flex items-center gap-2 bg-ios-gray px-3 py-1.5 rounded-lg border border-black/5 animate-in fade-in slide-in-from-bottom-1">
+                        <span className="text-[10px] font-bold text-black/70 uppercase tracking-tight">{item}</span>
+                        <button onClick={() => setFaseInicial(prev => prev.filter(it => it !== item))} className="text-secondary hover:text-rose-500 transition-colors">
+                          <span className="material-icons-outlined text-[14px]">cancel</span>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+
+          {/* Paso 5: Aparatos */}
+          {registrationStep === 5 && (
+            <motion.div 
+              key="step5"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
               className="px-6 space-y-6"
             >
-              <h3 className="text-2xl font-bold text-black tracking-tight">Aparatos</h3>
+              <h3 className="text-2xl font-bold text-black tracking-tight">Fase Principal: Aparatos</h3>
               <div className="grid grid-cols-2 gap-4">
                 {[
                   { name: "Viga", icon: "horizontal_rule" },
@@ -380,10 +453,10 @@ export const Clases: React.FC<ClasesProps> = ({
             </motion.div>
           )}
 
-          {/* Paso 5: Habilidades y Observaciones */}
-          {registrationStep === 5 && (
+          {/* Paso 6: Habilidades y Observaciones */}
+          {registrationStep === 6 && (
             <motion.div 
-              key="step5"
+              key="step6"
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
@@ -486,7 +559,7 @@ export const Clases: React.FC<ClasesProps> = ({
                             }
                           }}
                           placeholder={`Añadir habilidad a ${aparato}...`}
-                          className="w-full bg-white border border-black/5 rounded-2xl px-5 py-4 text-xs font-medium placeholder:text-black/20 outline-none focus:border-primary/30 focus:bg-primary/5 transition-all pr-12"
+                          className="w-full bg-white border border-black/5 rounded-2xl px-5 py-4 text-xs font-medium placeholder:text-black/20 outline-none focus:border-primary/30 focus:bg-primary/5 transition-all pr-12 shadow-sm"
                         />
                         <button 
                           onClick={() => {
@@ -499,7 +572,7 @@ export const Clases: React.FC<ClasesProps> = ({
                               setCustomHabilidad(prev => ({ ...prev, [aparato]: '' }));
                             }
                           }}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 bg-primary rounded-xl flex items-center justify-center text-white shadow-ios active:scale-90 transition-all"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 bg-primary rounded-xl flex items-center justify-center text-white shadow-ios active:scale-90"
                         >
                           <span className="material-icons-outlined text-lg">add</span>
                         </button>
@@ -509,14 +582,14 @@ export const Clases: React.FC<ClasesProps> = ({
                       {habilidadesPorAparato[aparato] && habilidadesPorAparato[aparato].length > 0 && (
                         <div className="flex flex-wrap gap-2 px-1">
                           {habilidadesPorAparato[aparato].map((hab, idx) => (
-                            <div key={idx} className="bg-ios-gray px-3 py-1.5 rounded-lg border border-black/5 flex items-center gap-2">
+                            <div key={idx} className="bg-ios-gray px-3 py-1.5 rounded-lg border border-black/5 flex items-center gap-2 shadow-sm">
                               <span className="text-[10px] font-medium text-black/70">{hab}</span>
                               <button 
                                 onClick={() => setHabilidadesPorAparato(prev => ({
                                   ...prev,
                                   [aparato]: prev[aparato].filter(h => h !== hab)
                                 }))}
-                                className="text-secondary hover:text-rose-500"
+                                className="text-secondary hover:text-rose-500 transition-colors"
                               >
                                 <span className="material-icons-outlined text-[14px]">cancel</span>
                               </button>
@@ -530,11 +603,20 @@ export const Clases: React.FC<ClasesProps> = ({
 
                 <div className="pt-4 border-t border-black/5 space-y-4">
                   <div className="space-y-2">
+                    <label className="text-[10px] font-bold text-secondary uppercase tracking-[0.2em] px-1">Objetivos de la Clase</label>
+                    <textarea 
+                      value={claseObjetivos}
+                      onChange={(e) => setClaseObjetivos(e.target.value)}
+                      className="w-full bg-white border border-black/10 rounded-3xl p-5 text-sm min-h-[100px] shadow-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-medium"
+                      placeholder="¿Qué buscamos lograr hoy?"
+                    />
+                  </div>
+                  <div className="space-y-2">
                     <label className="text-[10px] font-bold text-secondary uppercase tracking-[0.2em] px-1">Observaciones Finales</label>
                     <textarea 
                       value={claseObservaciones}
                       onChange={(e) => setClaseObservaciones(e.target.value)}
-                      className="w-full bg-white border border-black/10 rounded-3xl p-5 text-sm min-h-[120px] shadow-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-medium"
+                      className="w-full bg-white border border-black/10 rounded-3xl p-5 text-sm min-h-[100px] shadow-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-medium"
                       placeholder="Notas adicionales sobre el desempeño del grupo..."
                     />
                   </div>
@@ -543,14 +625,87 @@ export const Clases: React.FC<ClasesProps> = ({
             </motion.div>
           )}
 
-          {/* Paso 6: Resumen */}
-          {registrationStep === 6 && (
+          {/* Paso 7: Fase Final */}
+          {registrationStep === 7 && (
             <motion.div 
-              key="step6"
+              key="step7"
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
-              className="px-6 space-y-6"
+              className="px-6 space-y-6 pb-24"
+            >
+              <h3 className="text-2xl font-bold text-black tracking-tight">Vuelta a la Calma</h3>
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  {cooldownOptions.map((opt) => (
+                    <button 
+                      key={opt.id}
+                      onClick={() => setFaseFinal(prev => prev.includes(opt.nombre) ? prev.filter(o => o !== opt.nombre) : [...prev, opt.nombre])}
+                      className={`p-4 rounded-2xl border text-left flex items-start gap-3 transition-all ${
+                        faseFinal.includes(opt.nombre) 
+                          ? 'border-primary bg-primary/5 ring-1 ring-primary/20 shadow-sm' 
+                          : 'border-black/5 bg-white'
+                      }`}
+                    >
+                      <div className={`mt-0.5 w-4 h-4 rounded-full border flex items-center justify-center ${faseFinal.includes(opt.nombre) ? 'bg-primary border-primary text-white' : 'border-black/10'}`}>
+                        {faseFinal.includes(opt.nombre) && <span className="material-icons-outlined text-[10px]">check</span>}
+                      </div>
+                      <span className={`text-xs font-bold uppercase tracking-tight ${faseFinal.includes(opt.nombre) ? 'text-primary' : 'text-black'}`}>{opt.nombre}</span>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="relative mt-4">
+                  <input 
+                    type="text"
+                    value={customFinal}
+                    onChange={(e) => setCustomFinal(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && customFinal.trim()) {
+                        setFaseFinal(prev => Array.from(new Set([...prev, customFinal.trim()])));
+                        setCustomFinal('');
+                      }
+                    }}
+                    placeholder="Otro ejercicio final..."
+                    className="w-full bg-white border border-black/5 rounded-2xl px-5 py-4 text-xs font-medium outline-none focus:border-primary/30 transition-all pr-12 shadow-sm"
+                  />
+                  <button 
+                    onClick={() => {
+                      if (customFinal.trim()) {
+                        setFaseFinal(prev => Array.from(new Set([...prev, customFinal.trim()])));
+                        setCustomFinal('');
+                      }
+                    }}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 bg-primary rounded-xl flex items-center justify-center text-white shadow-ios active:scale-90"
+                  >
+                    <span className="material-icons-outlined text-lg">add</span>
+                  </button>
+                </div>
+
+                {faseFinal.length > 0 && (
+                  <div className="flex flex-wrap gap-2 pt-2">
+                    {faseFinal.map((item, i) => (
+                      <div key={i} className="flex items-center gap-2 bg-ios-gray px-3 py-1.5 rounded-lg border border-black/5 animate-in fade-in slide-in-from-bottom-1">
+                        <span className="text-[10px] font-bold text-black/70 uppercase tracking-tight">{item}</span>
+                        <button onClick={() => setFaseFinal(prev => prev.filter(it => it !== item))} className="text-secondary hover:text-rose-500 transition-colors">
+                          <span className="material-icons-outlined text-[14px]">cancel</span>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+
+          {/* Paso 8: Resumen */}
+          {registrationStep === 8 && (
+            <motion.div 
+              key="step8"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="px-6 space-y-6 pb-24"
             >
               <div className="bg-white rounded-3xl shadow-ios border border-black/5 overflow-hidden">
                 <div className="p-6 border-b border-black/5 flex items-center gap-3">
@@ -566,31 +721,25 @@ export const Clases: React.FC<ClasesProps> = ({
                     <span className="text-base text-black">{claseGrupo}</span>
                   </div>
                   <div className="px-6 py-4 flex justify-between items-center">
-                    <span className="text-base font-medium text-black">Fecha:</span>
-                    <span className="text-base text-black">{new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</span>
+                    <span className="text-base font-bold text-black">Entrada en Calor:</span>
+                    <span className="text-[10px] text-black font-bold uppercase tracking-widest">{faseInicial.length > 0 ? faseInicial.join(', ') : 'No definida'}</span>
                   </div>
                   <div className="px-6 py-4 flex justify-between items-center">
-                    <span className="text-base font-medium text-black">Rango de Edad:</span>
-                    <span className="text-base text-black">{claseAgeRange || 'No especificado'}</span>
+                    <span className="text-base font-medium text-black">Aparatos:</span>
+                    <span className="text-base text-black">{fasePrincipal.join(', ') || '-'}</span>
                   </div>
                   <div className="px-6 py-4 flex justify-between items-center">
-                    <span className="text-base font-medium text-black">Asistencia:</span>
-                    <span className="text-base text-black">{Object.values(asistenciasHoy).filter(Boolean).length} / {alumnos.filter(a => a.grupo === claseGrupo).length} alumnos</span>
+                    <span className="text-base font-bold text-black">Fase Final:</span>
+                    <span className="text-[10px] text-black font-bold uppercase tracking-widest">{faseFinal.length > 0 ? faseFinal.join(', ') : 'No definida'}</span>
                   </div>
                   <div className="px-6 py-4">
-                    <span className="text-base font-medium text-black block mb-1">Aparatos Trabajados:</span>
-                    <p className="text-base text-black font-medium">
-                      {fasePrincipal.length > 0 ? fasePrincipal.join(', ') : '-'}
-                    </p>
-                  </div>
-                  <div className="px-6 py-4">
-                    <span className="text-base font-medium text-black block mb-2">Habilidades por Aparato:</span>
+                    <span className="text-base font-medium text-black block mb-2">Habilidades Técnicas:</span>
                     <div className="space-y-3">
                       {fasePrincipal.length > 0 ? (
                         fasePrincipal.map(apa => (
-                          <div key={apa} className="space-y-1">
-                            <span className="text-[10px] font-bold text-primary uppercase tracking-widest">{apa}</span>
-                            <p className="text-sm text-black/70">
+                          <div key={apa} className="space-y-1 bg-ios-gray/30 p-3 rounded-2xl border border-black/5">
+                            <span className="text-[10px] font-black text-primary uppercase tracking-widest">{apa}</span>
+                            <p className="text-sm text-black/70 font-medium">
                               {habilidadesPorAparato[apa]?.length > 0 
                                 ? habilidadesPorAparato[apa].join(', ') 
                                 : 'Sin habilidades registradas'}
@@ -601,6 +750,10 @@ export const Clases: React.FC<ClasesProps> = ({
                         <p className="text-sm text-black opacity-50 italic">No hay aparatos en esta clase</p>
                       )}
                     </div>
+                  </div>
+                  <div className="px-6 py-4 flex justify-between items-center">
+                    <span className="text-base font-medium text-black">Asistencia:</span>
+                    <span className="text-base text-black font-bold">{Object.values(asistenciasHoy).filter(Boolean).length} / {alumnos.filter(a => a.grupo === claseGrupo).length}</span>
                   </div>
                 </div>
               </div>
@@ -617,7 +770,7 @@ export const Clases: React.FC<ClasesProps> = ({
                 setTimeout(() => setNotificacion(null), 3000);
                 return;
               }
-              if (registrationStep === 6) {
+              if (registrationStep === 8) {
                 handleSaveManualClass();
               } else {
                 setRegistrationStep(registrationStep + 1);
@@ -625,7 +778,7 @@ export const Clases: React.FC<ClasesProps> = ({
             }}
             className="w-full !py-6 !rounded-[2rem] text-sm tracking-[0.1em] shadow-lg active:scale-95 transition-all"
           >
-            {registrationStep === 6 ? 'Guardar Clase' : 'Continuar'}
+            {registrationStep === 8 ? 'Guardar Clase' : 'Continuar'}
           </Button>
         </div>
       </div>
