@@ -2625,13 +2625,13 @@ const App: React.FC = () => {
   if (!isLoggedIn) return (
     <div className="auth-bg flex flex-col items-center justify-center p-8 text-white min-h-screen relative">
       <div className="z-10 w-full max-w-sm text-center page-transition flex flex-col items-center">
-        <div className="w-24 h-24 bg-white/10 backdrop-blur-3xl rounded-[2.2rem] flex items-center justify-center mb-12 shadow-[0_10px_40px_rgba(0,0,0,0.4)] border border-white/20">
+        <div className="w-24 h-24 bg-white/10 backdrop-blur-3xl rounded-[2.2rem] flex items-center justify-center mb-12 shadow-[0_10px_40px_rgba(0,0,0,0.4)] border border-primary/20">
           <span className="material-icons-outlined text-white text-4xl transform -rotate-45">fitness_center</span>
         </div>
         <h1 className="text-[42px] font-extrabold tracking-tighter mb-1 text-white leading-none">
           GymCoach <span className="text-primary">Pro</span>
         </h1>
-        <p className="text-white/70 text-[10px] font-bold italic uppercase tracking-[0.4em] mb-12 whitespace-nowrap">
+        <p className="text-primary text-[10px] font-bold italic uppercase tracking-[0.4em] mb-12 whitespace-nowrap">
           ELITE GYMNASTICS MANAGEMENT
         </p>
 
@@ -2643,7 +2643,7 @@ const App: React.FC = () => {
                 placeholder="Email" 
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-sm text-white placeholder:text-white/70 focus:border-primary focus:ring-1 focus:ring-primary/50 outline-none transition-all"
+                className="w-full bg-black/60 border border-white/20 rounded-2xl px-5 py-4 text-sm text-white placeholder:text-white/50 focus:border-primary focus:ring-1 focus:ring-primary/50 outline-none transition-all"
                 required
               />
             </div>
@@ -2653,7 +2653,7 @@ const App: React.FC = () => {
                 placeholder="Contraseña" 
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-sm text-white placeholder:text-white/70 focus:border-primary focus:ring-1 focus:ring-primary/50 outline-none transition-all"
+                className="w-full bg-black/60 border border-white/20 rounded-2xl px-5 py-4 text-sm text-white placeholder:text-white/50 focus:border-primary focus:ring-1 focus:ring-primary/50 outline-none transition-all"
                 required
               />
             </div>
@@ -2666,13 +2666,13 @@ const App: React.FC = () => {
                 >
                   {rememberMe && <span className="material-icons-outlined text-antigravity-black text-[12px] font-bold">check</span>}
                 </div>
-                <span className="text-[10px] text-white/70 uppercase font-bold tracking-widest group-hover:text-white/80 transition-colors">Recordarme</span>
+                <span className="text-[10px] text-white/90 uppercase font-bold tracking-widest group-hover:text-white transition-colors">Recordarme</span>
               </label>
               {!isSignUp && (
                 <button 
                   type="button"
                   onClick={handleForgotPassword}
-                  className="text-[10px] text-primary/60 uppercase font-bold tracking-widest hover:text-primary transition-colors"
+                  className="text-[10px] text-primary uppercase font-bold tracking-widest hover:text-primary/80 transition-colors"
                 >
                   ¿Olvidaste tu contraseña?
                 </button>
@@ -2689,7 +2689,7 @@ const App: React.FC = () => {
             <div className="relative flex justify-center text-[10px] uppercase font-bold tracking-[0.3em]"><span className="bg-antigravity-black px-4 text-white/80 italic">O</span></div>
           </div>
 
-          <button onClick={handleLogin} className="w-full py-4.5 bg-white/5 border border-white/10 text-white rounded-full font-bold uppercase text-[10px] tracking-[0.18em] active:scale-95 transition-all hover:bg-white/10 flex items-center justify-center gap-3">
+          <button onClick={handleLogin} className="w-full py-4.5 bg-white/10 border border-white/10 text-white rounded-full font-bold uppercase text-[10px] tracking-[0.18em] active:scale-95 transition-all hover:bg-white/20 flex items-center justify-center gap-3">
             <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-4 h-4" alt="Google" />
             INICIAR CON GOOGLE
           </button>
