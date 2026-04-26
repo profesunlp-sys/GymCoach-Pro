@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { collection, query, where, onSnapshot, doc, deleteDoc, setDoc } from 'firebase/firestore';
-import { db } from '../firebase';
-import { Alumno } from '../types';
+import { collection, onSnapshot, doc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { db } from '../../services/firebase';
+import { Alumno } from '../../types';
 import { motion } from 'motion/react';
 
 interface ControlPagosProps {
@@ -10,55 +10,56 @@ interface ControlPagosProps {
 
 export const ControlPagos: React.FC<ControlPagosProps> = ({ onBack }) => {
   const [alumnos, setAlumnos] = useState<Alumno[]>([]);
-  const [pagos, setPagos] = useState<Record<string, Record<number, boolean>>>({}); // alumnoId -> month -> paid
   const [selectedYear] = useState(new Date().getFullYear());
   const meses = [
-    { n: 1, name: 'Ene' }, { n: 2, name: 'Feb' }, { n: 3, name: 'Mar' },
-    { n: 4, name: 'Abr' }, { n: 5, name: 'May' }, { n: 6, name: 'Jun' },
-    { n: 7, name: 'Jul' }, { n: 8, name: 'Ago' }, { n: 9, name: 'Sep' },
-    { n: 10, name: 'Oct' }, { n: 11, name: 'Nov' }, { n: 12, name: 'Dic' }
+    { n: 1, name: 'Ene', label: 'Enero' }, { n: 2, name: 'Feb', label: 'Febrero' }, { n: 3, name: 'Mar', label: 'Marzo' },
+    { n: 4, name: 'Abr', label: 'Abril' }, { n: 5, name: 'May', label: 'Mayo' }, { n: 6, name: 'Jun', label: 'Junio' },
+    { n: 7, name: 'Jul', label: 'Julio' }, { n: 8, name: 'Ago', label: 'Agosto' }, { n: 9, name: 'Sep', label: 'Septiembre' },
+    { n: 10, name: 'Oct', label: 'Octubre' }, { n: 11, name: 'Nov', label: 'Noviembre' }, { n: 12, name: 'Dic', label: 'Diciembre' }
   ];
 
   useEffect(() => {
-    // Escuchar alumnos
+    // Escuchar alumnos y sus pagos de forma centralizada
     const unsubscribeAlumnos = onSnapshot(collection(db, 'alumnos'), (snapshot) => {
       setAlumnos(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as Alumno));
     });
 
-    // Escuchar todos los pagos del año
-    const q = query(collection(db, 'pagos'), where('año', '==', selectedYear));
-    const unsubscribePagos = onSnapshot(q, (snapshot) => {
-      const data: Record<string, Record<number, boolean>> = {};
-      snapshot.docs.forEach(doc => {
-        const p = doc.data();
-        if (!data[p.alumnoId]) data[p.alumnoId] = {};
-        data[p.alumnoId][p.mes] = true;
-      });
-      setPagos(data);
-    });
+    return () => unsubscribeAlumnos();
+  }, []);
 
-    return () => {
-      unsubscribeAlumnos();
-      unsubscribePagos();
-    };
-  }, [selectedYear]);
+  const togglePago = async (alumno: Alumno, mesN: number) => {
+    if (!alumno.id) return;
+    
+    const mesLabel = meses.find(m => m.n === mesN)?.label || 'Enero';
+    const yaPagado = alumno.pagosMensuales?.some(p => p.mes === mesLabel && p.anio === selectedYear);
+    const alumnoRef = doc(db, 'alumnos', alumno.id);
 
-  const togglePago = async (alumnoId: string, mes: number) => {
-    const isPaid = pagos[alumnoId]?.[mes];
-    const pagoId = `${alumnoId}_${selectedYear}_${mes}`;
-    const pagoRef = doc(db, 'pagos', pagoId);
-
-    if (isPaid) {
-      await deleteDoc(pagoRef);
-    } else {
-      await setDoc(pagoRef, {
-        alumnoId,
-        mes,
-        año: selectedYear,
-        fecha: new Date().toISOString(),
-        metodo: 'Manual_Dashboard'
-      });
+    try {
+      if (yaPagado) {
+        // Encontrar el registro exacto para removerlo
+        const pagoARemover = alumno.pagosMensuales?.find(p => p.mes === mesLabel && p.anio === selectedYear);
+        if (pagoARemover) {
+          await updateDoc(alumnoRef, {
+            pagosMensuales: arrayRemove(pagoARemover)
+          });
+        }
+      } else {
+        await updateDoc(alumnoRef, {
+          pagosMensuales: arrayUnion({
+            mes: mesLabel,
+            anio: selectedYear,
+            fechaPago: new Date().toISOString()
+          })
+        });
+      }
+    } catch (error) {
+      console.error("Error toggling payment:", error);
     }
+  };
+
+  const isPaid = (alumno: Alumno, mesN: number) => {
+    const mesLabel = meses.find(m => m.n === mesN)?.label || '';
+    return alumno.pagosMensuales?.some(p => p.mes === mesLabel && p.anio === selectedYear) || false;
   };
 
   return (
@@ -98,9 +99,9 @@ export const ControlPagos: React.FC<ControlPagosProps> = ({ onBack }) => {
                   {meses.map(m => (
                     <td key={m.n} className="p-4 text-center">
                       <button 
-                        onClick={() => togglePago(alumno.id!, m.n)}
+                        onClick={() => togglePago(alumno, m.n)}
                         className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
-                          pagos[alumno.id!]?.[m.n] 
+                          isPaid(alumno, m.n) 
                             ? 'bg-ios-green text-white shadow-sm' 
                             : 'bg-ios-gray text-transparent border border-black/5 hover:border-black/20'
                         }`}

@@ -495,7 +495,7 @@ export const Clases: React.FC<ClasesProps> = ({
             <div className="flex items-center gap-2 mt-1">
               <span className="text-xs font-medium text-secondary">{selectedClase.entrenador || 'Coach Pro'}</span>
               <span className="w-1 h-1 rounded-full bg-black/10"></span>
-              <span className="text-xs font-medium text-secondary">{selectedClase.claseAgeRange || 'Todas las edades'}</span>
+              <span className="text-xs font-medium text-secondary">{selectedClase.ageRange || 'Todas las edades'}</span>
             </div>
           </div>
         </div>
@@ -511,7 +511,7 @@ export const Clases: React.FC<ClasesProps> = ({
                 <span className="text-sm font-bold text-black">Asistencia</span>
               </div>
               <span className="text-base font-bold text-black">
-                {Object.values(selectedClase.asistencia || {}).filter(Boolean).length} presentes
+                {Array.isArray(selectedClase.asistencias) ? selectedClase.asistencias.length : 0} presentes
               </span>
             </div>
             <div className="p-5 flex justify-between items-center group">
@@ -706,7 +706,7 @@ export const Clases: React.FC<ClasesProps> = ({
                     <div className="flex items-center gap-1.5">
                       <span className="material-icons-outlined text-sm text-secondary">groups</span>
                       <span className="text-[10px] font-bold text-secondary uppercase tracking-widest">
-                        {Object.values(clase.asistencia || {}).filter(Boolean).length} alumnos
+                        {Array.isArray(clase.asistencias) ? clase.asistencias.length : 0} alumnos
                       </span>
                     </div>
                   </div>

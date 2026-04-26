@@ -12,7 +12,7 @@ import { Alumno, Clase, ViewMode, GrupoConfig, AsistenciaRecord, UserRole, Feedb
 import { processClassAudio, refineClassAnalysis, analyzeAttendanceStats, queryKnowledgeBase } from './services/geminiService';
 import { SKILL_TREE, DISCIPLINAS, NIVELES as DEFAULT_NIVELES } from './constants';
 import { db as firestore, auth, googleProvider, COLLECTIONS, getCollectionData, addDocument, updateDocument, deleteDocument, getAttendanceByStudent } from './services/firebase';
-import { collection, query, where, getDocs, addDoc, doc, updateDoc, onSnapshot, orderBy, setDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, doc, updateDoc, onSnapshot, orderBy, setDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { signInWithPopup, signOut, onAuthStateChanged, User, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, setPersistence, browserLocalPersistence, browserSessionPersistence } from 'firebase/auth';
 // Lazy loaded components
 const Dashboard = lazy(() => import('./src/components/Dashboard').then(module => ({ default: module.Dashboard })));
@@ -1007,6 +1007,10 @@ const App: React.FC = () => {
         setSelectedNivelFilter('Todos');
       }
       
+      const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+      const currentMonthName = monthNames[new Date().getMonth()];
+      const currentYear = new Date().getFullYear();
+
       // Filter global alerts
       setAlertasGlobales(a.filter(student => student.alertas && student.alertas.length > 0 && student.alertas[0] !== ""));
 
@@ -1020,11 +1024,20 @@ const App: React.FC = () => {
         const querySnapshot = await getDocs(q);
         const attMap: Record<string, boolean> = {};
         const payMap: Record<string, boolean> = {};
+
+        // 1. Cargamos asistencia de hoy desde la colección asistencias
         querySnapshot.forEach(doc => {
           const data = doc.data() as AsistenciaRecord;
           attMap[data.alumnoId] = data.presente;
-          payMap[data.alumnoId] = !!data.pago;
         });
+
+        // 2. Cargamos pagos del mes actual desde el objeto del alumno (fuente de verdad mensual)
+        a.forEach(alumno => {
+          if (alumno.pagosMensuales?.some(p => p.mes === currentMonthName && p.anio === currentYear)) {
+            payMap[alumno.id!] = true;
+          }
+        });
+
         setAsistenciasHoy(attMap);
         setPagosHoy(payMap);
       }
@@ -1831,7 +1844,7 @@ const App: React.FC = () => {
     }
   };
 
-  const handleBulkImport = async () => {
+  const handleBulkImportSubmit = async () => {
     const lines = bulkImportText.split('\n').filter(line => line.trim() !== '');
     if (lines.length === 0) return;
 
@@ -2035,29 +2048,48 @@ const App: React.FC = () => {
 
   const togglePayment = async (alumnoId: string) => {
     try {
-      const today = new Date().toISOString().split('T')[0];
-      const hasPaid = !pagosHoy[alumnoId];
+      const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+      const now = new Date();
+      const currentMonthName = monthNames[now.getMonth()];
+      const currentYear = now.getFullYear();
       
+      const hasPaid = !pagosHoy[alumnoId];
       setPagosHoy(prev => ({ ...prev, [alumnoId]: hasPaid }));
 
+      const alumnoRef = doc(firestore, COLLECTIONS.ALUMNOS, alumnoId);
+      const student = alumnos.find(a => a.id === alumnoId);
+      
+      if (!student) return;
+
+      if (hasPaid) {
+        // Agregar pago mensual
+        await updateDocument(COLLECTIONS.ALUMNOS, alumnoId, {
+          pagosMensuales: arrayUnion({
+            mes: currentMonthName,
+            anio: currentYear,
+            fechaPago: now.toISOString()
+          })
+        });
+      } else {
+        // Quitar pago mensual
+        const paymentToRemove = student.pagosMensuales?.find(p => p.mes === currentMonthName && p.anio === currentYear);
+        if (paymentToRemove) {
+          await updateDocument(COLLECTIONS.ALUMNOS, alumnoId, {
+            pagosMensuales: arrayRemove(paymentToRemove)
+          });
+        }
+      }
+
+      // Sincronizar con la asistencia de hoy si existe
+      const today = now.toISOString().split('T')[0];
       const q = query(
         collection(firestore, COLLECTIONS.ASISTENCIAS),
         where('fecha', '==', today),
         where('alumnoId', '==', alumnoId)
       );
       const querySnapshot = await getDocs(q);
-
       if (!querySnapshot.empty) {
-        const docId = querySnapshot.docs[0].id;
-        await updateDocument(COLLECTIONS.ASISTENCIAS, docId, { pago: hasPaid });
-      } else {
-        await addDocument(COLLECTIONS.ASISTENCIAS, {
-          fecha: today,
-          alumnoId: alumnoId,
-          grupo: activeGroup?.nombre || 'General',
-          presente: !!asistenciasHoy[alumnoId],
-          pago: hasPaid
-        });
+        await updateDocument(COLLECTIONS.ASISTENCIAS, querySnapshot.docs[0].id, { pago: hasPaid });
       }
     } catch (error: any) {
       console.error("Error toggling payment:", error);
@@ -3700,7 +3732,7 @@ const App: React.FC = () => {
                 setShowMoreOptions(false);
               }} 
               className={`flex flex-col items-center gap-1.5 transition-all flex-1 ${
-                ((vista as string) === item.v || 
+                ((item.v as string) === (vista as string) || 
                 (item.v === 'Alumnos' && (vista === 'AlumnoDetalle' || vista === 'RegistroAlumno')) ||
                 (item.v === 'Horario' && (vista === 'NuevaClase' || vista === 'ClaseDetalle' || vista === 'HistorialClases'))) && item.v !== 'Menu'
                 ? 'text-primary' 
@@ -3710,7 +3742,7 @@ const App: React.FC = () => {
               }`}
             >
               <span className={`material-symbols-outlined text-[26px] font-light ${
-                ((vista as string) === item.v || 
+                ((item.v as string) === (vista as string) || 
                 (item.v === 'Alumnos' && (vista === 'AlumnoDetalle' || vista === 'RegistroAlumno')) ||
                 (item.v === 'Horario' && (vista === 'NuevaClase' || vista === 'ClaseDetalle' || vista === 'HistorialClases'))) && item.v !== 'Menu'
                 ? 'fill-current' 
@@ -3719,7 +3751,7 @@ const App: React.FC = () => {
                 : ''
               }`}>{item.i}</span>
               <span className={`text-[9px] uppercase tracking-wide ${
-                ((vista as string) === item.v || 
+                ((item.v as string) === (vista as string) || 
                 (item.v === 'Alumnos' && (vista === 'AlumnoDetalle' || vista === 'RegistroAlumno')) ||
                 (item.v === 'Horario' && (vista === 'NuevaClase' || vista === 'ClaseDetalle' || vista === 'HistorialClases'))) && item.v !== 'Menu'
                 ? 'font-bold' 
@@ -3956,7 +3988,7 @@ const App: React.FC = () => {
                   <button 
                     onClick={() => {
                       if (bulkImportText.trim()) {
-                        handleBulkImportSubmit(bulkImportText);
+                        handleBulkImportSubmit();
                         setIsBulkImporting(false);
                       }
                     }}

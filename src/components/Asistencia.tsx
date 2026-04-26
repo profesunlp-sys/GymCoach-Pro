@@ -1,6 +1,6 @@
 
-import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Alumno, GrupoConfig, ViewMode, AsistenciaRecord, Clase } from '../../types';
 
 interface AsistenciaProps {
@@ -62,7 +62,7 @@ interface AsistenciaProps {
 
 import { BulkPaymentImport } from './BulkPaymentImport';
 
-const Asistencia: React.FC<AsistenciaProps> = ({
+export const Asistencia: React.FC<AsistenciaProps> = ({
   vista,
   setVista,
   activeGroup,
@@ -119,53 +119,8 @@ const Asistencia: React.FC<AsistenciaProps> = ({
   setSelectedAlumno
 }) => {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
-  const [pagosMensuales, setPagosMensuales] = useState<Record<string, boolean>>({});
   const currentMonth = new Date().getMonth() + 1;
   const currentYear = new Date().getFullYear();
-
-  // Cargar pagos del mes actual para el grupo activo
-  useEffect(() => {
-    if (activeGroup) {
-      const q = query(
-        collection(db, 'pagos'),
-        where('mes', '==', currentMonth),
-        where('año', '==', currentYear)
-      );
-      
-      const unsubscribe = onSnapshot(q, (snapshot) => {
-        const pagos: Record<string, boolean> = {};
-        snapshot.docs.forEach(doc => {
-          pagos[doc.data().alumnoId] = true;
-        });
-        setPagosMensuales(pagos);
-      }, (error) => {
-        handleFirestoreError(error, OperationType.GET, 'pagos');
-      });
-      return () => unsubscribe();
-    }
-  }, [activeGroup, currentMonth, currentYear]);
-
-  const handleTogglePayment = async (alumnoId: string) => {
-    const pagoId = `${alumnoId}_${currentYear}_${currentMonth}`;
-    const pagoRef = doc(db, 'pagos', pagoId);
-    
-    try {
-      if (pagosMensuales[alumnoId]) {
-        await deleteDoc(pagoRef);
-      } else {
-        await setDoc(pagoRef, {
-          alumnoId,
-          mes: currentMonth,
-          año: currentYear,
-          fecha: new Date().toISOString(),
-          monto: 0,
-          metodo: 'Manual_En_Clase'
-        });
-      }
-    } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, 'pagos');
-    }
-  };
 
   if (vista === 'RegistroAlumno' && activeGroup) {
     return (
@@ -517,8 +472,8 @@ const Asistencia: React.FC<AsistenciaProps> = ({
                       PAGO {new Date().toLocaleString('es-ES', { month: 'short' }).toUpperCase()}
                     </span>
                     <button 
-                      onClick={() => handleTogglePayment(alumno.id!)}
-                      className={`w-6 h-6 rounded-md border flex items-center justify-center transition-all ${pagosMensuales[alumno.id!] ? 'bg-ios-green border-transparent text-white' : 'bg-ios-gray border-black/5 text-transparent'}`}
+                      onClick={() => togglePayment(alumno.id!)}
+                      className={`w-6 h-6 rounded-md border flex items-center justify-center transition-all ${pagosHoy[alumno.id!] ? 'bg-ios-green border-transparent text-white' : 'bg-ios-gray border-black/5 text-transparent'}`}
                     >
                       <span className="material-icons-outlined text-[16px]">check</span>
                     </button>

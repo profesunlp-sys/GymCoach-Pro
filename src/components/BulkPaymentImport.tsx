@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import * as XLSX from 'xlsx';
-import { collection, query, where, getDocs, doc, writeBatch, serverTimestamp } from 'firebase/firestore';
-import { db } from '../firebase';
+import { collection, query, where, getDocs, doc, writeBatch, serverTimestamp, arrayUnion } from 'firebase/firestore';
+import { db } from '../../services/firebase';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface BulkPaymentImportProps {
@@ -68,13 +68,14 @@ export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete
     });
 
     const currentYear = new Date().getFullYear();
-    const currentMonth = new Date().getMonth() + 1;
+    const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+    const currentMonthName = monthNames[new Date().getMonth()];
 
     for (const row of data) {
       // Intentar encontrar el nombre en las columnas posibles
       const nombreRaw = row.Nombre || row.nombre || row.Alumno || row.alumno || row['Nombre y Apellido'];
       const dniRaw = row.DNI || row.dni || row.Documento;
-      const mesRaw = row.Mes || row.mes || currentMonth;
+      const mesRaw = row.Mes || row.mes || currentMonthName;
       const añoRaw = row.Año || row.año || row.anio || currentYear;
 
       let alumnoId = null;
@@ -82,17 +83,19 @@ export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete
       if (!alumnoId && nombreRaw) alumnoId = alumnosMap.get(nombreRaw.toLowerCase().trim());
 
       if (alumnoId) {
-        const pagoId = `${alumnoId}_${añoRaw}_${mesRaw}`;
-        const pagoRef = doc(db, 'pagos', pagoId);
+        const alumnoRef = doc(db, 'alumnos', alumnoId);
         
-        batch.set(pagoRef, {
-          alumnoId,
-          mes: parseInt(mesRaw),
-          año: parseInt(añoRaw),
-          fechaImportacion: serverTimestamp(),
-          metodo: 'Excel',
-          originalRow: JSON.stringify(row).substring(0, 500) // Guardar referencia por si acaso
-        }, { merge: true });
+        // Usamos update con FieldValue.arrayUnion 
+        // Importante: No podemos usar writeBatch con arrayUnion de forma sencilla si queremos enviarlo todo junto sin leer.
+        // Pero como estamos dentro de un loop, lo mejor es actualizar individualmente o enviar el batch.
+        // Como Firestore batch soporta arrayUnion, lo usaremos.
+        batch.update(alumnoRef, {
+          pagosMensuales: arrayUnion({
+            mes: typeof mesRaw === 'number' ? monthNames[mesRaw - 1] : mesRaw,
+            anio: parseInt(añoRaw.toString()),
+            fechaPago: new Date().toISOString()
+          })
+        });
         
         count++;
       }
