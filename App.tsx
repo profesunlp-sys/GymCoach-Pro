@@ -2632,7 +2632,7 @@ const App: React.FC = () => {
   );
 
   return (
-    <div className="max-w-[430px] mx-auto min-h-screen bg-antigravity-black shadow-2xl relative overflow-hidden flex flex-col font-display pb-32">
+    <div className="max-w-[430px] mx-auto min-h-screen bg-ios-gray shadow-2xl relative overflow-hidden flex flex-col font-sans pb-32">
       
       {/* Unsaved Changes Modal */}
       {pendingNavigation && (
@@ -2713,9 +2713,9 @@ const App: React.FC = () => {
       )}
 
       {/* iOS Status Bar */}
-      <div className="h-12 flex justify-between items-center px-8 pt-4 pb-2 w-full bg-antigravity-black sticky top-0 z-50">
-        <span className="text-sm font-medium text-white">9:41</span>
-        <div className="flex items-center gap-1.5 text-white">
+      <div className="h-12 flex justify-between items-center px-8 pt-4 pb-2 w-full bg-ios-gray sticky top-0 z-50">
+        <span className="text-sm font-semibold text-black">9:41</span>
+        <div className="flex items-center gap-1.5 text-black">
           <span className="material-symbols-outlined text-[18px]">signal_cellular_alt</span>
           <span className="material-symbols-outlined text-[18px]">wifi</span>
           <span className="material-symbols-outlined text-[18px]">battery_very_low</span>
@@ -4043,12 +4043,4 @@ const App: React.FC = () => {
     );
   };
   
-              <span className="material-icons-outlined text-sm">close</span>
-          </button>
-        </div>
-      )}
-    </div>
-  );
-};
-
-export default App;
+  export default App;

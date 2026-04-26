@@ -231,26 +231,36 @@ export const Clases: React.FC<ClasesProps> = ({
               exit={{ opacity: 0, x: -20 }}
               className="px-6 space-y-6"
             >
-              <h3 className="text-2xl font-bold text-black tracking-tight mb-4">Rango de edad del grupo</h3>
+              <h3 className="text-2xl font-bold text-black tracking-tight mb-4">Edades del Grupo</h3>
               <div className="space-y-4">
                 {[
-                  { range: "3 a 5 años", emoji: "👶" },
-                  { range: "6 a 9 años", emoji: "🧒" },
-                  { range: "10 a 15 años", emoji: "👦" }
+                  { range: "3-5 años", icon: "child_care", desc: "Pre-Mini" },
+                  { range: "6-9 años", icon: "face", desc: "Mini / Pre-Infantil" },
+                  { range: "10-15 años", icon: "sports_gymnastics", desc: "Juveniles" }
                 ].map((item) => (
                   <button 
                     key={item.range}
                     onClick={() => setClaseAgeRange(item.range)}
-                    className={`w-full p-6 rounded-2xl border transition-all text-left flex items-center justify-between ${
+                    className={`w-full p-6 rounded-[2rem] border-2 transition-all text-left flex items-center gap-6 ${
                       claseAgeRange === item.range 
-                        ? 'border-primary bg-white shadow-ios ring-1 ring-primary/20' 
-                        : 'border-black/5 bg-white shadow-sm'
+                        ? 'border-primary bg-white shadow-[0_0_20px_rgba(0,122,255,0.1)]' 
+                        : 'border-black/5 bg-white'
                     }`}
                   >
-                    <span className={`text-xl font-bold ${claseAgeRange === item.range ? 'text-primary' : 'text-secondary'}`}>
-                      {item.range}
-                    </span>
-                    <span className="text-3xl">{item.emoji}</span>
+                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-colors ${claseAgeRange === item.range ? 'bg-primary text-white' : 'bg-ios-gray text-secondary'}`}>
+                      <span className="material-icons-outlined text-2xl">{item.icon}</span>
+                    </div>
+                    <div className="flex-1">
+                      <span className={`text-xl font-bold block leading-none ${claseAgeRange === item.range ? 'text-primary' : 'text-black'}`}>
+                        {item.range}
+                      </span>
+                      <span className="text-[10px] font-bold text-secondary uppercase tracking-widest mt-1">{item.desc}</span>
+                    </div>
+                    {claseAgeRange === item.range && (
+                      <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center shadow-sm">
+                        <span className="material-icons-outlined text-white text-[14px]">check</span>
+                      </div>
+                    )}
                   </button>
                 ))}
               </div>
@@ -308,7 +318,7 @@ export const Clases: React.FC<ClasesProps> = ({
               exit={{ opacity: 0, x: -20 }}
               className="px-6 space-y-6"
             >
-              <h3 className="text-2xl font-bold text-black tracking-tight">Aparatos trabajados</h3>
+              <h3 className="text-2xl font-bold text-black tracking-tight">Aparatos</h3>
               <div className="grid grid-cols-2 gap-4">
                 {[
                   { name: "Viga", icon: "horizontal_rule" },
@@ -319,19 +329,21 @@ export const Clases: React.FC<ClasesProps> = ({
                   <button 
                     key={opt.name}
                     onClick={() => setFasePrincipal(prev => prev.includes(opt.name) ? prev.filter(o => o !== opt.name) : [...prev, opt.name])}
-                    className={`relative p-6 rounded-3xl border transition-all aspect-square flex flex-col items-center justify-center gap-3 ${
+                    className={`relative p-6 rounded-[2.5rem] border-2 transition-all aspect-square flex flex-col items-center justify-center gap-2 ${
                       fasePrincipal.includes(opt.name) 
-                        ? 'border-primary bg-white shadow-ios ring-1 ring-primary/20' 
+                        ? 'border-primary bg-white shadow-[0_0_20px_rgba(0,122,255,0.2)] ring-4 ring-primary/5' 
                         : 'border-black/5 bg-white shadow-sm'
                     }`}
                   >
-                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${fasePrincipal.includes(opt.name) ? 'bg-primary/10 text-primary' : 'bg-ios-gray text-secondary'}`}>
-                      <span className="material-icons-outlined text-2xl">{opt.icon}</span>
+                    <div className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-colors ${fasePrincipal.includes(opt.name) ? 'bg-primary text-white' : 'bg-ios-gray text-secondary'}`}>
+                      <span className="material-icons-outlined text-3xl">{opt.icon}</span>
                     </div>
-                    <span className="text-sm font-bold text-black text-center">{opt.name}</span>
+                    <span className={`text-[10px] font-bold uppercase tracking-widest mt-2 ${fasePrincipal.includes(opt.name) ? 'text-primary' : 'text-secondary'}`}>{opt.name}</span>
                     
-                    <div className={`absolute top-4 right-4 w-5 h-5 rounded-full border-2 flex items-center justify-center ${fasePrincipal.includes(opt.name) ? 'bg-primary border-primary' : 'border-black/10'}`}>
-                      {fasePrincipal.includes(opt.name) && <span className="material-icons-outlined text-white text-[12px]">check</span>}
+                    <div className="absolute top-4 right-4">
+                      <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${fasePrincipal.includes(opt.name) ? 'bg-primary border-primary' : 'border-black/10'}`}>
+                        {fasePrincipal.includes(opt.name) && <span className="material-icons-outlined text-white text-[14px]">check</span>}
+                      </div>
                     </div>
                   </button>
                 ))}
@@ -383,43 +395,40 @@ export const Clases: React.FC<ClasesProps> = ({
               exit={{ opacity: 0, x: -20 }}
               className="px-6 space-y-6"
             >
-              <div className="flex flex-col items-center justify-center py-4">
-                <div className="w-16 h-16 bg-ios-green/10 text-ios-green rounded-full flex items-center justify-center mb-2">
-                  <span className="material-icons-outlined text-3xl">task_alt</span>
-                </div>
-                <h3 className="text-xl font-bold text-black tracking-tight">Resumen de clase</h3>
-                <p className="text-secondary text-sm">Verificá los datos antes de guardar</p>
-              </div>
-
               <div className="bg-white rounded-3xl shadow-ios border border-black/5 overflow-hidden">
-                <div className="divide-y divide-black/5 p-2">
-                  <div className="p-4 flex justify-between items-center">
-                    <span className="text-sm font-medium text-secondary">Grupo</span>
-                    <span className="text-sm font-bold text-black">{claseGrupo}</span>
+                <div className="p-6 border-b border-black/5 flex items-center gap-3">
+                   <div className="w-6 h-6 bg-[#34C759] rounded-full flex items-center justify-center">
+                     <span className="material-icons-outlined text-white text-[14px]">check</span>
+                   </div>
+                   <h3 className="text-lg font-bold text-black">Resumen de la Clase</h3>
+                </div>
+                
+                <div className="divide-y divide-black/5">
+                  <div className="px-6 py-4 flex justify-between items-center">
+                    <span className="text-base font-medium text-black">Grupo:</span>
+                    <span className="text-base text-black">{claseGrupo}</span>
                   </div>
-                  <div className="p-4 flex justify-between items-center">
-                    <span className="text-sm font-medium text-secondary">Fecha</span>
-                    <span className="text-sm font-bold text-black">{new Date().toLocaleDateString()}</span>
+                  <div className="px-6 py-4 flex justify-between items-center">
+                    <span className="text-base font-medium text-black">Fecha:</span>
+                    <span className="text-base text-black">{new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</span>
                   </div>
-                  <div className="p-4 flex justify-between items-center">
-                    <span className="text-sm font-medium text-secondary">Rango de edad</span>
-                    <span className="text-sm font-bold text-primary">{claseAgeRange || 'No especificado'}</span>
+                  <div className="px-6 py-4 flex justify-between items-center">
+                    <span className="text-base font-medium text-black">Rango de Edad:</span>
+                    <span className="text-base text-black">{claseAgeRange || 'No especificado'}</span>
                   </div>
-                  <div className="p-4 flex justify-between items-center">
-                    <span className="text-sm font-medium text-secondary">Asistencia</span>
-                    <span className="text-sm font-bold text-black">{Object.values(asistenciasHoy).filter(Boolean).length} presentes</span>
+                  <div className="px-6 py-4 flex justify-between items-center">
+                    <span className="text-base font-medium text-black">Asistencia:</span>
+                    <span className="text-base text-black">{Object.values(asistenciasHoy).filter(Boolean).length} / {alumnos.filter(a => a.grupo === claseGrupo).length} alumnos</span>
                   </div>
-                  <div className="p-4">
-                    <span className="text-sm font-medium text-secondary block mb-2">Aparatos</span>
-                    <div className="flex flex-wrap gap-2">
-                      {fasePrincipal.length > 0 ? fasePrincipal.map(a => (
-                        <span key={a} className="px-3 py-1 bg-ios-gray text-black text-[10px] font-bold rounded-full">{a}</span>
-                      )) : <span className="text-sm font-bold text-black">-</span>}
-                    </div>
+                  <div className="px-6 py-4">
+                    <span className="text-base font-medium text-black block mb-1">Aparatos Trabajados:</span>
+                    <p className="text-base text-black font-medium">
+                      {fasePrincipal.length > 0 ? fasePrincipal.join(', ') : '-'}
+                    </p>
                   </div>
-                  <div className="p-4">
-                    <span className="text-sm font-medium text-secondary block mb-1">Habilidades</span>
-                    <p className="text-sm text-black line-clamp-2">{claseObjetivos || '-'}</p>
+                  <div className="px-6 py-4">
+                    <span className="text-base font-medium text-black block mb-1">Habilidades Dominadas:</span>
+                    <p className="text-base text-black opacity-80">{claseObjetivos || '-'}</p>
                   </div>
                 </div>
               </div>
@@ -453,108 +462,145 @@ export const Clases: React.FC<ClasesProps> = ({
 
   if (vista === 'ClaseDetalle' && selectedClase) {
     return (
-      <div className="px-6 py-8 space-y-8 page-transition pb-24">
-        <header className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <button onClick={() => setVista('HistorialClases')} className="w-10 h-10 rounded-full bg-antigravity-charcoal flex items-center justify-center text-primary border border-white/5 active:scale-90 transition-all">
-              <span className="material-icons-outlined">arrow_back</span>
+      <div className="min-h-screen bg-ios-gray page-transition pb-24">
+        {/* Header Hero */}
+        <div className="bg-white px-6 pt-12 pb-8 shadow-sm border-b border-black/5">
+          <header className="flex items-center justify-between mb-6">
+            <button 
+              onClick={() => setVista('HistorialClases')} 
+              className="text-primary font-medium flex items-center gap-1 active:scale-95 transition-all"
+            >
+              <span className="material-icons-outlined text-lg">arrow_back_ios</span>
+              <span>Historial</span>
             </button>
-            <div>
-              <h2 className="text-2xl font-black text-white uppercase tracking-tighter">Detalle de Clase</h2>
-              <p className="text-primary text-[10px] font-black uppercase tracking-widest mt-1">{selectedClase.grupo} • {new Date(selectedClase.fecha).toLocaleDateString()}</p>
+            <div className="flex gap-2">
+              <button 
+                onClick={() => handleEditClase(selectedClase)}
+                className="w-10 h-10 rounded-full bg-ios-gray flex items-center justify-center text-secondary active:scale-90 transition-all"
+              >
+                <span className="material-icons-outlined text-lg">edit</span>
+              </button>
+              <button 
+                onClick={() => handleDeleteClase(selectedClase)}
+                className="w-10 h-10 rounded-full bg-ios-red/10 flex items-center justify-center text-ios-red active:scale-90 transition-all"
+              >
+                <span className="material-icons-outlined text-lg">delete</span>
+              </button>
+            </div>
+          </header>
+
+          <div className="space-y-1">
+            <span className="text-[10px] font-bold text-primary uppercase tracking-[0.2em]">{new Date(selectedClase.fecha).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
+            <h2 className="text-3xl font-bold text-black tracking-tight">{selectedClase.grupo}</h2>
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-xs font-medium text-secondary">{selectedClase.entrenador || 'Coach Pro'}</span>
+              <span className="w-1 h-1 rounded-full bg-black/10"></span>
+              <span className="text-xs font-medium text-secondary">{selectedClase.claseAgeRange || 'Todas las edades'}</span>
             </div>
           </div>
-          <div className="flex gap-2">
-            <button 
-              onClick={() => handleEditClase(selectedClase)}
-              className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary border border-primary/20 active:scale-90 transition-all"
-            >
-              <span className="material-icons-outlined">edit</span>
-            </button>
-            <button 
-              onClick={() => handleDeleteClase(selectedClase)}
-              className="w-10 h-10 rounded-full bg-rose-500/10 flex items-center justify-center text-rose-500 border border-rose-500/20 active:scale-90 transition-all"
-            >
-              <span className="material-icons-outlined">delete</span>
-            </button>
-          </div>
-        </header>
+        </div>
 
-        <div className="space-y-6">
-          <div className="glass-card rounded-3xl p-6 border border-white/5 space-y-6">
-            <div className="grid grid-cols-3 gap-4">
-              <div className="text-center p-3 bg-white/5 rounded-2xl border border-white/5">
-                <p className="text-[8px] font-black text-white/40 uppercase tracking-widest mb-1">Calor</p>
-                <p className="text-sm font-black text-primary">{selectedClase.faseInicialDuration || '0'}m</p>
+        <div className="px-6 -mt-6 space-y-8">
+          {/* Quick Stats Rows - Image 1 Style */}
+          <div className="bg-white rounded-[2rem] shadow-ios border border-black/5 divide-y divide-black/5 overflow-hidden">
+            <div className="p-5 flex justify-between items-center group">
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 bg-ios-blue/10 rounded-xl flex items-center justify-center text-primary">
+                  <span className="material-icons-outlined">groups</span>
+                </div>
+                <span className="text-sm font-bold text-black">Asistencia</span>
               </div>
-              <div className="text-center p-3 bg-white/5 rounded-2xl border border-white/5">
-                <p className="text-[8px] font-black text-white/40 uppercase tracking-widest mb-1">Principal</p>
-                <p className="text-sm font-black text-primary">{selectedClase.fasePrincipalDuration || '0'}m</p>
+              <span className="text-base font-bold text-black">
+                {Object.values(selectedClase.asistencia || {}).filter(Boolean).length} presentes
+              </span>
+            </div>
+            <div className="p-5 flex justify-between items-center group">
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 bg-ios-orange/10 rounded-xl flex items-center justify-center text-ios-orange">
+                  <span className="material-icons-outlined">timer</span>
+                </div>
+                <span className="text-sm font-bold text-black">Duración Total</span>
               </div>
-              <div className="text-center p-3 bg-white/5 rounded-2xl border border-white/5">
-                <p className="text-[8px] font-black text-white/40 uppercase tracking-widest mb-1">Final</p>
-                <p className="text-sm font-black text-primary">{selectedClase.faseFinalDuration || '0'}m</p>
+              <span className="text-base font-bold text-black">
+                {parseInt(selectedClase.faseInicialDuration || '0') + parseInt(selectedClase.fasePrincipalDuration || '0') + parseInt(selectedClase.faseFinalDuration || '0')} min
+              </span>
+            </div>
+          </div>
+
+          {/* Details Section */}
+          <div className="space-y-6">
+            <div className="space-y-4">
+              <h3 className="text-xs font-bold text-secondary uppercase tracking-widest px-1">Fases del Entrenamiento</h3>
+              
+              <div className="bg-white rounded-3xl p-6 shadow-sm border border-black/5 space-y-6">
+                {/* Intro */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-1.5 h-1.5 rounded-full bg-primary/40"></div>
+                    <h4 className="text-[10px] font-bold text-secondary uppercase tracking-widest">Entrada en Calor</h4>
+                    <span className="text-[10px] font-bold text-black/20 ml-auto">{selectedClase.faseInicialDuration}m</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedClase.faseInicial?.map((act, i) => (
+                      <span key={i} className="text-xs font-medium text-black/70 bg-ios-gray px-3 py-1.5 rounded-lg border border-black/5">{act}</span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Main */}
+                <div className="space-y-4 pt-2">
+                  <div className="flex items-center gap-3">
+                    <div className="w-1.5 h-1.5 rounded-full bg-ios-blue"></div>
+                    <h4 className="text-[10px] font-bold text-primary uppercase tracking-widest">Fase Principal (Aparatos)</h4>
+                    <span className="text-[10px] font-bold text-black/20 ml-auto">{selectedClase.fasePrincipalDuration}m</span>
+                  </div>
+                  <div className="space-y-4">
+                    {selectedClase.fasePrincipal?.map((aparato, i) => (
+                      <div key={i} className="space-y-2 pl-4 border-l-2 border-primary/10">
+                        <p className="text-xs font-bold text-black uppercase tracking-tight">{aparato}</p>
+                        <div className="flex flex-wrap gap-2">
+                          {(Array.isArray(selectedClase.habilidadesPorAparato?.[aparato]) ? selectedClase.habilidadesPorAparato?.[aparato] : [])?.map((hab: string, j: number) => (
+                            <span key={j} className="text-[10px] font-medium text-black/60 bg-ios-gray/50 px-3 py-1.5 rounded-lg">{hab}</span>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Cooldown */}
+                <div className="space-y-3 pt-2">
+                  <div className="flex items-center gap-3">
+                    <div className="w-1.5 h-1.5 rounded-full bg-primary/40"></div>
+                    <h4 className="text-[10px] font-bold text-secondary uppercase tracking-widest">Vuelta a la calma</h4>
+                    <span className="text-[10px] font-bold text-black/20 ml-auto">{selectedClase.faseFinalDuration}m</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedClase.faseFinal?.map((act, i) => (
+                      <span key={i} className="text-xs font-medium text-black/70 bg-ios-gray px-3 py-1.5 rounded-lg border border-black/5">{act}</span>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
 
             <div className="space-y-4">
-              <div className="space-y-2">
-                <h4 className="text-[10px] font-black text-white/60 uppercase tracking-[0.2em] flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-primary shadow-neon-cyan"></span>
-                  Entrada en Calor
-                </h4>
-                <div className="flex flex-wrap gap-2">
-                  {selectedClase.faseInicial?.map((act, i) => (
-                    <span key={i} className="text-[10px] font-bold text-white/80 bg-white/5 px-3 py-1.5 rounded-lg border border-white/5">{act}</span>
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-4 pt-2">
-                <h4 className="text-[10px] font-black text-white/60 uppercase tracking-[0.2em] flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-primary shadow-neon-cyan"></span>
-                  Fase Principal
-                </h4>
-                <div className="space-y-4">
-                  {selectedClase.fasePrincipal?.map((aparato, i) => (
-                    <div key={i} className="space-y-2 pl-3 border-l border-white/10">
-                      <p className="text-[10px] font-black text-primary uppercase tracking-widest">{aparato}</p>
-                      <div className="flex flex-wrap gap-2">
-                        {selectedClase.habilidadesPorAparato?.[aparato]?.map((hab, j) => (
-                          <span key={j} className="text-[10px] font-bold text-white/80 bg-white/5 px-3 py-1.5 rounded-lg border border-white/5">{hab}</span>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-2 pt-2">
-                <h4 className="text-[10px] font-black text-white/60 uppercase tracking-[0.2em] flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-primary shadow-neon-cyan"></span>
-                  Vuelta a la calma
-                </h4>
-                <div className="flex flex-wrap gap-2">
-                  {selectedClase.faseFinal?.map((act, i) => (
-                    <span key={i} className="text-[10px] font-bold text-white/80 bg-white/5 px-3 py-1.5 rounded-lg border border-white/5">{act}</span>
-                  ))}
-                </div>
-              </div>
+               <h3 className="text-xs font-bold text-secondary uppercase tracking-widest px-1">Notas de la Clase</h3>
+               <div className="bg-white rounded-[1.5rem] p-6 shadow-sm border border-black/5 space-y-4 italic">
+                  <div>
+                    <h4 className="text-[10px] font-bold text-primary uppercase tracking-widest mb-2">Objetivos Logrados</h4>
+                    <p className="text-sm text-black/70 leading-relaxed">
+                      "{selectedClase.objetivos || 'No se registraron objetivos específicos.'}"
+                    </p>
+                  </div>
+                  <div className="pt-4 border-t border-black/5">
+                    <h4 className="text-[10px] font-bold text-secondary uppercase tracking-widest mb-2">Observaciones</h4>
+                    <p className="text-sm text-black/70 leading-relaxed">
+                      "{selectedClase.observaciones || 'Sin observaciones adicionales.'}"
+                    </p>
+                  </div>
+               </div>
             </div>
-          </div>
-
-          <div className="glass-card rounded-3xl p-6 border border-white/5 space-y-4">
-            <h4 className="text-[10px] font-black text-primary uppercase tracking-[0.2em]">Objetivos Logrados</h4>
-            <p className="text-xs text-white/80 leading-relaxed italic">
-              {selectedClase.objetivos || 'No se registraron objetivos específicos.'}
-            </p>
-          </div>
-
-          <div className="glass-card rounded-3xl p-6 border border-white/5 space-y-4">
-            <h4 className="text-[10px] font-black text-primary uppercase tracking-[0.2em]">Observaciones</h4>
-            <p className="text-xs text-white/80 leading-relaxed italic">
-              {selectedClase.observaciones || 'Sin observaciones adicionales.'}
-            </p>
           </div>
         </div>
       </div>
@@ -563,119 +609,129 @@ export const Clases: React.FC<ClasesProps> = ({
 
   if (vista === 'HistorialClases' || vista === 'Clases') {
     return (
-      <div className="px-6 py-8 space-y-8 page-transition pb-24">
-        <header className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <button onClick={() => handleNavigation('Dashboard')} className="w-10 h-10 rounded-full bg-antigravity-charcoal flex items-center justify-center text-primary border border-white/5 active:scale-90 transition-all">
-              <span className="material-icons-outlined">arrow_back</span>
+      <div className="min-h-screen bg-ios-gray page-transition pb-24">
+        <header className="px-6 pt-12 pb-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <button 
+              onClick={() => handleNavigation('Dashboard')} 
+              className="text-primary font-medium flex items-center gap-1 active:scale-95 transition-all"
+            >
+              <span className="material-icons-outlined text-lg">arrow_back_ios</span>
+              <span>Dashboard</span>
             </button>
-            <div>
-              <h2 className="text-2xl font-black text-white uppercase tracking-tighter">Historial</h2>
-              <p className="text-primary text-[10px] font-black uppercase tracking-widest mt-1">Planificaciones Guardadas</p>
-            </div>
+            <motion.button 
+              whileTap={{ scale: 0.95 }}
+              onClick={() => handleNavigation('NuevaClase')}
+              className="w-10 h-10 rounded-full bg-ios-blue shadow-lg flex items-center justify-center text-white active:scale-90 transition-all"
+            >
+              <span className="material-icons-outlined text-lg">add</span>
+            </motion.button>
           </div>
-          <button 
-            onClick={() => handleNavigation('NuevaClase')}
-            className="w-10 h-10 rounded-full bg-primary shadow-neon-cyan flex items-center justify-center text-antigravity-black active:scale-90 transition-all"
-          >
-            <span className="material-icons-outlined">add</span>
-          </button>
+          <h2 className="text-3xl font-bold text-black tracking-tight">Historial de Clases</h2>
         </header>
 
-        <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
-          <div className="relative flex-1 min-w-[140px]">
-            <span className="material-icons-outlined absolute left-3 top-1/2 -translate-y-1/2 text-white/40 text-sm">calendar_today</span>
-            <input 
-              type="date" 
-              value={planesFilterDate}
-              onChange={(e) => setPlanesFilterDate(e.target.value)}
-              className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-[10px] text-white font-bold uppercase tracking-widest outline-none focus:border-primary/50 transition-all"
-            />
+        <div className="px-6 space-y-6">
+          <div className="flex gap-3 overflow-x-auto pb-1 no-scrollbar">
+            <div className="relative flex-1 min-w-[140px]">
+              <span className="material-icons-outlined absolute left-3 top-1/2 -translate-y-1/2 text-secondary text-sm">calendar_today</span>
+              <input 
+                type="date" 
+                value={planesFilterDate}
+                onChange={(e) => setPlanesFilterDate(e.target.value)}
+                className="w-full bg-white border border-transparent rounded-xl pl-10 pr-4 py-3 text-[10px] text-black font-bold uppercase tracking-widest outline-none shadow-sm focus:border-primary/20 transition-all"
+              />
+            </div>
+            <div className="relative flex-1 min-w-[140px]">
+              <span className="material-icons-outlined absolute left-3 top-1/2 -translate-y-1/2 text-secondary text-sm">person</span>
+              <select 
+                value={planesFilterCoach}
+                onChange={(e) => setPlanesFilterCoach(e.target.value)}
+                className="w-full bg-white border border-transparent rounded-xl pl-10 pr-4 py-3 text-[10px] text-black font-bold uppercase tracking-widest outline-none shadow-sm focus:border-primary/20 transition-all appearance-none"
+              >
+                <option value="Todos">Todos los Coaches</option>
+                {Array.from(new Set(clases.map(c => c.entrenador).filter(Boolean))).map(coach => (
+                  <option key={coach} value={coach || ""}>{coach}</option>
+                ))}
+              </select>
+            </div>
           </div>
-          <div className="relative flex-1 min-w-[140px]">
-            <span className="material-icons-outlined absolute left-3 top-1/2 -translate-y-1/2 text-white/40 text-sm">person</span>
-            <select 
-              value={planesFilterCoach}
-              onChange={(e) => setPlanesFilterCoach(e.target.value)}
-              className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-[10px] text-white font-bold uppercase tracking-widest outline-none focus:border-primary/50 transition-all appearance-none"
-            >
-              <option value="Todos">Todos</option>
-              {Array.from(new Set(clases.map(c => c.entrenador).filter(Boolean))).map(coach => (
-                <option key={coach} value={coach || ""}>{coach}</option>
-              ))}
-            </select>
-          </div>
-        </div>
 
-        <div className="space-y-4">
-          {clases
-            .filter(c => {
-              const matchesDate = planesFilterDate ? c.fecha.startsWith(planesFilterDate) : true;
-              const matchesCoach = planesFilterCoach === 'Todos' ? true : c.entrenador === planesFilterCoach;
-              return matchesDate && matchesCoach;
-            })
-            .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
-            .map(clase => (
-            <div 
-              key={clase.id} 
-              onClick={() => { setSelectedClase(clase); setVista('ClaseDetalle'); }}
-              className="glass-card p-5 rounded-3xl border border-white/5 hover:border-primary/30 transition-all group cursor-pointer"
-            >
-              <div className="flex justify-between items-start mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-2xl bg-antigravity-charcoal flex flex-col items-center justify-center border border-white/5 group-hover:border-primary/30 transition-all">
-                    <span className="text-xs font-black text-white leading-none">{new Date(clase.fecha).getDate()}</span>
-                    <span className="text-[8px] font-black text-primary uppercase tracking-tighter">{new Date(clase.fecha).toLocaleString('default', { month: 'short' })}</span>
+          <div className="space-y-4 pt-2">
+            {clases
+              .filter(c => {
+                const matchesDate = planesFilterDate ? c.fecha.startsWith(planesFilterDate) : true;
+                const matchesCoach = planesFilterCoach === 'Todos' ? true : c.entrenador === planesFilterCoach;
+                return matchesDate && matchesCoach;
+              })
+              .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
+              .map((clase, idx) => (
+              <motion.div 
+                key={clase.id} 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: idx * 0.05 }}
+                onClick={() => { setSelectedClase(clase); setVista('ClaseDetalle'); }}
+                className="bg-white p-5 rounded-[2rem] shadow-ios border border-black/5 hover:border-primary/20 active:bg-ios-gray transition-all cursor-pointer group"
+              >
+                <div className="flex justify-between items-start mb-4">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-ios-gray flex flex-col items-center justify-center group-hover:bg-primary/10 transition-all">
+                      <span className="text-base font-bold text-black leading-none">{new Date(clase.fecha).getDate()}</span>
+                      <span className="text-[8px] font-bold text-primary uppercase tracking-tighter mt-0.5">{new Date(clase.fecha).toLocaleString('es-ES', { month: 'short' })}</span>
+                    </div>
+                    <div>
+                      <h4 className="text-lg font-bold text-black tracking-tight leading-tight">{clase.grupo}</h4>
+                      <p className="text-[10px] text-secondary font-bold uppercase tracking-widest mt-1">{clase.entrenador || 'Coach Pro'}</p>
+                    </div>
                   </div>
-                  <div>
-                    <h4 className="text-sm font-black text-white uppercase tracking-tight">{clase.grupo}</h4>
-                    <p className="text-[10px] text-white/40 font-bold uppercase tracking-widest mt-1">{clase.entrenador || 'Coach Pro'}</p>
+                  <div className="w-8 h-8 rounded-full bg-ios-gray flex items-center justify-center text-black/10 group-hover:text-primary transition-colors">
+                    <span className="material-icons-outlined text-lg">chevron_right</span>
                   </div>
                 </div>
-                <div className="flex gap-1">
-                  {clase.fasePrincipal?.slice(0, 2).map((aparato, i) => (
-                    <span key={i} className="w-2 h-2 rounded-full bg-primary shadow-neon-cyan"></span>
+                
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {clase.fasePrincipal?.map((aparato, i) => (
+                    <span key={i} className="text-[10px] font-bold text-secondary bg-ios-gray px-3 py-1.5 rounded-lg uppercase tracking-tight">{aparato}</span>
                   ))}
                 </div>
-              </div>
-              
-              <div className="flex flex-wrap gap-1.5 mb-4">
-                {clase.fasePrincipal?.map((aparato, i) => (
-                  <span key={i} className="text-[8px] font-black text-white/60 bg-white/5 px-2 py-1 rounded-md border border-white/5 uppercase tracking-widest">{aparato}</span>
-                ))}
-              </div>
 
-              <div className="flex items-center justify-between pt-4 border-t border-white/5">
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-1">
-                    <span className="material-icons-outlined text-[12px] text-primary">schedule</span>
-                    <span className="text-[9px] font-bold text-white/60 uppercase tracking-widest">
-                      {parseInt(clase.faseInicialDuration || '0') + parseInt(clase.fasePrincipalDuration || '0') + parseInt(clase.faseFinalDuration || '0')} min
-                    </span>
+                <div className="flex items-center justify-between pt-4 border-t border-black/5">
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-1.5">
+                      <span className="material-icons-outlined text-sm text-secondary">schedule</span>
+                      <span className="text-[10px] font-bold text-secondary uppercase tracking-widest">
+                        {parseInt(clase.faseInicialDuration || '0') + parseInt(clase.fasePrincipalDuration || '0') + parseInt(clase.faseFinalDuration || '0')} min
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="material-icons-outlined text-sm text-secondary">groups</span>
+                      <span className="text-[10px] font-bold text-secondary uppercase tracking-widest">
+                        {Object.values(clase.asistencia || {}).filter(Boolean).length} alumnos
+                      </span>
+                    </div>
                   </div>
                 </div>
-                <span className="material-icons-outlined text-primary text-sm group-hover:translate-x-1 transition-transform">arrow_forward</span>
-              </div>
-            </div>
-          ))}
+              </motion.div>
+            ))}
 
-          {clases.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-20 text-center space-y-6 glass-card rounded-[2.5rem] border-dashed border-white/10 mx-2">
-              <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center border border-white/5 shadow-inner">
-                <span className="material-icons-outlined text-white/10 text-4xl">history_edu</span>
+            {clases.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-24 text-center space-y-6 bg-white rounded-[2.5rem] border border-dashed border-black/10 mx-2 shadow-sm">
+                <div className="w-20 h-20 bg-ios-gray rounded-full flex items-center justify-center">
+                  <span className="material-icons-outlined text-secondary text-4xl">history_edu</span>
+                </div>
+                <div className="space-y-1">
+                  <h3 className="text-black font-bold text-lg tracking-tight">Sin Historial</h3>
+                  <p className="text-secondary text-xs font-medium">Todavía no has registrado ninguna clase.</p>
+                </div>
+                <Button 
+                  onClick={() => handleNavigation('NuevaClase')}
+                  className="px-10 !rounded-full !py-4 shadow-lg"
+                >
+                  Registrar Primera Clase
+                </Button>
               </div>
-              <div className="space-y-2 px-8">
-                <h3 className="text-white font-black text-lg uppercase tracking-tight leading-tight">Sin Historial</h3>
-                <p className="text-white/40 text-xs leading-relaxed">Todavía no has registrado ninguna clase en GymCoach Pro.</p>
-              </div>
-              <button 
-                onClick={() => handleNavigation('NuevaClase')}
-                className="px-8 py-4 bg-primary text-antigravity-black font-black uppercase text-[10px] tracking-[0.2em] rounded-2xl shadow-neon-cyan hover:scale-105 active:scale-95 transition-all"
-              >
-                Registrar Primera Clase
-              </button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
     );

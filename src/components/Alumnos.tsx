@@ -718,7 +718,10 @@ const Alumnos: React.FC<AlumnosProps> = ({
                     <div className="p-10 text-center text-secondary text-sm italic">No hay registros de asistencia.</div>
                   )}
                 </div>
-              </div>            {activeTab === 'Bio' && selectedAlumno.biometria && (
+              </div>
+            )}
+
+            {activeTab === 'Bio' && selectedAlumno.biometria && (
               <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2">
                 <div className="flex justify-between items-center px-1">
                   <h3 className="text-xs font-bold text-secondary uppercase tracking-widest">Biometría Radar</h3>
@@ -991,9 +994,6 @@ const Alumnos: React.FC<AlumnosProps> = ({
           </div>
         )}
       </div>
-    );
-  }
-    </div>
     );
   }
 
