@@ -497,6 +497,25 @@ const App: React.FC = () => {
     }
   };
 
+  const getAiTechnicalSuggestions = async (nivel: string, aparato: string): Promise<string[]> => {
+    if (sources.length === 0) return [];
+    
+    try {
+      const query = `Según los manuales, ¿cuáles son los ejercicios obligatorios para el Nivel ${nivel} en el aparato ${aparato}? Responde solo con una lista de ejercicios separados por comas, sin introducciones ni explicaciones.`;
+      const response = await queryKnowledgeBase(query, sources);
+      
+      if (response.toLowerCase().includes("lo siento") || response.toLowerCase().includes("error")) {
+        return [];
+      }
+
+      // Procesar la respuesta para obtener un array
+      return response.split(',').map(s => s.trim()).filter(s => s.length > 0 && s.length < 100);
+    } catch (error) {
+      console.error("Error getting AI suggestions:", error);
+      return [];
+    }
+  };
+
   // Edit Alumno State
   const [isEditingAlumno, setIsEditingAlumno] = useState(false);
   const [isSavingStudent, setIsSavingStudent] = useState(false);
@@ -2943,6 +2962,8 @@ const App: React.FC = () => {
             handleSaveCooldownOption={handleSaveCooldownOption}
             handleUpdateCooldownOption={handleUpdateCooldownOption}
             handleDeleteCooldownOption={handleDeleteCooldownOption}
+            getAiTechnicalSuggestions={getAiTechnicalSuggestions}
+            isKbLoading={isKbLoading}
           />
         )}
 

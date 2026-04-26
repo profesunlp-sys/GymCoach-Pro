@@ -70,6 +70,8 @@ interface ClasesProps {
   handleSaveCooldownOption: (name: string) => void;
   handleUpdateCooldownOption: (id: string, name: string) => void;
   handleDeleteCooldownOption: (id: string) => void;
+  getAiTechnicalSuggestions: (nivel: string, aparato: string) => Promise<string[]>;
+  isKbLoading: boolean;
 }
 
 export const Clases: React.FC<ClasesProps> = ({
@@ -134,8 +136,35 @@ export const Clases: React.FC<ClasesProps> = ({
   handleDeleteWarmupOption,
   handleSaveCooldownOption,
   handleUpdateCooldownOption,
-  handleDeleteCooldownOption
+  handleDeleteCooldownOption,
+  getAiTechnicalSuggestions,
+  isKbLoading
 }) => {
+  const [aiSuggestionsByApparatus, setAiSuggestionsByApparatus] = React.useState<Record<string, string[]>>({});
+  const [fetchingSuggestions, setFetchingSuggestions] = React.useState<Record<string, boolean>>({});
+
+  const handleFetchAiSuggestions = async (aparato: string) => {
+    const nivelesPresentes = Array.from(new Set(
+      alumnos
+        .filter(a => a.id && asistenciasHoy[a.id])
+        .map(a => a.nivel)
+    )).filter(Boolean);
+
+    if (nivelesPresentes.length === 0) return;
+
+    setFetchingSuggestions(prev => ({ ...prev, [aparato]: true }));
+    try {
+      // Tomamos el primer nivel predominante o consultamos para todos
+      const results = await Promise.all(
+        nivelesPresentes.map(nivel => getAiTechnicalSuggestions(nivel, aparato))
+      );
+      const combined = Array.from(new Set(results.flat()));
+      setAiSuggestionsByApparatus(prev => ({ ...prev, [aparato]: combined }));
+    } finally {
+      setFetchingSuggestions(prev => ({ ...prev, [aparato]: false }));
+    }
+  };
+
   if (vista === 'NuevaClase') {
     return (
       <div className="min-h-screen bg-ios-gray space-y-0 page-transition pt-4 pb-24">
@@ -358,29 +387,157 @@ export const Clases: React.FC<ClasesProps> = ({
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
-              className="px-6 space-y-6"
+              className="px-6 space-y-8 pb-32"
             >
-              <h3 className="text-2xl font-bold text-black tracking-tight">Detalles del entrenamiento</h3>
+              <div>
+                <h3 className="text-2xl font-bold text-black tracking-tight">Evaluación Técnica</h3>
+                <p className="text-secondary text-[10px] font-bold uppercase tracking-widest mt-1">Habilidades por Aparato</p>
+              </div>
               
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-secondary uppercase tracking-widest px-1">Habilidades trabajadas</label>
-                  <textarea 
-                    value={claseObjetivos}
-                    onChange={(e) => setClaseObjetivos(e.target.value)}
-                    className="w-full bg-white border border-black/10 rounded-2xl p-5 text-sm min-h-[120px] shadow-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-                    placeholder="Ej: Roles, verticales, enlace en viga..."
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-secondary uppercase tracking-widest px-1">Observaciones generales</label>
-                  <textarea 
-                    value={claseObservaciones}
-                    onChange={(e) => setClaseObservaciones(e.target.value)}
-                    className="w-full bg-white border border-black/10 rounded-2xl p-5 text-sm min-h-[120px] shadow-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-                    placeholder="Notas sobre el comportamiento o desempeño del grupo..."
-                  />
+              <div className="space-y-8">
+                {fasePrincipal.map((aparato) => {
+                  const nivelesPresentes = Array.from(new Set(
+                    alumnos
+                      .filter(a => a.id && asistenciasHoy[a.id])
+                      .map(a => a.nivel)
+                  )).filter(Boolean);
+
+                  return (
+                    <div key={aparato} className="space-y-4">
+                      <div className="flex items-center justify-between px-1">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center border border-primary/20">
+                            <span className="material-icons-outlined text-primary text-lg">fitness_center</span>
+                          </div>
+                          <span className="text-sm font-black text-black uppercase tracking-tight">{aparato}</span>
+                        </div>
+                        
+                        <button 
+                          onClick={() => handleFetchAiSuggestions(aparato)}
+                          disabled={fetchingSuggestions[aparato] || isKbLoading}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/5 border border-primary/20 rounded-full text-primary disabled:opacity-50 active:scale-95 transition-all"
+                        >
+                          {fetchingSuggestions[aparato] ? (
+                            <div className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                          ) : (
+                            <span className="material-icons-outlined text-sm">psychology</span>
+                          )}
+                          <span className="text-[10px] font-black uppercase tracking-widest">Sugerir AI</span>
+                        </button>
+                      </div>
+
+                      {/* AI Suggestions Row */}
+                      {aiSuggestionsByApparatus[aparato] && aiSuggestionsByApparatus[aparato].length > 0 && (
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2 px-1">
+                            <span className="material-icons-outlined text-primary text-[14px]">star</span>
+                            <span className="text-[9px] font-bold text-secondary uppercase tracking-[0.15em]">Recomendados para Nivel {nivelesPresentes.join('/')}</span>
+                          </div>
+                          <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
+                            {aiSuggestionsByApparatus[aparato].map((suggestion, idx) => {
+                              const isAdded = (habilidadesPorAparato[aparato] || []).includes(suggestion);
+                              return (
+                                <button
+                                  key={idx}
+                                  onClick={() => {
+                                    if (isAdded) {
+                                      setHabilidadesPorAparato(prev => ({
+                                        ...prev,
+                                        [aparato]: (prev[aparato] || []).filter(h => h !== suggestion)
+                                      }));
+                                    } else {
+                                      setHabilidadesPorAparato(prev => ({
+                                        ...prev,
+                                        [aparato]: Array.from(new Set([...(prev[aparato] || []), suggestion]))
+                                      }));
+                                    }
+                                  }}
+                                  className={`px-4 py-2.5 rounded-xl border text-[10px] font-bold uppercase tracking-widest whitespace-nowrap transition-all flex items-center gap-2 backdrop-blur-sm ${
+                                    isAdded 
+                                      ? 'bg-primary border-primary text-white shadow-neon-cyan active:shadow-none' 
+                                      : 'bg-white/60 border-black/5 text-secondary hover:border-primary/30 hover:bg-white/90 shadow-sm'
+                                  }`}
+                                >
+                                  {suggestion}
+                                  <span className="material-icons-outlined text-xs">
+                                    {isAdded ? 'remove_circle_outline' : 'add_circle_outline'}
+                                  </span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Custom Input for Apparatus */}
+                      <div className="relative group">
+                        <input 
+                          type="text"
+                          value={customHabilidad[aparato] || ''}
+                          onChange={(e) => setCustomHabilidad(prev => ({ ...prev, [aparato]: e.target.value }))}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && customHabilidad[aparato]?.trim()) {
+                              const val = customHabilidad[aparato].trim();
+                              setHabilidadesPorAparato(prev => ({
+                                ...prev,
+                                [aparato]: Array.from(new Set([...(prev[aparato] || []), val]))
+                              }));
+                              setCustomHabilidad(prev => ({ ...prev, [aparato]: '' }));
+                            }
+                          }}
+                          placeholder={`Añadir habilidad a ${aparato}...`}
+                          className="w-full bg-white border border-black/5 rounded-2xl px-5 py-4 text-xs font-medium placeholder:text-black/20 outline-none focus:border-primary/30 focus:bg-primary/5 transition-all pr-12"
+                        />
+                        <button 
+                          onClick={() => {
+                            if (customHabilidad[aparato]?.trim()) {
+                              const val = customHabilidad[aparato].trim();
+                              setHabilidadesPorAparato(prev => ({
+                                ...prev,
+                                [aparato]: Array.from(new Set([...(prev[aparato] || []), val]))
+                              }));
+                              setCustomHabilidad(prev => ({ ...prev, [aparato]: '' }));
+                            }
+                          }}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 bg-primary rounded-xl flex items-center justify-center text-white shadow-ios active:scale-90 transition-all"
+                        >
+                          <span className="material-icons-outlined text-lg">add</span>
+                        </button>
+                      </div>
+
+                      {/* Selected Skills List */}
+                      {habilidadesPorAparato[aparato] && habilidadesPorAparato[aparato].length > 0 && (
+                        <div className="flex flex-wrap gap-2 px-1">
+                          {habilidadesPorAparato[aparato].map((hab, idx) => (
+                            <div key={idx} className="bg-ios-gray px-3 py-1.5 rounded-lg border border-black/5 flex items-center gap-2">
+                              <span className="text-[10px] font-medium text-black/70">{hab}</span>
+                              <button 
+                                onClick={() => setHabilidadesPorAparato(prev => ({
+                                  ...prev,
+                                  [aparato]: prev[aparato].filter(h => h !== hab)
+                                }))}
+                                className="text-secondary hover:text-rose-500"
+                              >
+                                <span className="material-icons-outlined text-[14px]">cancel</span>
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+
+                <div className="pt-4 border-t border-black/5 space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold text-secondary uppercase tracking-[0.2em] px-1">Observaciones Finales</label>
+                    <textarea 
+                      value={claseObservaciones}
+                      onChange={(e) => setClaseObservaciones(e.target.value)}
+                      className="w-full bg-white border border-black/10 rounded-3xl p-5 text-sm min-h-[120px] shadow-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-medium"
+                      placeholder="Notas adicionales sobre el desempeño del grupo..."
+                    />
+                  </div>
                 </div>
               </div>
             </motion.div>
@@ -427,8 +584,23 @@ export const Clases: React.FC<ClasesProps> = ({
                     </p>
                   </div>
                   <div className="px-6 py-4">
-                    <span className="text-base font-medium text-black block mb-1">Habilidades Dominadas:</span>
-                    <p className="text-base text-black opacity-80">{claseObjetivos || '-'}</p>
+                    <span className="text-base font-medium text-black block mb-2">Habilidades por Aparato:</span>
+                    <div className="space-y-3">
+                      {fasePrincipal.length > 0 ? (
+                        fasePrincipal.map(apa => (
+                          <div key={apa} className="space-y-1">
+                            <span className="text-[10px] font-bold text-primary uppercase tracking-widest">{apa}</span>
+                            <p className="text-sm text-black/70">
+                              {habilidadesPorAparato[apa]?.length > 0 
+                                ? habilidadesPorAparato[apa].join(', ') 
+                                : 'Sin habilidades registradas'}
+                            </p>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-sm text-black opacity-50 italic">No hay aparatos en esta clase</p>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>

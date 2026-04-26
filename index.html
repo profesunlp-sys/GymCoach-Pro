@@ -98,6 +98,13 @@
             .focus-mode-active {
                 @apply fixed inset-0 z-[200] bg-ios-gray overflow-y-auto p-6 md:p-12;
             }
+            .no-scrollbar::-webkit-scrollbar {
+                display: none;
+            }
+            .no-scrollbar {
+                -ms-overflow-style: none;
+                scrollbar-width: none;
+            }
             .alert-icon {
                 @apply w-8 h-8 rounded-full flex items-center justify-center shadow-sm;
             }
