@@ -63,64 +63,71 @@ export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete
     const alumnosSnapshot = await getDocs(collection(db, 'alumnos'));
     const allAlumnos: any[] = alumnosSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
+    const removeAccents = (str: string) => {
+      return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    };
+
     const currentYear = new Date().getFullYear();
     const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
     const normalizeMonth = (val: any): string => {
       if (typeof val === 'number') {
         return monthNames[val - 1] || monthNames[0];
       }
-      const s = String(val).trim().toLowerCase();
+      const s = removeAccents(String(val).trim().toLowerCase());
       const n = parseInt(s);
       if (!isNaN(n)) return monthNames[n - 1] || monthNames[0];
       
-      const found = monthNames.find(m => m.toLowerCase() === s);
+      const found = monthNames.find(m => removeAccents(m.toLowerCase()) === s);
       if (found) return found;
 
-      return s.charAt(0).toUpperCase() + s.slice(1);
+      return String(val).charAt(0).toUpperCase() + String(val).slice(1);
     };
     const currentMonthName = monthNames[new Date().getMonth()];
 
     // Función de comparación de palabras clave (FUZZY MATCHING BÁSICO)
     const findAlumnoByKeywords = (searchName: string) => {
-      const searchTerms = searchName.toLowerCase().split(/\s+/).filter((t: string) => t.length > 2);
+      const searchNameNorm = removeAccents(searchName.toLowerCase());
+      const searchTerms = searchNameNorm.split(/\s+/).filter((t: string) => t.length > 1);
       if (searchTerms.length === 0) return null;
 
       return allAlumnos.find(alumno => {
-        const studentName = alumno.nombre.toLowerCase();
+        const studentName = removeAccents(alumno.nombre.toLowerCase());
         // Verificamos si al menos las palabras clave del nombre del Excel aparecen en el nombre registrado
-        // Ejemplo: "Juan Carlos Perez Garcia" vs "Juan Perez" -> Match si "juan" y "perez" están en ambos
         const matchesAll = searchTerms.every((term: string) => studentName.includes(term));
-        const inverseMatches = studentName.split(/\s+/).filter((t: string) => t.length > 2).every((term: string) => searchName.toLowerCase().includes(term));
+        const inverseMatches = studentName.split(/\s+/).filter((t: string) => t.length > 1).every((term: string) => searchNameNorm.includes(term));
         return matchesAll || inverseMatches;
       });
     };
 
     for (const row of data) {
       // FILTRO DE ACTIVIDAD (REQUISITO: SOLO GIMNASIA ARTISTICA INFANTIL)
-      const actividadRaw = row.Actividad || row.actividad || row.Clase || row.clase || row.Disciplina || '';
-      const normalizeActividad = String(actividadRaw).toUpperCase().trim();
+      const actividadRaw = row.Actividad || row.actividad || row.Clase || row.clase || row.Disciplina || row.Actividades || '';
+      const normalizeActividad = removeAccents(String(actividadRaw).toUpperCase().trim());
       
-      // Si el archivo tiene columna de actividad, filtramos estrictamente
-      if (actividadRaw && !normalizeActividad.includes('GIMNASIA ARTISTICA INFANTIL')) {
+      // Si el archivo tiene columna de actividad, filtramos pero con más flexibilidad
+      if (actividadRaw && !normalizeActividad.includes('GIMNASIA') && !normalizeActividad.includes('ARTISTICA')) {
         continue;
       }
       
       // Intentar encontrar el nombre en las columnas posibles
-      const nombreRaw = row.Nombre || row.nombre || row.Alumno || row.alumno || row['Nombre y Apellido'] || row['Nombre Alumno'];
-      const dniRaw = (row.DNI || row.dni || row.Documento || '').toString().trim();
-      const añoRaw = row.Año || row.año || row.anio || currentYear;
+      const nombreRaw = row.Nombre || row.nombre || row.Alumno || row.alumno || row['Nombre y Apellido'] || row['Nombre Alumno'] || row.Gimnasta || row.gimnasta;
+      const dniRaw = (row.DNI || row.dni || row.Documento || row.documento || row.Cedula || row.CUIL || '').toString().trim();
+      const añoRaw = row.Año || row.año || row.anio || row.Periodo || row.periodo || currentYear;
 
       let matchedAlumno = null;
 
       // 1. PRIORIDAD: DNI
-      if (dniRaw && dniRaw !== '') {
-        matchedAlumno = allAlumnos.find(a => a.dni && a.dni.toString().trim() === dniRaw);
+      if (dniRaw && dniRaw !== '' && dniRaw !== '0') {
+        matchedAlumno = allAlumnos.find(a => {
+          const aDni = (a.dni || '').toString().trim();
+          return aDni !== '' && aDni !== 'No especificado' && aDni === dniRaw;
+        });
       }
 
       // 2. SECUNDARIO: NOMBRE EXACTO
       if (!matchedAlumno && nombreRaw) {
-        const cleanName = String(nombreRaw).toLowerCase().trim();
-        matchedAlumno = allAlumnos.find(a => a.nombre.toLowerCase().trim() === cleanName);
+        const cleanName = removeAccents(String(nombreRaw).toLowerCase().trim());
+        matchedAlumno = allAlumnos.find(a => removeAccents(a.nombre.toLowerCase().trim()) === cleanName);
       }
 
       // 3. TERCIARIO: COINCIDENCIA DE PALABRAS CLAVE (FUZZY)
