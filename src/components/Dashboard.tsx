@@ -71,7 +71,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [syncStatus, setSyncStatus] = useState<any>(null);
 
   React.useEffect(() => {
-    if (userRole === 'coordinator') {
+    if (userRole === 'Coordinator') {
       const fetchStatus = () => {
         fetch('/api/sync/status')
           .then(res => res.json())
