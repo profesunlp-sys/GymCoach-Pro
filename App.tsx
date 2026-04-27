@@ -531,7 +531,8 @@ const App: React.FC = () => {
   const chunksRef = useRef<Blob[]>([]);
 
   // UI States
-  const [notificacion, setNotificacion] = useState<{t: string, d: string} | null>(null);
+  const [notificacion, setNotificacion] = useState<{t: string, d: string, detalles?: string[]} | null>(null);
+  const [showNotifDetails, setShowNotifDetails] = useState(false);
   const [hasNewData, setHasNewData] = useState(false);
   const isFirstLoad = useRef(true);
 
@@ -1993,13 +1994,15 @@ const App: React.FC = () => {
     if (errors.length > 0) {
       setNotificacion({ 
         t: "Importación Parcial", 
-        d: `Se importaron ${importedCount} alumnos. Hubo ${errors.length} errores.` 
+        d: `Se importaron ${importedCount} alumnos. Hubo ${errors.length} errores.`,
+        detalles: errors
       });
       console.warn("Errores de importación:", errors);
+      // No cerramos automáticamente si hay errores para que el usuario pueda verlos
     } else {
       setNotificacion({ t: "Importación Exitosa", d: `Se importaron ${importedCount} alumnos correctamente.` });
+      setTimeout(() => setNotificacion(null), 3000);
     }
-    setTimeout(() => setNotificacion(null), 3000);
   };
 
   const handleSaveStudent = async () => {
@@ -4123,20 +4126,55 @@ const App: React.FC = () => {
               exit={{ opacity: 0, y: -50, scale: 0.9 }}
               className="fixed top-8 left-1/2 -translate-x-1/2 z-[1000] w-[90%] max-w-[400px]"
             >
-              <div className="bg-white/90 backdrop-blur-2xl p-5 rounded-[2rem] shadow-2xl border border-black/5 flex items-center gap-5">
-                <div className="w-12 h-12 bg-ios-blue/10 rounded-2xl flex items-center justify-center text-ios-blue shadow-sm shrink-0 border border-ios-blue/5">
-                  <span className="material-icons-outlined text-2xl">verified</span>
+              <div 
+                className={`bg-white/90 backdrop-blur-2xl p-5 rounded-[2rem] shadow-2xl border border-black/5 flex flex-col gap-3 transition-all ${notificacion.detalles ? 'cursor-pointer hover:bg-white' : ''}`}
+                onClick={() => {
+                  if (notificacion.detalles) {
+                    setShowNotifDetails(!showNotifDetails);
+                  }
+                }}
+              >
+                <div className="flex items-center gap-5">
+                  <div className={`w-12 h-12 ${notificacion.t.includes('Error') || notificacion.t.includes('Parcial') ? 'bg-rose-500/10 text-rose-500' : 'bg-ios-blue/10 text-ios-blue'} rounded-2xl flex items-center justify-center shadow-sm shrink-0 border border-current/5`}>
+                    <span className="material-icons-outlined text-2xl">
+                      {notificacion.t.includes('Error') || notificacion.t.includes('Parcial') ? 'warning' : 'verified'}
+                    </span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-[10px] font-bold uppercase tracking-widest ${notificacion.t.includes('Error') || notificacion.t.includes('Parcial') ? 'text-rose-600' : 'text-ios-blue'} truncate`}>{notificacion.t}</p>
+                    <p className="text-xs text-black font-medium mt-0.5 leading-tight italic">"{notificacion.d}"</p>
+                    {notificacion.detalles && !showNotifDetails && (
+                      <p className="text-[9px] text-rose-500 font-bold uppercase mt-1 tracking-tighter animate-pulse">Haz clic para ver errores</p>
+                    )}
+                  </div>
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setNotificacion(null);
+                      setShowNotifDetails(false);
+                    }}
+                    className="w-10 h-10 rounded-full bg-ios-gray flex items-center justify-center text-secondary active:scale-90 transition-all hover:bg-black/5"
+                  >
+                    <span className="material-icons-outlined text-sm">close</span>
+                  </button>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-ios-blue truncate">{notificacion.t}</p>
-                  <p className="text-xs text-black font-medium mt-0.5 leading-tight line-clamp-1 italic">"{notificacion.d}"</p>
-                </div>
-                <button 
-                  onClick={() => setNotificacion(null)}
-                  className="w-10 h-10 rounded-full bg-ios-gray flex items-center justify-center text-secondary active:scale-90 transition-all hover:bg-black/5"
-                >
-                  <span className="material-icons-outlined text-sm">close</span>
-                </button>
+
+                {notificacion.detalles && showNotifDetails && (
+                  <motion.div 
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    className="overflow-hidden border-t border-black/5 pt-3"
+                  >
+                    <div className="max-h-[200px] overflow-y-auto space-y-2 pr-2 custom-scrollbar">
+                      {notificacion.detalles.map((err, i) => (
+                        <div key={i} className="flex gap-2 text-[10px] text-rose-600/80 font-medium bg-rose-500/5 p-2 rounded-xl">
+                          <span className="shrink-0">•</span>
+                          <span>{err}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
               </div>
             </motion.div>
           )}
