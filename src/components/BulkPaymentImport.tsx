@@ -67,6 +67,21 @@ export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete
       return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     };
 
+    const cleanNumber = (val: any): string => {
+      return String(val || "").replace(/\D/g, "");
+    };
+
+    const getValLoosely = (row: any, keywords: string[]) => {
+      const rowKeys = Object.keys(row);
+      for (const k of rowKeys) {
+        const kNorm = removeAccents(k.toLowerCase());
+        if (keywords.some(kw => kNorm.includes(removeAccents(kw.toLowerCase())))) {
+          return row[k];
+        }
+      }
+      return null;
+    };
+
     const currentYear = new Date().getFullYear();
     const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
     const normalizeMonth = (val: any): string => {
@@ -77,7 +92,7 @@ export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete
       const n = parseInt(s);
       if (!isNaN(n)) return monthNames[n - 1] || monthNames[0];
       
-      const found = monthNames.find(m => removeAccents(m.toLowerCase()) === s);
+      const found = monthNames.find(m => removeAccents(m.toLowerCase()) === s || removeAccents(m.toLowerCase()).startsWith(s.slice(0,3)));
       if (found) return found;
 
       return String(val).charAt(0).toUpperCase() + String(val).slice(1);
@@ -87,7 +102,7 @@ export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete
     // Función de comparación de palabras clave (FUZZY MATCHING BÁSICO)
     const findAlumnoByKeywords = (searchName: string) => {
       const searchNameNorm = removeAccents(searchName.toLowerCase());
-      const searchTerms = searchNameNorm.split(/\s+/).filter((t: string) => t.length > 1);
+      const searchTerms = searchNameNorm.split(/\s+|,/).filter((t: string) => t.length > 1);
       if (searchTerms.length === 0) return null;
 
       return allAlumnos.find(alumno => {
@@ -100,39 +115,42 @@ export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete
     };
 
     for (const row of data) {
+      // 0. Identificar columnas dinámicamente si es posible
+      const actividadRaw = getValLoosely(row, ['Actividad', 'Clase', 'Disciplina', 'Concepto', 'Deporte']);
+      const nombreRaw = getValLoosely(row, ['Nombre', 'Alumno', 'Gimnasta', 'Apellido', 'Socio', 'Deportista']);
+      const dniRaw = getValLoosely(row, ['DNI', 'Documento', 'Cedula', 'CUIL', 'Legajo']);
+      const añoRaw = getValLoosely(row, ['Año', 'Anio', 'Periodo', 'Ciclo']) || currentYear;
+      const mesRaw = getValLoosely(row, ['Mes', 'Cuota', 'Periodo']);
+
       // FILTRO DE ACTIVIDAD (REQUISITO: SOLO GIMNASIA ARTISTICA INFANTIL)
-      const actividadRaw = row.Actividad || row.actividad || row.Clase || row.clase || row.Disciplina || row.Actividades || '';
-      const normalizeActividad = removeAccents(String(actividadRaw).toUpperCase().trim());
+      const normalizeActividad = removeAccents(String(actividadRaw || "").toUpperCase().trim());
       
       // Si el archivo tiene columna de actividad, filtramos pero con más flexibilidad
-      if (actividadRaw && !normalizeActividad.includes('GIMNASIA') && !normalizeActividad.includes('ARTISTICA')) {
+      if (actividadRaw && actividadRaw !== "" && !normalizeActividad.includes('GIMNASIA') && !normalizeActividad.includes('ARTISTICA')) {
         continue;
       }
       
-      // Intentar encontrar el nombre en las columnas posibles
-      const nombreRaw = row.Nombre || row.nombre || row.Alumno || row.alumno || row['Nombre y Apellido'] || row['Nombre Alumno'] || row.Gimnasta || row.gimnasta;
-      const dniRaw = (row.DNI || row.dni || row.Documento || row.documento || row.Cedula || row.CUIL || '').toString().trim();
-      const añoRaw = row.Año || row.año || row.anio || row.Periodo || row.periodo || currentYear;
-
       let matchedAlumno = null;
 
-      // 1. PRIORIDAD: DNI
-      if (dniRaw && dniRaw !== '' && dniRaw !== '0') {
+      // 1. PRIORIDAD: DNI (Limpio de puntos y guiones)
+      const cleanDniExcel = cleanNumber(dniRaw);
+      if (cleanDniExcel && cleanDniExcel !== '' && cleanDniExcel !== '0') {
         matchedAlumno = allAlumnos.find(a => {
-          const aDni = (a.dni || '').toString().trim();
-          return aDni !== '' && aDni !== 'No especificado' && aDni === dniRaw;
+          const aDni = cleanNumber(a.dni);
+          return aDni !== '' && aDni === cleanDniExcel;
         });
       }
 
-      // 2. SECUNDARIO: NOMBRE EXACTO
+      // 2. SECUNDARIO: NOMBRE
       if (!matchedAlumno && nombreRaw) {
-        const cleanName = removeAccents(String(nombreRaw).toLowerCase().trim());
-        matchedAlumno = allAlumnos.find(a => removeAccents(a.nombre.toLowerCase().trim()) === cleanName);
-      }
-
-      // 3. TERCIARIO: COINCIDENCIA DE PALABRAS CLAVE (FUZZY)
-      if (!matchedAlumno && nombreRaw) {
-        matchedAlumno = findAlumnoByKeywords(String(nombreRaw));
+        const cleanNameExcel = removeAccents(String(nombreRaw).toLowerCase().trim());
+        // Intentar exacto primero
+        matchedAlumno = allAlumnos.find(a => removeAccents(a.nombre.toLowerCase().trim()) === cleanNameExcel);
+        
+        // Si no, intentar por palabras clave
+        if (!matchedAlumno) {
+          matchedAlumno = findAlumnoByKeywords(String(nombreRaw));
+        }
       }
 
       if (matchedAlumno && matchedAlumno.id) {
@@ -144,7 +162,6 @@ export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete
         const paymentsInRow: { mes: string, anio: number }[] = [];
 
         // CASO A: Columna "Mes" explícita
-        const mesRaw = row.Mes || row.mes;
         if (mesRaw) {
           paymentsInRow.push({
             mes: normalizeMonth(mesRaw),
@@ -155,24 +172,30 @@ export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete
         // CASO B: Meses como columnas (Enero, Febrero, Mar, Abr...)
         const possibleMonthKeys = Object.keys(row);
         possibleMonthKeys.forEach(key => {
-          const normalizedKey = key.trim().toLowerCase();
+          const normalizedKey = removeAccents(key.trim().toLowerCase());
           // Verificar si la columna parece ser un mes
-          const monthIdx = monthNames.findIndex(m => m.toLowerCase() === normalizedKey || m.toLowerCase().startsWith(normalizedKey.slice(0,3)));
+          const monthIdx = monthNames.findIndex(m => {
+             const mNorm = removeAccents(m.toLowerCase());
+             return mNorm === normalizedKey || mNorm.startsWith(normalizedKey.slice(0,3));
+          });
           
           if (monthIdx !== -1) {
-            const cellValue = String(row[key]).toLowerCase().trim();
-            // Si la celda tiene alguna marca de pago (X, SI, PAGO, OK, 1, etc)
-            if (['x', 'si', 'pago', 'ok', '1', 'checked', 'true', 'pagado'].includes(cellValue)) {
-              paymentsInRow.push({
-                mes: monthNames[monthIdx],
-                anio: parseInt(añoRaw.toString())
-              });
+            const cellValueRaw = row[key];
+            if (cellValueRaw !== undefined && cellValueRaw !== null) {
+              const cellValue = String(cellValueRaw).toLowerCase().trim();
+              // Loosen check: if it's not empty, not "0", not "no", not "false", count it as paid
+              if (cellValue !== "" && !['0', 'no', 'false', 'falta', 'impago', '-'].includes(cellValue)) {
+                paymentsInRow.push({
+                  mes: monthNames[monthIdx],
+                  anio: parseInt(añoRaw.toString())
+                });
+              }
             }
           }
         });
 
         // Si no se encontró ningún mes específico pero la fila existe, usamos el mes actual por defecto
-        if (paymentsInRow.length === 0) {
+        if (paymentsInRow.length === 0 && !mesRaw) {
           paymentsInRow.push({
             mes: currentMonthName,
             anio: parseInt(añoRaw.toString())
@@ -181,7 +204,6 @@ export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete
 
         // Aplicar todos los pagos encontrados para este alumno
         for (const payment of paymentsInRow) {
-          // Evitar duplicados en el mismo proceso si ya lo agregamos (aunque arrayUnion lo maneja en DB)
           batch.update(alumnoRef, {
             pagosMensuales: arrayUnion({
               ...payment,
