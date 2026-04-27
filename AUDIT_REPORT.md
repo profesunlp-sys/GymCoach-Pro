@@ -33,3 +33,4 @@
 3. **Flexibilidad en Importación:** Sistema de feedback de errores y filtros inclusivos para el Excel de pagos.
 4. **Navegación:** Reparación del enlace a Habilidades y carga diferida (lazy) del módulo.
 5. **Sincronización robusta:** Reparación de la integración con Google Sheets con sistema de "Public Fallback" (intenta leer por CSV público si falla el OAuth) y feedback de errores específicos en el Dashboard.
+6. **Sincronización robusta definitiva:** Se pasó a usar la URL directa de exportación a CSV con IDs verificados hardcodeados en el cliente para saltarse restricciones de autenticación y proxy, con manejo y logueado unificado tanto para el cliente como para el cron backend.

@@ -98,80 +98,83 @@ async function startServer() {
 async function runSyncFromSheets() {
   let imported = 0;
   let errors = 0;
-  const sheetId = process.env.GOOGLE_SHEET_ATTENDANCE_ID || "1FaCHHOmhR66_04sa_XcdxmX3A5qdOVWZHHtpHThz5Ys";
 
   try {
-    const urlAsistencia = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=0`;
-    const urlGimnastas = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=1`;
-    const urlResumen = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=2`;
+    const SHEET_IDS = {
+      asistencia: '1FaCHHOmhR66_04sa_XcdxmX3A5qdOVWZHHtpHThz5Ys', // GAF Lunes y Miércoles
+      sabados: '1mxo6JKc5uhCs7pw0-UJ-xevC5Iyl2aOvuCHhksWkK2g',    // GAF Sábados
+    };
 
-    // Actually, based on instruction 5, we only need to sync the main data requested, but fetching them all.
-    // For now we will focus on processing asistencias and gimnastas, if needed.
-    const rowsAsistencia = await obtenerDatosDesdeCSV(urlAsistencia);
-    
-    // Si necesitas procesar Gimnastas y Resumen:
-    // const rowsGimnastas = await obtenerDatosDesdeCSV(urlGimnastas);
-    // const rowsResumen = await obtenerDatosDesdeCSV(urlResumen);
+    const SHEET_URLS = {
+      asistencia: `https://docs.google.com/spreadsheets/d/${SHEET_IDS.asistencia}/export?format=csv&gid=0`,
+      sabados: `https://docs.google.com/spreadsheets/d/${SHEET_IDS.sabados}/export?format=csv&gid=0`,
+    };
 
-    for (const row of rowsAsistencia) {
-      // Expected Columns: Fecha, Alumna, Grupo, Presente/Ausente, Observación
-      const fecha = row['Fecha'];
-      const alumnaNombre = row['Alumna'];
-      const grupo = row['Grupo'];
-      const presenteRaw = row['Presente/Ausente'];
-      const observacion = row['Observación'] || "";
+    const urlsToSync = [SHEET_URLS.asistencia, SHEET_URLS.sabados];
+
+    for (const url of urlsToSync) {
+      const rows = await obtenerDatosDesdeCSV(url);
       
-      if (!fecha || !alumnaNombre) continue;
-
-      const presente = String(presenteRaw).toLowerCase().includes('si') || String(presenteRaw).toLowerCase().includes('presente') || presenteRaw === '1';
-
-      // Business Logic: Check if student exists
-      const alumnosSnap = await getDocs(query(collection(db, 'alumnos'), where('nombre', '==', alumnaNombre)));
-      let alumnaId = "";
-      let syncState = "sincronizado";
-
-      if (alumnosSnap.empty) {
-        // Task 1: Si una alumna no existe, crear registro temporal marcado como "pendiente de verificación"
-        alumnaId = "DNI_PENDIENTE_" + alumnaNombre.replace(/\s+/g, '_');
-        syncState = "pendiente de verificación";
-      } else {
-        const alumno = alumnosSnap.docs[0].data();
-        alumnaId = alumno.dni || alumnosSnap.docs[0].id;
-      }
-
-      // Check if record already exists in Firebase to avoid duplicates
-      const existingSnap = await getDocs(query(collection(db, 'asistencias'), 
-        where('alumnaNombre', '==', alumnaNombre),
-        where('fecha', '==', fecha)
-      ));
-
-      const recordData = {
-        fecha: fecha || "",
-        alumnaId: alumnaId || "",
-        alumnaNombre: alumnaNombre || "",
-        grupo: grupo || "Sin Grupo",
-        presente: !!presente,
-        observacion: observacion || "",
-        origen: "google_sheets",
-        sincronizadoEn: serverTimestamp(),
-        estado_sync: syncState || ""
-      };
-
-      if (existingSnap.empty) {
-        await addDoc(collection(db, 'asistencias'), recordData);
-        imported++;
-      } else {
-        // Task 5: Conflict resolution - Last write wins
-        const existingDoc = existingSnap.docs[0];
-        const existingData = existingDoc.data();
+      for (const row of rows) {
+        // Expected Columns: Fecha, Alumna, Grupo, Presente/Ausente, Observación
+        const fecha = row['Fecha'] || row['fecha'] || row['FECHA'];
+        const alumnaNombre = row['Alumna'] || row['alumna'] || row['ALUMNA'] || row['Gimnasta'] || row['Nombre'];
+        const grupo = row['Grupo'] || row['grupo'] || row['GRUPO'];
+        const presenteRaw = row['Presente/Ausente'] || row['presente/ausente'] || row['Asistencia'] || row['Presente'];
+        const observacion = row['Observación'] || row['observacion'] || row['Observaciones'] || "";
         
-        // Compare timestamps if available, otherwise assume latest sheet data is intent
-        if (existingData.presente !== presente || existingData.observacion !== observacion) {
-          await updateDoc(doc(db, 'asistencias', existingDoc.id), {
-            ...recordData,
-            conflicto_resuelto: true
-          });
+        if (!fecha || !alumnaNombre) continue;
+
+        const presente = String(presenteRaw).toLowerCase().includes('si') || String(presenteRaw).toLowerCase().includes('presente') || String(presenteRaw) === '1';
+
+        // Business Logic: Check if student exists
+        const alumnosSnap = await getDocs(query(collection(db, 'alumnos'), where('nombre', '==', alumnaNombre)));
+        let alumnaId = "";
+        let syncState = "sincronizado";
+
+        if (alumnosSnap.empty) {
+          // Task 1: Si una alumna no existe, crear registro temporal marcado como "pendiente de verificación"
+          alumnaId = "DNI_PENDIENTE_" + alumnaNombre.replace(/\s+/g, '_');
+          syncState = "pendiente de verificación";
+        } else {
+          const alumno = alumnosSnap.docs[0].data();
+          alumnaId = alumno.dni || alumnosSnap.docs[0].id;
+        }
+
+        // Check if record already exists in Firebase to avoid duplicates
+        const existingSnap = await getDocs(query(collection(db, 'asistencias'), 
+          where('alumnaNombre', '==', alumnaNombre),
+          where('fecha', '==', fecha)
+        ));
+
+        const recordData = {
+          fecha: fecha || "",
+          alumnaId: alumnaId || "",
+          alumnaNombre: alumnaNombre || "",
+          grupo: grupo || "Sin Grupo",
+          presente: !!presente,
+          observacion: observacion || "",
+          origen: "google_sheets",
+          sincronizadoEn: serverTimestamp(),
+          estado_sync: syncState || ""
+        };
+
+        if (existingSnap.empty) {
+          await addDoc(collection(db, 'asistencias'), recordData);
           imported++;
+        } else {
+          // Task 5: Conflict resolution - Last write wins
+          const existingDoc = existingSnap.docs[0];
+          const existingData = existingDoc.data();
+          
+          // Compare timestamps if available, otherwise assume latest sheet data is intent
+          if (existingData.presente !== presente || existingData.observacion !== observacion) {
+            await updateDoc(doc(db, 'asistencias', existingDoc.id), {
+              ...recordData,
+              conflicto_resuelto: true
+            });
+            imported++;
+          }
         }
       }
     }
