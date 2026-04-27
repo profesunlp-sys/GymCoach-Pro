@@ -3,14 +3,20 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "vite",
+    "dev": "tsx server.ts",
     "build": "vite build",
+    "start": "node dist/server.js",
     "preview": "vite preview",
     "lint": "tsc --noEmit"
   },
   "dependencies": {
     "@google/genai": "latest",
+    "axios": "^1.15.2",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
     "firebase": "^12.9.0",
+    "google-spreadsheet": "^5.2.0",
+    "googleapis": "^171.4.0",
     "lucide-react": "latest",
     "mammoth": "^1.12.0",
     "motion": "^12.36.0",
@@ -22,10 +28,12 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@types/express": "^5.0.6",
     "@types/papaparse": "^5.5.2",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "latest",
+    "tsx": "^4.21.0",
     "typescript": "latest",
     "vite": "latest"
   }

@@ -68,6 +68,30 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const coachGrupos = grupos.filter(g => g.entrenador === user?.displayName);
   const [selectedGroupInternal, setSelectedGroupInternal] = useState<GrupoConfig | null>(coachGrupos.length === 1 ? coachGrupos[0] : null);
 
+  const [syncStatus, setSyncStatus] = useState<any>(null);
+
+  React.useEffect(() => {
+    if (userRole === 'coordinator') {
+      const fetchStatus = () => {
+        fetch('/api/sync/status')
+          .then(res => res.json())
+          .then(setSyncStatus)
+          .catch(() => {});
+      };
+      fetchStatus();
+      const interval = setInterval(fetchStatus, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [userRole]);
+
+  const formatRelTime = (isoStr: string) => {
+    if (!isoStr) return 'Nunca';
+    const diff = Math.floor((new Date().getTime() - new Date(isoStr).getTime()) / 60000);
+    if (diff < 1) return 'Recién';
+    if (diff < 60) return `Hace ${diff} min`;
+    return new Date(isoStr).toLocaleTimeString();
+  };
+
   const isToday = (dateStr: string) => {
     const today = new Date().toISOString().split('T')[0];
     return dateStr.split('T')[0] === today;
@@ -223,6 +247,76 @@ export const Dashboard: React.FC<DashboardProps> = ({
               </div>
               <span className="material-icons-outlined text-black/10 group-hover:text-primary transition-colors">chevron_right</span>
             </motion.button>
+
+            {/* Google Sheets Sync */}
+            <div className="md:col-span-2 bg-gradient-to-br from-ios-green/5 to-ios-blue/5 border border-black/5 rounded-[2.5rem] p-8 space-y-6 relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-8 opacity-5">
+                <span className="material-icons-outlined text-[100px]">sync</span>
+              </div>
+              
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 relative z-10">
+                <div className="space-y-1">
+                  <h4 className="text-xl font-bold text-black flex items-center gap-2">
+                    <span className="material-icons-outlined text-ios-green">description</span>
+                    Google Sheets Sync
+                  </h4>
+                  <p className="text-secondary text-xs font-medium">Sincronización automática de asistencia cada 5 min</p>
+                </div>
+                
+                <div className="flex items-center gap-3">
+                  <Button 
+                    variant="outline"
+                    onClick={() => {
+                      fetch('/api/auth/google/url')
+                        .then(res => res.json())
+                        .then(data => window.open(data.url, '_blank', 'width=600,height=600'));
+                    }}
+                    className="!py-3 !px-5 !rounded-2xl"
+                  >
+                    Conectar
+                  </Button>
+                  <Button 
+                    onClick={async () => {
+                      try {
+                        const res = await fetch('/api/sync/manual', { method: 'POST' });
+                        const data = await res.json();
+                        if (data.error) alert("Error: " + data.error);
+                        else alert(`Sincronización exitosa: ${data.imported} registros actualizados.`);
+                      } catch (e) {
+                        alert("Error de conexión con el servidor.");
+                      }
+                    }}
+                    className="!py-3 !px-5 !rounded-2xl bg-ios-green shadow-ios-green/20"
+                  >
+                    Sincronizar Ahora
+                  </Button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div className="bg-white/50 backdrop-blur-md p-4 rounded-2xl border border-black/5">
+                  <p className="text-[9px] font-bold text-secondary uppercase tracking-widest mb-1">Estado</p>
+                  <div className="flex items-center gap-1.5">
+                    <div className={`w-1.5 h-1.5 rounded-full ${syncStatus?.isSyncing ? 'bg-ios-orange animate-pulse' : 'bg-ios-green'}`}></div>
+                    <p className="text-xs font-bold text-black">{syncStatus?.isSyncing ? 'Sincronizando...' : 'Activo'}</p>
+                  </div>
+                </div>
+                <div className="bg-white/50 backdrop-blur-md p-4 rounded-2xl border border-black/5">
+                  <p className="text-[9px] font-bold text-secondary uppercase tracking-widest mb-1">Última Sinc.</p>
+                  <p className="text-xs font-bold text-black">{formatRelTime(syncStatus?.lastSync)}</p>
+                </div>
+                <div className="bg-white/50 backdrop-blur-md p-4 rounded-2xl border border-black/5 col-span-2">
+                  <p className="text-[9px] font-bold text-secondary uppercase tracking-widest mb-1 shadow-sm">Registros (Última vez)</p>
+                  <div className="flex items-center gap-2">
+                     <span className="text-xs font-black text-ios-blue">{syncStatus?.recordsProcessed || 0} Importados</span>
+                     <div className="flex gap-1.5 ml-auto">
+                        <span className="px-2 py-0.5 bg-ios-blue/10 text-ios-blue rounded text-[8px] font-black uppercase">Asistencia</span>
+                        <span className="px-2 py-0.5 bg-ios-green/10 text-ios-green rounded text-[8px] font-black uppercase">Gimnastas</span>
+                     </div>
+                  </div>
+                </div>
+              </div>
+            </div>
 
             {/* Reportes Globales */}
             <motion.button 
