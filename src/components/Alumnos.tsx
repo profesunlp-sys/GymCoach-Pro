@@ -190,19 +190,26 @@ const Alumnos: React.FC<AlumnosProps> = ({
 
   const filteredAlumnos = alumnos.filter(a => {
     const query = searchQuery.toLowerCase().trim();
-    const nameMatch = a.nombre.toLowerCase().includes(query) || (a.dni && a.dni.includes(query));
-    
-    // Si hay búsqueda activa, ignorar filtros para permitir encontrar a cualquiera rápidamente
-    if (query !== "") return nameMatch;
+    if (query === "") {
+      // Filtros estándar cuando no hay búsqueda
+      if (alumnosFilterMode === 'alerts' && !(a.alertas && a.alertas.length > 0 && a.alertas[0] !== '')) return false;
+      if (selectedGrupoFilter !== 'Todos' && a.grupo !== selectedGrupoFilter) return false;
+      if (selectedNivelFilter !== 'Todos' && a.nivel !== selectedNivelFilter) return false;
+      if (selectedAgeFilter !== 'Todos' && calculateAgeGroup(a.fechaNacimiento) !== selectedAgeFilter) return false;
+      if (selectedPhysicalFilter !== 'Cualquiera' && getPhysicalCategory(getPhysicalScore(a.biometria)) !== selectedPhysicalFilter) return false;
+      return true;
+    }
 
-    // Filtros estándar
-    if (alumnosFilterMode === 'alerts' && !(a.alertas && a.alertas.length > 0 && a.alertas[0] !== '')) return false;
-    if (selectedGrupoFilter !== 'Todos' && a.grupo !== selectedGrupoFilter) return false;
-    if (selectedNivelFilter !== 'Todos' && a.nivel !== selectedNivelFilter) return false;
-    if (selectedAgeFilter !== 'Todos' && calculateAgeGroup(a.fechaNacimiento) !== selectedAgeFilter) return false;
-    if (selectedPhysicalFilter !== 'Cualquiera' && getPhysicalCategory(getPhysicalScore(a.biometria)) !== selectedPhysicalFilter) return false;
+    // Búsqueda inteligente (FUZZY / KEYWORDS)
+    // 1. Match por DNI (si aplica)
+    if (a.dni && a.dni.includes(query)) return true;
+
+    // 2. Match por palabras clave en nombre
+    const searchTerms = query.split(/\s+/).filter(t => t.length > 0);
+    const studentName = a.nombre.toLowerCase();
     
-    return true;
+    // El alumno coincide si TODAS las palabras de búsqueda están presentes en su nombre (en cualquier orden)
+    return searchTerms.every(term => studentName.includes(term));
   });
 
   if (vista === 'Alumnos') {

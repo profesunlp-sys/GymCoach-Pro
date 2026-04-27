@@ -1914,26 +1914,48 @@ const App: React.FC = () => {
     let importedCount = 0;
     let errors: string[] = [];
     
-    // Check if first line is a header
+    // Header detection & Index mapping
     let startIndex = 0;
-    if (lines[0].toLowerCase().includes('nombre') || lines[0].toLowerCase().includes('dni') || lines[0].toLowerCase().includes('grupo')) {
+    let nameIdx = 0;
+    let dniIdx = 1;
+    let groupIdx = 2;
+    let levelIdx = 3;
+    let telIdx = 4;
+
+    const firstLine = lines[0].toLowerCase();
+    const possibleHeaders = firstLine.split(/[,;\t]/).map(h => h.trim());
+    
+    const hasHeader = possibleHeaders.some(h => 
+      h.includes('nombre') || h.includes('alumno') || h.includes('dni') || h.includes('grupo')
+    );
+
+    if (hasHeader) {
       startIndex = 1;
+      nameIdx = possibleHeaders.findIndex(h => h.includes('nombre') || h.includes('alumno'));
+      if (nameIdx === -1) nameIdx = 0;
+      
+      dniIdx = possibleHeaders.findIndex(h => h.includes('dni') || h.includes('documento'));
+      groupIdx = possibleHeaders.findIndex(h => h.includes('grupo') || h.includes('clase') || h.includes('actividad'));
+      levelIdx = possibleHeaders.findIndex(h => h.includes('nivel') || h.includes('rango'));
+      telIdx = possibleHeaders.findIndex(h => h.includes('tel') || h.includes('contacto') || h.includes('celular'));
     }
 
     for (let i = startIndex; i < lines.length; i++) {
       const line = lines[i];
       // Split by comma, semicolon or tab
       const parts = line.split(/[,;\t]/).map(p => p.trim());
-      if (parts.length < 1 || !parts[0]) {
-        errors.push(`Fila ${i + 1}: Línea vacía o sin nombre.`);
+      if (parts.length < 1 || !parts[nameIdx]) {
+        if (line.trim() !== "") {
+          errors.push(`Fila ${i + 1}: Sin nombre válido.`);
+        }
         continue;
       }
 
-      const nombre = parts[0];
-      const dni = parts[1] || '';
-      const grupo = parts[2] || 'Sin Grupo';
-      const nivel = parts[3] || 'Escuela';
-      const telefono = parts[4] || '';
+      const nombre = parts[nameIdx];
+      const dni = dniIdx !== -1 ? (parts[dniIdx] || '') : '';
+      const grupo = groupIdx !== -1 ? (parts[groupIdx] || 'Sin Grupo') : 'Sin Grupo';
+      const nivel = levelIdx !== -1 ? (parts[levelIdx] || 'Escuela') : 'Escuela';
+      const telefono = telIdx !== -1 ? (parts[telIdx] || '') : '';
 
       // Validación básica
       if (nombre.length < 3) {

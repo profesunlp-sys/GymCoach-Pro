@@ -57,15 +57,11 @@ export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete
   const processExcelData = async (data: any[]) => {
     const batch = writeBatch(db);
     let count = 0;
+    let processedRows = 0;
 
     // Obtener todos los alumnos para cruzar datos
     const alumnosSnapshot = await getDocs(collection(db, 'alumnos'));
-    const alumnosMap = new Map();
-    alumnosSnapshot.docs.forEach(doc => {
-      const d = doc.data();
-      alumnosMap.set(d.nombre.toLowerCase().trim(), doc.id);
-      if (d.dni) alumnosMap.set(d.dni.toString().trim(), doc.id);
-    });
+    const allAlumnos: any[] = alumnosSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
     const currentYear = new Date().getFullYear();
     const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
@@ -84,25 +80,68 @@ export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete
     };
     const currentMonthName = monthNames[new Date().getMonth()];
 
+    // Función de comparación de palabras clave (FUZZY MATCHING BÁSICO)
+    const findAlumnoByKeywords = (searchName: string) => {
+      const searchTerms = searchName.toLowerCase().split(/\s+/).filter((t: string) => t.length > 2);
+      if (searchTerms.length === 0) return null;
+
+      return allAlumnos.find(alumno => {
+        const studentName = alumno.nombre.toLowerCase();
+        // Verificamos si al menos las palabras clave del nombre del Excel aparecen en el nombre registrado
+        // Ejemplo: "Juan Carlos Perez Garcia" vs "Juan Perez" -> Match si "juan" y "perez" están en ambos
+        const matchesAll = searchTerms.every((term: string) => studentName.includes(term));
+        const inverseMatches = studentName.split(/\s+/).filter((t: string) => t.length > 2).every((term: string) => searchName.toLowerCase().includes(term));
+        return matchesAll || inverseMatches;
+      });
+    };
+
     for (const row of data) {
+      // FILTRO DE ACTIVIDAD (REQUISITO: SOLO GIMNASIA ARTISTICA INFANTIL)
+      const actividadRaw = row.Actividad || row.actividad || row.Clase || row.clase || row.Disciplina || '';
+      const normalizeActividad = String(actividadRaw).toUpperCase().trim();
+      
+      // Si el archivo tiene columna de actividad, filtramos estrictamente
+      if (actividadRaw && !normalizeActividad.includes('GIMNASIA ARTISTICA INFANTIL')) {
+        continue;
+      }
+      
+      processedRows++;
+
       // Intentar encontrar el nombre en las columnas posibles
-      const nombreRaw = row.Nombre || row.nombre || row.Alumno || row.alumno || row['Nombre y Apellido'];
-      const dniRaw = row.DNI || row.dni || row.Documento;
+      const nombreRaw = row.Nombre || row.nombre || row.Alumno || row.alumno || row['Nombre y Apellido'] || row['Nombre Alumno'];
+      const dniRaw = (row.DNI || row.dni || row.Documento || '').toString().trim();
       const mesRaw = row.Mes || row.mes || currentMonthName;
       const añoRaw = row.Año || row.año || row.anio || currentYear;
 
       let alumnoId = null;
-      if (dniRaw) alumnoId = alumnosMap.get(dniRaw.toString().trim());
-      if (!alumnoId && nombreRaw) alumnoId = alumnosMap.get(nombreRaw.toLowerCase().trim());
+      let matchedAlumno = null;
 
-      if (alumnoId) {
+      // 1. PRIORIDAD: DNI
+      if (dniRaw && dniRaw !== '') {
+        matchedAlumno = allAlumnos.find(a => a.dni && a.dni.toString().trim() === dniRaw);
+      }
+
+      // 2. SECUNDARIO: NOMBRE EXACTO
+      if (!matchedAlumno && nombreRaw) {
+        const cleanName = String(nombreRaw).toLowerCase().trim();
+        matchedAlumno = allAlumnos.find(a => a.nombre.toLowerCase().trim() === cleanName);
+      }
+
+      // 3. TERCIARIO: COINCIDENCIA DE PALABRAS CLAVE (FUZZY)
+      if (!matchedAlumno && nombreRaw) {
+        matchedAlumno = findAlumnoByKeywords(String(nombreRaw));
+      }
+
+      if (matchedAlumno && matchedAlumno.id) {
+        alumnoId = matchedAlumno.id;
         const alumnoRef = doc(db, 'alumnos', alumnoId);
         
         batch.update(alumnoRef, {
           pagosMensuales: arrayUnion({
             mes: normalizeMonth(mesRaw),
             anio: parseInt(añoRaw.toString()),
-            fechaPago: new Date().toISOString()
+            fechaPago: new Date().toISOString(),
+            importado: true // Marca para saber que vino de Excel
           })
         });
         
