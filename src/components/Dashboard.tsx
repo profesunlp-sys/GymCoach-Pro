@@ -3,6 +3,9 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Button, BackButton } from '../../App';
 import { GrupoConfig, ViewMode, Alumno, Clase, UserRole, Feedback, AsistenciaRecord } from '../../types';
+import Papa from "papaparse";
+import { db } from '../../services/firebase';
+import { collection, query, where, getDocs, addDoc, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
 
 interface DashboardProps {
   userRole: UserRole;
@@ -278,18 +281,98 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   <Button 
                     onClick={async () => {
                       try {
-                        const res = await fetch('/api/sync/manual', { method: 'POST' });
-                        const data = await res.json();
-                        if (data.error) {
-                          alert(`Error de sincronización: ${data.error}`);
-                          // Refresh status after error
-                          fetch('/api/sync/status').then(r => r.json()).then(setSyncStatus);
-                        } else {
-                          alert(`Sincronización exitosa: ${data.imported} registros actualizados.`);
-                          fetch('/api/sync/status').then(r => r.json()).then(setSyncStatus);
+                        setSyncStatus(prev => ({ ...prev, isSyncing: true, lastError: null }));
+                        console.log("Iniciando sincronización manual desde el cliente...");
+
+                        const sheetIdAsistencia = "1FaCHHOmhR66_04sa_XcdxmX3A5qdOVWZHHtpHThz5Ys";
+                        const urlAsistencia = `https://docs.google.com/spreadsheets/d/${sheetIdAsistencia}/export?format=csv`;
+
+                        console.log("Descargando CSV Asistencia:", urlAsistencia);
+                        let res = await fetch(urlAsistencia);
+                        if (!res.ok) {
+                           console.log(`Error directo (${res.status}). Intentando con proxy CORS...`);
+                           res = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(urlAsistencia)}`);
+                           if (!res.ok) throw new Error("Acceso denegado (¿Es la hoja pública?) o no se pudo descargar.");
                         }
-                      } catch (e) {
-                        alert("Error crítico: No se pudo conectar con el servidor de sincronización.");
+                        
+                        const csvText = await res.text();
+                        console.log("CSV Descargado (" + csvText.length + " bytes). Parseando...");
+                        
+                        const parsed = Papa.parse(csvText, { header: true, skipEmptyLines: true });
+                        if (parsed.errors.length) console.warn("Errores de parseo:", parsed.errors);
+                        
+                        const rows = parsed.data as any[];
+                        console.log("Filas encontradas:", rows.length);
+                        
+                        let imported = 0;
+                        
+                        for (const row of rows) {
+                          const fecha = row['Fecha'] || row['fecha'] || row['FECHA'];
+                          const alumnaNombre = row['Alumna'] || row['alumna'] || row['ALUMNA'] || row['Gimnasta'] || row['Nombre'];
+                          const grupo = row['Grupo'] || row['grupo'] || row['GRUPO'];
+                          const presenteRaw = row['Presente/Ausente'] || row['presente/ausente'] || row['Asistencia'] || row['Presente'];
+                          const observacion = row['Observación'] || row['observacion'] || row['Observaciones'] || "";
+                          
+                          if (!fecha || !alumnaNombre) continue;
+
+                          const presente = String(presenteRaw).toLowerCase().includes('si') || String(presenteRaw).toLowerCase().includes('presente') || presenteRaw === '1';
+
+                          const alumnosRef = collection(db, 'alumnos');
+                          const q = query(alumnosRef, where('nombre', '==', alumnaNombre));
+                          const alumnosSnap = await getDocs(q);
+                          
+                          let alumnaId = "";
+                          let syncState = "sincronizado";
+
+                          if (alumnosSnap.empty) {
+                            alumnaId = "DNI_PENDIENTE_" + alumnaNombre.replace(/\s+/g, '_');
+                            syncState = "pendiente de verificación";
+                          } else {
+                            const alumno = alumnosSnap.docs[0].data();
+                            alumnaId = alumno.dni || alumnosSnap.docs[0].id;
+                          }
+
+                          console.log(`Procesando fila: ${alumnaNombre} - ${fecha} - Presente: ${presente}`);
+
+                          const asisRef = collection(db, 'asistencias');
+                          const qAsis = query(asisRef, where('alumnaNombre', '==', alumnaNombre), where('fecha', '==', fecha));
+                          const existingSnap = await getDocs(qAsis);
+
+                          const recordData = {
+                            fecha,
+                            alumnaId,
+                            alumnaNombre,
+                            grupo: grupo || "Sin Grupo",
+                            presente: !!presente,
+                            observacion,
+                            origen: "google_sheets",
+                            sincronizadoEn: serverTimestamp(),
+                            estado_sync: syncState
+                          };
+
+                          if (existingSnap.empty) {
+                            await addDoc(asisRef, recordData);
+                            imported++;
+                          } else {
+                            const existingDoc = existingSnap.docs[0];
+                            const exData = existingDoc.data();
+                            if (exData.presente !== recordData.presente || exData.observacion !== recordData.observacion) {
+                              await updateDoc(doc(db, 'asistencias', existingDoc.id), {
+                                ...recordData,
+                                conflicto_resuelto: true
+                              });
+                              imported++;
+                            }
+                          }
+                        }
+                        
+                        console.log("Sincronización finalizada exitosamente. Importados:", imported);
+                        setSyncStatus({ isSyncing: false, lastError: null, lastSync: new Date().toISOString(), recordsProcessed: imported });
+                        alert(`Sincronización completada: ${imported} registros importados/actualizados.`);
+                      } catch (error: any) {
+                        console.error("Error crítico en sincronización:", error);
+                        setSyncStatus(prev => ({ ...prev, isSyncing: false, lastError: error.message }));
+                        alert(`Error de sincronización: ${error.message}`);
                       }
                     }}
                     className="!py-3 !px-5 !rounded-2xl bg-ios-green shadow-ios-green/20"
