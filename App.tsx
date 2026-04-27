@@ -647,20 +647,51 @@ const App: React.FC = () => {
   };
 
   const COORDINATOR_EMAIL = "profesunlp@gmail.com";
+  const [staffInfo, setStaffInfo] = useState<any>(null);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
         setUser(currentUser);
         setIsLoggedIn(true);
-        if (currentUser.email === COORDINATOR_EMAIL) {
-          setUserRole('Coordinator');
-        } else {
-          setUserRole('Coach');
+
+        try {
+          // Check staff collection
+          const staffRef = doc(firestore, COLLECTIONS.STAFF, currentUser.uid);
+          const staffDoc = await getDocs(query(collection(firestore, COLLECTIONS.STAFF), where('uid', '==', currentUser.uid)));
+          
+          let role: UserRole = currentUser.email === COORDINATOR_EMAIL ? 'Coordinator' : 'Coach';
+          let staffData: any = null;
+
+          if (staffDoc.empty) {
+            staffData = {
+              uid: currentUser.uid,
+              email: currentUser.email,
+              nombre: currentUser.displayName || (currentUser.email === COORDINATOR_EMAIL ? 'Coordinador' : 'Profesor'),
+              role: role,
+              fechaRegistro: new Date().toISOString()
+            };
+            await setDoc(staffRef, staffData);
+          } else {
+            staffData = { id: staffDoc.docs[0].id, ...staffDoc.docs[0].data() };
+            role = staffData.role as UserRole;
+            // Migración: si el documento no tiene el ID correcto (el UID), creamos uno con el UID
+            if (staffDoc.docs[0].id !== currentUser.uid) {
+              await setDoc(staffRef, staffData);
+            }
+          }
+          
+          setStaffInfo(staffData);
+          setUserRole(role);
+        } catch (error) {
+          console.error("Error syncing staff:", error);
+          // Fallback to hardcoded role if Firestore fails
+          setUserRole(currentUser.email === COORDINATOR_EMAIL ? 'Coordinator' : 'Coach');
         }
       } else {
         setUser(null);
         setIsLoggedIn(false);
+        setStaffInfo(null);
       }
     });
     return () => unsubscribe();
@@ -972,7 +1003,7 @@ const App: React.FC = () => {
       const c = await getCollectionData(COLLECTIONS.CLASES) as Clase[];
       const g = await getCollectionData(COLLECTIONS.GRUPOS) as GrupoConfig[];
       const asis = await getCollectionData(COLLECTIONS.ASISTENCIAS) as AsistenciaRecord[];
-      const p = await getCollectionData(COLLECTIONS.PROFESORES) as {id?: string, nombre: string}[];
+      const p = await getCollectionData(COLLECTIONS.STAFF) as {id?: string, nombre: string}[];
       const n = await getCollectionData(COLLECTIONS.NIVELES) as {id?: string, nombre: string}[];
       const d = await getCollectionData(COLLECTIONS.DISCIPLINAS) as {id?: string, nombre: string}[];
       const w = await getCollectionData(COLLECTIONS.WARMUP_OPTIONS) as {id?: string, nombre: string}[];
@@ -1202,9 +1233,13 @@ const App: React.FC = () => {
     }
     
     try {
+      // Find coach in staff info to get UID
+      const coach = profesoresList.find(p => p.nombre === newCoachName);
+      
       let groupData: any = {
         nombre: newGroupName,
         entrenador: newCoachName,
+        entrenadorId: coach?.id || '', // id in staff is the UID
         dias: selectedDays,
         horario: `${startTime} - ${endTime}`
       };
@@ -2186,7 +2221,25 @@ const App: React.FC = () => {
         if (studentForm.dni && studentForm.dni !== 'No especificado') {
           const duplicate = alumnos.find(a => a.dni === studentForm.dni);
           if (duplicate) {
-            setNotificacion({ t: "Error", d: `Ya existe un gimnasta con DNI ${studentForm.dni} (${duplicate.nombre})` });
+            requestConfirmation(
+              "Alumno ya registrado",
+              `Ya existe un gimnasta con DNI ${studentForm.dni} (${duplicate.nombre}). ¿Deseas simplemente asignarlo al grupo actual?`,
+              async () => {
+                try {
+                  setIsSavingStudent(true);
+                  await updateDocument(COLLECTIONS.ALUMNOS, duplicate.id!, { 
+                    grupo: studentForm.grupo || activeGroup?.nombre || 'Sin Grupo' 
+                  });
+                  setNotificacion({ t: "Éxito", d: `${duplicate.nombre} ahora está en el grupo ${studentForm.grupo || activeGroup?.nombre}` });
+                  await loadData();
+                  handleNavigation('AsistenciaLista');
+                } catch (err: any) {
+                  setNotificacion({ t: "Error", d: "No se pudo actualizar el grupo." });
+                } finally {
+                  setIsSavingStudent(false);
+                }
+              }
+            );
             setIsSavingStudent(false);
             return;
           }
@@ -3464,6 +3517,16 @@ const App: React.FC = () => {
               <p className="text-[10px] text-secondary font-medium italic">En caso de emergencia médica grave, contacte inmediatamente a los servicios de salud locales.</p>
             </div>
           </div>
+        )}
+
+        {vista === 'Habilidades' && (
+          <Suspense fallback={<LoadingFallback />}>
+            <Habilidades 
+              alumnos={alumnos}
+              setVista={setVista}
+              handleNavigation={handleNavigation}
+            />
+          </Suspense>
         )}
 
         {vista === 'Ajustes' && (

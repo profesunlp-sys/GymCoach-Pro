@@ -12,7 +12,7 @@ interface BulkPaymentImportProps {
 export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete, onCancel }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [stats, setStats] = useState<{ total: number, matched: number } | null>(null);
+  const [stats, setStats] = useState<{ total: number, matched: number, ignored: { row: any, reason: string }[] } | null>(null);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -57,7 +57,7 @@ export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete
   const processExcelData = async (data: any[]) => {
     const batch = writeBatch(db);
     let count = 0;
-    let processedRows = 0;
+    const ignored: { row: any, reason: string }[] = [];
 
     // Obtener todos los alumnos para cruzar datos
     const alumnosSnapshot = await getDocs(collection(db, 'alumnos'));
@@ -122,11 +122,15 @@ export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete
       const añoRaw = getValLoosely(row, ['Año', 'Anio', 'Periodo', 'Ciclo']) || currentYear;
       const mesRaw = getValLoosely(row, ['Mes', 'Cuota', 'Periodo']);
 
-      // FILTRO DE ACTIVIDAD (REQUISITO: SOLO GIMNASIA ARTISTICA INFANTIL)
-      const normalizeActividad = removeAccents(String(actividadRaw || "").toUpperCase().trim());
+      // FILTRO DE ACTIVIDAD FLEXIBLE
+      const normalizeActividad = removeAccents(String(actividadRaw || "").toLowerCase().trim());
       
       // Si el archivo tiene columna de actividad, filtramos pero con más flexibilidad
-      if (actividadRaw && actividadRaw !== "" && !normalizeActividad.includes('GIMNASIA') && !normalizeActividad.includes('ARTISTICA')) {
+      if (actividadRaw && actividadRaw !== "" && 
+          !normalizeActividad.includes('gimnasia') && 
+          !normalizeActividad.includes('artistica') && 
+          !normalizeActividad.includes('artística')) {
+        ignored.push({ row, reason: "Actividad no identificada como Gimnasia Artística" });
         continue;
       }
       
@@ -154,7 +158,6 @@ export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete
       }
 
       if (matchedAlumno && matchedAlumno.id) {
-        processedRows++;
         const alumnoId = matchedAlumno.id;
         const alumnoRef = doc(db, 'alumnos', alumnoId);
         
@@ -213,13 +216,15 @@ export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete
           });
           count++;
         }
+      } else {
+        ignored.push({ row, reason: "Gimnasta no encontrado por DNI ni Nombre" });
       }
     }
 
     if (count > 0) {
       await batch.commit();
     }
-    return count;
+    return { count, ignored };
   };
 
   return (
@@ -279,19 +284,47 @@ export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete
         )}
 
         {stats && (
-          <div className="py-8 text-center space-y-6">
-            <div className="w-20 h-20 bg-ios-green/10 text-ios-green rounded-full flex items-center justify-center mx-auto">
-              <span className="material-icons-outlined text-4xl">check_circle</span>
+          <div className="py-2 text-center space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar pr-2">
+            <div className="w-16 h-16 bg-ios-green/10 text-ios-green rounded-full flex items-center justify-center mx-auto">
+              <span className="material-icons-outlined text-3xl">check_circle</span>
             </div>
             <div>
-              <h4 className="text-xl font-bold text-black">¡Importación Exitosa!</h4>
-              <p className="text-sm text-secondary mt-1">
-                Se han identificado y marcado <strong>{stats.matched}</strong> pagos de {stats.total} filas del Excel.
+              <h4 className="text-xl font-bold text-black">¡Importación Completada!</h4>
+              <p className="text-xs text-secondary mt-1">
+                Se identificaron <strong>{stats.matched}</strong> pagos en {stats.total} filas.
               </p>
             </div>
+
+            {stats.ignored.length > 0 && (
+              <div className="text-left space-y-3">
+                <div className="flex items-center justify-between">
+                  <h5 className="text-[10px] font-black uppercase tracking-widest text-secondary">Filas ignoradas ({stats.ignored.length})</h5>
+                  <span className="text-[10px] text-ios-red font-bold">Sin match</span>
+                </div>
+                <div className="space-y-2 max-h-[180px] overflow-y-auto pr-1">
+                  {stats.ignored.slice(0, 20).map((item, idx) => (
+                    <div key={idx} className="bg-ios-gray/50 p-3 rounded-xl border border-black/5 flex flex-col gap-1">
+                      <div className="flex justify-between items-start">
+                        <span className="text-[10px] font-bold text-black truncate flex-1">
+                          {item.row.Nombre || item.row.Alumno || item.row.Gimnasta || "Fila s/nombre"}
+                        </span>
+                        <span className="text-[9px] text-ios-red font-bold uppercase ml-2 shrink-0">{item.reason}</span>
+                      </div>
+                      {(item.row.DNI || item.row.Documento) && (
+                        <span className="text-[9px] text-secondary">DNI: {item.row.DNI || item.row.Documento}</span>
+                      )}
+                    </div>
+                  ))}
+                  {stats.ignored.length > 20 && (
+                    <p className="text-[9px] text-center text-secondary py-1 italic">... y {stats.ignored.length - 20} filas más</p>
+                  )}
+                </div>
+              </div>
+            )}
+
             <button 
               onClick={() => onComplete(stats.matched)}
-              className="w-full py-4 bg-ios-blue text-white rounded-2xl font-bold text-sm shadow-ios"
+              className="w-full py-4 bg-ios-blue text-white rounded-2xl font-bold text-sm shadow-ios shrink-0"
             >
               Cerrar y Ver Resultados
             </button>

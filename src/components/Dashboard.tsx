@@ -65,7 +65,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 }) => {
   const [selectedProfesorDetail, setSelectedProfesorDetail] = useState<string | null>(null);
   
-  const coachGrupos = grupos.filter(g => g.entrenador === user?.displayName);
+  const coachGrupos = grupos.filter(g => g.entrenadorId === user?.uid || g.entrenador === user?.displayName);
   const [selectedGroupInternal, setSelectedGroupInternal] = useState<GrupoConfig | null>(coachGrupos.length === 1 ? coachGrupos[0] : null);
 
   const [syncStatus, setSyncStatus] = useState<any>(null);

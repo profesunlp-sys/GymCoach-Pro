@@ -101,6 +101,7 @@ export interface GrupoConfig {
   dias: string[];
   horario: string;
   entrenador?: string;
+  entrenadorId?: string;
 }
 
 export type UserRole = 'Coach' | 'Coordinator';
