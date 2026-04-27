@@ -188,11 +188,7 @@ async function runSyncFromSheets() {
   }
 }
 
-// Sync automatic every 5 min
-setInterval(() => {
-  if (!syncStatus.isSyncing) {
-    runSyncFromSheets().catch(console.error);
-  }
-}, 5 * 60 * 1000);
+// Automatic sync logic was moved to client-side.
+// server.ts remains for serving Vite and providing future endpoints.
 
 startServer();

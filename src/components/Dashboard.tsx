@@ -284,99 +284,152 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         setSyncStatus(prev => ({ ...prev, isSyncing: true, lastError: null }));
                         console.log("Iniciando sincronización manual...");
 
-                        const SHEET_IDS = {
-                          asistencia: '1FaCHHOmhR66_04sa_XcdxmX3A5qdOVWZHHtpHThz5Ys', // GAF Lunes y Miércoles
-                          sabados: '1mxo6JKc5uhCs7pw0-UJ-xevC5Iyl2aOvuCHhksWkK2g',    // GAF Sábados
-                        };
-
                         const SHEET_URLS = {
-                          asistencia: `https://docs.google.com/spreadsheets/d/${SHEET_IDS.asistencia}/export?format=csv&gid=0`,
-                          sabados: `https://docs.google.com/spreadsheets/d/${SHEET_IDS.sabados}/export?format=csv&gid=0`,
+                          // Martes y Jueves
+                          'lunes_miercoles': {
+                            id: '1FaCHHOmhR66_04sa_XcdxmX3A5qdOVWZHHtpHThz5Ys',
+                            tabs: ['LOLA', 'MILI', 'LUCÍA', 'SABRI', 'CATA']
+                          },
+                          
+                          // Sábados
+                          'sabados': {
+                            id: '1mxo6JKc5uhCs7pw0-UJ-xevC5Iyl2aOvuCHhksWkK2g',
+                            tabs: ['LOLA-LU', 'MAY', 'SABRI', 'CATA', 'MILI']
+                          }
                         };
                         
-                        let imported = 0;
-                        const urlsToSync = [SHEET_URLS.asistencia, SHEET_URLS.sabados];
+                        let importedTotal = 0;
+                        const logMessages = [];
+                        
+                        const monthsMap: Record<string, number> = {
+                          'MARZO': 3, 'ABRIL': 4, 'MAYO': 5, 'JUNIO': 6, 'JULIO': 7,
+                          'AGOSTO': 8, 'SEPTIEMBRE': 9, 'OCTUBRE': 10, 'NOVIEMBRE': 11, 'DICIEMBRE': 12,
+                          'ENERO': 1, 'FEBRERO': 2
+                        };
 
-                        for (const url of urlsToSync) {
-                            console.log("Descargando CSV Asistencia:", url);
-                            let res = await fetch(url);
+                        for (const [sheetKey, sheetConfig] of Object.entries(SHEET_URLS)) {
+                          for (const tabName of sheetConfig.tabs) {
+                            const url = `https://docs.google.com/spreadsheets/d/${sheetConfig.id}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(tabName)}`;
+                            console.log(`[${sheetKey}] Descargando Tab ${tabName}: ${url}`);
+                            
+                            let res;
+                            try {
+                                res = await fetch(url);
+                            } catch (e: any) {
+                                console.error(`Error de red al intentar descargar Tab ${tabName}: ${e.message}`);
+                                continue;
+                            }
+
                             if (!res.ok) {
-                               throw new Error(`Acceso denegado a Google Sheet (${res.status}). Asegúrate de que los enlaces sean públicos.`);
+                               console.error(`Tab ${tabName} no accesible (${res.status}). Asegúrate de que los enlaces sean públicos.`);
+                               continue;
                             }
                             
                             const csvText = await res.text();
-                            console.log("CSV Descargado (" + csvText.length + " bytes). Parseando...");
                             
-                            const parsed = Papa.parse(csvText, { header: true, skipEmptyLines: true });
+                            const parsed = Papa.parse(csvText, { header: false, skipEmptyLines: true });
                             if (parsed.errors.length) console.warn("Errores de parseo:", parsed.errors);
                             
-                            const rows = parsed.data as any[];
-                            console.log("Filas encontradas:", rows.length);
+                            const rows = parsed.data as any[][];
+                            if (rows.length < 3) {
+                              console.warn(`Tab ${tabName} ignorada: no tiene suficientes filas.`);
+                              continue;
+                            }
                             
-                            for (const row of rows) {
-                              const fecha = row['Fecha'] || row['fecha'] || row['FECHA'];
-                              const alumnaNombre = row['Alumna'] || row['alumna'] || row['ALUMNA'] || row['Gimnasta'] || row['Nombre'];
-                              const grupo = row['Grupo'] || row['grupo'] || row['GRUPO'];
-                              const presenteRaw = row['Presente/Ausente'] || row['presente/ausente'] || row['Asistencia'] || row['Presente'];
-                              const observacion = row['Observación'] || row['observacion'] || row['Observaciones'] || "";
-                              
-                              if (!fecha || !alumnaNombre) continue;
+                            const ageGroup = (rows[0][1] || '').trim();
+                            const columnDates: Record<number, string> = {};
+                            let currentMonthNum = new Date().getMonth() + 1;
+                            const currentYear = new Date().getFullYear();
 
-                              const presente = String(presenteRaw).toLowerCase().includes('si') || String(presenteRaw).toLowerCase().includes('presente') || String(presenteRaw) === '1';
+                            for (let i = 4; i < rows[1].length; i++) {
+                               const monthStr = (rows[0][i] || '').trim().toUpperCase();
+                               if (monthStr && monthsMap[monthStr]) {
+                                  currentMonthNum = monthsMap[monthStr];
+                               }
+                               const dayStr = (rows[1][i] || '').trim().toUpperCase();
+                               if (dayStr && dayStr !== 'PAGO') {
+                                  const day = parseInt(dayStr);
+                                  if (!isNaN(day)) {
+                                    const fm = currentMonthNum.toString().padStart(2, '0');
+                                    const fd = day.toString().padStart(2, '0');
+                                    columnDates[i] = `${currentYear}-${fm}-${fd}`;
+                                  }
+                               }
+                            }
+
+                            let tabImported = 0;
+
+                            for (let r = 2; r < rows.length; r++) {
+                              const studentName = (rows[r][1] || '').trim();
+                              if (!studentName || studentName.toLowerCase().includes('apellido y nombre')) continue;
 
                               const alumnosRef = collection(db, 'alumnos');
-                              const q = query(alumnosRef, where('nombre', '==', alumnaNombre));
+                              const q = query(alumnosRef, where('nombre', '==', studentName));
                               const alumnosSnap = await getDocs(q);
                               
                               let alumnaId = "";
                               let syncState = "sincronizado";
 
                               if (alumnosSnap.empty) {
-                                alumnaId = "DNI_PENDIENTE_" + alumnaNombre.replace(/\s+/g, '_');
+                                alumnaId = "DNI_PENDIENTE_" + studentName.replace(/\s+/g, '_');
                                 syncState = "pendiente de verificación";
                               } else {
                                 const alumno = alumnosSnap.docs[0].data();
                                 alumnaId = alumno.dni || alumnosSnap.docs[0].id;
                               }
 
-                              console.log(`Procesando fila: ${alumnaNombre} - ${fecha} - Presente: ${presente}`);
+                              for (let c = 4; c < rows[r].length; c++) {
+                                 if (columnDates[c]) {
+                                    const cellValue = (rows[r][c] || '').trim().toUpperCase();
+                                    if (cellValue === 'P' || cellValue === 'X') {
+                                       const date = columnDates[c];
+                                       const isPresent = cellValue === 'P';
+                                       
+                                       const asisRef = collection(db, 'asistencias');
+                                       const qAsis = query(asisRef, where('alumnaNombre', '==', studentName), where('fecha', '==', date));
+                                       const existingSnap = await getDocs(qAsis);
 
-                              const asisRef = collection(db, 'asistencias');
-                              const qAsis = query(asisRef, where('alumnaNombre', '==', alumnaNombre), where('fecha', '==', fecha));
-                              const existingSnap = await getDocs(qAsis);
+                                       const recordData = {
+                                         fecha: date,
+                                         alumnaId,
+                                         alumnaNombre: studentName,
+                                         grupo: ageGroup || "Sin Grupo",
+                                         presente: isPresent,
+                                         observacion: `Tab: ${tabName}`,
+                                         origen: "google_sheets_matrix",
+                                         sincronizadoEn: serverTimestamp(),
+                                         estado_sync: syncState
+                                       };
 
-                              const recordData = {
-                                fecha,
-                                alumnaId,
-                                alumnaNombre,
-                                grupo: grupo || "Sin Grupo",
-                                presente: !!presente,
-                                observacion,
-                                origen: "google_sheets",
-                                sincronizadoEn: serverTimestamp(),
-                                estado_sync: syncState
-                              };
-
-                              if (existingSnap.empty) {
-                                await addDoc(asisRef, recordData);
-                                imported++;
-                              } else {
-                                const existingDoc = existingSnap.docs[0];
-                                const exData = existingDoc.data();
-                                if (exData.presente !== recordData.presente || exData.observacion !== recordData.observacion) {
-                                  await updateDoc(doc(db, 'asistencias', existingDoc.id), {
-                                    ...recordData,
-                                    conflicto_resuelto: true
-                                  });
-                                  imported++;
-                                }
+                                       if (existingSnap.empty) {
+                                         await addDoc(asisRef, recordData);
+                                         importedTotal++;
+                                         tabImported++;
+                                       } else {
+                                         const existingDoc = existingSnap.docs[0];
+                                         const exData = existingDoc.data();
+                                         if (exData.presente !== recordData.presente) {
+                                           await updateDoc(doc(db, 'asistencias', existingDoc.id), {
+                                             ...recordData,
+                                             conflicto_resuelto: true
+                                           });
+                                           importedTotal++;
+                                           tabImported++;
+                                         }
+                                       }
+                                    }
+                                 }
                               }
                             }
+                            const logMsg = `Tab ${tabName}: ${tabImported} registros sincronizados.`;
+                            console.log(logMsg);
+                            logMessages.push(logMsg);
+                          }
                         }
 
-                        console.log("Sincronización finalizada exitosamente. Importados:", imported);
-                        setSyncStatus({ isSyncing: false, lastError: null, lastSync: new Date().toISOString(), recordsProcessed: imported });
-                        alert(`✅ Sincronizado: ${imported} registros importados/actualizados.`);
+                        console.log("Sincronización finalizada exitosamente. Total Importados:", importedTotal);
+                        setSyncStatus({ isSyncing: false, lastError: null, lastSync: new Date().toISOString(), recordsProcessed: importedTotal });
+                        alert(`✅ Sincronizado:\n\nTotal: ${importedTotal} registros.\n\n${logMessages.join('\n')}`);
                       } catch (error: any) {
                         console.error("Error crítico en sincronización:", error);
                         setSyncStatus(prev => ({ ...prev, isSyncing: false, lastError: error.message }));
