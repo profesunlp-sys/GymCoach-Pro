@@ -81,8 +81,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
   const clasesHoy = clases.filter(c => isToday(c.fecha)).length;
   
+  const currentMonthIdx = new Date().getMonth();
+  const isPaymentCycleActive = currentMonthIdx >= 2 && currentMonthIdx <= 10; // Marzo a Noviembre
+
   // Alertas prioritarias para el coordinador
-  const alumnosConPagosVencidos = alumnos.filter(a => a.pagoVencido);
+  const alumnosConPagosVencidos = isPaymentCycleActive ? alumnos.filter(a => a.pagoVencido) : [];
   const alumnosConObservacionesMedicas = alumnos.filter(a => a.observacionesMedicas && a.observacionesMedicas.trim() !== '');
   
   // Grupos sin clase registrada esta semana

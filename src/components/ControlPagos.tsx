@@ -12,10 +12,10 @@ export const ControlPagos: React.FC<ControlPagosProps> = ({ onBack }) => {
   const [alumnos, setAlumnos] = useState<Alumno[]>([]);
   const [selectedYear] = useState(new Date().getFullYear());
   const meses = [
-    { n: 1, name: 'Ene', label: 'Enero' }, { n: 2, name: 'Feb', label: 'Febrero' }, { n: 3, name: 'Mar', label: 'Marzo' },
+    { n: 3, name: 'Mar', label: 'Marzo' },
     { n: 4, name: 'Abr', label: 'Abril' }, { n: 5, name: 'May', label: 'Mayo' }, { n: 6, name: 'Jun', label: 'Junio' },
     { n: 7, name: 'Jul', label: 'Julio' }, { n: 8, name: 'Ago', label: 'Agosto' }, { n: 9, name: 'Sep', label: 'Septiembre' },
-    { n: 10, name: 'Oct', label: 'Octubre' }, { n: 11, name: 'Nov', label: 'Noviembre' }, { n: 12, name: 'Dic', label: 'Diciembre' }
+    { n: 10, name: 'Oct', label: 'Octubre' }, { n: 11, name: 'Nov', label: 'Noviembre' }
   ];
 
   useEffect(() => {

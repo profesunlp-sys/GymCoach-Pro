@@ -1028,11 +1028,19 @@ const App: React.FC = () => {
       }
       
       const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-      const currentMonthName = monthNames[new Date().getMonth()];
+      const curMonthIdx = new Date().getMonth();
+      const currentMonthName = monthNames[curMonthIdx];
+      const isCycleActive = curMonthIdx >= 2 && curMonthIdx <= 10;
       const currentYear = new Date().getFullYear();
 
       // Filter global alerts
-      setAlertasGlobales(a.filter(student => student.alertas && student.alertas.length > 0 && student.alertas[0] !== ""));
+      setAlertasGlobales(a.filter(student => {
+        if (!student.alertas || student.alertas.length === 0 || student.alertas[0] === "") return false;
+        if (!isCycleActive) {
+          return student.alertas.some(al => !al.toLowerCase().includes('pago') && !al.toLowerCase().includes('deuda') && !al.toLowerCase().includes('mora'));
+        }
+        return true;
+      }));
 
       if (activeGroup) {
         const today = new Date().toISOString().split('T')[0];
@@ -1146,8 +1154,10 @@ const App: React.FC = () => {
       if (activeGroup && isDataLoaded) {
         const today = new Date().toISOString().split('T')[0];
         const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-        const currentMonthName = monthNames[new Date().getMonth()];
+        const curMonth = new Date().getMonth();
+        const currentMonthName = monthNames[curMonth];
         const currentYear = new Date().getFullYear();
+        const isCycleActive = curMonth >= 2 && curMonth <= 10;
 
         try {
           const q = query(
@@ -1164,12 +1174,14 @@ const App: React.FC = () => {
             attMap[data.alumnoId] = data.presente;
           });
 
-          // Sincronizar pagos desde el historial mensual (Excel importado)
-          alumnos.forEach(alumno => {
-            if (alumno.pagosMensuales?.some(p => p.mes === currentMonthName && p.anio === currentYear)) {
-              payMap[alumno.id!] = true;
-            }
-          });
+          // Sincronizar pagos desde el historial mensual
+          if (isCycleActive) {
+            alumnos.forEach(alumno => {
+              if (alumno.pagosMensuales?.some(p => p.mes === currentMonthName && p.anio === currentYear)) {
+                payMap[alumno.id!] = true;
+              }
+            });
+          }
 
           setAsistenciasHoy(attMap);
           setPagosHoy(payMap);

@@ -258,14 +258,14 @@ export const Finanzas: React.FC<FinanzasProps> = ({
               <thead>
                 <tr>
                   <th className="text-left py-4 px-4 text-[9px] font-black text-white/30 uppercase tracking-[0.2em] sticky left-0 bg-antigravity-dark z-10">Alumno</th>
-                  {['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'].map(m => (
+                  {['Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov'].map(m => (
                     <th key={m} className="text-center py-4 px-2 text-[9px] font-black text-white/40 uppercase tracking-widest">{m}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {alumnos.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || '')).map((alumno) => {
-                  const months = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+                  const months = ['Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre'];
                   const currentYear = new Date().getFullYear();
 
                   return (
