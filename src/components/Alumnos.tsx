@@ -75,6 +75,7 @@ interface AlumnosProps {
   handleSaveDisciplina: (name: string) => void;
   handleUpdateDisciplina: (id: string, nombre: string) => void;
   handleDeleteDisciplina: (id: string) => void;
+  handleDeduplicateStudents: () => void;
   sendPaymentReminder?: (alumno: Alumno) => void;
 }
 
@@ -149,6 +150,7 @@ const Alumnos: React.FC<AlumnosProps> = ({
   handleSaveDisciplina,
   handleUpdateDisciplina,
   handleDeleteDisciplina,
+  handleDeduplicateStudents,
   sendPaymentReminder,
 }) => {
   const [activeTab, setActiveTab] = useState<'Progreso' | 'Asistencia' | 'Bio' | 'Contacto' | 'Pagos'>('Progreso');
@@ -238,6 +240,14 @@ const Alumnos: React.FC<AlumnosProps> = ({
                   className="w-10 h-10 rounded-full bg-white shadow-sm border border-black/5 text-secondary flex items-center justify-center transition-all"
                 >
                   <span className="material-icons-outlined text-lg">upload_file</span>
+                </motion.button>
+                <motion.button 
+                  whileTap={{ scale: 0.95 }}
+                  onClick={handleDeduplicateStudents}
+                  className="w-10 h-10 rounded-full bg-white shadow-sm border border-black/5 text-ios-red flex items-center justify-center transition-all"
+                  title="Limpiar Duplicados"
+                >
+                  <span className="material-icons-outlined text-lg">cleaning_services</span>
                 </motion.button>
                 <motion.button 
                   whileTap={{ scale: 0.95 }}

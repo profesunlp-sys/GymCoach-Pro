@@ -1840,6 +1840,97 @@ const App: React.FC = () => {
     }
   };
 
+  const handleDeduplicateStudents = async () => {
+    try {
+      setIsLoading(true);
+      const studentMap = new Map<string, Alumno[]>();
+      
+      // Agrupamos: prioridad DNI válido, sino Nombre Normalizado
+      alumnos.forEach(a => {
+        const hasDni = a.dni && a.dni !== 'No especificado' && /^\d+$/.test(a.dni.trim());
+        if (hasDni) {
+          const key = `dni:${a.dni.trim()}`;
+          if (!studentMap.has(key)) studentMap.set(key, []);
+          studentMap.get(key)!.push(a);
+        } else {
+          const normalizedName = a.nombre.toLowerCase().trim()
+            .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+          const key = `name:${normalizedName}`;
+          if (!studentMap.has(key)) studentMap.set(key, []);
+          studentMap.get(key)!.push(a);
+        }
+      });
+
+      let deleteCount = 0;
+      let mergeCount = 0;
+
+      for (const group of Array.from(studentMap.values())) {
+        if (group.length > 1) {
+          // Survivor: el que tenga más datos
+          const sorted = [...group].sort((a, b) => {
+             const aScore = (a.dni !== 'No especificado' ? 1 : 0) + (a.contacto?.emergenciaTelefono ? 1 : 0) + (a.pagosMensuales?.length || 0);
+             const bScore = (b.dni !== 'No especificado' ? 1 : 0) + (b.contacto?.emergenciaTelefono ? 1 : 0) + (b.pagosMensuales?.length || 0);
+             return bScore - aScore;
+          });
+
+          const survivor = sorted[0];
+          const duplicates = sorted.slice(1);
+
+          for (const dupe of duplicates) {
+            const updates: Partial<Alumno> = {};
+            let needsUpdate = false;
+
+            if (survivor.dni === 'No especificado' && dupe.dni !== 'No especificado') {
+              updates.dni = dupe.dni;
+              needsUpdate = true;
+            }
+            
+            if (!survivor.contacto?.emergenciaTelefono && dupe.contacto?.emergenciaTelefono) {
+              updates.contacto = { ...survivor.contacto, emergenciaTelefono: dupe.contacto.emergenciaTelefono };
+              needsUpdate = true;
+            }
+
+            const survivorPayments = survivor.pagosMensuales || [];
+            const dupePayments = dupe.pagosMensuales || [];
+            const newPayments = [...survivorPayments];
+            let addedPayment = false;
+            
+            for (const dp of dupePayments) {
+              if (!newPayments.some(sp => sp.mes === dp.mes && sp.anio === dp.anio)) {
+                newPayments.push(dp);
+                addedPayment = true;
+              }
+            }
+            
+            if (addedPayment) {
+              updates.pagosMensuales = newPayments;
+              needsUpdate = true;
+            }
+
+            if (needsUpdate) {
+              await updateDocument(COLLECTIONS.ALUMNOS, survivor.id!, updates);
+              mergeCount++;
+            }
+
+            await deleteDocument(COLLECTIONS.ALUMNOS, dupe.id!);
+            deleteCount++;
+          }
+        }
+      }
+
+      await loadData();
+      setNotificacion({ 
+        t: "Limpieza Completada", 
+        d: `Se eliminaron ${deleteCount} duplicados y se fusionaron datos en ${mergeCount} registros.` 
+      });
+    } catch (error) {
+      console.error("Error in deduplication:", error);
+      setNotificacion({ t: "Error", d: "No se pudo completar la limpieza." });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleBulkPaymentConfirm = async (updates: { alumnoId: string, name: string, month: string, year: number }[]) => {
     try {
       setIsLoading(true);
@@ -3149,6 +3240,14 @@ const App: React.FC = () => {
             handleSaveDisciplina={handleSaveDisciplina}
             handleUpdateDisciplina={handleUpdateDisciplina}
             handleDeleteDisciplina={handleDeleteDisciplina}
+            handleDeduplicateStudents={() => {
+              setConfirmModal({
+                show: true,
+                title: "Limpiar Duplicados",
+                message: "¿Estás seguro de que deseas eliminar registros duplicados exactos? Se fusionarán los datos de pagos y contacto antes de borrar.",
+                onConfirm: handleDeduplicateStudents
+              });
+            }}
             handleUpdateBiometrics={handleUpdateBiometrics}
             sendPaymentReminder={sendPaymentReminder}
           />
