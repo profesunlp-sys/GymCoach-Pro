@@ -3,7 +3,6 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Button, BackButton } from '../../App';
 import { GrupoConfig, ViewMode, Alumno, Clase, UserRole, Feedback, AsistenciaRecord } from '../../types';
-import Papa from "papaparse";
 import { db } from '../../services/firebase';
 import { collection, query, where, getDocs, addDoc, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
 
@@ -70,30 +69,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
   
   const coachGrupos = grupos.filter(g => g.entrenadorId === user?.uid || g.entrenador === user?.displayName);
   const [selectedGroupInternal, setSelectedGroupInternal] = useState<GrupoConfig | null>(coachGrupos.length === 1 ? coachGrupos[0] : null);
-
-  const [syncStatus, setSyncStatus] = useState<any>(null);
-
-  React.useEffect(() => {
-    if (userRole === 'Coordinator') {
-      const fetchStatus = () => {
-        fetch('/api/sync/status')
-          .then(res => res.json())
-          .then(setSyncStatus)
-          .catch(() => {});
-      };
-      fetchStatus();
-      const interval = setInterval(fetchStatus, 30000);
-      return () => clearInterval(interval);
-    }
-  }, [userRole]);
-
-  const formatRelTime = (isoStr: string) => {
-    if (!isoStr) return 'Nunca';
-    const diff = Math.floor((new Date().getTime() - new Date(isoStr).getTime()) / 60000);
-    if (diff < 1) return 'Recién';
-    if (diff < 60) return `Hace ${diff} min`;
-    return new Date(isoStr).toLocaleTimeString();
-  };
 
   const isToday = (dateStr: string) => {
     const today = new Date().toISOString().split('T')[0];
@@ -251,230 +226,31 @@ export const Dashboard: React.FC<DashboardProps> = ({
               <span className="material-icons-outlined text-black/10 group-hover:text-primary transition-colors">chevron_right</span>
             </motion.button>
 
-            {/* Google Sheets Sync */}
-            <div className="md:col-span-2 bg-gradient-to-br from-ios-green/5 to-ios-blue/5 border border-black/5 rounded-[2.5rem] p-8 space-y-6 relative overflow-hidden">
-              <div className="absolute top-0 right-0 p-8 opacity-5">
-                <span className="material-icons-outlined text-[100px]">sync</span>
+            {/* Control de Asistencia Externo */}
+            <motion.button 
+              whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.98 }}
+              onClick={() => window.open('https://control-de-asistencia-2026.vercel.app/', '_blank')}
+              className="md:col-span-2 relative w-full p-6 rounded-[2rem] bg-gradient-to-br from-ios-blue/5 to-ios-purple/5 shadow-ios border border-black/5 text-left flex items-center justify-between group overflow-hidden"
+            >
+              <div className="absolute top-0 right-0 p-6 opacity-5 pointer-events-none">
+                <span className="material-icons-outlined text-[80px]">calendar_month</span>
               </div>
-              
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 relative z-10">
-                <div className="space-y-1">
-                  <h4 className="text-xl font-bold text-black flex items-center gap-2">
-                    <span className="material-icons-outlined text-ios-green">description</span>
-                    Google Sheets Sync
-                  </h4>
-                  <p className="text-secondary text-xs font-medium">Sincronización automática de asistencia cada 5 min</p>
+              <div className="flex items-center gap-5 relative z-10">
+                <div className="w-14 h-14 bg-ios-blue/10 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <span className="material-icons-outlined text-ios-blue text-3xl">fact_check</span>
                 </div>
-                
-                <div className="flex items-center gap-3">
-                  <Button 
-                    variant="outline"
-                    onClick={() => {
-                      fetch('/api/auth/google/url')
-                        .then(res => res.json())
-                        .then(data => window.open(data.url, '_blank', 'width=600,height=600'));
-                    }}
-                    className="!py-3 !px-5 !rounded-2xl"
-                  >
-                    Conectar
-                  </Button>
-                  <Button 
-                    onClick={async () => {
-                      try {
-                        setSyncStatus(prev => ({ ...prev, isSyncing: true, lastError: null }));
-                        console.log("Iniciando sincronización manual...");
-
-                        const SHEET_URLS = {
-                          // Martes y Jueves
-                          'lunes_miercoles': {
-                            id: '1FaCHHOmhR66_04sa_XcdxmX3A5qdOVWZHHtpHThz5Ys',
-                            tabs: ['LOLA', 'MILI', 'LUCÍA', 'SABRI', 'CATA']
-                          },
-                          
-                          // Sábados
-                          'sabados': {
-                            id: '1mxo6JKc5uhCs7pw0-UJ-xevC5Iyl2aOvuCHhksWkK2g',
-                            tabs: ['LOLA-LU', 'MAY', 'SABRI', 'CATA', 'MILI']
-                          }
-                        };
-                        
-                        let importedTotal = 0;
-                        const logMessages = [];
-                        
-                        const monthsMap: Record<string, number> = {
-                          'MARZO': 3, 'ABRIL': 4, 'MAYO': 5, 'JUNIO': 6, 'JULIO': 7,
-                          'AGOSTO': 8, 'SEPTIEMBRE': 9, 'OCTUBRE': 10, 'NOVIEMBRE': 11, 'DICIEMBRE': 12,
-                          'ENERO': 1, 'FEBRERO': 2
-                        };
-
-                        for (const [sheetKey, sheetConfig] of Object.entries(SHEET_URLS)) {
-                          for (const tabName of sheetConfig.tabs) {
-                            const url = `https://docs.google.com/spreadsheets/d/${sheetConfig.id}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(tabName)}`;
-                            console.log(`[${sheetKey}] Descargando Tab ${tabName}: ${url}`);
-                            
-                            let res;
-                            try {
-                                res = await fetch(url);
-                            } catch (e: any) {
-                                console.error(`Error de red al intentar descargar Tab ${tabName}: ${e.message}`);
-                                continue;
-                            }
-
-                            if (!res.ok) {
-                               console.error(`Tab ${tabName} no accesible (${res.status}). Asegúrate de que los enlaces sean públicos.`);
-                               continue;
-                            }
-                            
-                            const csvText = await res.text();
-                            
-                            const parsed = Papa.parse(csvText, { header: false, skipEmptyLines: true });
-                            if (parsed.errors.length) console.warn("Errores de parseo:", parsed.errors);
-                            
-                            const rows = parsed.data as any[][];
-                            if (rows.length < 3) {
-                              console.warn(`Tab ${tabName} ignorada: no tiene suficientes filas.`);
-                              continue;
-                            }
-                            
-                            const ageGroup = (rows[0][1] || '').trim();
-                            const columnDates: Record<number, string> = {};
-                            let currentMonthNum = new Date().getMonth() + 1;
-                            const currentYear = new Date().getFullYear();
-
-                            for (let i = 4; i < rows[1].length; i++) {
-                               const monthStr = (rows[0][i] || '').trim().toUpperCase();
-                               if (monthStr && monthsMap[monthStr]) {
-                                  currentMonthNum = monthsMap[monthStr];
-                               }
-                               const dayStr = (rows[1][i] || '').trim().toUpperCase();
-                               if (dayStr && dayStr !== 'PAGO') {
-                                  const day = parseInt(dayStr);
-                                  if (!isNaN(day)) {
-                                    const fm = currentMonthNum.toString().padStart(2, '0');
-                                    const fd = day.toString().padStart(2, '0');
-                                    columnDates[i] = `${currentYear}-${fm}-${fd}`;
-                                  }
-                               }
-                            }
-
-                            let tabImported = 0;
-
-                            for (let r = 2; r < rows.length; r++) {
-                              const studentName = (rows[r][1] || '').trim();
-                              if (!studentName || studentName.toLowerCase().includes('apellido y nombre')) continue;
-
-                              const alumnosRef = collection(db, 'alumnos');
-                              const q = query(alumnosRef, where('nombre', '==', studentName));
-                              const alumnosSnap = await getDocs(q);
-                              
-                              let alumnaId = "";
-                              let syncState = "sincronizado";
-
-                              if (alumnosSnap.empty) {
-                                alumnaId = "DNI_PENDIENTE_" + studentName.replace(/\s+/g, '_');
-                                syncState = "pendiente de verificación";
-                              } else {
-                                const alumno = alumnosSnap.docs[0].data();
-                                alumnaId = alumno.dni || alumnosSnap.docs[0].id;
-                              }
-
-                              for (let c = 4; c < rows[r].length; c++) {
-                                 if (columnDates[c]) {
-                                    const cellValue = (rows[r][c] || '').trim().toUpperCase();
-                                    if (cellValue === 'P' || cellValue === 'X') {
-                                       const date = columnDates[c];
-                                       const isPresent = cellValue === 'P';
-                                       
-                                       const asisRef = collection(db, 'asistencias');
-                                       const qAsis = query(asisRef, where('alumnaNombre', '==', studentName), where('fecha', '==', date));
-                                       const existingSnap = await getDocs(qAsis);
-
-                                       const recordData = {
-                                         fecha: date,
-                                         alumnaId,
-                                         alumnaNombre: studentName,
-                                         grupo: ageGroup || "Sin Grupo",
-                                         presente: isPresent,
-                                         observacion: `Tab: ${tabName}`,
-                                         origen: "google_sheets_matrix",
-                                         sincronizadoEn: serverTimestamp(),
-                                         estado_sync: syncState
-                                       };
-
-                                       if (existingSnap.empty) {
-                                         await addDoc(asisRef, recordData);
-                                         importedTotal++;
-                                         tabImported++;
-                                       } else {
-                                         const existingDoc = existingSnap.docs[0];
-                                         const exData = existingDoc.data();
-                                         if (exData.presente !== recordData.presente) {
-                                           await updateDoc(doc(db, 'asistencias', existingDoc.id), {
-                                             ...recordData,
-                                             conflicto_resuelto: true
-                                           });
-                                           importedTotal++;
-                                           tabImported++;
-                                         }
-                                       }
-                                    }
-                                 }
-                              }
-                            }
-                            const logMsg = `Tab ${tabName}: ${tabImported} registros sincronizados.`;
-                            console.log(logMsg);
-                            logMessages.push(logMsg);
-                          }
-                        }
-
-                        console.log("Sincronización finalizada exitosamente. Total Importados:", importedTotal);
-                        setSyncStatus({ isSyncing: false, lastError: null, lastSync: new Date().toISOString(), recordsProcessed: importedTotal });
-                        alert(`✅ Sincronizado:\n\nTotal: ${importedTotal} registros.\n\n${logMessages.join('\n')}`);
-                      } catch (error: any) {
-                        console.error("Error crítico en sincronización:", error);
-                        setSyncStatus(prev => ({ ...prev, isSyncing: false, lastError: error.message }));
-                        alert(`❌ Error: ${error.message}`);
-                      }
-                    }}
-                    className="!py-3 !px-5 !rounded-2xl bg-ios-green shadow-ios-green/20"
-                    disabled={syncStatus?.isSyncing}
-                  >
-                    {syncStatus?.isSyncing ? 'Sincronizando...' : 'Sincronizar Ahora'}
-                  </Button>
+                <div>
+                  <h4 className="text-lg font-bold text-black leading-tight">Control de Asistencia</h4>
+                  <p className="text-secondary text-xs font-medium">App externa de toma de listas</p>
                 </div>
               </div>
-
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <div className="bg-white/50 backdrop-blur-md p-4 rounded-2xl border border-black/5">
-                  <p className="text-[9px] font-bold text-secondary uppercase tracking-widest mb-1">Estado</p>
-                  <div className="flex items-center gap-1.5">
-                    <div className={`w-1.5 h-1.5 rounded-full ${syncStatus?.isSyncing ? 'bg-ios-orange animate-pulse' : (syncStatus?.lastError ? 'bg-ios-red' : 'bg-ios-green')}`}></div>
-                    <p className={`text-xs font-bold ${syncStatus?.lastError ? 'text-ios-red' : 'text-black'}`}>
-                      {syncStatus?.isSyncing ? 'Sincronizando...' : (syncStatus?.lastError ? 'Error de conexión' : 'Activo')}
-                    </p>
-                  </div>
-                  {syncStatus?.lastError && (
-                    <p className="text-[8px] text-ios-red mt-1 leading-tight line-clamp-2" title={syncStatus.lastError}>
-                      {syncStatus.lastError}
-                    </p>
-                  )}
-                </div>
-                <div className="bg-white/50 backdrop-blur-md p-4 rounded-2xl border border-black/5">
-                  <p className="text-[9px] font-bold text-secondary uppercase tracking-widest mb-1">Última Sinc.</p>
-                  <p className="text-xs font-bold text-black">{formatRelTime(syncStatus?.lastSync)}</p>
-                </div>
-                <div className="bg-white/50 backdrop-blur-md p-4 rounded-2xl border border-black/5 col-span-2">
-                  <p className="text-[9px] font-bold text-secondary uppercase tracking-widest mb-1 shadow-sm">Registros (Última vez)</p>
-                  <div className="flex items-center gap-2">
-                     <span className="text-xs font-black text-ios-blue">{syncStatus?.recordsProcessed || 0} Importados</span>
-                     <div className="flex gap-1.5 ml-auto">
-                        <span className="px-2 py-0.5 bg-ios-blue/10 text-ios-blue rounded text-[8px] font-black uppercase">Asistencia</span>
-                        <span className="px-2 py-0.5 bg-ios-green/10 text-ios-green rounded text-[8px] font-black uppercase">Gimnastas</span>
-                     </div>
-                  </div>
-                </div>
+              <div className="relative z-10 flex items-center gap-2">
+                <span className="text-xs font-bold text-ios-blue bg-ios-blue/10 px-3 py-1 rounded-full group-hover:bg-ios-blue group-hover:text-white transition-colors">
+                  ABRIR APP
+                </span>
+                <span className="material-icons-outlined text-ios-blue group-hover:translate-x-1 transition-transform">arrow_forward</span>
               </div>
-            </div>
+            </motion.button>
 
             {/* Reportes Globales */}
             <motion.button 
