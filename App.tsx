@@ -1914,11 +1914,18 @@ const App: React.FC = () => {
     let importedCount = 0;
     let errors: string[] = [];
     
-    for (const line of lines) {
+    // Check if first line is a header
+    let startIndex = 0;
+    if (lines[0].toLowerCase().includes('nombre') || lines[0].toLowerCase().includes('dni') || lines[0].toLowerCase().includes('grupo')) {
+      startIndex = 1;
+    }
+
+    for (let i = startIndex; i < lines.length; i++) {
+      const line = lines[i];
       // Split by comma, semicolon or tab
       const parts = line.split(/[,;\t]/).map(p => p.trim());
       if (parts.length < 1 || !parts[0]) {
-        errors.push(`Línea vacía o sin nombre: "${line}"`);
+        errors.push(`Fila ${i + 1}: Línea vacía o sin nombre.`);
         continue;
       }
 
@@ -1930,12 +1937,26 @@ const App: React.FC = () => {
 
       // Validación básica
       if (nombre.length < 3) {
-        errors.push(`Nombre demasiado corto: "${nombre}"`);
+        errors.push(`Fila ${i + 1}: Nombre demasiado corto ("${nombre}").`);
         continue;
       }
-      if (dni && !/^\d+$/.test(dni)) {
-        errors.push(`DNI inválido (solo números): "${dni}" para ${nombre}`);
+      
+      if (dni && !/^\d+$/.test(dni) && dni !== 'No especificado') {
+        errors.push(`Fila ${i + 1}: DNI inválido (debe ser numérico: "${dni}") para "${nombre}".`);
         continue;
+      }
+
+      // Buscar si ya existe el alumno para evitar duplicados
+      // 1. Prioridad: DNI (si existe)
+      // 2. Secundario: Nombre y Grupo (si DNI no existe)
+      let existingStudent = null;
+      if (dni && dni !== 'No especificado') {
+        existingStudent = alumnos.find(a => a.dni === dni);
+      } else {
+        existingStudent = alumnos.find(a => 
+          a.nombre.toLowerCase() === nombre.toLowerCase() && 
+          (a.grupo?.toLowerCase() || '') === grupo.toLowerCase()
+        );
       }
 
       const newStudent: Omit<Alumno, 'id'> = {
@@ -1960,14 +1981,12 @@ const App: React.FC = () => {
       };
 
       try {
-        // Buscar si ya existe el alumno por DNI para evitar duplicados y permitir carga fragmentada
-        const existingStudent = alumnos.find(a => a.dni !== 'No especificado' && a.dni === dni);
-
         if (existingStudent && existingStudent.id) {
           // Actualizar solo los campos que vienen con información nueva o mantienen los existentes
           const updatedStudent = {
             ...existingStudent,
             nombre: nombre || existingStudent.nombre,
+            dni: (dni && dni !== 'No especificado') ? dni : existingStudent.dni,
             grupo: (grupo && grupo !== 'Sin Grupo') ? grupo : existingStudent.grupo,
             nivel: (nivel && nivel !== 'Escuela') ? nivel : existingStudent.nivel,
             contacto: {
@@ -1982,7 +2001,7 @@ const App: React.FC = () => {
         }
         importedCount++;
       } catch (e) {
-        errors.push(`Error al procesar a ${nombre}: ${e}`);
+        errors.push(`Fila ${i + 1}: Error al procesar a "${nombre}": ${e}`);
       }
     }
 
@@ -2038,6 +2057,16 @@ const App: React.FC = () => {
         await updateDocument(COLLECTIONS.ALUMNOS, studentForm.id, studentData);
         setNotificacion({ t: "Gimnasta Actualizado", d: `${studentData.nombre} actualizado correctamente.` });
       } else {
+        // Check for duplicates before adding
+        if (studentForm.dni && studentForm.dni !== 'No especificado') {
+          const duplicate = alumnos.find(a => a.dni === studentForm.dni);
+          if (duplicate) {
+            setNotificacion({ t: "Error", d: `Ya existe un gimnasta con DNI ${studentForm.dni} (${duplicate.nombre})` });
+            setIsSavingStudent(false);
+            return;
+          }
+        }
+
         const newStudent = {
           ...studentData,
           grupo: studentForm.grupo || activeGroup?.nombre || 'Sin Grupo',
