@@ -32,3 +32,4 @@
 2. **Validación de Datos:** Modal inteligente de DNI duplicado para evitar registros inconsistentes.
 3. **Flexibilidad en Importación:** Sistema de feedback de errores y filtros inclusivos para el Excel de pagos.
 4. **Navegación:** Reparación del enlace a Habilidades y carga diferida (lazy) del módulo.
+5. **Sincronización robusta:** Reparación de la integración con Google Sheets con sistema de "Public Fallback" (intenta leer por CSV público si falla el OAuth) y feedback de errores específicos en el Dashboard.

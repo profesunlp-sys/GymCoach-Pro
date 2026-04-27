@@ -10,12 +10,12 @@ import { getFirestore, collection, addDoc, getDocs, updateDoc, doc, query, where
 
 // Firebase App for Server
 const firebaseConfig = {
-  apiKey: process.env.VITE_FIREBASE_API_KEY,
-  authDomain: process.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.VITE_FIREBASE_APP_ID
+  apiKey: process.env.VITE_FIREBASE_API_KEY || "AIzaSyBbuRw3J7t_8xQc-6_qOqQDdjEEWZgSHaY",
+  authDomain: process.env.VITE_FIREBASE_AUTH_DOMAIN || "gymcoachpro-c0c8e.firebaseapp.com",
+  projectId: process.env.VITE_FIREBASE_PROJECT_ID || "gymcoachpro-c0c8e",
+  storageBucket: process.env.VITE_FIREBASE_STORAGE_BUCKET || "gymcoachpro-c0c8e.firebasestorage.app",
+  messagingSenderId: process.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "923517600594",
+  appId: process.env.VITE_FIREBASE_APP_ID || "1:923517600594:web:a81bdd1a150b7f22dcf08b"
 };
 
 const fbApp = initializeApp(firebaseConfig);
@@ -53,7 +53,7 @@ const SCOPES = [
 let syncStatus = {
   lastSync: null as string | null,
   recordsProcessed: 0,
-  errors: [] as string[],
+  lastError: null as string | null,
   isSyncing: false
 };
 
@@ -131,10 +131,12 @@ async function startServer() {
     if (syncStatus.isSyncing) return res.status(400).json({ error: "Sincronización en curso" });
     try {
       syncStatus.isSyncing = true;
+      syncStatus.lastError = null;
       const result = await runSyncFromSheets();
       res.json(result);
     } catch (error: any) {
       console.error(error);
+      syncStatus.lastError = error.message;
       res.status(500).json({ error: error.message });
     } finally {
       syncStatus.isSyncing = false;
@@ -180,12 +182,46 @@ async function startServer() {
 
 // Task 1: Sheets -> Firebase
 async function runSyncFromSheets() {
-  const doc = await getAuthenticatedDoc(process.env.GOOGLE_SHEET_ATTENDANCE_ID || "1FaCHHOmhR66_04sa_XcdxmX3A5qdOVWZHHtpHThz5Ys");
-  const sheet = doc.sheetsByIndex[0];
-  const rows = await sheet.getRows();
-  
   let imported = 0;
   let errors = 0;
+  let rows: any[] = [];
+  const sheetId = process.env.GOOGLE_SHEET_ATTENDANCE_ID || "1FaCHHOmhR66_04sa_XcdxmX3A5qdOVWZHHtpHThz5Ys";
+
+  try {
+    // Try Authenticated first
+    const doc = await getAuthenticatedDoc(sheetId);
+    const sheet = doc.sheetsByIndex[0];
+    rows = await sheet.getRows();
+  } catch (authError: any) {
+    console.warn("Auth sync failed, trying public access:", authError.message);
+    
+    // Fallback: Try Public CSV access if sheets are published to web
+    try {
+      // Format: https://docs.google.com/spreadsheets/d/ID/gviz/tq?tqx=out:csv&sheet=SHEET_NAME
+      const response = await fetch(`https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv`);
+      if (!response.ok) throw new Error("Could not access public sheet.");
+      const csvText = await response.text();
+      
+      // Basic CSV parser for this specific use case
+      const lines = csvText.split('\n').map(l => l.split(',').map(c => c.replace(/^"|"$/g, '')));
+      if (lines.length < 2) throw new Error("Empty sheet or invalid format");
+      
+      const headers = lines[0];
+      rows = lines.slice(1).map(line => {
+        const obj: any = {};
+        headers.forEach((h, i) => {
+          obj[h] = line[i];
+        });
+        // Mock get method like google-spreadsheet rows
+        return {
+          get: (col: string) => obj[col],
+          rawData: obj
+        };
+      });
+    } catch (publicError: any) {
+      throw new Error(`Fallo total de conexión: ${authError.message} | Public fallback: ${publicError.message}`);
+    }
+  }
 
   for (const row of rows) {
     // Expected Columns: Fecha, Alumna, Grupo, Presente/Ausente, Observación

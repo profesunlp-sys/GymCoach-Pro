@@ -280,15 +280,22 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       try {
                         const res = await fetch('/api/sync/manual', { method: 'POST' });
                         const data = await res.json();
-                        if (data.error) alert("Error: " + data.error);
-                        else alert(`Sincronización exitosa: ${data.imported} registros actualizados.`);
+                        if (data.error) {
+                          alert(`Error de sincronización: ${data.error}`);
+                          // Refresh status after error
+                          fetch('/api/sync/status').then(r => r.json()).then(setSyncStatus);
+                        } else {
+                          alert(`Sincronización exitosa: ${data.imported} registros actualizados.`);
+                          fetch('/api/sync/status').then(r => r.json()).then(setSyncStatus);
+                        }
                       } catch (e) {
-                        alert("Error de conexión con el servidor.");
+                        alert("Error crítico: No se pudo conectar con el servidor de sincronización.");
                       }
                     }}
                     className="!py-3 !px-5 !rounded-2xl bg-ios-green shadow-ios-green/20"
+                    disabled={syncStatus?.isSyncing}
                   >
-                    Sincronizar Ahora
+                    {syncStatus?.isSyncing ? 'Sincronizando...' : 'Sincronizar Ahora'}
                   </Button>
                 </div>
               </div>
@@ -297,9 +304,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 <div className="bg-white/50 backdrop-blur-md p-4 rounded-2xl border border-black/5">
                   <p className="text-[9px] font-bold text-secondary uppercase tracking-widest mb-1">Estado</p>
                   <div className="flex items-center gap-1.5">
-                    <div className={`w-1.5 h-1.5 rounded-full ${syncStatus?.isSyncing ? 'bg-ios-orange animate-pulse' : 'bg-ios-green'}`}></div>
-                    <p className="text-xs font-bold text-black">{syncStatus?.isSyncing ? 'Sincronizando...' : 'Activo'}</p>
+                    <div className={`w-1.5 h-1.5 rounded-full ${syncStatus?.isSyncing ? 'bg-ios-orange animate-pulse' : (syncStatus?.lastError ? 'bg-ios-red' : 'bg-ios-green')}`}></div>
+                    <p className={`text-xs font-bold ${syncStatus?.lastError ? 'text-ios-red' : 'text-black'}`}>
+                      {syncStatus?.isSyncing ? 'Sincronizando...' : (syncStatus?.lastError ? 'Error de conexión' : 'Activo')}
+                    </p>
                   </div>
+                  {syncStatus?.lastError && (
+                    <p className="text-[8px] text-ios-red mt-1 leading-tight line-clamp-2" title={syncStatus.lastError}>
+                      {syncStatus.lastError}
+                    </p>
+                  )}
                 </div>
                 <div className="bg-white/50 backdrop-blur-md p-4 rounded-2xl border border-black/5">
                   <p className="text-[9px] font-bold text-secondary uppercase tracking-widest mb-1">Última Sinc.</p>

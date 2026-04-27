@@ -774,7 +774,7 @@ const App: React.FC = () => {
         if (data.profesores) {
           for (const prof of data.profesores) {
             const { id, ...rest } = prof;
-            await addDocument(COLLECTIONS.PROFESORES, rest);
+            await addDocument(COLLECTIONS.STAFF, rest);
           }
         }
 
@@ -1374,7 +1374,7 @@ const App: React.FC = () => {
 
   const handleUpdateProfesor = async (id: string, nombre: string) => {
     try {
-      await updateDocument(COLLECTIONS.PROFESORES, id, { nombre });
+      await updateDocument(COLLECTIONS.STAFF, id, { nombre });
       setNotificacion({ t: "Éxito", d: "Profesor actualizado." });
       loadData();
     } catch (error: any) {
@@ -1645,7 +1645,7 @@ const App: React.FC = () => {
     if (!targetName) return;
     setIsSavingProfesor(true);
     try {
-      await addDocument(COLLECTIONS.PROFESORES, { nombre: targetName });
+      await addDocument(COLLECTIONS.STAFF, { nombre: targetName });
       await loadData();
       setIsAddingProfesor(false);
       setNewProfesorName('');
@@ -1664,7 +1664,7 @@ const App: React.FC = () => {
       `¿Estás seguro de que deseas eliminar al profesor "${nombre}"?`,
       async () => {
         try {
-          await deleteDocument(COLLECTIONS.PROFESORES, profesorId);
+          await deleteDocument(COLLECTIONS.STAFF, profesorId);
           setNotificacion({ t: 'Éxito', d: `Profesor ${nombre} eliminado.` });
           loadData();
         } catch (error: any) {
