@@ -6,9 +6,10 @@ import { motion } from 'motion/react';
 
 interface ControlPagosProps {
   onBack: () => void;
+  onImportPayments: () => void;
 }
 
-export const ControlPagos: React.FC<ControlPagosProps> = ({ onBack }) => {
+export const ControlPagos: React.FC<ControlPagosProps> = ({ onBack, onImportPayments }) => {
   const [alumnos, setAlumnos] = useState<Alumno[]>([]);
   const [selectedYear] = useState(new Date().getFullYear());
   const meses = [
@@ -76,6 +77,32 @@ export const ControlPagos: React.FC<ControlPagosProps> = ({ onBack }) => {
         </div>
         <h1 className="text-3xl font-bold text-black tracking-tight">Control de Pagos</h1>
         <p className="text-secondary text-sm mt-1">Resumen anual de cuotas por gimnasta</p>
+        
+        <div className="mt-8 bg-ios-blue/5 border border-ios-blue/10 rounded-3xl p-6 relative overflow-hidden group">
+          <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-ios-blue/5 rounded-full blur-2xl group-hover:bg-ios-blue/10 transition-colors"></div>
+          
+          <div className="flex flex-col sm:flex-row items-center gap-4 relative z-10">
+            <div className="w-12 h-12 bg-ios-blue text-white rounded-2xl flex items-center justify-center shadow-lg shadow-ios-blue/20">
+              <span className="material-icons-outlined text-2xl">auto_fix_high</span>
+            </div>
+            
+            <div className="flex-1 text-center sm:text-left">
+              <h4 className="text-sm font-bold text-black">Sincronización Inteligente</h4>
+              <p className="text-[10px] text-secondary font-medium leading-relaxed">
+                Carga tu Excel de pagos y la app marcará automáticamente los meses para cada gimnasta.
+              </p>
+            </div>
+            
+            <motion.button 
+              whileTap={{ scale: 0.95 }}
+              onClick={onImportPayments}
+              className="px-6 py-3 bg-white border border-ios-blue/20 rounded-2xl text-ios-blue text-[10px] font-black uppercase tracking-widest shadow-sm hover:shadow-md transition-all flex items-center gap-2 whitespace-nowrap"
+            >
+              <span className="material-icons-outlined text-base">upload_file</span>
+              Importar Pagos
+            </motion.button>
+          </div>
+        </div>
       </header>
 
       <div className="p-4">

@@ -105,15 +105,11 @@ export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete
         continue;
       }
       
-      processedRows++;
-
       // Intentar encontrar el nombre en las columnas posibles
       const nombreRaw = row.Nombre || row.nombre || row.Alumno || row.alumno || row['Nombre y Apellido'] || row['Nombre Alumno'];
       const dniRaw = (row.DNI || row.dni || row.Documento || '').toString().trim();
-      const mesRaw = row.Mes || row.mes || currentMonthName;
       const añoRaw = row.Año || row.año || row.anio || currentYear;
 
-      let alumnoId = null;
       let matchedAlumno = null;
 
       // 1. PRIORIDAD: DNI
@@ -133,19 +129,61 @@ export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete
       }
 
       if (matchedAlumno && matchedAlumno.id) {
-        alumnoId = matchedAlumno.id;
+        processedRows++;
+        const alumnoId = matchedAlumno.id;
         const alumnoRef = doc(db, 'alumnos', alumnoId);
         
-        batch.update(alumnoRef, {
-          pagosMensuales: arrayUnion({
+        // Determinar qué meses se están pagando en esta fila
+        const paymentsInRow: { mes: string, anio: number }[] = [];
+
+        // CASO A: Columna "Mes" explícita
+        const mesRaw = row.Mes || row.mes;
+        if (mesRaw) {
+          paymentsInRow.push({
             mes: normalizeMonth(mesRaw),
-            anio: parseInt(añoRaw.toString()),
-            fechaPago: new Date().toISOString(),
-            importado: true // Marca para saber que vino de Excel
-          })
-        });
+            anio: parseInt(añoRaw.toString())
+          });
+        } 
         
-        count++;
+        // CASO B: Meses como columnas (Enero, Febrero, Mar, Abr...)
+        const possibleMonthKeys = Object.keys(row);
+        possibleMonthKeys.forEach(key => {
+          const normalizedKey = key.trim().toLowerCase();
+          // Verificar si la columna parece ser un mes
+          const monthIdx = monthNames.findIndex(m => m.toLowerCase() === normalizedKey || m.toLowerCase().startsWith(normalizedKey.slice(0,3)));
+          
+          if (monthIdx !== -1) {
+            const cellValue = String(row[key]).toLowerCase().trim();
+            // Si la celda tiene alguna marca de pago (X, SI, PAGO, OK, 1, etc)
+            if (['x', 'si', 'pago', 'ok', '1', 'checked', 'true', 'pagado'].includes(cellValue)) {
+              paymentsInRow.push({
+                mes: monthNames[monthIdx],
+                anio: parseInt(añoRaw.toString())
+              });
+            }
+          }
+        });
+
+        // Si no se encontró ningún mes específico pero la fila existe, usamos el mes actual por defecto
+        if (paymentsInRow.length === 0) {
+          paymentsInRow.push({
+            mes: currentMonthName,
+            anio: parseInt(añoRaw.toString())
+          });
+        }
+
+        // Aplicar todos los pagos encontrados para este alumno
+        for (const payment of paymentsInRow) {
+          // Evitar duplicados en el mismo proceso si ya lo agregamos (aunque arrayUnion lo maneja en DB)
+          batch.update(alumnoRef, {
+            pagosMensuales: arrayUnion({
+              ...payment,
+              fechaPago: new Date().toISOString(),
+              importado: true
+            })
+          });
+          count++;
+        }
       }
     }
 

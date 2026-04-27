@@ -3255,7 +3255,10 @@ const App: React.FC = () => {
 
         {vista === 'ControlPagos' && (
           <Suspense fallback={<LoadingFallback />}>
-            <ControlPagos onBack={() => setVista('Dashboard')} />
+            <ControlPagos 
+              onBack={() => setVista('Dashboard')} 
+              onImportPayments={() => setIsBulkPaymentModalOpen(true)}
+            />
           </Suspense>
         )}
 
