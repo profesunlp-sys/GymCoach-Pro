@@ -39,9 +39,9 @@ export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete
 
           // Intentar identificar las columnas (Nombre, Apellido, DNI, Mes, Año)
           // Asumiremos que el Excel tiene columnas con nombres similares
-          const matchedCount = await processExcelData(data);
-          setStats({ total: data.length, matched: matchedCount });
-          onComplete(matchedCount);
+          const result = await processExcelData(data);
+          setStats({ total: data.length, matched: result.count, ignored: result.ignored });
+          onComplete(result.count);
         } catch (err) {
           setError("Error al procesar el archivo. Asegúrate que sea un Excel válido.");
           setIsProcessing(false);

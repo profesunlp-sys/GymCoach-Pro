@@ -102,6 +102,7 @@ export interface GrupoConfig {
   horario: string;
   entrenador?: string;
   entrenadorId?: string;
+  rangoEdad?: string;
 }
 
 export type UserRole = 'Coach' | 'Coordinator';

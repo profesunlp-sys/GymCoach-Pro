@@ -305,9 +305,9 @@ const App: React.FC = () => {
   // Group Form State
   const [newGroupName, setNewGroupName] = useState("");
   const [newCoachName, setNewCoachName] = useState("");
-  const [selectedDays, setSelectedDays] = useState<string[]>([]);
-  const [startTime, setStartTime] = useState("17:00");
-  const [endTime, setEndTime] = useState("19:00");
+  const [newGrupoRangoEdad, setNewGrupoRangoEdad] = useState("3 a 5 años");
+  const [newGrupoDias, setNewGrupoDias] = useState("");
+  const [newGrupoHorario, setNewGrupoHorario] = useState("");
 
   // Class Form State
   const [claseGrupo, setClaseGrupo] = useState("");
@@ -542,6 +542,7 @@ const App: React.FC = () => {
   const [nuevoGrupoNombre, setNuevoGrupoNombre] = useState("");
   const [nuevoGrupoDias, setNuevoGrupoDias] = useState("");
   const [nuevoGrupoHorario, setNuevoGrupoHorario] = useState("17:00");
+  const [nuevoGrupoRangoEdad, setNuevoGrupoRangoEdad] = useState("3 a 5 años");
 
   // Load student guide count
   useEffect(() => {
@@ -649,6 +650,14 @@ const App: React.FC = () => {
   const COORDINATOR_EMAIL = "profesunlp@gmail.com";
   const [staffInfo, setStaffInfo] = useState<any>(null);
 
+  // Security guard for Coordinator routes
+  useEffect(() => {
+    const coordinatorOnlyViews: ViewMode[] = ['AsistenciaStats', 'ReporteGrupal', 'TendenciasHabilidades', 'ReportePDF', 'ControlPagos', 'Profesores', 'ProfesorDetalle'];
+    if (userRole !== 'Coordinator' && coordinatorOnlyViews.includes(vista)) {
+      setVista('Dashboard');
+    }
+  }, [vista, userRole]);
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
@@ -674,7 +683,9 @@ const App: React.FC = () => {
             await setDoc(staffRef, staffData);
           } else {
             staffData = { id: staffDoc.docs[0].id, ...staffDoc.docs[0].data() };
-            role = staffData.role as UserRole;
+            // Siempre forzamos el rol según el email, ignoramos lo que dice la BD por seguridad
+            role = currentUser.email === COORDINATOR_EMAIL ? 'Coordinator' : 'Coach';
+            
             // Migración: si el documento no tiene el ID correcto (el UID), creamos uno con el UID
             if (staffDoc.docs[0].id !== currentUser.uid) {
               await setDoc(staffRef, staffData);
@@ -1226,7 +1237,7 @@ const App: React.FC = () => {
   }, [activeGroup, isDataLoaded, alumnos]);
 
   const handleSaveGroup = async () => {
-    if (!newGroupName || !newCoachName || selectedDays.length === 0) {
+    if (!newGroupName || !newCoachName || !newGrupoDias) {
       setNotificacion({ t: "Error", d: "Nombre del grupo, profesor y días son obligatorios." });
       setTimeout(() => setNotificacion(null), 3000);
       return;
@@ -1239,9 +1250,10 @@ const App: React.FC = () => {
       let groupData: any = {
         nombre: newGroupName,
         entrenador: newCoachName,
-        entrenadorId: coach?.id || '', // id in staff is the UID
-        dias: selectedDays,
-        horario: `${startTime} - ${endTime}`
+        entrenadorId: coach?.id || user?.uid || '', // fallback to current user uid
+        dias: newGrupoDias.split(',').map(d => d.trim()).filter(d => d),
+        horario: newGrupoHorario,
+        rangoEdad: newGrupoRangoEdad || "3 a 5 años"
       };
 
       if (editingGroup && editingGroup.id) {
@@ -1254,7 +1266,8 @@ const App: React.FC = () => {
       }
       setNewGroupName("");
       setNewCoachName("");
-      setSelectedDays([]);
+      setNewGrupoDias("");
+      setNewGrupoHorario("");
       setEditingGroup(null);
       loadData();
       setTimeout(() => setNotificacion(null), 3000);
@@ -3070,13 +3083,12 @@ const App: React.FC = () => {
             setNewGroupName={setNewGroupName}
             newCoachName={newCoachName}
             setNewCoachName={setNewCoachName}
-            selectedDays={selectedDays}
-            setSelectedDays={setSelectedDays}
-            startTime={startTime}
-            setStartTime={setStartTime}
-            endTime={endTime}
-            setEndTime={setEndTime}
-            timeIntervals={timeIntervals}
+            newGrupoDias={newGrupoDias}
+            setNewGrupoDias={setNewGrupoDias}
+            newGrupoHorario={newGrupoHorario}
+            setNewGrupoHorario={setNewGrupoHorario}
+            newGrupoRangoEdad={newGrupoRangoEdad}
+            setNewGrupoRangoEdad={setNewGrupoRangoEdad}
             handleSaveGroup={handleSaveGroup}
             grupos={grupos}
             alumnos={alumnos}
@@ -3102,9 +3114,9 @@ const App: React.FC = () => {
             setEditingGroup={setEditingGroup}
             setNewGroupName={setNewGroupName}
             setNewCoachName={setNewCoachName}
-            setSelectedDays={setSelectedDays}
-            setStartTime={setStartTime}
-            setEndTime={setEndTime}
+            setNewGrupoDias={setNewGrupoDias}
+            setNewGrupoHorario={setNewGrupoHorario}
+            setNewGrupoRangoEdad={setNewGrupoRangoEdad}
             presentCount={presentCount}
             filteredAlumnos={filteredAlumnos}
             handleNavigation={handleNavigation}
@@ -3519,16 +3531,6 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {vista === 'Habilidades' && (
-          <Suspense fallback={<LoadingFallback />}>
-            <Habilidades 
-              alumnos={alumnos}
-              setVista={setVista}
-              handleNavigation={handleNavigation}
-            />
-          </Suspense>
-        )}
-
         {vista === 'Ajustes' && (
           <div className="min-h-screen bg-ios-gray px-6 py-8 space-y-8 page-transition pb-24 relative max-w-[600px] mx-auto">
             <BackButton onClick={() => handleNavigation('Dashboard')} />
@@ -3859,6 +3861,19 @@ const App: React.FC = () => {
                         onChange={(e) => setNuevoGrupoNombre(e.target.value)}
                       />
                     </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-secondary uppercase tracking-widest ml-2">¿Qué edad tiene tu grupo?</label>
+                      <select
+                        className="w-full bg-ios-gray border-none rounded-2xl p-5 text-black placeholder:text-secondary/40 outline-none focus:ring-2 focus:ring-ios-blue/10 transition-all font-bold appearance-none relative"
+                        value={nuevoGrupoRangoEdad}
+                        onChange={(e) => setNuevoGrupoRangoEdad(e.target.value)}
+                        style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E\")", backgroundRepeat: "no-repeat", backgroundPosition: "right 1rem center", backgroundSize: "1.5em" }}
+                      >
+                        <option value="3 a 5 años">3 a 5 años</option>
+                        <option value="6 a 9 años">6 a 9 años</option>
+                        <option value="10 a 15 años">10 a 15 años</option>
+                      </select>
+                    </div>
                     <div className="grid grid-cols-2 gap-4">
                        <div className="space-y-1">
                           <label className="text-[10px] font-bold text-secondary uppercase tracking-widest ml-2">Días</label>
@@ -3879,6 +3894,14 @@ const App: React.FC = () => {
                           />
                        </div>
                     </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-secondary uppercase tracking-widest ml-2">Nombre de la Profesora</label>
+                      <input 
+                        readOnly
+                        value={user?.displayName || "Profesor"}
+                        className="w-full bg-black/5 text-black/50 border-none rounded-2xl p-5 outline-none font-bold cursor-not-allowed"
+                      />
+                    </div>
                   </div>
                   <Button 
                     onClick={async () => {
@@ -3888,8 +3911,10 @@ const App: React.FC = () => {
                           await addDocument(COLLECTIONS.GRUPOS, {
                             nombre: nuevoGrupoNombre,
                             entrenador: user?.displayName || "Profesor",
+                            entrenadorId: user?.uid || "",
                             dias: daysArray.length > 0 ? daysArray : ['Lu', 'Mi'],
-                            horario: nuevoGrupoHorario
+                            horario: nuevoGrupoHorario,
+                            rangoEdad: nuevoGrupoRangoEdad,
                           });
                           loadData();
                           setOnboardingStep(3);
@@ -3988,7 +4013,6 @@ const App: React.FC = () => {
                 { v: 'AsistenciaStats', i: 'analytics', l: 'Estadísticas', c: 'text-sky-600' },
                 { v: 'Planes', i: 'psychology', l: 'Manuales', c: 'text-violet-600' },
                 { v: 'Profesores', i: 'badge', l: 'Staff', c: 'text-rose-600' },
-                { v: 'Habilidades', i: 'trending_up', l: 'Habilidades', c: 'text-primary' },
               ].map(opt => (
                 <button
                   key={opt.v}

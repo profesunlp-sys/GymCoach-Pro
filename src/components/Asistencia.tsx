@@ -14,9 +14,9 @@ interface AsistenciaProps {
   setEditingGroup: (group: GrupoConfig | null) => void;
   setNewGroupName: (name: string) => void;
   setNewCoachName: (name: string) => void;
-  setSelectedDays: (days: string[]) => void;
-  setStartTime: (time: string) => void;
-  setEndTime: (time: string) => void;
+  setNewGrupoDias: (dias: string) => void;
+  setNewGrupoHorario: (horario: string) => void;
+  setNewGrupoRangoEdad: (rango: string) => void;
   presentCount: number;
   filteredAlumnos: Alumno[];
   handleNavigation: (vista: ViewMode) => void;
@@ -76,9 +76,9 @@ export const Asistencia: React.FC<AsistenciaProps> = ({
   setEditingGroup,
   setNewGroupName,
   setNewCoachName,
-  setSelectedDays,
-  setStartTime,
-  setEndTime,
+  setNewGrupoDias,
+  setNewGrupoHorario,
+  setNewGrupoRangoEdad,
   presentCount,
   filteredAlumnos,
   handleNavigation,
@@ -363,12 +363,9 @@ export const Asistencia: React.FC<AsistenciaProps> = ({
                   setEditingGroup(activeGroup);
                   setNewGroupName(activeGroup.nombre);
                   setNewCoachName(activeGroup.entrenador || "");
-                  setSelectedDays(activeGroup.dias || []);
-                  const times = activeGroup.horario.split(' - ');
-                  if (times.length === 2) {
-                    setStartTime(times[0]);
-                    setEndTime(times[1]);
-                  }
+                  setNewGrupoDias(Array.isArray(activeGroup.dias) ? activeGroup.dias.join(', ') : activeGroup.dias);
+                  setNewGrupoHorario(activeGroup.horario);
+                  setNewGrupoRangoEdad(activeGroup.rangoEdad || "3 a 5 años");
                   setVista('Horario');
                 }}
                 className="w-8 h-8 flex items-center justify-center rounded-full bg-black/5 border border-black/5 text-secondary hover:text-primary transition-all"

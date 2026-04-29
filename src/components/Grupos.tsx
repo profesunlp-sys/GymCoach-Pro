@@ -13,13 +13,12 @@ interface GruposProps {
   setNewGroupName: (name: string) => void;
   newCoachName: string;
   setNewCoachName: (name: string) => void;
-  selectedDays: string[];
-  setSelectedDays: React.Dispatch<React.SetStateAction<string[]>>;
-  startTime: string;
-  setStartTime: (time: string) => void;
-  endTime: string;
-  setEndTime: (time: string) => void;
-  timeIntervals: string[];
+  newGrupoDias: string;
+  setNewGrupoDias: (dias: string) => void;
+  newGrupoHorario: string;
+  setNewGrupoHorario: (horario: string) => void;
+  newGrupoRangoEdad: string;
+  setNewGrupoRangoEdad: (rango: string) => void;
   handleSaveGroup: () => void;
   grupos: GrupoConfig[];
   alumnos: Alumno[];
@@ -41,13 +40,12 @@ export const Grupos: React.FC<GruposProps> = ({
   setNewGroupName,
   newCoachName,
   setNewCoachName,
-  selectedDays,
-  setSelectedDays,
-  startTime,
-  setStartTime,
-  endTime,
-  setEndTime,
-  timeIntervals,
+  newGrupoDias,
+  setNewGrupoDias,
+  newGrupoHorario,
+  setNewGrupoHorario,
+  newGrupoRangoEdad,
+  setNewGrupoRangoEdad,
   handleSaveGroup,
   grupos,
   alumnos,
@@ -86,7 +84,9 @@ export const Grupos: React.FC<GruposProps> = ({
                 setEditingGroup(null);
                 setNewGroupName("");
                 setNewCoachName("");
-                setSelectedDays([]);
+                setNewGrupoDias("");
+                setNewGrupoHorario("");
+                setNewGrupoRangoEdad("3 a 5 años");
               }}
               className="text-[10px] text-primary uppercase font-bold tracking-widest transition-colors"
             >
@@ -96,107 +96,55 @@ export const Grupos: React.FC<GruposProps> = ({
         </div>
         <div className="bg-white rounded-[2.5rem] p-8 shadow-ios border border-black/5 space-y-8">
           <div className="space-y-5">
-            <div className="flex items-center gap-3 px-1">
-              <span className="material-icons-outlined text-ios-blue text-lg">calendar_today</span>
-              <h4 className="text-[10px] uppercase font-bold text-secondary tracking-widest">Días de Entrenamiento</h4>
+            <div className="space-y-1">
+              <label className="text-[10px] uppercase font-bold text-secondary ml-1 tracking-widest">Nombre del Grupo</label>
+              <input 
+                placeholder="Ej: Nivel Inicial" 
+                className="w-full bg-ios-gray border-none rounded-2xl p-5 text-black placeholder:text-secondary/40 outline-none focus:ring-2 focus:ring-ios-blue/10 transition-all font-bold"
+                value={newGroupName}
+                onChange={(e) => setNewGroupName(e.target.value)}
+              />
             </div>
-            <div className="flex justify-between items-center px-1 gap-2 overflow-x-auto no-scrollbar pb-1">
-              {[
-                { id: 'L-0', label: 'Lun' },
-                { id: 'M-1', label: 'Mar' },
-                { id: 'M-2', label: 'Mié' },
-                { id: 'J-3', label: 'Jue' },
-                { id: 'V-4', label: 'Vie' },
-                { id: 'S-5', label: 'Sáb' },
-                { id: 'D-6', label: 'Dom' }
-              ].map((day) => {
-                const isSelected = selectedDays.includes(day.id);
-                return (
-                  <div key={day.id} className="flex flex-col items-center gap-2 shrink-0">
-                    <motion.button 
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => setSelectedDays(prev => prev.includes(day.id) ? prev.filter(d => d !== day.id) : [...prev, day.id])}
-                      className={`w-11 h-11 rounded-full flex items-center justify-center font-bold text-xs transition-all ${
-                        isSelected 
-                          ? 'bg-ios-blue text-white shadow-lg scale-110' 
-                          : 'bg-ios-gray text-secondary'
-                      }`}
-                    >
-                      {day.id.split('-')[0]}
-                    </motion.button>
-                  </div>
-                );
-              })}
+            <div className="space-y-1">
+              <label className="text-[10px] uppercase font-bold text-secondary ml-1 tracking-widest">¿Qué edad tiene tu grupo?</label>
+              <select
+                className="w-full bg-ios-gray border-none rounded-2xl p-5 text-black placeholder:text-secondary/40 outline-none focus:ring-2 focus:ring-ios-blue/10 transition-all font-bold appearance-none relative"
+                value={newGrupoRangoEdad}
+                onChange={(e) => setNewGrupoRangoEdad(e.target.value)}
+                style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E\")", backgroundRepeat: "no-repeat", backgroundPosition: "right 1rem center", backgroundSize: "1.5em" }}
+              >
+                <option value="3 a 5 años">3 a 5 años</option>
+                <option value="6 a 9 años">6 a 9 años</option>
+                <option value="10 a 15 años">10 a 15 años</option>
+              </select>
             </div>
-          </div>
-
-          <div className="space-y-6">
-            <div className="space-y-4">
-              <div className="flex items-center gap-3 px-1">
-                <span className="material-icons-outlined text-ios-blue text-lg">edit_note</span>
-                <h4 className="text-[10px] uppercase font-bold text-secondary tracking-widest">Información del Grupo</h4>
-              </div>
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-[10px] uppercase font-bold text-secondary ml-1 tracking-widest">Nombre del Grupo</label>
+            <div className="grid grid-cols-2 gap-4">
+               <div className="space-y-1">
+                  <label className="text-[10px] uppercase font-bold text-secondary ml-1 tracking-widest">Días</label>
                   <input 
-                    type="text"
-                    placeholder="Ej. Avanzados" 
-                    value={newGroupName} 
-                    onChange={(e) => setNewGroupName(e.target.value)}
-                    className="w-full bg-ios-gray rounded-xl px-4 py-4 text-sm text-black outline-none border border-transparent focus:border-primary/20 transition-all font-medium"
-                   />
-                </div>
-                
-                <EditableDropdown 
-                  label="Profesor"
-                  value={newCoachName}
-                  onChange={setNewCoachName}
-                  options={profesoresList}
-                  onAdd={handleAddProfesor}
-                  onEdit={handleUpdateProfesor}
-                  onDelete={(id) => {
-                    const prof = profesoresList.find(p => p.id === id);
-                    if (prof) handleDeleteProfesor(id, prof.nombre);
-                  }}
-                  placeholder="Seleccionar profesor..."
-                />
-              </div>
+                    placeholder="Ej: Lu, Mi, Vi" 
+                    className="w-full bg-ios-gray border-none rounded-2xl p-5 text-black placeholder:text-secondary/40 outline-none focus:ring-2 focus:ring-ios-blue/10 transition-all text-xs font-bold"
+                    value={newGrupoDias}
+                    onChange={(e) => setNewGrupoDias(e.target.value)}
+                  />
+               </div>
+               <div className="space-y-1">
+                  <label className="text-[10px] uppercase font-bold text-secondary ml-1 tracking-widest">Horario</label>
+                  <input 
+                    placeholder="Ej: 17:00" 
+                    className="w-full bg-ios-gray border-none rounded-2xl p-5 text-black placeholder:text-secondary/40 outline-none focus:ring-2 focus:ring-ios-blue/10 transition-all text-xs font-bold font-mono"
+                    value={newGrupoHorario}
+                    onChange={(e) => setNewGrupoHorario(e.target.value)}
+                  />
+               </div>
             </div>
-            
-            <div className="space-y-4">
-              <div className="flex items-center gap-3 px-1">
-                <span className="material-icons-outlined text-ios-blue text-lg">watch_later</span>
-                <h4 className="text-[10px] uppercase font-bold text-secondary tracking-widest">Franja Horaria</h4>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-[8px] uppercase font-bold text-secondary ml-1 tracking-widest">Hora Inicio</label>
-                  <div className="relative">
-                    <select 
-                      value={startTime} 
-                      onChange={(e) => setStartTime(e.target.value)} 
-                      className="w-full bg-ios-gray rounded-xl px-4 py-4 text-sm text-black appearance-none border border-transparent focus:border-primary/20 outline-none transition-all font-medium"
-                    >
-                      {timeIntervals.map(t => <option key={t} value={t}>{t}</option>)}
-                    </select>
-                    <span className="material-icons-outlined absolute right-4 top-1/2 -translate-y-1/2 text-secondary pointer-events-none text-sm">expand_more</span>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[8px] uppercase font-bold text-secondary ml-1 tracking-widest">Hora Fin</label>
-                  <div className="relative">
-                    <select 
-                      value={endTime} 
-                      onChange={(e) => setEndTime(e.target.value)} 
-                      className="w-full bg-ios-gray rounded-xl px-4 py-4 text-sm text-black appearance-none border border-transparent focus:border-primary/20 outline-none transition-all font-medium"
-                    >
-                      {timeIntervals.map(t => <option key={t} value={t}>{t}</option>)}
-                    </select>
-                    <span className="material-icons-outlined absolute right-4 top-1/2 -translate-y-1/2 text-secondary pointer-events-none text-sm">expand_more</span>
-                  </div>
-                </div>
-              </div>
+            <div className="space-y-1">
+              <label className="text-[10px] uppercase font-bold text-secondary ml-1 tracking-widest">Nombre de la Profesora</label>
+              <input 
+                readOnly
+                value={newCoachName || "Profesor"}
+                className="w-full bg-black/5 text-black/50 border-none rounded-2xl p-5 outline-none font-bold cursor-not-allowed"
+              />
             </div>
           </div>
 
@@ -206,7 +154,7 @@ export const Grupos: React.FC<GruposProps> = ({
             className="w-full py-5 rounded-[1.2rem] bg-ios-blue text-white font-bold shadow-lg flex items-center justify-center gap-2 text-sm"
           >
             <span className="material-icons-outlined text-lg">{editingGroup ? 'save' : 'add_circle'}</span>
-            <span>{editingGroup ? 'Actualizar Configuración' : 'Crear Nuevo Grupo'}</span>
+            <span>{editingGroup ? 'Guardar Cambios' : 'Crear y Continuar'}</span>
           </motion.button>
 
           {/* Selección de Alumnos (Base de Datos Global) */}
@@ -302,8 +250,16 @@ export const Grupos: React.FC<GruposProps> = ({
                 </div>
                 <div className="flex flex-col gap-1">
                   <div className="flex items-center gap-1.5 text-secondary">
+                    <span className="material-icons-outlined text-[14px]">child_care</span>
+                    <span className="text-xs font-medium">Rango de edad: {g.rangoEdad || "No especificado"}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-secondary">
+                    <span className="material-icons-outlined text-[14px]">calendar_today</span>
+                    <span className="text-xs font-medium">Días: {Array.isArray(g.dias) ? g.dias.join(', ') : g.dias}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-secondary">
                     <span className="material-icons-outlined text-[14px]">schedule</span>
-                    <span className="text-xs font-medium italic">{g.horario}</span>
+                    <span className="text-xs font-medium">Horario: {g.horario}</span>
                   </div>
                   <div className="flex items-center gap-1.5 text-secondary">
                     <span className="material-icons-outlined text-[14px]">groups</span>
@@ -314,7 +270,7 @@ export const Grupos: React.FC<GruposProps> = ({
                   {g.entrenador && (
                     <div className="flex items-center gap-1.5 text-ios-blue mt-1">
                       <span className="material-icons-outlined text-[14px]">person</span>
-                      <span className="text-[10px] font-bold uppercase tracking-wider">Prof: {g.entrenador}</span>
+                      <span className="text-[10px] font-bold uppercase tracking-wider">Profesora: {g.entrenador}</span>
                     </div>
                   )}
                 </div>
@@ -326,12 +282,9 @@ export const Grupos: React.FC<GruposProps> = ({
                     setEditingGroup(g);
                     setNewGroupName(g.nombre);
                     setNewCoachName(g.entrenador || "");
-                    setSelectedDays(g.dias || []);
-                    const times = g.horario.split(' - ');
-                    if (times.length === 2) {
-                      setStartTime(times[0]);
-                      setEndTime(times[1]);
-                    }
+                    setNewGrupoDias(Array.isArray(g.dias) ? g.dias.join(', ') : g.dias);
+                    setNewGrupoHorario(g.horario);
+                    setNewGrupoRangoEdad(g.rangoEdad || "3 a 5 años");
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
                   className="w-10 h-10 rounded-full bg-ios-gray flex items-center justify-center text-secondary active:text-ios-blue transition-colors"
