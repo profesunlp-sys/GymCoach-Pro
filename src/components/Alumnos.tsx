@@ -627,7 +627,7 @@ const Alumnos: React.FC<AlumnosProps> = ({
                 <button 
                   key={tab}
                   onClick={() => setActiveTab(tab as any)}
-                  className={`flex-1 px-1 py-3 text-[9px] font-bold uppercase tracking-widest text-center transition-all ${activeTab === tab ? 'text-primary border-b-2 border-primary' : 'text-secondary'}`}
+                  className={`flex-1 py-3 text-[9px] font-bold uppercase tracking-widest text-center transition-all ${activeTab === tab ? 'text-primary border-b-2 border-primary' : 'text-secondary'}`}
                 >
                   {tab}
                 </button>
