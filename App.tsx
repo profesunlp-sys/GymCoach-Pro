@@ -26,6 +26,7 @@ const Clases = lazy(() => import('./src/components/Clases').then(module => ({ de
 const Alumnos = lazy(() => import('./src/components/Alumnos'));
 const BulkPaymentImport = lazy(() => import('./src/components/BulkPaymentImport').then(module => ({ default: module.BulkPaymentImport })));
 const ControlPagos = lazy(() => import('./src/components/ControlPagos').then(module => ({ default: module.ControlPagos })));
+const CoordinatorDashboard = lazy(() => import('./src/components/CoordinatorDashboard').then(module => ({ default: module.CoordinatorDashboard })));
 
 const LoadingFallback = () => (
   <div className="flex flex-col items-center justify-center p-20 space-y-6">
