@@ -3531,6 +3531,16 @@ const App: React.FC = () => {
           </div>
         )}
 
+        {vista === 'Habilidades' && (
+          <Suspense fallback={<LoadingFallback />}>
+            <Habilidades 
+              alumnos={alumnos}
+              setVista={setVista}
+              handleNavigation={handleNavigation}
+            />
+          </Suspense>
+        )}
+
         {vista === 'Ajustes' && (
           <div className="min-h-screen bg-ios-gray px-6 py-8 space-y-8 page-transition pb-24 relative max-w-[600px] mx-auto">
             <BackButton onClick={() => handleNavigation('Dashboard')} />
@@ -4013,6 +4023,7 @@ const App: React.FC = () => {
                 { v: 'AsistenciaStats', i: 'analytics', l: 'Estadísticas', c: 'text-sky-600' },
                 { v: 'Planes', i: 'psychology', l: 'Manuales', c: 'text-violet-600' },
                 { v: 'Profesores', i: 'badge', l: 'Staff', c: 'text-rose-600' },
+                { v: 'Habilidades', i: 'trending_up', l: 'Habilidades', c: 'text-purple-600' },
               ].map(opt => (
                 <button
                   key={opt.v}
