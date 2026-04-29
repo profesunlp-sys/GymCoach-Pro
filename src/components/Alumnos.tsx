@@ -582,7 +582,7 @@ const Alumnos: React.FC<AlumnosProps> = ({
                   setIsEditingStudent(true);
                   setIsAddingAlumno(true);
                 }}
-                className="w-8 h-8 rounded-full bg-ios-gray flex items-center justify-center text-secondary active:scale-90 transition-all z-20"
+                className="w-8 h-8 rounded-full bg-ios-gray flex items-center justify-center text-secondary active:scale-90 transition-all z-50"
               >
                 <span className="material-icons-outlined text-sm">edit</span>
               </motion.button>

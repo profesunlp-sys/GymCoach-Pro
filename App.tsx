@@ -1054,9 +1054,7 @@ const App: React.FC = () => {
       // Also include alumnos that seem to belong to this user (userId match) as fallback
       const userAlumnos = (a || []).filter(alumno => 
           coachGruposNames.includes(alumno.grupo || '') || 
-          !alumno.grupo || 
-          alumno.grupo === 'Sin Grupo' ||
-          (alumno.userId && alumno.userId === currentUid)
+          (alumno.userId === currentUid)
       );
       
       setAlumnos(userAlumnos);
