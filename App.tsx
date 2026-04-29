@@ -1043,12 +1043,17 @@ const App: React.FC = () => {
       const userProfesoresIds = p.map(prof => prof.id);
       
       // Find all groups belonging to the user
-      const coachGruposNames = g.filter(grupo => 
-          grupo.entrenadorId === currentUid || 
+      const coachGrupos = g.filter(grupo => {
+          const isMatch = grupo.entrenadorId === currentUid || 
           grupo.entrenador === user?.displayName ||
           (grupo.entrenadorId && userProfesoresIds.includes(grupo.entrenadorId)) ||
-          (grupo as any).userId === currentUid
-      ).map(grupo => grupo.nombre);
+          (grupo as any).userId === currentUid;
+          if (!isMatch) {
+              console.log("Filtering out group:", grupo.nombre, grupo.entrenadorId, grupo.entrenador, (grupo as any).userId);
+          }
+          return isMatch;
+      });
+      const coachGruposNames = coachGrupos.map(grupo => grupo.nombre);
       
       // Filter alumnos that belong to those groups, OR alumnos that have no group yet
       // Also include alumnos that seem to belong to this user (userId match) as fallback
@@ -1058,9 +1063,9 @@ const App: React.FC = () => {
       );
       
       setAlumnos(userAlumnos);
-      setClases(c.sort((x, y) => new Date(y.fecha).getTime() - new Date(x.fecha).getTime()));
-      setGrupos(g);
-      setAsistencias(asis);
+      setClases(c.filter(clase => coachGruposNames.includes(clase.grupo || '')).sort((x, y) => new Date(y.fecha).getTime() - new Date(x.fecha).getTime()));
+      setGrupos(coachGrupos);
+      setAsistencias(asis.filter(asi => coachGruposNames.includes(asi.grupo || '')));
       
       // Filter out global or other users' professors so that it is empty on first login
       const filteredProfesores = (p || []).filter(prof => prof.userId === currentUid);
