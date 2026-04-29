@@ -213,9 +213,9 @@ export const Habilidades: React.FC<HabilidadesProps> = ({
              <motion.div 
               initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="relative w-full max-w-[500px] bg-ios-gray sm:rounded-[2.5rem] rounded-t-[2.5rem] p-6 shadow-2xl border border-black/5 z-10 max-h-[90vh] overflow-y-auto"
+              className="relative w-full max-w-[500px] bg-ios-gray sm:rounded-[2.5rem] rounded-t-[2.5rem] p-6 shadow-2xl border border-black/5 z-10 max-h-[85vh] overflow-y-auto mb-20"
              >
-                <div className="flex justify-between items-center mb-6">
+                <div className="flex justify-between items-center mb-4">
                   <h3 className="text-xl font-bold text-black tracking-tight">{editingId ? 'Editar Habilidad' : 'Nueva Habilidad'}</h3>
                   <button onClick={handleCloseModal} className="w-8 h-8 flex items-center justify-center rounded-full bg-black/5 text-secondary hover:text-black">
                     <span className="material-icons-outlined text-sm">close</span>
@@ -228,17 +228,17 @@ export const Habilidades: React.FC<HabilidadesProps> = ({
                     <input 
                       type="text" 
                       placeholder="Ej: Doble giro"
-                      className="w-full bg-white border-none rounded-2xl p-4 text-black outline-none focus:ring-2 focus:ring-ios-blue/10 transition-all font-bold"
+                      className="w-full bg-white border-none rounded-xl p-3 text-sm text-black outline-none focus:ring-2 focus:ring-ios-blue/10 transition-all font-bold"
                       value={formData.nombre}
                       onChange={(e) => setFormData({...formData, nombre: e.target.value})}
                     />
                   </div>
                   
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <label className="text-[10px] uppercase font-bold text-secondary ml-1 tracking-widest">Aparato</label>
                       <select 
-                        className="w-full bg-white border-none rounded-2xl p-4 text-black outline-none font-bold appearance-none"
+                        className="w-full bg-white border-none rounded-xl p-3 text-sm text-black outline-none font-bold appearance-none"
                         value={formData.aparato}
                         onChange={(e) => setFormData({...formData, aparato: e.target.value})}
                       >
@@ -252,7 +252,7 @@ export const Habilidades: React.FC<HabilidadesProps> = ({
                     <div className="space-y-1">
                       <label className="text-[10px] uppercase font-bold text-secondary ml-1 tracking-widest">Nivel</label>
                       <select 
-                        className="w-full bg-white border-none rounded-2xl p-4 text-black outline-none font-bold appearance-none"
+                        className="w-full bg-white border-none rounded-xl p-3 text-sm text-black outline-none font-bold appearance-none"
                         value={formData.nivel}
                         onChange={(e) => setFormData({...formData, nivel: e.target.value})}
                       >
@@ -267,13 +267,13 @@ export const Habilidades: React.FC<HabilidadesProps> = ({
                     <label className="text-[10px] uppercase font-bold text-secondary ml-1 tracking-widest">Descripción (Opcional)</label>
                     <textarea 
                       placeholder="Agrega una descripción..."
-                      className="w-full bg-white border-none rounded-2xl p-4 text-black outline-none focus:ring-2 focus:ring-ios-blue/10 transition-all text-sm resize-none h-24"
+                      className="w-full bg-white border-none rounded-xl p-3 text-sm text-black outline-none focus:ring-2 focus:ring-ios-blue/10 transition-all text-sm resize-none h-20"
                       value={formData.descripcion}
                       onChange={(e) => setFormData({...formData, descripcion: e.target.value})}
                     ></textarea>
                   </div>
 
-                  <Button onClick={handleSave} className="w-full mt-4" disabled={!formData.nombre.trim()}>
+                  <Button onClick={handleSave} className="w-full !py-3 !text-sm !rounded-full" disabled={!formData.nombre.trim()}>
                     Guardar Habilidad
                   </Button>
                 </div>
