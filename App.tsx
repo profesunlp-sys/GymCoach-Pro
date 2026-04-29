@@ -1257,7 +1257,8 @@ const App: React.FC = () => {
         entrenadorId: coach?.id || user?.uid || '', // fallback to current user uid
         dias: newGrupoDias.split(',').map(d => d.trim()).filter(d => d),
         horario: newGrupoHorario,
-        rangoEdad: newGrupoRangoEdad || "3 a 5 años"
+        rangoEdad: newGrupoRangoEdad || "3 a 5 años",
+        userId: user?.uid
       };
 
       if (editingGroup && editingGroup.id) {
@@ -3994,6 +3995,7 @@ const App: React.FC = () => {
                           dias: daysArray.length > 0 ? daysArray : ['Lu', 'Mi'],
                           horario: nuevoGrupoHorario,
                           rangoEdad: nuevoGrupoRangoEdad,
+                          userId: user?.uid
                         });
                         loadData();
                         setOnboardingStep(3);

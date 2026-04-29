@@ -67,7 +67,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
 }) => {
   const [selectedProfesorDetail, setSelectedProfesorDetail] = useState<string | null>(null);
   
-  const coachGrupos = grupos.filter(g => g.entrenadorId === user?.uid || g.entrenador === user?.displayName);
+  const currentUid = user?.uid;
+  const userProfesoresIds = profesoresList.map(p => p.id);
+  const coachGrupos = grupos.filter(g => 
+    g.entrenadorId === currentUid || 
+    g.entrenador === user?.displayName ||
+    (g.entrenadorId && userProfesoresIds.includes(g.entrenadorId)) ||
+    (g as any).userId === currentUid
+  );
   const [selectedGroupInternal, setSelectedGroupInternal] = useState<GrupoConfig | null>(coachGrupos.length === 1 ? coachGrupos[0] : null);
 
   const isToday = (dateStr: string) => {
@@ -349,7 +356,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         className="text-primary text-sm font-bold flex items-center gap-2 active:scale-95 transition-all"
                       >
                         <span className="material-icons-outlined">add_circle_outline</span>
-                        Crear nuevo grupo
+                        Agregar nuevo día, horario y grupo
                       </button>
                     </div>
                   )}
