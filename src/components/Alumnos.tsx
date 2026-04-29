@@ -531,19 +531,18 @@ const Alumnos: React.FC<AlumnosProps> = ({
   if (vista === 'AlumnoDetalle' && selectedAlumno) {
     return (
       <div className="min-h-screen bg-ios-gray page-transition pb-24 focus-mode-parent">
-        {/* Header Hero */}
-        <div className="relative bg-white px-6 pt-12 pb-8 shadow-sm border-b border-black/5">
+        <div className="relative bg-white px-6 pt-10 pb-4 shadow-sm border-b border-black/5">
           <BackButton onClick={() => setVista('Alumnos')} />
           
-          <div className="flex items-start gap-6 mt-10">
-            <div className="w-24 h-24 rounded-full bg-ios-gray border-4 border-white shadow-lg flex items-center justify-center relative overflow-hidden shrink-0">
-               <span className="text-4xl font-bold text-primary">{selectedAlumno.nombre.charAt(0)}</span>
+          <div className="flex items-start gap-4 mt-8">
+            <div className="w-20 h-20 rounded-full bg-ios-gray border-4 border-white shadow-lg flex items-center justify-center relative overflow-hidden shrink-0">
+               <span className="text-3xl font-bold text-primary">{selectedAlumno.nombre.charAt(0)}</span>
             </div>
-            <div className="flex-1 flex justify-between items-start pt-2">
-              <div className="space-y-1">
-                <h2 className="text-3xl font-bold text-black tracking-tight leading-none truncate max-w-[200px]">{selectedAlumno.nombre}</h2>
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-1 group cursor-pointer bg-ios-gray px-2 py-1 rounded-lg" onClick={() => {
+            <div className="flex-1 flex justify-between items-start pt-1">
+              <div className="space-y-0.5">
+                <h2 className="text-2xl font-bold text-black tracking-tight leading-none truncate max-w-[180px]">{selectedAlumno.nombre}</h2>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <div className="flex items-center gap-1 group cursor-pointer bg-ios-gray px-2 py-0.5 rounded-md text-[10px]" onClick={() => {
                     const groupNames = grupos.map(g => g.nombre);
                     const newGroup = prompt(`Cambiar grupo de ${selectedAlumno.nombre}.\nGrupos disponibles: ${groupNames.join(', ')}`, selectedAlumno.grupo);
                     if (newGroup && newGroup !== selectedAlumno.grupo && groupNames.includes(newGroup)) {
@@ -553,10 +552,10 @@ const Alumnos: React.FC<AlumnosProps> = ({
                       alert("El grupo ingresado no existe.");
                     }
                   }}>
-                    <span className="text-xs font-bold text-primary hover:underline">{selectedAlumno.grupo || 'Sin Grupo'}</span>
-                    <span className="material-icons-outlined text-[12px] text-primary/60">swap_horiz</span>
+                    <span className="font-bold text-primary hover:underline">{selectedAlumno.grupo || 'Sin Grupo'}</span>
+                    <span className="material-icons-outlined text-[10px] text-primary/60">swap_horiz</span>
                   </div>
-                  <div className="group cursor-pointer bg-ios-gray px-2 py-1 rounded-lg" onClick={() => {
+                  <div className="group cursor-pointer bg-ios-gray px-2 py-0.5 rounded-md text-[10px]" onClick={() => {
                     const levelNames = niveles.map(n => n.nombre);
                     const newLevel = prompt(`Cambiar nivel de ${selectedAlumno.nombre}.\nNiveles disponibles: ${levelNames.join(', ')}`, selectedAlumno.nivel);
                     if (newLevel && newLevel !== selectedAlumno.nivel && levelNames.includes(newLevel)) {
@@ -566,8 +565,8 @@ const Alumnos: React.FC<AlumnosProps> = ({
                         alert("El nivel ingresado no existe.");
                     }
                   }}>
-                    <span className="text-xs font-bold text-secondary hover:underline">{selectedAlumno.nivel || 'Sin Nivel'}</span>
-                    <span className="material-icons-outlined text-[12px] text-secondary/60">swap_horiz</span>
+                    <span className="font-bold text-secondary hover:underline">{selectedAlumno.nivel || 'Sin Nivel'}</span>
+                    <span className="material-icons-outlined text-[10px] text-secondary/60">swap_horiz</span>
                   </div>
                 </div>
               </div>
@@ -577,54 +576,53 @@ const Alumnos: React.FC<AlumnosProps> = ({
                   setStudentForm(selectedAlumno);
                   setIsEditingStudent(true);
                   setIsAddingAlumno(true);
-                  console.log("Edit button clicked", selectedAlumno);                
                 }}
-                className="w-10 h-10 rounded-full bg-ios-gray flex items-center justify-center text-secondary active:scale-90 transition-all z-20"
+                className="w-8 h-8 rounded-full bg-ios-gray flex items-center justify-center text-secondary active:scale-90 transition-all z-20"
               >
-                <span className="material-icons-outlined text-lg">edit</span>
+                <span className="material-icons-outlined text-sm">edit</span>
               </motion.button>
             </div>
           </div>
         </div>
 
-        <div className="px-6 space-y-6 pt-6 pb-12">
+        <div className="px-6 space-y-4 pt-4 pb-12">
           {/* Quick Stats */}
-          <div className="grid grid-cols-3 gap-3">
-            <div className="bg-white rounded-2xl p-4 shadow-sm border border-black/5 text-center space-y-1">
+          <div className="grid grid-cols-3 gap-2">
+            <div className="bg-white rounded-xl p-3 shadow-sm border border-black/5 text-center space-y-0.5">
               <span className="text-[8px] font-bold uppercase tracking-widest text-secondary block">Asistencia</span>
-              <span className="text-xl font-bold text-black">85%</span>
+              <span className="text-lg font-bold text-black">85%</span>
             </div>
-            <div className="bg-white rounded-2xl p-4 shadow-sm border border-black/5 text-center space-y-1">
+            <div className="bg-white rounded-xl p-3 shadow-sm border border-black/5 text-center space-y-0.5">
               <span className="text-[8px] font-bold uppercase tracking-widest text-secondary block">Skills</span>
-              <span className="text-xl font-bold text-ios-green">12</span>
+              <span className="text-lg font-bold text-ios-green">12</span>
             </div>
-            <div className="bg-white rounded-2xl p-4 shadow-sm border border-black/5 text-center space-y-1">
+            <div className="bg-white rounded-xl p-3 shadow-sm border border-black/5 text-center space-y-0.5">
               <span className="text-[8px] font-bold uppercase tracking-widest text-secondary block">Nivel</span>
-              <span className="text-xl font-bold text-ios-orange">{selectedAlumno.nivel?.split(' ')[1] || '1'}</span>
+              <span className="text-lg font-bold text-ios-orange">{selectedAlumno.nivel?.split(' ')[1] || '1'}</span>
             </div>
           </div>
 
           {/* Alertas Médicas */}
           {selectedAlumno.alertas && selectedAlumno.alertas.length > 0 && selectedAlumno.alertas[0] !== '' && (
-            <div className="bg-ios-red/10 border border-ios-red/10 rounded-3xl p-6 flex items-start gap-4 shadow-sm">
-              <div className="w-10 h-10 rounded-full bg-ios-red/20 flex items-center justify-center border border-ios-red/10 shrink-0">
-                <span className="material-icons-outlined text-ios-red">warning</span>
+            <div className="bg-ios-red/10 border border-ios-red/10 rounded-2xl p-4 flex items-start gap-3 shadow-sm">
+              <div className="w-8 h-8 rounded-full bg-ios-red/20 flex items-center justify-center border border-ios-red/10 shrink-0">
+                <span className="material-icons-outlined text-sm text-ios-red">warning</span>
               </div>
               <div>
-                <h4 className="text-[10px] font-bold uppercase tracking-widest text-ios-red mb-1">Observación Médica</h4>
-                <p className="text-sm font-medium text-ios-red/80 leading-relaxed italic">"{selectedAlumno.alertas[0]}"</p>
+                <h4 className="text-[9px] font-bold uppercase tracking-widest text-ios-red mb-0.5">Observación Médica</h4>
+                <p className="text-xs font-medium text-ios-red/80 leading-relaxed italic">"{selectedAlumno.alertas[0]}"</p>
               </div>
             </div>
           )}
 
           {/* Tabs Section */}
-          <div className="space-y-6">
-            <div className="flex border-b border-black/5 overflow-x-auto no-scrollbar">
-              {['Progreso', 'Asistencia', 'Bio', 'Contacto', 'Pagos'].map((tab) => (
+          <div className="space-y-4">
+            <div className="flex border-b border-black/5 w-full">
+              {['Progreso', 'Asistencia', 'Contacto', 'Pagos', 'Bio'].map((tab) => (
                 <button 
                   key={tab}
                   onClick={() => setActiveTab(tab as any)}
-                  className={`px-4 py-3 text-[10px] font-bold uppercase tracking-widest whitespace-nowrap transition-all ${activeTab === tab ? 'text-primary border-b-2 border-primary' : 'text-secondary'}`}
+                  className={`flex-1 px-1 py-3 text-[9px] font-bold uppercase tracking-widest text-center transition-all ${activeTab === tab ? 'text-primary border-b-2 border-primary' : 'text-secondary'}`}
                 >
                   {tab}
                 </button>

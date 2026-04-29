@@ -762,7 +762,7 @@ export const Clases: React.FC<ClasesProps> = ({
         </AnimatePresence>
 
         {/* Global Footer Navigation Button */}
-        <div className="fixed bottom-20 left-0 right-0 px-6 pb-6 pt-4 bg-gradient-to-t from-ios-gray via-ios-gray/95 to-transparent z-40">
+        <div className="fixed bottom-28 left-0 right-0 px-6 pb-6 pt-4 bg-gradient-to-t from-ios-gray via-ios-gray/95 to-transparent z-40">
           <Button 
             onClick={() => {
               if (registrationStep === 1 && !claseGrupo) {
