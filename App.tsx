@@ -253,7 +253,7 @@ const App: React.FC = () => {
   const [vista, setVista] = useState<ViewMode>('Dashboard');
   const [showMoreOptions, setShowMoreOptions] = useState(false);
   const [registrationStep, setRegistrationStep] = useState(1);
-  const [alumnosFilterMode, setAlumnosFilterMode] = useState<'all' | 'alerts'>('all');
+  const [alumnosFilterMode, setAlumnosFilterMode] = useState<'all' | 'alerts' | 'myGroups'>('all');
   const [alumnos, setAlumnos] = useState<Alumno[]>([]);
   const [clases, setClases] = useState<Clase[]>([]);
   const [grupos, setGrupos] = useState<GrupoConfig[]>([]);
@@ -1052,7 +1052,7 @@ const App: React.FC = () => {
       // Filter alumnos that belong to those groups, OR alumnos that have no group yet
       // Also include alumnos that seem to belong to this user (userId match) as fallback
       const userAlumnos = (a || []).filter(alumno => 
-          coachGruposNames.includes(alumno.grupo) || 
+          coachGruposNames.includes(alumno.grupo || '') || 
           !alumno.grupo || 
           alumno.grupo === 'Sin Grupo' ||
           (alumno.userId && alumno.userId === currentUid)
@@ -3360,6 +3360,8 @@ const App: React.FC = () => {
             }}
             handleUpdateBiometrics={handleUpdateBiometrics}
             sendPaymentReminder={sendPaymentReminder}
+            currentCoachGroupsNames={grupos.filter(g => g.entrenador === user?.displayName).map(g => g.nombre)}
+            currentUserName={user?.displayName || ''}
           />
         )}
 
@@ -4165,7 +4167,7 @@ const App: React.FC = () => {
                   setShowMoreOptions(!showMoreOptions);
                   return;
                 }
-                if (item.v === 'Alumnos') setAlumnosFilterMode('all');
+                if (item.v === 'Alumnos') setAlumnosFilterMode('myGroups');
                 handleNavigation(item.v as ViewMode);
                 setShowMoreOptions(false);
               }} 

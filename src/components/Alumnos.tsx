@@ -20,8 +20,10 @@ interface AlumnosProps {
   setSelectedAgeFilter: (a: string) => void;
   selectedPhysicalFilter: string;
   setSelectedPhysicalFilter: (p: string) => void;
-  alumnosFilterMode: 'all' | 'alerts';
-  setAlumnosFilterMode: (m: 'all' | 'alerts') => void;
+  alumnosFilterMode: 'all' | 'alerts' | 'myGroups';
+  setAlumnosFilterMode: (m: 'all' | 'alerts' | 'myGroups') => void;
+  currentCoachGroupsNames?: string[];
+  currentUserName?: string;
   isAddingAlumno: boolean;
   setIsAddingAlumno: (b: boolean) => void;
   studentForm: Partial<Alumno>;
@@ -152,6 +154,8 @@ const Alumnos: React.FC<AlumnosProps> = ({
   handleDeleteDisciplina,
   handleDeduplicateStudents,
   sendPaymentReminder,
+  currentCoachGroupsNames,
+  currentUserName,
 }) => {
   const [activeTab, setActiveTab] = useState<'Progreso' | 'Asistencia' | 'Bio' | 'Contacto' | 'Pagos'>('Progreso');
   const [isEditingStudent, setIsEditingStudent] = useState(false);
@@ -196,6 +200,7 @@ const Alumnos: React.FC<AlumnosProps> = ({
     if (query === "") {
       // Filtros estándar cuando no hay búsqueda
       if (alumnosFilterMode === 'alerts' && !(a.alertas && a.alertas.length > 0 && a.alertas[0] !== '')) return false;
+      if (alumnosFilterMode === 'myGroups' && currentCoachGroupsNames && !currentCoachGroupsNames.includes(a.grupo || '')) return false;
       if (selectedGrupoFilter !== 'Todos' && a.grupo !== selectedGrupoFilter) return false;
       if (selectedNivelFilter !== 'Todos' && a.nivel !== selectedNivelFilter) return false;
       if (selectedAgeFilter !== 'Todos' && calculateAgeGroup(a.fechaNacimiento) !== selectedAgeFilter) return false;
