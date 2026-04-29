@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { GrupoConfig, ViewMode, Alumno } from '../../types';
 import { EditableDropdown, BackButton } from '../../App';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 
 interface GruposProps {
   vista: ViewMode;
@@ -97,14 +97,82 @@ export const Grupos: React.FC<GruposProps> = ({
         <div className="bg-white rounded-[2.5rem] p-8 shadow-ios border border-black/5 space-y-8">
           <div className="space-y-5">
             <div className="space-y-1">
-              <label className="text-[10px] uppercase font-bold text-secondary ml-1 tracking-widest">Nombre del Grupo</label>
-              <input 
-                placeholder="Ej: Nivel Inicial" 
-                className="w-full bg-ios-gray border-none rounded-2xl p-5 text-black placeholder:text-secondary/40 outline-none focus:ring-2 focus:ring-ios-blue/10 transition-all font-bold"
-                value={newGroupName}
-                onChange={(e) => setNewGroupName(e.target.value)}
+              <EditableDropdown
+                label="Nombre de la Profesor/a"
+                options={profesoresList}
+                value={newCoachName}
+                onChange={setNewCoachName}
+                onAdd={handleAddProfesor}
+                onEdit={(oldId, newName) => handleUpdateProfesor(oldId, newName)}
+                onDelete={(oldId) => handleDeleteProfesor(oldId, newCoachName)}
+                placeholder="Seleccionar o añadir..."
               />
             </div>
+            
+            <div className="space-y-3">
+               <label className="text-[10px] uppercase font-bold text-secondary ml-1 tracking-widest">Días de la semana</label>
+               <div className="flex gap-2">
+                 {[
+                   { l: 'Lu', v: 'Lu' },
+                   { l: 'Ma', v: 'Ma' },
+                   { l: 'Mi', v: 'Mi' },
+                   { l: 'Ju', v: 'Ju' },
+                   { l: 'Vi', v: 'Vi' },
+                   { l: 'Sá', v: 'Sá' }
+                 ].map(day => {
+                   const isSelected = newGrupoDias.includes(day.v);
+                   return (
+                     <button
+                       key={day.v}
+                       type="button"
+                       onClick={() => {
+                         const currentDays = newGrupoDias.split(',').map(d => d.trim()).filter(Boolean);
+                         let newDays = [...currentDays];
+                         if (newDays.includes(day.v)) {
+                           newDays = newDays.filter(d => d !== day.v);
+                         } else {
+                           newDays.push(day.v);
+                         }
+                         const order = ['Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sá'];
+                         newDays.sort((a,b) => order.indexOf(a) - order.indexOf(b));
+                         setNewGrupoDias(newDays.join(', '));
+                       }}
+                       className={`w-10 h-10 rounded-full font-bold text-xs flex items-center justify-center transition-all ${isSelected ? 'bg-ios-blue text-white shadow-lg' : 'bg-ios-gray text-secondary hover:bg-black/5'}`}
+                     >
+                       {day.l}
+                     </button>
+                   );
+                 })}
+               </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+               <div className="space-y-1">
+                  <label className="text-[10px] uppercase font-bold text-secondary ml-1 tracking-widest">Inicia</label>
+                  <input 
+                    type="time" 
+                    className="w-full bg-ios-gray border-none rounded-2xl p-5 text-black placeholder:text-secondary/40 outline-none focus:ring-2 focus:ring-ios-blue/10 transition-all text-sm font-bold font-mono"
+                    value={newGrupoHorario.split(' a ')[0] || ''}
+                    onChange={(e) => {
+                      const end = newGrupoHorario.split(' a ')[1] || '';
+                      setNewGrupoHorario(`${e.target.value}${end ? ' a ' + end : ''}`);
+                    }}
+                  />
+               </div>
+               <div className="space-y-1">
+                  <label className="text-[10px] uppercase font-bold text-secondary ml-1 tracking-widest">Finaliza</label>
+                  <input 
+                    type="time"
+                    className="w-full bg-ios-gray border-none rounded-2xl p-5 text-black placeholder:text-secondary/40 outline-none focus:ring-2 focus:ring-ios-blue/10 transition-all text-sm font-bold font-mono"
+                    value={newGrupoHorario.split(' a ')[1] || ''}
+                    onChange={(e) => {
+                      const start = newGrupoHorario.split(' a ')[0] || '';
+                      setNewGrupoHorario(`${start}${e.target.value ? ' a ' + e.target.value : ''}`);
+                    }}
+                  />
+               </div>
+            </div>
+
             <div className="space-y-1">
               <label className="text-[10px] uppercase font-bold text-secondary ml-1 tracking-widest">¿Qué edad tiene tu grupo?</label>
               <select
@@ -118,32 +186,14 @@ export const Grupos: React.FC<GruposProps> = ({
                 <option value="10 a 15 años">10 a 15 años</option>
               </select>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-               <div className="space-y-1">
-                  <label className="text-[10px] uppercase font-bold text-secondary ml-1 tracking-widest">Días</label>
-                  <input 
-                    placeholder="Ej: Lu, Mi, Vi" 
-                    className="w-full bg-ios-gray border-none rounded-2xl p-5 text-black placeholder:text-secondary/40 outline-none focus:ring-2 focus:ring-ios-blue/10 transition-all text-xs font-bold"
-                    value={newGrupoDias}
-                    onChange={(e) => setNewGrupoDias(e.target.value)}
-                  />
-               </div>
-               <div className="space-y-1">
-                  <label className="text-[10px] uppercase font-bold text-secondary ml-1 tracking-widest">Horario</label>
-                  <input 
-                    placeholder="Ej: 17:00" 
-                    className="w-full bg-ios-gray border-none rounded-2xl p-5 text-black placeholder:text-secondary/40 outline-none focus:ring-2 focus:ring-ios-blue/10 transition-all text-xs font-bold font-mono"
-                    value={newGrupoHorario}
-                    onChange={(e) => setNewGrupoHorario(e.target.value)}
-                  />
-               </div>
-            </div>
+
             <div className="space-y-1">
-              <label className="text-[10px] uppercase font-bold text-secondary ml-1 tracking-widest">Nombre de la Profesora</label>
+              <label className="text-[10px] uppercase font-bold text-secondary ml-1 tracking-widest">Nombre del Grupo</label>
               <input 
-                readOnly
-                value={newCoachName || "Profesor"}
-                className="w-full bg-black/5 text-black/50 border-none rounded-2xl p-5 outline-none font-bold cursor-not-allowed"
+                placeholder="Ej: Nivel Inicial" 
+                className="w-full bg-ios-gray border-none rounded-2xl p-5 text-black placeholder:text-secondary/40 outline-none focus:ring-2 focus:ring-ios-blue/10 transition-all font-bold"
+                value={newGroupName}
+                onChange={(e) => setNewGroupName(e.target.value)}
               />
             </div>
           </div>

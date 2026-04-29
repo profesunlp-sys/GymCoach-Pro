@@ -1014,7 +1014,7 @@ const App: React.FC = () => {
       const c = await getCollectionData(COLLECTIONS.CLASES) as Clase[];
       const g = await getCollectionData(COLLECTIONS.GRUPOS) as GrupoConfig[];
       const asis = await getCollectionData(COLLECTIONS.ASISTENCIAS) as AsistenciaRecord[];
-      const p = await getCollectionData(COLLECTIONS.STAFF) as {id?: string, nombre: string}[];
+      const p = await getCollectionData(COLLECTIONS.STAFF) as {id?: string, nombre: string, userId?: string}[];
       const n = await getCollectionData(COLLECTIONS.NIVELES) as {id?: string, nombre: string}[];
       const d = await getCollectionData(COLLECTIONS.DISCIPLINAS) as {id?: string, nombre: string}[];
       const w = await getCollectionData(COLLECTIONS.WARMUP_OPTIONS) as {id?: string, nombre: string}[];
@@ -1026,7 +1026,11 @@ const App: React.FC = () => {
       setClases(c.sort((x, y) => new Date(y.fecha).getTime() - new Date(x.fecha).getTime()));
       setGrupos(g);
       setAsistencias(asis);
-      setProfesoresList(p || []);
+      
+      const currentUid = user?.uid || auth.currentUser?.uid;
+      // Filter out global or other users' professors so that it is empty on first login
+      const filteredProfesores = (p || []).filter(prof => prof.userId === currentUid);
+      setProfesoresList(filteredProfesores);
       setSources(s || []);
       setNiveles(n.length > 0 ? n : [
         { id: 'default-0', nombre: 'Escuela' },
@@ -1658,7 +1662,11 @@ const App: React.FC = () => {
     if (!targetName) return;
     setIsSavingProfesor(true);
     try {
-      await addDocument(COLLECTIONS.STAFF, { nombre: targetName });
+      const currentUid = user?.uid || auth.currentUser?.uid;
+      await addDocument(COLLECTIONS.STAFF, { 
+        nombre: targetName,
+        userId: currentUid
+      });
       await loadData();
       setIsAddingProfesor(false);
       setNewProfesorName('');
@@ -3863,14 +3871,82 @@ const App: React.FC = () => {
                   </div>
                   <div className="space-y-5">
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-secondary uppercase tracking-widest ml-2">Nombre del Grupo</label>
-                      <input 
-                        placeholder="Ej: Nivel Inicial" 
-                        className="w-full bg-ios-gray border-none rounded-2xl p-5 text-black placeholder:text-secondary/40 outline-none focus:ring-2 focus:ring-ios-blue/10 transition-all font-bold"
-                        value={nuevoGrupoNombre}
-                        onChange={(e) => setNuevoGrupoNombre(e.target.value)}
+                      <EditableDropdown
+                        label="Nombre de la Profesor/a"
+                        options={profesoresList}
+                        value={newCoachName}
+                        onChange={setNewCoachName}
+                        onAdd={handleAddProfesor}
+                        onEdit={handleUpdateProfesor}
+                        onDelete={handleDeleteProfesor}
+                        placeholder="Seleccionar o añadir..."
                       />
                     </div>
+
+                    <div className="space-y-4">
+                       <label className="text-[10px] font-bold text-secondary uppercase tracking-widest ml-2">Días de la semana</label>
+                       <div className="flex gap-2">
+                         {[
+                           { l: 'Lu', v: 'Lu' },
+                           { l: 'Ma', v: 'Ma' },
+                           { l: 'Mi', v: 'Mi' },
+                           { l: 'Ju', v: 'Ju' },
+                           { l: 'Vi', v: 'Vi' },
+                           { l: 'Sá', v: 'Sá' }
+                         ].map(day => {
+                           const isSelected = nuevoGrupoDias.includes(day.v);
+                           return (
+                             <button
+                               key={day.v}
+                               type="button"
+                               onClick={() => {
+                                 const currentDays = nuevoGrupoDias.split(',').map(d => d.trim()).filter(Boolean);
+                                 let newDays = [...currentDays];
+                                 if (newDays.includes(day.v)) {
+                                   newDays = newDays.filter(d => d !== day.v);
+                                 } else {
+                                   newDays.push(day.v);
+                                 }
+                                 const order = ['Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sá'];
+                                 newDays.sort((a,b) => order.indexOf(a) - order.indexOf(b));
+                                 setNuevoGrupoDias(newDays.join(', '));
+                               }}
+                               className={`w-10 h-10 rounded-full font-bold text-xs flex items-center justify-center transition-all ${isSelected ? 'bg-ios-blue text-white shadow-lg' : 'bg-ios-gray text-secondary hover:bg-black/5'}`}
+                             >
+                               {day.l}
+                             </button>
+                           );
+                         })}
+                       </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                       <div className="space-y-1">
+                          <label className="text-[10px] font-bold text-secondary uppercase tracking-widest ml-2">Inicia</label>
+                          <input 
+                            type="time"
+                            className="w-full bg-ios-gray border-none rounded-2xl p-5 text-black placeholder:text-secondary/40 outline-none focus:ring-2 focus:ring-ios-blue/10 transition-all text-sm font-bold font-mono"
+                            value={nuevoGrupoHorario.split(' a ')[0] || ''}
+                            onChange={(e) => {
+                              const end = nuevoGrupoHorario.split(' a ')[1] || '';
+                              setNuevoGrupoHorario(`${e.target.value}${end ? ' a ' + end : ''}`);
+                            }}
+                          />
+                       </div>
+                       <div className="space-y-1">
+                          <label className="text-[10px] font-bold text-secondary uppercase tracking-widest ml-2">Finaliza</label>
+                          <input 
+                            type="time" 
+                            className="w-full bg-ios-gray border-none rounded-2xl p-5 text-black placeholder:text-secondary/40 outline-none focus:ring-2 focus:ring-ios-blue/10 transition-all text-sm font-bold font-mono"
+                            value={nuevoGrupoHorario.split(' a ')[1] || ''}
+                            onChange={(e) => {
+                              const start = nuevoGrupoHorario.split(' a ')[0] || '';
+                              setNuevoGrupoHorario(`${start}${e.target.value ? ' a ' + e.target.value : ''}`);
+                            }}
+                          />
+                       </div>
+                    </div>
+
                     <div className="space-y-1">
                       <label className="text-[10px] font-bold text-secondary uppercase tracking-widest ml-2">¿Qué edad tiene tu grupo?</label>
                       <select
@@ -3884,52 +3960,44 @@ const App: React.FC = () => {
                         <option value="10 a 15 años">10 a 15 años</option>
                       </select>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                       <div className="space-y-1">
-                          <label className="text-[10px] font-bold text-secondary uppercase tracking-widest ml-2">Días</label>
-                          <input 
-                            placeholder="Ej: Lu, Mi, Vi" 
-                            className="w-full bg-ios-gray border-none rounded-2xl p-5 text-black placeholder:text-secondary/40 outline-none focus:ring-2 focus:ring-ios-blue/10 transition-all text-xs font-bold"
-                            value={nuevoGrupoDias}
-                            onChange={(e) => setNuevoGrupoDias(e.target.value)}
-                          />
-                       </div>
-                       <div className="space-y-1">
-                          <label className="text-[10px] font-bold text-secondary uppercase tracking-widest ml-2">Horario</label>
-                          <input 
-                            placeholder="Ej: 17:00" 
-                            className="w-full bg-ios-gray border-none rounded-2xl p-5 text-black placeholder:text-secondary/40 outline-none focus:ring-2 focus:ring-ios-blue/10 transition-all text-xs font-bold font-mono"
-                            value={nuevoGrupoHorario}
-                            onChange={(e) => setNuevoGrupoHorario(e.target.value)}
-                          />
-                       </div>
-                    </div>
+
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-secondary uppercase tracking-widest ml-2">Nombre de la Profesora</label>
+                      <label className="text-[10px] font-bold text-secondary uppercase tracking-widest ml-2">Nombre del Grupo</label>
                       <input 
-                        readOnly
-                        value={user?.displayName || "Profesor"}
-                        className="w-full bg-black/5 text-black/50 border-none rounded-2xl p-5 outline-none font-bold cursor-not-allowed"
+                        placeholder="Ej: Nivel Inicial" 
+                        className="w-full bg-ios-gray border-none rounded-2xl p-5 text-black placeholder:text-secondary/40 outline-none focus:ring-2 focus:ring-ios-blue/10 transition-all font-bold"
+                        value={nuevoGrupoNombre}
+                        onChange={(e) => setNuevoGrupoNombre(e.target.value)}
                       />
                     </div>
                   </div>
                   <Button 
                     onClick={async () => {
-                      if (nuevoGrupoNombre.trim()) {
-                        const daysArray = nuevoGrupoDias.split(',').map(d => d.trim()).filter(d => d);
-                        try {
-                          await addDocument(COLLECTIONS.GRUPOS, {
-                            nombre: nuevoGrupoNombre,
-                            entrenador: user?.displayName || "Profesor",
-                            entrenadorId: user?.uid || "",
-                            dias: daysArray.length > 0 ? daysArray : ['Lu', 'Mi'],
-                            horario: nuevoGrupoHorario,
-                            rangoEdad: nuevoGrupoRangoEdad,
-                          });
-                          loadData();
-                          setOnboardingStep(3);
-                        } catch (e) { console.error(e); }
+                      if (!newCoachName) {
+                        setNotificacion({ t: "Error", d: "Debes seleccionar o añadir un profesor/a." });
+                        setTimeout(() => setNotificacion(null), 3000);
+                        return;
                       }
+                      if (!nuevoGrupoNombre.trim() || !nuevoGrupoDias || !nuevoGrupoHorario) {
+                        setNotificacion({ t: "Error", d: "Nombre del grupo, días y horario son obligatorios." });
+                        setTimeout(() => setNotificacion(null), 3000);
+                        return;
+                      }
+                      
+                      const daysArray = nuevoGrupoDias.split(',').map(d => d.trim()).filter(d => d);
+                      try {
+                        const coach = profesoresList.find(p => p.nombre === newCoachName);
+                        await addDocument(COLLECTIONS.GRUPOS, {
+                          nombre: nuevoGrupoNombre,
+                          entrenador: newCoachName,
+                          entrenadorId: coach?.id || user?.uid || "",
+                          dias: daysArray.length > 0 ? daysArray : ['Lu', 'Mi'],
+                          horario: nuevoGrupoHorario,
+                          rangoEdad: nuevoGrupoRangoEdad,
+                        });
+                        loadData();
+                        setOnboardingStep(3);
+                      } catch (e) { console.error(e); }
                     }}
                     className="w-full !py-6 !rounded-[1.5rem]"
                   >

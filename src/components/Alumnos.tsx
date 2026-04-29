@@ -156,6 +156,7 @@ const Alumnos: React.FC<AlumnosProps> = ({
   const [activeTab, setActiveTab] = useState<'Progreso' | 'Asistencia' | 'Bio' | 'Contacto' | 'Pagos'>('Progreso');
   const [isEditingStudent, setIsEditingStudent] = useState(false);
   const [isEditingBiometrics, setIsEditingBiometrics] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   
   const calculateAgeGroup = (birthDateStr?: string) => {
     if (!birthDateStr) return 'Desconocido';
@@ -416,15 +417,37 @@ const Alumnos: React.FC<AlumnosProps> = ({
                 </div>
 
                 <div className="grid grid-cols-1 gap-6">
-                  <div className="space-y-2">
+                  <div className="space-y-2 relative">
                     <label className="text-[10px] uppercase font-bold text-secondary ml-1 tracking-widest">Nombre Completo</label>
                     <input 
                       type="text" 
                       value={studentForm.nombre}
-                      onChange={(e) => setStudentForm({ ...studentForm, nombre: e.target.value })}
+                      onFocus={() => setShowSuggestions(true)}
+                      onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                      onChange={(e) => {
+                        setStudentForm({ ...studentForm, nombre: e.target.value });
+                        setShowSuggestions(true);
+                      }}
                       className="w-full bg-ios-gray rounded-xl px-4 py-4 text-sm text-black outline-none border border-transparent focus:border-primary/20 transition-all font-medium"
                       placeholder="Ej: Sofía González"
                     />
+                    {showSuggestions && studentForm.nombre && alumnos.filter(a => a.nombre.toLowerCase().includes(studentForm.nombre!.toLowerCase()) && a.nombre !== studentForm.nombre).length > 0 && (
+                      <div className="absolute top-full mt-2 w-full bg-white border border-black/5 rounded-xl shadow-xl overflow-hidden z-[60] max-h-48 overflow-y-auto">
+                        {alumnos.filter(a => a.nombre.toLowerCase().includes(studentForm.nombre!.toLowerCase()) && a.nombre !== studentForm.nombre).map(alumno => (
+                          <div 
+                            key={alumno.id}
+                            className="px-4 py-3 hover:bg-ios-gray cursor-pointer border-b border-black/5 last:border-0 text-sm font-medium"
+                            onMouseDown={() => {
+                              setStudentForm(alumno);
+                              setIsEditingStudent(true);
+                              setShowSuggestions(false);
+                            }}
+                          >
+                            {alumno.nombre}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
@@ -489,6 +512,7 @@ const Alumnos: React.FC<AlumnosProps> = ({
                     onClick={() => {
                       handleSaveStudent();
                       setIsEditingStudent(false);
+                      setIsAddingAlumno(false);
                     }}
                     className="flex-1 py-5 rounded-[1.2rem] bg-ios-blue text-white text-sm font-bold shadow-lg"
                   >
