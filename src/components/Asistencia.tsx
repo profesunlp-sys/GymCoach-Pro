@@ -625,7 +625,7 @@ export const Asistencia: React.FC<AsistenciaProps> = ({
       </main>
 
       {/* Sticky Continue Button */}
-      <div className="fixed bottom-24 left-0 right-0 px-6 z-50">
+      <div className="fixed bottom-28 left-0 right-0 px-6 z-50 flex justify-center">
         <motion.button 
           initial={{ y: 100 }}
           animate={{ y: 0 }}
@@ -636,12 +636,12 @@ export const Asistencia: React.FC<AsistenciaProps> = ({
             setRegistrationStep(2);
             setVista('NuevaClase');
           }}
-          className="w-full bg-black text-white py-5 rounded-[2rem] shadow-2xl flex items-center justify-center gap-3 active:bg-primary transition-all group"
+          className="bg-black text-white py-4 px-8 rounded-full shadow-2xl flex items-center justify-center gap-3 active:bg-primary transition-all group w-fit"
         >
-          <div className="w-8 h-8 bg-white/10 rounded-xl flex items-center justify-center group-active:bg-white/20">
+          <div className="w-8 h-8 bg-white/10 rounded-full flex items-center justify-center group-active:bg-white/20">
             <span className="material-icons-outlined text-lg">play_arrow</span>
           </div>
-          <span className="text-xs font-bold uppercase tracking-[0.3em]">Continuar a Planificación de Clase</span>
+          <span className="text-xs font-bold uppercase tracking-[0.1em]">Planificar Clase</span>
         </motion.button>
       </div>
     </div>
