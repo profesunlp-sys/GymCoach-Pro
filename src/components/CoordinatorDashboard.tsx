@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { collection, query, onSnapshot, orderBy } from 'firebase/firestore';
-import { db } from '../services/firebase';
-import { COLLECTIONS } from '../services/firebase';
+import { db, COLLECTIONS } from '../../services/firebase';
 
 export const CoordinatorDashboard: React.FC = () => {
   const [staffActivity, setStaffActivity] = useState<any[]>([]);

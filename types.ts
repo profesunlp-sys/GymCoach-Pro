@@ -61,7 +61,8 @@ export interface Alumno {
   contacto?: ContactoFamilia;
   pagoVencido?: boolean;
   observacionesMedicas?: string;
-  pagosMensuales?: { mes: string, anio: number, fechaPago: string }[]; 
+  pagosMensuales?: { mes: string, anio: number, fechaPago: string }[];
+  userId?: string;
 }
 
 export interface AsistenciaRecord {

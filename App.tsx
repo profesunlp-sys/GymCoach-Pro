@@ -1716,7 +1716,9 @@ const App: React.FC = () => {
     }
   };
 
-  const handleDeleteProfesor = async (profesorId: string, nombre: string) => {
+  const handleDeleteProfesor = async (profesorId: string) => {
+    const prof = profesoresList.find(p => p.id === profesorId);
+    const nombre = prof?.nombre || "Profesor";
     requestConfirmation(
       "Eliminar Profesor",
       `¿Estás seguro de que deseas eliminar al profesor "${nombre}"?`,
@@ -3372,6 +3374,12 @@ const App: React.FC = () => {
               onBack={() => setVista('Dashboard')} 
               onImportPayments={() => setIsBulkPaymentModalOpen(true)}
             />
+          </Suspense>
+        )}
+
+        {vista === 'CoordinatorDashboard' && (
+          <Suspense fallback={<LoadingFallback />}>
+            <CoordinatorDashboard />
           </Suspense>
         )}
 
