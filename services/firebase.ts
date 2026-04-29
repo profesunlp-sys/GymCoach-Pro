@@ -39,7 +39,8 @@ export const COLLECTIONS = {
   AGE_CATEGORIES: "age_categories",
   PHYSICAL_CATEGORIES: "physical_categories",
   PAGOS: "pagos",
-  STAFF: "staff"
+  STAFF: "staff",
+  HABILIDADES: "habilidades"
 };
 
 // Generic helpers
