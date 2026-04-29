@@ -350,13 +350,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   </div>
 
                   {coachGrupos.length > 0 && (
-                    <div className="flex justify-center pt-2">
+                    <div className="flex justify-center pt-8 pb-4">
                       <button 
                         onClick={() => setVista('Horario')}
-                        className="text-primary text-sm font-bold flex items-center gap-2 active:scale-95 transition-all"
+                        className="bg-white/80 backdrop-blur-sm border border-black/5 text-primary text-xs font-bold flex items-center gap-2 px-6 py-3 rounded-full shadow-sm active:scale-95 transition-all w-fit"
                       >
-                        <span className="material-icons-outlined">add_circle_outline</span>
-                        Agregar nuevo día, horario y grupo
+                        <span className="material-icons-outlined text-sm">add_circle_outline</span>
+                        Agregar nuevo grupo
                       </button>
                     </div>
                   )}

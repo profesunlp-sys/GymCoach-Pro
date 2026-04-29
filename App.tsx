@@ -559,16 +559,24 @@ const App: React.FC = () => {
   // Auto-trigger onboarding
   useEffect(() => {
     const currentUid = user?.uid;
+    const userDisplayName = user?.displayName;
     const userProfesoresIds = profesoresList.map(p => p.id);
-    const coachGrupos = grupos.filter(g => 
+    
+    // Check if the user has any groups they created
+    const userHasGroups = grupos.some(g => 
       g.entrenadorId === currentUid || 
-      g.entrenador === user?.displayName ||
+      g.entrenador === userDisplayName ||
       (g.entrenadorId && userProfesoresIds.includes(g.entrenadorId)) ||
-      (g as any).userId === currentUid
+      (g as any).userId === currentUid ||
+      // Fallback: If group has no owner info but user has created groups at all,
+      // maybe we should trust it? Or check if the group is even linked to them.
+      false 
     );
-    if (userRole === 'Coach' && isDataLoaded && coachGrupos.length === 0 && !isLoading && user && isFirstLoad.current) {
+    
+    if (userRole === 'Coach' && isDataLoaded && !userHasGroups && !isLoading && user && isFirstLoad.current) {
       setOnboardingStep(1);
     }
+    isFirstLoad.current = false;
   }, [userRole, grupos, isLoading, user, isDataLoaded, profesoresList]);
   const [pendingNavigation, setPendingNavigation] = useState<ViewMode | null>(null);
   const [emergencyInfo, setEmergencyInfo] = useState<{publicProvider: string, publicPhone: string, privateProvider: string, privatePhone: string}>({ 
@@ -1031,9 +1039,25 @@ const App: React.FC = () => {
       const s = await getCollectionData(COLLECTIONS.SOURCES) as Source[];
       
       const currentUid = user?.uid || auth.currentUser?.uid;
+      const userProfesoresIds = p.map(prof => prof.id);
       
-      // Filter alumnos to only show current user's alumnos
-      const userAlumnos = (a || []).filter(alumno => alumno.userId === currentUid || !alumno.userId); // Show empty userId as fallback
+      // Find all groups belonging to the user
+      const coachGruposNames = g.filter(grupo => 
+          grupo.entrenadorId === currentUid || 
+          grupo.entrenador === user?.displayName ||
+          (grupo.entrenadorId && userProfesoresIds.includes(grupo.entrenadorId)) ||
+          (grupo as any).userId === currentUid
+      ).map(grupo => grupo.nombre);
+      
+      // Filter alumnos that belong to those groups, OR alumnos that have no group yet
+      // Also include alumnos that seem to belong to this user (userId match) as fallback
+      const userAlumnos = (a || []).filter(alumno => 
+          coachGruposNames.includes(alumno.grupo) || 
+          !alumno.grupo || 
+          alumno.grupo === 'Sin Grupo' ||
+          (alumno.userId && alumno.userId === currentUid)
+      );
+      
       setAlumnos(userAlumnos);
       setClases(c.sort((x, y) => new Date(y.fecha).getTime() - new Date(x.fecha).getTime()));
       setGrupos(g);
