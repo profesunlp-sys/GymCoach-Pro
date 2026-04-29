@@ -11,7 +11,7 @@ import {
 import { Alumno, Clase, ViewMode, GrupoConfig, AsistenciaRecord, UserRole, Feedback, Skill, SkillStatus, Apparatus, Source } from './types';
 import { processClassAudio, refineClassAnalysis, analyzeAttendanceStats, queryKnowledgeBase } from './services/geminiService';
 import { SKILL_TREE, DISCIPLINAS, NIVELES as DEFAULT_NIVELES } from './constants';
-import { db as firestore, auth, googleProvider, COLLECTIONS, getCollectionData, addDocument, updateDocument, deleteDocument, getAttendanceByStudent } from './services/firebase';
+import { db as firestore, auth, googleProvider, COLLECTIONS, getCollectionData, getFilteredCollectionData, addDocument, updateDocument, deleteDocument, getAttendanceByStudent } from './services/firebase';
 import { collection, query, where, getDocs, addDoc, doc, updateDoc, onSnapshot, orderBy, setDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { signInWithPopup, signOut, onAuthStateChanged, User, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, setPersistence, browserLocalPersistence, browserSessionPersistence } from 'firebase/auth';
 // Lazy loaded components
@@ -1040,32 +1040,30 @@ const App: React.FC = () => {
       const s = await getCollectionData(COLLECTIONS.SOURCES) as Source[];
       
       const currentUid = user?.uid || auth.currentUser?.uid;
+      const isCoordinator = user?.email === 'profesunlp@gmail.com'; // Adjust if needed
+      
       const userProfesoresIds = p.map(prof => prof.id);
       
       // Find all groups belonging to the user
-      const coachGrupos = g.filter(grupo => {
-          const isMatch = grupo.entrenadorId === currentUid || 
+      const coachGrupos = isCoordinator ? g : g.filter(grupo => {
+          return grupo.entrenadorId === currentUid || 
           grupo.entrenador === user?.displayName ||
           (grupo.entrenadorId && userProfesoresIds.includes(grupo.entrenadorId)) ||
-          (grupo as any).userId === currentUid;
-          if (!isMatch) {
-              console.log("Filtering out group:", grupo.nombre, grupo.entrenadorId, grupo.entrenador, (grupo as any).userId);
-          }
-          return isMatch;
+          ((grupo as any).userId === currentUid);
       });
       const coachGruposNames = coachGrupos.map(grupo => grupo.nombre);
       
       // Filter alumnos that belong to those groups, OR alumnos that have no group yet
       // Also include alumnos that seem to belong to this user (userId match) as fallback
-      const userAlumnos = (a || []).filter(alumno => 
+      const userAlumnos = isCoordinator ? a : (a || []).filter(alumno => 
           coachGruposNames.includes(alumno.grupo || '') || 
           (alumno.userId === currentUid)
       );
       
       setAlumnos(userAlumnos);
-      setClases(c.filter(clase => coachGruposNames.includes(clase.grupo || '')).sort((x, y) => new Date(y.fecha).getTime() - new Date(x.fecha).getTime()));
+      setClases(isCoordinator ? c.sort((x, y) => new Date(y.fecha).getTime() - new Date(x.fecha).getTime()) : c.filter(clase => coachGruposNames.includes(clase.grupo || '')).sort((x, y) => new Date(y.fecha).getTime() - new Date(x.fecha).getTime()));
       setGrupos(coachGrupos);
-      setAsistencias(asis.filter(asi => coachGruposNames.includes(asi.grupo || '')));
+      setAsistencias(isCoordinator ? asis : asis.filter(asi => coachGruposNames.includes(asi.grupo || '')));
       
       // Filter out global or other users' professors so that it is empty on first login
       const filteredProfesores = (p || []).filter(prof => prof.userId === currentUid);

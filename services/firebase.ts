@@ -54,6 +54,17 @@ export const getCollectionData = async (collectionName: string) => {
   }
 };
 
+export const getFilteredCollectionData = async (collectionName: string, field: string, value: string) => {
+  try {
+    const q = query(collection(db, collectionName), where(field, "==", value));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  } catch (error: any) {
+    console.error(`Error getting filtered data from ${collectionName}:`, error);
+    throw new Error(`No se pudieron cargar los datos de ${collectionName}. Verifica tu conexión o permisos. (${error.message})`);
+  }
+};
+
 export const addDocument = async (collectionName: string, data: any) => {
   try {
     return await addDoc(collection(db, collectionName), data);
