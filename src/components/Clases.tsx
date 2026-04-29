@@ -770,6 +770,12 @@ export const Clases: React.FC<ClasesProps> = ({
                 setTimeout(() => setNotificacion(null), 3000);
                 return;
               }
+              if (registrationStep === 1) {
+                const group = grupos.find(g => g.nombre === claseGrupo);
+                if (group && group.rangoEdad) {
+                  setClaseAgeRange(group.rangoEdad);
+                }
+              }
               if (registrationStep === 8) {
                 handleSaveManualClass();
               } else {

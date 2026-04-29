@@ -624,26 +624,7 @@ export const Asistencia: React.FC<AsistenciaProps> = ({
         </div>
       </main>
 
-      {/* Sticky Continue Button */}
-      <div className="fixed bottom-24 left-0 right-0 px-6 z-50 flex justify-center">
-        <motion.button 
-          initial={{ y: 100 }}
-          animate={{ y: 0 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => {
-            setClaseGrupo(activeGroup.nombre);
-            setIsEditingClase(false);
-            setRegistrationStep(2);
-            setVista('NuevaClase');
-          }}
-          className="bg-black text-white py-3 px-6 rounded-full shadow-2xl flex items-center justify-center gap-3 active:bg-primary transition-all group w-fit"
-        >
-          <div className="w-8 h-8 bg-white/10 rounded-full flex items-center justify-center group-active:bg-white/20">
-            <span className="material-icons-outlined text-sm">play_arrow</span>
-          </div>
-          <span className="text-xs font-bold uppercase tracking-[0.1em]">Planificar Clase</span>
-        </motion.button>
-      </div>
+      {/* Sticky Continue Button removed as requested */}
     </div>
   );
 };

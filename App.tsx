@@ -1676,6 +1676,7 @@ const App: React.FC = () => {
         dni: newAlumnoForm.dni,
         grupo: newAlumnoForm.grupo,
         nivel: newAlumnoForm.nivel,
+        userId: user?.uid || auth.currentUser?.uid,
         disciplina: 'GAF',
         fechaNacimiento: '',
         fechaIngreso: new Date().toISOString().split('T')[0],
@@ -3852,6 +3853,7 @@ const App: React.FC = () => {
                     setGroupCreatedSuccess(null);
                     setStudentForm({ ...studentForm, grupo: group });
                     setVista('RegistroAlumno');
+                    setNotificacion({ t: "Éxito", d: "Grupo creado. Ahora agregá tus alumnas." });
                   }}
                   className="w-full !py-6"
                 >
