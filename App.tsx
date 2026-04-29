@@ -558,11 +558,18 @@ const App: React.FC = () => {
 
   // Auto-trigger onboarding
   useEffect(() => {
-    const coachGrupos = grupos.filter(g => g.entrenador === user?.displayName);
+    const currentUid = user?.uid;
+    const userProfesoresIds = profesoresList.map(p => p.id);
+    const coachGrupos = grupos.filter(g => 
+      g.entrenadorId === currentUid || 
+      g.entrenador === user?.displayName ||
+      (g.entrenadorId && userProfesoresIds.includes(g.entrenadorId)) ||
+      (g as any).userId === currentUid
+    );
     if (userRole === 'Coach' && isDataLoaded && coachGrupos.length === 0 && !isLoading && user && isFirstLoad.current) {
       setOnboardingStep(1);
     }
-  }, [userRole, grupos, isLoading, user, isDataLoaded]);
+  }, [userRole, grupos, isLoading, user, isDataLoaded, profesoresList]);
   const [pendingNavigation, setPendingNavigation] = useState<ViewMode | null>(null);
   const [emergencyInfo, setEmergencyInfo] = useState<{publicProvider: string, publicPhone: string, privateProvider: string, privatePhone: string}>({ 
     publicProvider: 'Emergencias Públicas', publicPhone: '107',
@@ -1022,12 +1029,16 @@ const App: React.FC = () => {
       const ac = await getCollectionData(COLLECTIONS.AGE_CATEGORIES) as {id?: string, nombre: string}[];
       const pc = await getCollectionData(COLLECTIONS.PHYSICAL_CATEGORIES) as {id?: string, nombre: string}[];
       const s = await getCollectionData(COLLECTIONS.SOURCES) as Source[];
-      setAlumnos(a);
+      
+      const currentUid = user?.uid || auth.currentUser?.uid;
+      
+      // Filter alumnos to only show current user's alumnos
+      const userAlumnos = (a || []).filter(alumno => alumno.userId === currentUid || !alumno.userId); // Show empty userId as fallback
+      setAlumnos(userAlumnos);
       setClases(c.sort((x, y) => new Date(y.fecha).getTime() - new Date(x.fecha).getTime()));
       setGrupos(g);
       setAsistencias(asis);
       
-      const currentUid = user?.uid || auth.currentUser?.uid;
       // Filter out global or other users' professors so that it is empty on first login
       const filteredProfesores = (p || []).filter(prof => prof.userId === currentUid);
       setProfesoresList(filteredProfesores);
@@ -2275,7 +2286,8 @@ const App: React.FC = () => {
           habilidades: studentForm.habilidades || [],
           biometria: studentForm.biometria || { fuerza: 50, flexibilidad: 50, tecnica: 50, resistencia: 50, coordinacion: 50 },
           qrCode: `QR_${studentForm.dni || new Date().getTime()}`,
-          asistenciasHistoricas: 0
+          asistenciasHistoricas: 0,
+          userId: user?.uid
         };
         await addDocument(COLLECTIONS.ALUMNOS, newStudent);
         setNotificacion({ t: "Gimnasta Registrado", d: `${newStudent.nombre} añadido.` });
