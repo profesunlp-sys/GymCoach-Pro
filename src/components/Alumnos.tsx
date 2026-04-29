@@ -532,18 +532,18 @@ const Alumnos: React.FC<AlumnosProps> = ({
     return (
       <div className="min-h-screen bg-ios-gray page-transition pb-24 focus-mode-parent">
         {/* Header Hero */}
-        <div className="relative h-64 bg-white px-6 pt-12 shadow-sm border-b border-black/5">
+        <div className="relative bg-white px-6 pt-12 pb-8 shadow-sm border-b border-black/5">
           <BackButton onClick={() => setVista('Alumnos')} />
           
-          <div className="flex items-end gap-6 mt-10">
+          <div className="flex items-start gap-6 mt-10">
             <div className="w-24 h-24 rounded-full bg-ios-gray border-4 border-white shadow-lg flex items-center justify-center relative overflow-hidden shrink-0">
                <span className="text-4xl font-bold text-primary">{selectedAlumno.nombre.charAt(0)}</span>
             </div>
-            <div className="pb-2 flex-1 flex justify-between items-end">
+            <div className="flex-1 flex justify-between items-start pt-2">
               <div className="space-y-1">
                 <h2 className="text-3xl font-bold text-black tracking-tight leading-none truncate max-w-[200px]">{selectedAlumno.nombre}</h2>
-                <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1 group cursor-pointer" onClick={() => {
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1 group cursor-pointer bg-ios-gray px-2 py-1 rounded-lg" onClick={() => {
                     const groupNames = grupos.map(g => g.nombre);
                     const newGroup = prompt(`Cambiar grupo de ${selectedAlumno.nombre}.\nGrupos disponibles: ${groupNames.join(', ')}`, selectedAlumno.grupo);
                     if (newGroup && newGroup !== selectedAlumno.grupo && groupNames.includes(newGroup)) {
@@ -556,8 +556,7 @@ const Alumnos: React.FC<AlumnosProps> = ({
                     <span className="text-xs font-bold text-primary hover:underline">{selectedAlumno.grupo || 'Sin Grupo'}</span>
                     <span className="material-icons-outlined text-[12px] text-primary/60">swap_horiz</span>
                   </div>
-                  <span className="w-1 h-1 rounded-full bg-black/10"></span>
-                  <div className="group cursor-pointer" onClick={() => {
+                  <div className="group cursor-pointer bg-ios-gray px-2 py-1 rounded-lg" onClick={() => {
                     const levelNames = niveles.map(n => n.nombre);
                     const newLevel = prompt(`Cambiar nivel de ${selectedAlumno.nombre}.\nNiveles disponibles: ${levelNames.join(', ')}`, selectedAlumno.nivel);
                     if (newLevel && newLevel !== selectedAlumno.nivel && levelNames.includes(newLevel)) {
@@ -567,7 +566,8 @@ const Alumnos: React.FC<AlumnosProps> = ({
                         alert("El nivel ingresado no existe.");
                     }
                   }}>
-                    <span className="text-xs font-medium text-secondary hover:underline">{selectedAlumno.nivel}</span>
+                    <span className="text-xs font-bold text-secondary hover:underline">{selectedAlumno.nivel || 'Sin Nivel'}</span>
+                    <span className="material-icons-outlined text-[12px] text-secondary/60">swap_horiz</span>
                   </div>
                 </div>
               </div>
@@ -577,8 +577,9 @@ const Alumnos: React.FC<AlumnosProps> = ({
                   setStudentForm(selectedAlumno);
                   setIsEditingStudent(true);
                   setIsAddingAlumno(true);
+                  console.log("Edit button clicked", selectedAlumno);                
                 }}
-                className="w-10 h-10 rounded-full bg-ios-gray flex items-center justify-center text-secondary active:scale-90 transition-all"
+                className="w-10 h-10 rounded-full bg-ios-gray flex items-center justify-center text-secondary active:scale-90 transition-all z-20"
               >
                 <span className="material-icons-outlined text-lg">edit</span>
               </motion.button>
@@ -586,7 +587,7 @@ const Alumnos: React.FC<AlumnosProps> = ({
           </div>
         </div>
 
-        <div className="px-6 space-y-8 pb-12">
+        <div className="px-6 space-y-6 pt-6 pb-12">
           {/* Quick Stats */}
           <div className="grid grid-cols-3 gap-3">
             <div className="bg-white rounded-2xl p-4 shadow-sm border border-black/5 text-center space-y-1">
@@ -599,7 +600,7 @@ const Alumnos: React.FC<AlumnosProps> = ({
             </div>
             <div className="bg-white rounded-2xl p-4 shadow-sm border border-black/5 text-center space-y-1">
               <span className="text-[8px] font-bold uppercase tracking-widest text-secondary block">Nivel</span>
-              <span className="text-xl font-bold text-ios-orange">{selectedAlumno.nivel.split(' ')[1] || '1'}</span>
+              <span className="text-xl font-bold text-ios-orange">{selectedAlumno.nivel?.split(' ')[1] || '1'}</span>
             </div>
           </div>
 
