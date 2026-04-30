@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useRef, useMemo, lazy, Suspense } from 'react';
 import Papa from 'papaparse';
 import Markdown from 'react-markdown';
 import { motion, AnimatePresence } from 'motion/react';
@@ -349,6 +349,17 @@ const App: React.FC = () => {
   const [newSkill, setNewSkill] = useState<Partial<Skill>>({ name: '', status: 'No Iniciado', apparatus: 'Suelo', level: '1' });
   const [editingSkillId, setEditingSkillId] = useState<string | null>(null);
   const [editingSkillData, setEditingSkillData] = useState<Partial<Skill>>({});
+
+  const userGroups = useMemo(() => {
+    if (userRole === 'Coordinator') return grupos;
+    const currentUid = user?.uid;
+    const currentName = (user?.displayName || "").trim().toLowerCase();
+    return grupos.filter(g => 
+      (g.entrenador || "").trim().toLowerCase() === currentName ||
+      (g.entrenadorId === currentUid) ||
+      ((g as any).userId === currentUid)
+    );
+  }, [grupos, userRole, user]);
 
   // New Skill Filters
   const [skillSearchQuery, setSkillSearchQuery] = useState("");
@@ -3099,7 +3110,7 @@ const App: React.FC = () => {
             <Dashboard 
               userRole={userRole}
               user={user}
-              grupos={grupos}
+              grupos={userGroups}
               alumnos={alumnos}
               clases={clases}
               asistencias={asistencias}
@@ -3146,7 +3157,7 @@ const App: React.FC = () => {
             newGrupoRangoEdad={newGrupoRangoEdad}
             setNewGrupoRangoEdad={setNewGrupoRangoEdad}
             handleSaveGroup={handleSaveGroup}
-            grupos={grupos}
+            grupos={userGroups}
             alumnos={alumnos}
             handleUpdateStudentGroup={handleUpdateStudentGroup}
             handleDeleteGroup={handleDeleteGroup}
@@ -3191,7 +3202,7 @@ const App: React.FC = () => {
             handleEditAsistencia={handleEditAsistencia}
             asistenciasGlobales={asistenciasGlobales}
             alumnos={alumnos}
-            grupos={grupos}
+            grupos={userGroups}
             isAnalyzing={isAnalyzing}
             comparativeData={comparativeData}
             handleExportAttendance={handleExportAttendance}
@@ -3227,7 +3238,7 @@ const App: React.FC = () => {
             handleNavigation={handleNavigation}
             registrationStep={registrationStep}
             setRegistrationStep={setRegistrationStep}
-            grupos={grupos}
+            grupos={userGroups}
             alumnos={alumnos}
             asistenciasHoy={asistenciasHoy}
             toggleAttendance={toggleAttendance}
@@ -3295,7 +3306,7 @@ const App: React.FC = () => {
             vista={vista}
             setVista={(v: any) => { if (v === 'Alumnos') setAlumnosFilterMode('all'); setVista(v); }}
             alumnos={alumnos}
-            grupos={grupos}
+            grupos={userGroups}
             niveles={niveles}
             searchQuery={searchQuery}
             setSearchQuery={setSearchQuery}
@@ -3406,7 +3417,7 @@ const App: React.FC = () => {
             handleUpdateProfesor={handleUpdateProfesor}
             isSavingProfesor={isSavingProfesor}
             clases={clases}
-            grupos={grupos}
+            grupos={userGroups}
             alumnos={alumnos}
             asistencias={asistencias}
             setSelectedProfesor={setSelectedProfesor}
@@ -3423,7 +3434,7 @@ const App: React.FC = () => {
             vista={vista}
             setVista={setVista}
             alumnos={alumnos}
-            grupos={grupos}
+            grupos={userGroups}
             clases={clases}
             asistencias={asistencias}
             comparativeData={comparativeData}
