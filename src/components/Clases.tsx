@@ -9,6 +9,7 @@ import { SKILL_TREE, DISCIPLINAS, NIVELES } from '../../constants';
 interface ClasesProps {
   vista: ViewMode;
   setVista: (vista: ViewMode) => void;
+  handleNavigation?: (vista: ViewMode) => void;
   registrationStep: number;
   setRegistrationStep: (step: number) => void;
   isEditingClase: boolean;
@@ -175,9 +176,13 @@ export const Clases: React.FC<ClasesProps> = ({
               if (registrationStep > 1) {
                 setRegistrationStep(registrationStep - 1);
               } else {
-                setVista('Dashboard');
-                setIsEditingClase(false);
-                setEditingClaseId(null);
+                if (handleNavigation) {
+                  handleNavigation('Dashboard');
+                } else {
+                  setVista('Dashboard');
+                  setIsEditingClase(false);
+                  setEditingClaseId(null);
+                }
               }
             }} 
             className="text-primary font-medium flex items-center gap-1 active:scale-95 transition-all"

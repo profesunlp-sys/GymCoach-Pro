@@ -3002,27 +3002,27 @@ const App: React.FC = () => {
       
       {/* Unsaved Changes Modal */}
       {pendingNavigation && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[200] flex items-center justify-center p-6">
-          <div className="bg-antigravity-charcoal border border-white/10 rounded-3xl p-6 w-full max-w-sm space-y-6 shadow-2xl animate-in fade-in zoom-in duration-200">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[200] flex items-center justify-center p-6">
+          <div className="bg-white border border-black/5 rounded-3xl p-6 w-full max-w-sm space-y-6 shadow-2xl animate-in fade-in zoom-in duration-200">
             <div className="flex items-center gap-3 text-rose-500">
               <span className="material-icons-outlined text-3xl">warning</span>
               <h3 className="font-bold text-lg">Cambios sin guardar</h3>
             </div>
-            <p className="text-sm text-white/70">
+            <p className="text-sm text-secondary leading-relaxed">
               Tienes datos sin guardar en esta pantalla. Si sales ahora, se perderán. ¿Qué deseas hacer?
             </p>
-            <div className="grid grid-cols-2 gap-3">
-              <button 
-                onClick={cancelNavigation}
-                className="py-3 rounded-xl border border-white/10 text-white font-bold text-xs uppercase tracking-wider active:scale-95 transition-all"
-              >
-                Cancelar
-              </button>
+            <div className="flex flex-col gap-3">
               <button 
                 onClick={confirmNavigation}
-                className="py-3 rounded-xl bg-rose-500/20 text-rose-500 border border-rose-500/30 font-bold text-xs uppercase tracking-wider active:scale-95 transition-all"
+                className="w-full py-3.5 rounded-xl bg-rose-500 text-white font-bold text-sm uppercase tracking-wide active:scale-95 transition-all hover:bg-rose-600 shadow-md shadow-rose-500/20"
               >
-                Descartar
+                Descartar y Salir
+              </button>
+              <button 
+                onClick={cancelNavigation}
+                className="w-full py-3.5 rounded-xl border border-black/10 text-secondary font-bold text-sm uppercase tracking-wide active:scale-95 transition-all hover:bg-black/5"
+              >
+                Continuar Editando
               </button>
             </div>
           </div>
@@ -3218,6 +3218,7 @@ const App: React.FC = () => {
           <Clases 
             vista={vista}
             setVista={setVista}
+            handleNavigation={handleNavigation}
             registrationStep={registrationStep}
             setRegistrationStep={setRegistrationStep}
             grupos={grupos}
@@ -3262,7 +3263,6 @@ const App: React.FC = () => {
             setSelectedClase={setSelectedClase}
             handleDeleteClase={handleDeleteClase}
             handleEditClase={handleEditClase}
-            handleNavigation={handleNavigation}
             setNotificacion={setNotificacion}
             userRole={userRole}
             user={user}
