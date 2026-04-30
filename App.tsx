@@ -4171,7 +4171,7 @@ const App: React.FC = () => {
 
       {/* Navegación Inferior (Refined for Antigravity) */}
       {vista !== 'ReportePDF' && onboardingStep === 0 && (
-        <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-white/80 backdrop-blur-xl border-t border-black/5 px-6 pt-4 pb-2 flex justify-between items-center z-50">
+        <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-white/80 backdrop-blur-xl border-t border-black/5 px-6 pt-4 pb-8 flex justify-between items-center z-50">
           {(userRole === 'Coordinator' ? [
             { v: 'Dashboard', i: 'home', l: 'Inicio' },
             { v: 'ControlPagos', i: 'payments', l: 'Pagos' },
@@ -4231,8 +4231,8 @@ const App: React.FC = () => {
 
       {/* Safe Area Indicator */}
       {vista !== 'ReportePDF' && (
-        <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-white pb-3 pt-1 z-[60]">
-          <div className="h-1.5 w-32 bg-black/10 rounded-full mx-auto shrink-0"></div>
+        <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] pb-3 pt-1 z-[70] pointer-events-none">
+          <div className="h-1.5 w-32 bg-black/15 rounded-full mx-auto shrink-0 shadow-sm backdrop-blur-sm"></div>
         </div>
       )}
 
