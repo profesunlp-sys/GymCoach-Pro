@@ -663,7 +663,8 @@ const App: React.FC = () => {
     setPendingNavigation(null);
   };
 
-  const COORDINATOR_EMAIL = "profesunlp@gmail.com";
+  const COORDINATOR_EMAILS = ["unlp@gmail.com", "profes@gmail.com"];
+  const isCoordinatorEmail = (email: string | null | undefined) => email ? COORDINATOR_EMAILS.includes(email) : false;
   const [staffInfo, setStaffInfo] = useState<any>(null);
 
   // Security guard for Coordinator routes
@@ -685,14 +686,14 @@ const App: React.FC = () => {
           const staffRef = doc(firestore, COLLECTIONS.STAFF, currentUser.uid);
           const staffDoc = await getDocs(query(collection(firestore, COLLECTIONS.STAFF), where('uid', '==', currentUser.uid)));
           
-          let role: UserRole = currentUser.email === COORDINATOR_EMAIL ? 'Coordinator' : 'Coach';
+          let role: UserRole = isCoordinatorEmail(currentUser.email) ? 'Coordinator' : 'Coach';
           let staffData: any = null;
 
           if (staffDoc.empty) {
             staffData = {
               uid: currentUser.uid,
               email: currentUser.email,
-              nombre: currentUser.displayName || (currentUser.email === COORDINATOR_EMAIL ? 'Coordinador' : 'Profesor'),
+              nombre: currentUser.displayName || (isCoordinatorEmail(currentUser.email) ? 'Coordinador' : 'Profesor'),
               role: role,
               fechaRegistro: new Date().toISOString()
             };
@@ -700,7 +701,7 @@ const App: React.FC = () => {
           } else {
             staffData = { id: staffDoc.docs[0].id, ...staffDoc.docs[0].data() };
             // Siempre forzamos el rol según el email, ignoramos lo que dice la BD por seguridad
-            role = currentUser.email === COORDINATOR_EMAIL ? 'Coordinator' : 'Coach';
+            role = isCoordinatorEmail(currentUser.email) ? 'Coordinator' : 'Coach';
             
             // Migración: si el documento no tiene el ID correcto (el UID), creamos uno con el UID
             if (staffDoc.docs[0].id !== currentUser.uid) {
@@ -713,7 +714,7 @@ const App: React.FC = () => {
         } catch (error) {
           console.error("Error syncing staff:", error);
           // Fallback to hardcoded role if Firestore fails
-          setUserRole(currentUser.email === COORDINATOR_EMAIL ? 'Coordinator' : 'Coach');
+          setUserRole(isCoordinatorEmail(currentUser.email) ? 'Coordinator' : 'Coach');
         }
       } else {
         setUser(null);
@@ -1040,7 +1041,7 @@ const App: React.FC = () => {
       const s = await getCollectionData(COLLECTIONS.SOURCES) as Source[];
       
       const currentUid = user?.uid || auth.currentUser?.uid;
-      const isCoordinator = user?.email === 'profesunlp@gmail.com'; // Adjust if needed
+      const isCoordinator = isCoordinatorEmail(user?.email);
       
       const userProfesoresIds = p.map(prof => prof.id);
       
@@ -3112,7 +3113,7 @@ const App: React.FC = () => {
               setActiveGroup={setActiveGroup}
               setRegistrationStep={setRegistrationStep}
               setUserRole={setUserRole}
-              COORDINATOR_EMAIL={COORDINATOR_EMAIL}
+              isCoordinatorEmail={isCoordinatorEmail}
               onOpenBulkPayment={() => setIsBulkPaymentModalOpen(true)}
               onOpenBulkImportStudents={() => { setIsBulkImporting(true); setOnboardingStep(0); }}
               setSelectedAlumno={setSelectedAlumno}

@@ -27,7 +27,7 @@ interface DashboardProps {
   setActiveGroup: (g: GrupoConfig) => void;
   setRegistrationStep: (step: number) => void;
   setUserRole: React.Dispatch<React.SetStateAction<UserRole>>;
-  COORDINATOR_EMAIL: string;
+  isCoordinatorEmail: (email: string | null | undefined) => boolean;
   onOpenBulkPayment: () => void;
   onOpenBulkImportStudents: () => void;
   setSelectedAlumno: (a: Alumno | null) => void;
@@ -57,7 +57,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   setActiveGroup,
   setRegistrationStep,
   setUserRole,
-  COORDINATOR_EMAIL,
+  isCoordinatorEmail,
   onOpenBulkPayment,
   onOpenBulkImportStudents,
   setSelectedAlumno,
@@ -166,7 +166,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {user?.email === COORDINATOR_EMAIL && (
+          {isCoordinatorEmail(user?.email) && (
             <motion.button 
               whileTap={{ scale: 0.95 }}
               onClick={() => setVista('CoordinatorDashboard')}
@@ -176,7 +176,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               <span className="material-symbols-outlined text-xl">admin_panel_settings</span>
             </motion.button>
           )}
-          {user?.email === COORDINATOR_EMAIL && (
+          {isCoordinatorEmail(user?.email) && (
             <motion.button 
               whileTap={{ scale: 0.95 }}
               onClick={() => setUserRole(prev => prev === 'Coordinator' ? 'Coach' : 'Coordinator')}
