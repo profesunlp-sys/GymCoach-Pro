@@ -428,7 +428,7 @@ const Alumnos: React.FC<AlumnosProps> = ({
                     <label className="text-[10px] uppercase font-bold text-secondary ml-1 tracking-widest">Nombre Completo</label>
                     <input 
                       type="text" 
-                      value={studentForm.nombre}
+                      value={studentForm.nombre || ''}
                       onFocus={() => setShowSuggestions(true)}
                       onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
                       onChange={(e) => {
@@ -438,9 +438,21 @@ const Alumnos: React.FC<AlumnosProps> = ({
                       className="w-full bg-ios-gray rounded-xl px-4 py-3 text-sm text-black outline-none border border-transparent focus:border-primary/20 transition-all font-medium"
                       placeholder="Ej: Sofía González"
                     />
-                    {showSuggestions && studentForm.nombre && alumnos.filter(a => a.nombre.toLowerCase().includes(studentForm.nombre!.toLowerCase()) && a.nombre !== studentForm.nombre).length > 0 && (
+                    {showSuggestions && studentForm.nombre && alumnos.filter(a => {
+                      if (!a.nombre) return false;
+                      const searchTerms = studentForm.nombre!.toLowerCase().trim().split(/\s+/);
+                      const targetName = a.nombre.toLowerCase();
+                      const matches = searchTerms.every(term => targetName.includes(term));
+                      return matches && a.nombre !== studentForm.nombre;
+                    }).length > 0 && (
                       <div className="absolute top-full mt-2 w-full bg-white border border-black/5 rounded-xl shadow-xl overflow-hidden z-[60] max-h-40 overflow-y-auto">
-                        {alumnos.filter(a => a.nombre.toLowerCase().includes(studentForm.nombre!.toLowerCase()) && a.nombre !== studentForm.nombre).map(alumno => (
+                        {alumnos.filter(a => {
+                          if (!a.nombre) return false;
+                          const searchTerms = studentForm.nombre!.toLowerCase().trim().split(/\s+/);
+                          const targetName = a.nombre.toLowerCase();
+                          const matches = searchTerms.every(term => targetName.includes(term));
+                          return matches && a.nombre !== studentForm.nombre;
+                        }).map(alumno => (
                           <div 
                             key={alumno.id}
                             className="px-4 py-2 hover:bg-ios-gray cursor-pointer border-b border-black/5 last:border-0 text-sm font-medium"
