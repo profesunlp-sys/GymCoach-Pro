@@ -183,7 +183,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
       {/* Saludo y Fecha */}
       <section className="px-1">
-        <h2 className="text-3xl font-bold text-black tracking-tight">
+        <h2 className="text-3xl font-bold text-[#5d0fe7] tracking-tight">
           Hola, {user?.displayName?.split(' ')[0] || (userRole === 'Coordinator' ? 'Coordinador' : 'Profesor')}
         </h2>
         <p className="text-secondary text-sm font-medium mt-1">
@@ -377,7 +377,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     <div className="flex justify-between items-start">
                       <div className="space-y-1">
                         <span className="text-[10px] font-bold text-primary uppercase tracking-[0.2em]">{Array.isArray(selectedGroupInternal.dias) ? selectedGroupInternal.dias.join(', ') : selectedGroupInternal.dias}</span>
-                        <h3 className="text-4xl font-bold text-black tracking-tight">{selectedGroupInternal.nombre}</h3>
+                        <h3 className="text-4xl font-bold text-[#5d0fe7] tracking-tight">{selectedGroupInternal.nombre}</h3>
                         <p className="text-secondary text-sm font-medium">{selectedGroupInternal.horario}</p>
                       </div>
                       <button 

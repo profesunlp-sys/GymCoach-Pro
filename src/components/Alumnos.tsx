@@ -204,14 +204,14 @@ const Alumnos: React.FC<AlumnosProps> = ({
       if (alumnosFilterMode === 'alerts' && !(a.alertas && a.alertas.length > 0 && a.alertas[0] !== '')) return false;
       
       if (alumnosFilterMode === 'myGroups') {
-        const belongsToMyGroups = currentCoachGroupsNames && currentCoachGroupsNames.some(gn => (gn || "").trim() === (a.grupo || "").trim());
+        const belongsToMyGroups = currentCoachGroupsNames && currentCoachGroupsNames.some(gn => (gn || "").trim().toLowerCase() === (a.grupo || "").trim().toLowerCase());
         const isMyStudent = a.userId === currentUserId;
         
         if (!belongsToMyGroups && !isMyStudent) return false;
       }
 
-      if (selectedGrupoFilter !== 'Todos' && (a.grupo || "").trim() !== selectedGrupoFilter.trim()) return false;
-      if (selectedNivelFilter !== 'Todos' && (a.nivel || "").trim() !== selectedNivelFilter.trim()) return false;
+      if (selectedGrupoFilter !== 'Todos' && (a.grupo || "").trim().toLowerCase() !== selectedGrupoFilter.trim().toLowerCase()) return false;
+      if (selectedNivelFilter !== 'Todos' && (a.nivel || "").trim().toLowerCase() !== selectedNivelFilter.trim().toLowerCase()) return false;
       if (selectedAgeFilter !== 'Todos' && calculateAgeGroup(a.fechaNacimiento) !== selectedAgeFilter) return false;
       if (selectedPhysicalFilter !== 'Cualquiera' && getPhysicalCategory(getPhysicalScore(a.biometria)) !== selectedPhysicalFilter) return false;
       return true;
@@ -223,11 +223,24 @@ const Alumnos: React.FC<AlumnosProps> = ({
 
     // 2. Match por palabras clave en nombre
     const searchTerms = query.split(/\s+/).filter(t => t.length > 0);
-    const studentName = a.nombre.toLowerCase();
+    const studentName = (a.nombre || "").toLowerCase();
     
     // El alumno coincide si TODAS las palabras de búsqueda están presentes en su nombre (en cualquier orden)
     return searchTerms.every(term => studentName.includes(term));
   });
+
+  const [showMainSuggestions, setShowMainSuggestions] = useState(false);
+  const mainSuggestions = searchQuery.length > 1 ? alumnos.filter(a => 
+    (a.nombre || "").toLowerCase().includes(searchQuery.toLowerCase()) || 
+    (a.dni || "").includes(searchQuery)
+  ).slice(0, 5) : [];
+
+  const handleSelectSuggestion = (alumno: Alumno) => {
+    setSelectedAlumno(alumno);
+    setVista('AlumnoDetalle');
+    setSearchQuery('');
+    setShowMainSuggestions(false);
+  };
 
   if (vista === 'Alumnos') {
     return (
@@ -299,9 +312,32 @@ const Alumnos: React.FC<AlumnosProps> = ({
               type="text" 
               placeholder="Buscar por nombre o DNI..." 
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setShowMainSuggestions(true);
+              }}
+              onFocus={() => setShowMainSuggestions(true)}
+              onBlur={() => setTimeout(() => setShowMainSuggestions(false), 200)}
               className="w-full bg-white border border-transparent rounded-[1.2rem] pl-12 pr-4 py-4 text-sm text-black outline-none focus:border-primary/20 shadow-sm transition-all placeholder:text-secondary/50"
             />
+            {showMainSuggestions && mainSuggestions.length > 0 && (
+              <div className="absolute top-full mt-2 w-full bg-white border border-black/5 rounded-2xl shadow-xl overflow-hidden z-[70] max-h-60 overflow-y-auto">
+                <div className="px-4 py-2 bg-ios-gray/50 text-[10px] font-bold text-secondary uppercase tracking-widest border-b border-black/5">Gimnastas encontradas</div>
+                {mainSuggestions.map(alumno => (
+                  <div 
+                    key={alumno.id}
+                    className="px-4 py-3 hover:bg-ios-gray cursor-pointer border-b border-black/5 last:border-0 flex items-center justify-between"
+                    onMouseDown={() => handleSelectSuggestion(alumno)}
+                  >
+                    <div>
+                      <p className="text-sm font-bold text-black">{alumno.nombre}</p>
+                      <p className="text-[10px] text-secondary">DNI: {alumno.dni || 'Sin registrar'}</p>
+                    </div>
+                    <span className="material-icons-outlined text-black/10 text-base">chevron_right</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -445,33 +481,29 @@ const Alumnos: React.FC<AlumnosProps> = ({
                         setShowSuggestions(true);
                       }}
                       className="w-full bg-ios-gray rounded-xl px-4 py-3 text-sm text-black outline-none border border-transparent focus:border-primary/20 transition-all font-medium"
-                      placeholder="Ej: Sofía González"
+                      placeholder="Ej: Sofía González o DNI"
                     />
-                    {showSuggestions && studentForm.nombre && alumnos.filter(a => {
-                      if (!a.nombre) return false;
-                      const searchTerms = studentForm.nombre!.toLowerCase().trim().split(/\s+/);
-                      const targetName = a.nombre.toLowerCase();
-                      const matches = searchTerms.every(term => targetName.includes(term));
-                      return matches && a.nombre !== studentForm.nombre;
-                    }).length > 0 && (
+                    {showSuggestions && (studentForm.nombre || studentForm.dni) && (
                       <div className="absolute top-full mt-2 w-full bg-white border border-black/5 rounded-xl shadow-xl overflow-hidden z-[60] max-h-40 overflow-y-auto">
                         {alumnos.filter(a => {
-                          if (!a.nombre) return false;
-                          const searchTerms = studentForm.nombre!.toLowerCase().trim().split(/\s+/);
-                          const targetName = a.nombre.toLowerCase();
-                          const matches = searchTerms.every(term => targetName.includes(term));
-                          return matches && a.nombre !== studentForm.nombre;
+                          const queryText = (studentForm.nombre || '').toLowerCase();
+                          const dniText = studentForm.dni || '';
+                          if (!queryText && !dniText) return false;
+                          const nameMatch = queryText.length > 1 && (a.nombre || '').toLowerCase().includes(queryText);
+                          const dniMatch = dniText.length > 2 && (a.dni || '').includes(dniText);
+                          return (nameMatch || dniMatch) && (!studentForm.id || a.id !== studentForm.id);
                         }).map(alumno => (
                           <div 
                             key={alumno.id}
-                            className="px-4 py-2 hover:bg-ios-gray cursor-pointer border-b border-black/5 last:border-0 text-sm font-medium"
+                            className="px-4 py-2 hover:bg-ios-gray cursor-pointer border-b border-black/5 last:border-0 text-sm font-medium flex justify-between items-center"
                             onMouseDown={() => {
                               setStudentForm(alumno);
                               setIsEditingStudent(true);
                               setShowSuggestions(false);
                             }}
                           >
-                            {alumno.nombre}
+                            <span>{alumno.nombre}</span>
+                            <span className="text-[10px] text-secondary">{alumno.dni}</span>
                           </div>
                         ))}
                       </div>
@@ -804,7 +836,7 @@ const Alumnos: React.FC<AlumnosProps> = ({
             {activeTab === 'Bio' && selectedAlumno.biometria && (
               <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2">
                 <div className="flex justify-between items-center px-1">
-                  <h3 className="text-xs font-bold text-secondary uppercase tracking-widest">Biometría Radar</h3>
+                  <h3 className="text-xs font-bold text-[#5d0fe7] uppercase tracking-widest">Biometría Radar</h3>
                   <button 
                     onClick={() => {
                       if (isEditingBiometrics) {

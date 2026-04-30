@@ -333,7 +333,56 @@ export const Asistencia: React.FC<AsistenciaProps> = ({
     );
   }
 
-  if (vista !== 'AsistenciaLista' || !activeGroup) return null;
+  if (vista !== 'AsistenciaLista') return null;
+
+  if (!activeGroup) {
+    return (
+      <div className="page-transition flex flex-col min-h-screen bg-ios-gray px-6 py-12 space-y-6">
+        <header className="flex items-center gap-4">
+          <button onClick={() => setVista('Dashboard')} className="w-10 h-10 flex items-center justify-center rounded-full bg-white shadow-sm border border-black/5 text-primary">
+            <span className="material-symbols-outlined text-[20px]">arrow_back_ios_new</span>
+          </button>
+          <h1 className="text-xl font-bold tracking-tight text-black">Seleccionar Grupo</h1>
+        </header>
+
+        <div className="space-y-4">
+          <p className="text-secondary text-sm font-medium px-1">
+            Por favor, seleccioná un grupo para comenzar a tomar asistencia hoy.
+          </p>
+          
+          <div className="grid grid-cols-1 gap-3">
+            {grupos.map(g => (
+              <motion.button
+                key={g.id}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => setActiveGroup(g)}
+                className="w-full bg-white p-6 rounded-[2rem] shadow-ios border border-transparent hover:border-primary/20 flex items-center justify-between group transition-all"
+              >
+                <div className="text-left flex items-center gap-4">
+                  <div className="w-12 h-12 bg-ios-gray rounded-2xl flex items-center justify-center text-secondary group-hover:bg-primary/10 group-hover:text-primary transition-all">
+                    <span className="material-icons-outlined">calendar_today</span>
+                  </div>
+                  <div>
+                    <h4 className="text-lg font-bold text-black tracking-tight group-hover:text-primary transition-colors">{g.nombre}</h4>
+                    <p className="text-[10px] text-secondary font-bold uppercase tracking-widest">
+                      {g.horario}
+                    </p>
+                  </div>
+                </div>
+                <span className="material-icons-outlined text-black/10 group-hover:text-primary transition-colors">arrow_forward_ios</span>
+              </motion.button>
+            ))}
+
+            {grupos.length === 0 && (
+              <div className="p-12 text-center bg-white rounded-[2rem] border border-dashed border-black/10">
+                <p className="text-secondary text-sm italic">No hay grupos configurados.</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="page-transition flex flex-col min-h-screen relative bg-ios-gray">

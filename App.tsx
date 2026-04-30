@@ -1056,12 +1056,12 @@ const App: React.FC = () => {
           (grupo.entrenadorId && userProfesoresIds.includes(grupo.entrenadorId)) ||
           ((grupo as any).userId === currentUid);
       });
-      const coachGruposNames = coachGrupos.map(grupo => grupo.nombre);
+      const coachGruposNames = coachGrupos.map(grupo => (grupo.nombre || "").trim().toLowerCase());
       
       // Filter alumnos that belong to those groups, OR alumnos that have no group yet
       // Also include alumnos that seem to belong to this user (userId match) as fallback
       const userAlumnos = isCoordinator ? a : (a || []).filter(alumno => 
-          coachGruposNames.includes(alumno.grupo || '') || 
+          coachGruposNames.includes((alumno.grupo || '').trim().toLowerCase()) || 
           (alumno.userId === currentUid)
       );
       
