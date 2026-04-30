@@ -168,26 +168,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {isCoordinatorEmail(user?.email) && (
-            <motion.button 
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setVista('CoordinatorDashboard')}
-              className="w-10 h-10 rounded-full bg-white shadow-sm border border-black/5 text-secondary hover:text-primary transition-all flex items-center justify-center"
-              title="Panel Coordinador"
-            >
-              <span className="material-symbols-outlined text-xl">admin_panel_settings</span>
-            </motion.button>
-          )}
-          {isCoordinatorEmail(user?.email) && (
-            <motion.button 
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setUserRole(prev => prev === 'Coordinator' ? 'Coach' : 'Coordinator')}
-              className="w-10 h-10 rounded-full bg-white shadow-sm border border-black/5 text-secondary hover:text-primary transition-all flex items-center justify-center"
-              title="Cambiar Rol"
-            >
-              <span className="material-symbols-outlined text-xl">cached</span>
-            </motion.button>
-          )}
           <motion.button 
             whileTap={{ scale: 0.95 }}
             onClick={handleLogout}

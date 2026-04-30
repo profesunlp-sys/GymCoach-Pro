@@ -663,14 +663,18 @@ const App: React.FC = () => {
     setPendingNavigation(null);
   };
 
-  const COORDINATOR_EMAILS = ["unlp@gmail.com", "profes@gmail.com"];
+  const COORDINATOR_EMAILS = ["profesunlp@gmail.com"];
   const isCoordinatorEmail = (email: string | null | undefined) => email ? COORDINATOR_EMAILS.includes(email) : false;
   const [staffInfo, setStaffInfo] = useState<any>(null);
 
-  // Security guard for Coordinator routes
+  // Security guard for routes
   useEffect(() => {
     const coordinatorOnlyViews: ViewMode[] = ['AsistenciaStats', 'ReporteGrupal', 'TendenciasHabilidades', 'ReportePDF', 'ControlPagos', 'Profesores', 'ProfesorDetalle'];
+    const coachOnlyViews: ViewMode[] = ['Alumnos', 'AlumnoDetalle', 'RegistroAlumno', 'Horario', 'NuevaClase', 'ClaseDetalle', 'HistorialClases', 'AsistenciaLista', 'Planes', 'Habilidades'];
     if (userRole !== 'Coordinator' && coordinatorOnlyViews.includes(vista)) {
+      setVista('Dashboard');
+    }
+    if (userRole === 'Coordinator' && coachOnlyViews.includes(vista)) {
       setVista('Dashboard');
     }
   }, [vista, userRole]);
@@ -4140,13 +4144,14 @@ const App: React.FC = () => {
               className="relative w-full max-w-[400px] bg-white rounded-[2.5rem] p-6 grid grid-cols-3 gap-4 shadow-2xl border border-black/5"
             >
               {[
-                { v: 'AsistenciaLista', i: 'fact_check', l: 'Asistencia', c: 'text-emerald-600' },
-                { v: 'Horario', i: 'event_note', l: 'Grupos', c: 'text-amber-600' },
-                { v: 'AsistenciaStats', i: 'analytics', l: 'Estadísticas', c: 'text-sky-600' },
-                { v: 'Planes', i: 'psychology', l: 'Manuales', c: 'text-violet-600' },
-                { v: 'Profesores', i: 'badge', l: 'Staff', c: 'text-rose-600' },
-                { v: 'Habilidades', i: 'trending_up', l: 'Habilidades', c: 'text-purple-600' },
-              ].map(opt => (
+                { v: 'AsistenciaLista', i: 'fact_check', l: 'Asistencia', c: 'text-emerald-600', role: 'Coach' },
+                { v: 'Horario', i: 'event_note', l: 'Grupos', c: 'text-amber-600', role: 'Coach' },
+                { v: 'AsistenciaStats', i: 'analytics', l: 'Estadísticas', c: 'text-sky-600', role: 'Coordinator' },
+                { v: 'Planes', i: 'psychology', l: 'Manuales', c: 'text-violet-600', role: 'Coach' },
+                { v: 'Profesores', i: 'badge', l: 'Staff', c: 'text-rose-600', role: 'Coordinator' },
+                { v: 'Habilidades', i: 'trending_up', l: 'Habilidades', c: 'text-purple-600', role: 'Coach' },
+                { v: 'ControlPagos', i: 'payments', l: 'Pagos', c: 'text-ios-blue', role: 'Coordinator' },
+              ].filter(opt => opt.role === userRole).map(opt => (
                 <button
                   key={opt.v}
                   onClick={() => {
@@ -4167,13 +4172,19 @@ const App: React.FC = () => {
       {/* Navegación Inferior (Refined for Antigravity) */}
       {vista !== 'ReportePDF' && onboardingStep === 0 && (
         <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-white/80 backdrop-blur-xl border-t border-black/5 px-6 pt-4 pb-2 flex justify-between items-center z-50">
-          {[
+          {(userRole === 'Coordinator' ? [
+            { v: 'Dashboard', i: 'home', l: 'Inicio' },
+            { v: 'ControlPagos', i: 'payments', l: 'Pagos' },
+            { v: 'Profesores', i: 'badge', l: 'Staff' },
+            { v: 'Menu', i: 'menu_open', l: 'Menú' },
+            { v: 'Ajustes', i: 'settings', l: 'Ajustes' }
+          ] : [
             { v: 'Dashboard', i: 'home', l: 'Inicio' },
             { v: 'Alumnos', i: 'group', l: 'Gimnastas' },
             { v: 'Horario', i: 'calendar_month', l: 'Grupos' },
             { v: 'Menu', i: 'menu_open', l: 'Menú' },
             { v: 'Ajustes', i: 'settings', l: 'Ajustes' }
-          ].map(item => (
+          ]).map(item => (
             <button 
               key={item.v} 
               onClick={() => {
