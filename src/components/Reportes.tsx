@@ -6,7 +6,7 @@ import {
   Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis
 } from 'recharts';
 import { Alumno, Clase, GrupoConfig, ViewMode } from '../../types';
-import { BackButton } from '../../App';
+import { BackButton } from './ui/CommonUI';
 
 interface ReportesProps {
   alumnos: Alumno[];

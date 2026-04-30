@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Alumno, GrupoConfig, Skill, AsistenciaRecord, Feedback } from '../../types';
-import { Button, EditableDropdown, Tooltip, BackButton } from '../../App';
+import { Button, EditableDropdown, Tooltip, BackButton } from './ui/CommonUI';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
 
 interface AlumnosProps {

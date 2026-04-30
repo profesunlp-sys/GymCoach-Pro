@@ -20,324 +20,199 @@ export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete
 
     setIsProcessing(true);
     setError(null);
+    setStats(null);
 
-    try {
-      const reader = new FileReader();
-      reader.onload = async (evt) => {
-        try {
-          const bstr = evt.target?.result;
-          const wb = XLSX.read(bstr, { type: 'binary' });
-          const wsname = wb.SheetNames[0];
-          const ws = wb.Sheets[wsname];
-          const data = XLSX.utils.sheet_to_json(ws) as any[];
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const data = new Uint8Array(event.target?.result as ArrayBuffer);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
-          if (data.length === 0) {
-            setError("El archivo Excel está vacío.");
-            setIsProcessing(false);
-            return;
+        if (jsonData.length === 0) {
+          throw new Error('El archivo está vacío');
+        }
+
+        const batch = writeBatch(db);
+        let matchedCount = 0;
+        const ignoredRows: { row: any, reason: string }[] = [];
+
+        // Fetch all students to match locally (better for small/medium sets)
+        const alumnosSnap = await getDocs(collection(db, 'alumnos'));
+        const allAlumnos = alumnosSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+
+        const currentYear = new Date().getFullYear();
+
+        for (const row of jsonData as any[]) {
+          const name = row['Nombre'] || row['Alumno/a'] || row['Gimnasta'] || row['Nombre y Apellido'];
+          const mes = row['Mes'] || row['Cuota'];
+          const monto = row['Monto'] || row['Importe'];
+
+          if (!name || !mes) {
+            ignoredRows.push({ row, reason: 'Faltan campos requeridos (Nombre o Mes)' });
+            continue;
           }
 
-          // Intentar identificar las columnas (Nombre, Apellido, DNI, Mes, Año)
-          // Asumiremos que el Excel tiene columnas con nombres similares
-          const result = await processExcelData(data);
-          setStats({ total: data.length, matched: result.count, ignored: result.ignored });
-          onComplete(result.count);
-        } catch (err) {
-          setError("Error al procesar el archivo. Asegúrate que sea un Excel válido.");
-          setIsProcessing(false);
+          // Simple exact or fuzzy match
+          const normalizedName = name.toString().trim().toLowerCase();
+          const student = allAlumnos.find(a => 
+            a.nombre.trim().toLowerCase() === normalizedName ||
+            a.nombre.trim().toLowerCase().includes(normalizedName) ||
+            normalizedName.includes(a.nombre.trim().toLowerCase())
+          );
+
+          if (student) {
+            const studentRef = doc(db, 'alumnos', student.id);
+            batch.update(studentRef, {
+              pagosMensuales: arrayUnion({
+                mes: mes.toString(),
+                anio: currentYear,
+                fechaPago: new Date().toISOString(),
+                monto: monto || 0,
+                importado: true,
+                importadoEn: serverTimestamp()
+              })
+            });
+            matchedCount++;
+          } else {
+            ignoredRows.push({ row, reason: `No se encontró alumna: ${name}` });
+          }
         }
-      };
-      reader.readAsBinaryString(file);
-    } catch (err) {
-      setError("Error al leer el archivo.");
+
+        if (matchedCount > 0) {
+          await batch.commit();
+        }
+
+        setStats({
+          total: jsonData.length,
+          matched: matchedCount,
+          ignored: ignoredRows
+        });
+
+        if (matchedCount > 0) {
+          setTimeout(() => onComplete(matchedCount), 3000);
+        }
+      } catch (err: any) {
+        console.error('Import error:', err);
+        setError(err.message || 'Error al procesar el archivo');
+      } finally {
+        setIsProcessing(false);
+      }
+    };
+
+    reader.onerror = () => {
+      setError('Error al leer el archivo');
       setIsProcessing(false);
-    }
-  };
-
-  const processExcelData = async (data: any[]) => {
-    const batch = writeBatch(db);
-    let count = 0;
-    const ignored: { row: any, reason: string }[] = [];
-
-    // Obtener todos los alumnos para cruzar datos
-    const alumnosSnapshot = await getDocs(collection(db, 'alumnos'));
-    const allAlumnos: any[] = alumnosSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-    const removeAccents = (str: string) => {
-      return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     };
 
-    const cleanNumber = (val: any): string => {
-      return String(val || "").replace(/\D/g, "");
-    };
-
-    const getValLoosely = (row: any, keywords: string[]) => {
-      const rowKeys = Object.keys(row);
-      for (const k of rowKeys) {
-        const kNorm = removeAccents(k.toLowerCase());
-        if (keywords.some(kw => kNorm.includes(removeAccents(kw.toLowerCase())))) {
-          return row[k];
-        }
-      }
-      return null;
-    };
-
-    const currentYear = new Date().getFullYear();
-    const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-    const normalizeMonth = (val: any): string => {
-      if (typeof val === 'number') {
-        return monthNames[val - 1] || monthNames[0];
-      }
-      const s = removeAccents(String(val).trim().toLowerCase());
-      const n = parseInt(s);
-      if (!isNaN(n)) return monthNames[n - 1] || monthNames[0];
-      
-      const found = monthNames.find(m => removeAccents(m.toLowerCase()) === s || removeAccents(m.toLowerCase()).startsWith(s.slice(0,3)));
-      if (found) return found;
-
-      return String(val).charAt(0).toUpperCase() + String(val).slice(1);
-    };
-    const currentMonthName = monthNames[new Date().getMonth()];
-
-    // Función de comparación de palabras clave (FUZZY MATCHING BÁSICO)
-    const findAlumnoByKeywords = (searchName: string) => {
-      const searchNameNorm = removeAccents(searchName.toLowerCase());
-      const searchTerms = searchNameNorm.split(/\s+|,/).filter((t: string) => t.length > 1);
-      if (searchTerms.length === 0) return null;
-
-      return allAlumnos.find(alumno => {
-        const studentName = removeAccents(alumno.nombre.toLowerCase());
-        // Verificamos si al menos las palabras clave del nombre del Excel aparecen en el nombre registrado
-        const matchesAll = searchTerms.every((term: string) => studentName.includes(term));
-        const inverseMatches = studentName.split(/\s+/).filter((t: string) => t.length > 1).every((term: string) => searchNameNorm.includes(term));
-        return matchesAll || inverseMatches;
-      });
-    };
-
-    for (const row of data) {
-      // 0. Identificar columnas dinámicamente si es posible
-      const actividadRaw = getValLoosely(row, ['Actividad', 'Clase', 'Disciplina', 'Concepto', 'Deporte']);
-      const nombreRaw = getValLoosely(row, ['Nombre', 'Alumno', 'Gimnasta', 'Apellido', 'Socio', 'Deportista']);
-      const dniRaw = getValLoosely(row, ['DNI', 'Documento', 'Cedula', 'CUIL', 'Legajo']);
-      const añoRaw = getValLoosely(row, ['Año', 'Anio', 'Periodo', 'Ciclo']) || currentYear;
-      const mesRaw = getValLoosely(row, ['Mes', 'Cuota', 'Periodo']);
-
-      // FILTRO DE ACTIVIDAD FLEXIBLE
-      const normalizeActividad = removeAccents(String(actividadRaw || "").toLowerCase().trim());
-      
-      // Si el archivo tiene columna de actividad, filtramos pero con más flexibilidad
-      if (actividadRaw && actividadRaw !== "" && 
-          !normalizeActividad.includes('gimnasia') && 
-          !normalizeActividad.includes('artistica') && 
-          !normalizeActividad.includes('artística')) {
-        ignored.push({ row, reason: "Actividad no identificada como Gimnasia Artística" });
-        continue;
-      }
-      
-      let matchedAlumno = null;
-
-      // 1. PRIORIDAD: DNI (Limpio de puntos y guiones)
-      const cleanDniExcel = cleanNumber(dniRaw);
-      if (cleanDniExcel && cleanDniExcel !== '' && cleanDniExcel !== '0') {
-        matchedAlumno = allAlumnos.find(a => {
-          const aDni = cleanNumber(a.dni);
-          return aDni !== '' && aDni === cleanDniExcel;
-        });
-      }
-
-      // 2. SECUNDARIO: NOMBRE
-      if (!matchedAlumno && nombreRaw) {
-        const cleanNameExcel = removeAccents(String(nombreRaw).toLowerCase().trim());
-        // Intentar exacto primero
-        matchedAlumno = allAlumnos.find(a => removeAccents(a.nombre.toLowerCase().trim()) === cleanNameExcel);
-        
-        // Si no, intentar por palabras clave
-        if (!matchedAlumno) {
-          matchedAlumno = findAlumnoByKeywords(String(nombreRaw));
-        }
-      }
-
-      if (matchedAlumno && matchedAlumno.id) {
-        const alumnoId = matchedAlumno.id;
-        const alumnoRef = doc(db, 'alumnos', alumnoId);
-        
-        // Determinar qué meses se están pagando en esta fila
-        const paymentsInRow: { mes: string, anio: number }[] = [];
-
-        // CASO A: Columna "Mes" explícita
-        if (mesRaw) {
-          paymentsInRow.push({
-            mes: normalizeMonth(mesRaw),
-            anio: parseInt(añoRaw.toString())
-          });
-        } 
-        
-        // CASO B: Meses como columnas (Enero, Febrero, Mar, Abr...)
-        const possibleMonthKeys = Object.keys(row);
-        possibleMonthKeys.forEach(key => {
-          const normalizedKey = removeAccents(key.trim().toLowerCase());
-          // Verificar si la columna parece ser un mes
-          const monthIdx = monthNames.findIndex(m => {
-             const mNorm = removeAccents(m.toLowerCase());
-             return mNorm === normalizedKey || mNorm.startsWith(normalizedKey.slice(0,3));
-          });
-          
-          if (monthIdx !== -1) {
-            const cellValueRaw = row[key];
-            if (cellValueRaw !== undefined && cellValueRaw !== null) {
-              const cellValue = String(cellValueRaw).toLowerCase().trim();
-              // Loosen check: if it's not empty, not "0", not "no", not "false", count it as paid
-              if (cellValue !== "" && !['0', 'no', 'false', 'falta', 'impago', '-'].includes(cellValue)) {
-                paymentsInRow.push({
-                  mes: monthNames[monthIdx],
-                  anio: parseInt(añoRaw.toString())
-                });
-              }
-            }
-          }
-        });
-
-        // Si no se encontró ningún mes específico pero la fila existe, usamos el mes actual por defecto
-        if (paymentsInRow.length === 0 && !mesRaw) {
-          paymentsInRow.push({
-            mes: currentMonthName,
-            anio: parseInt(añoRaw.toString())
-          });
-        }
-
-        // Aplicar todos los pagos encontrados para este alumno
-        for (const payment of paymentsInRow) {
-          batch.update(alumnoRef, {
-            pagosMensuales: arrayUnion({
-              ...payment,
-              fechaPago: new Date().toISOString(),
-              importado: true
-            })
-          });
-          count++;
-        }
-      } else {
-        ignored.push({ row, reason: "Gimnasta no encontrado por DNI ni Nombre" });
-      }
-    }
-
-    if (count > 0) {
-      await batch.commit();
-    }
-    return { count, ignored };
+    reader.readAsArrayBuffer(file);
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-6"
+    >
       <motion.div 
-        initial={{ scale: 0.9, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        className="bg-white rounded-[2.5rem] p-8 max-w-md w-full shadow-2xl relative overflow-hidden"
+        initial={{ scale: 0.9, y: 20 }}
+        animate={{ scale: 1, y: 0 }}
+        className="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl overflow-hidden"
       >
-        <div className="absolute top-0 left-0 w-full h-2 bg-ios-blue"></div>
-        
-        <div className="flex justify-between items-start mb-6">
-          <div>
-            <h3 className="text-2xl font-bold text-black tracking-tight">Importar Pagos</h3>
-            <p className="text-secondary text-sm">Sincroniza alumnos pagados desde Excel</p>
-          </div>
-          <button onClick={onCancel} className="w-10 h-10 rounded-full bg-ios-gray flex items-center justify-center text-secondary">
-            <span className="material-icons-outlined">close</span>
-          </button>
-        </div>
-
-        {!isProcessing && !stats && (
-          <div className="space-y-6">
-            <div className="border-2 border-dashed border-black/5 rounded-[2rem] p-10 flex flex-col items-center justify-center text-center space-y-4">
-              <div className="w-16 h-16 bg-ios-blue/10 text-ios-blue rounded-full flex items-center justify-center">
-                <span className="material-icons-outlined text-3xl">upload_file</span>
-              </div>
-              <div>
-                <p className="text-sm font-bold text-black">Selecciona el archivo Excel</p>
-                <p className="text-[10px] text-secondary uppercase tracking-widest mt-1">Formatos: .xlsx, .xls, .csv</p>
-              </div>
-              <input 
-                type="file" 
-                accept=".xlsx, .xls, .csv" 
-                onChange={handleFileUpload}
-                className="absolute inset-0 opacity-0 cursor-pointer"
-              />
+        <div className="p-8 space-y-6">
+          <div className="flex justify-between items-start">
+            <div className="w-14 h-14 bg-ios-blue text-white rounded-2xl flex items-center justify-center shadow-lg shadow-ios-blue/20">
+              <span className="material-icons-outlined text-3xl">cloud_upload</span>
             </div>
-            
-            <div className="bg-ios-gray/50 rounded-2xl p-4">
-              <h4 className="text-[10px] font-bold text-secondary uppercase tracking-widest mb-2">Consejos para el Excel:</h4>
-              <ul className="text-[10px] text-secondary space-y-1.5 list-disc pl-4 font-medium">
-                <li>La primera fila debe tener los nombres de las columnas.</li>
-                <li>Usa columnas llamadas "Nombre", "DNI" o "Alumno".</li>
-                <li>La app intentará emparejar por nombre exacto o DNI.</li>
-              </ul>
-            </div>
-          </div>
-        )}
-
-        {isProcessing && !stats && (
-          <div className="py-12 flex flex-col items-center justify-center space-y-4">
-            <div className="w-12 h-12 border-4 border-ios-blue border-t-transparent rounded-full animate-spin"></div>
-            <p className="text-sm font-bold text-black">Procesando archivo...</p>
-            <p className="text-[10px] text-secondary">Cruzando datos con la lista de alumnos</p>
-          </div>
-        )}
-
-        {stats && (
-          <div className="py-2 text-center space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar pr-2">
-            <div className="w-16 h-16 bg-ios-green/10 text-ios-green rounded-full flex items-center justify-center mx-auto">
-              <span className="material-icons-outlined text-3xl">check_circle</span>
-            </div>
-            <div>
-              <h4 className="text-xl font-bold text-black">¡Importación Completada!</h4>
-              <p className="text-xs text-secondary mt-1">
-                Se identificaron <strong>{stats.matched}</strong> pagos en {stats.total} filas.
-              </p>
-            </div>
-
-            {stats.ignored.length > 0 && (
-              <div className="text-left space-y-3">
-                <div className="flex items-center justify-between">
-                  <h5 className="text-[10px] font-black uppercase tracking-widest text-secondary">Filas ignoradas ({stats.ignored.length})</h5>
-                  <span className="text-[10px] text-ios-red font-bold">Sin match</span>
-                </div>
-                <div className="space-y-2 max-h-[180px] overflow-y-auto pr-1">
-                  {stats.ignored.slice(0, 20).map((item, idx) => (
-                    <div key={idx} className="bg-ios-gray/50 p-3 rounded-xl border border-black/5 flex flex-col gap-1">
-                      <div className="flex justify-between items-start">
-                        <span className="text-[10px] font-bold text-black truncate flex-1">
-                          {item.row.Nombre || item.row.Alumno || item.row.Gimnasta || "Fila s/nombre"}
-                        </span>
-                        <span className="text-[9px] text-ios-red font-bold uppercase ml-2 shrink-0">{item.reason}</span>
-                      </div>
-                      {(item.row.DNI || item.row.Documento) && (
-                        <span className="text-[9px] text-secondary">DNI: {item.row.DNI || item.row.Documento}</span>
-                      )}
-                    </div>
-                  ))}
-                  {stats.ignored.length > 20 && (
-                    <p className="text-[9px] text-center text-secondary py-1 italic">... y {stats.ignored.length - 20} filas más</p>
-                  )}
-                </div>
-              </div>
-            )}
-
             <button 
-              onClick={() => onComplete(stats.matched)}
-              className="w-full py-4 bg-ios-blue text-white rounded-2xl font-bold text-sm shadow-ios shrink-0"
+              onClick={onCancel}
+              className="w-10 h-10 rounded-full bg-ios-gray flex items-center justify-center text-secondary active:scale-90 transition-all"
             >
-              Cerrar y Ver Resultados
+              <span className="material-icons-outlined">close</span>
             </button>
           </div>
-        )}
 
-        {error && (
-          <div className="mt-4 p-4 bg-ios-red/10 border border-ios-red/20 rounded-2xl flex items-start gap-3">
-            <span className="material-icons-outlined text-ios-red text-lg">error_outline</span>
-            <p className="text-xs text-ios-red font-medium">{error}</p>
+          <div className="space-y-2">
+            <h2 className="text-2xl font-bold text-black tracking-tight">Importar Pagos</h2>
+            <p className="text-secondary text-sm">Seleccioná un archivo Excel (.xlsx) con los pagos mensuales.</p>
           </div>
-        )}
+
+          {error && (
+            <div className="p-4 bg-ios-red/10 border border-ios-red/20 rounded-2xl flex items-start gap-3">
+              <span className="material-icons-outlined text-ios-red">error_outline</span>
+              <p className="text-xs text-ios-red font-medium">{error}</p>
+            </div>
+          )}
+
+          {stats ? (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-ios-gray rounded-2xl p-4 text-center">
+                  <div className="text-2xl font-bold text-black">{stats.matched}</div>
+                  <div className="text-[10px] font-bold text-secondary uppercase tracking-widest">Vinculados</div>
+                </div>
+                <div className="bg-ios-gray rounded-2xl p-4 text-center">
+                  <div className="text-2xl font-bold text-ios-red">{stats.ignored.length}</div>
+                  <div className="text-[10px] font-bold text-secondary uppercase tracking-widest">Ignorados</div>
+                </div>
+              </div>
+
+              {stats.ignored.length > 0 && (
+                <div className="max-h-40 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
+                  {stats.ignored.map((item, i) => (
+                    <div key={i} className="text-[10px] p-2 bg-ios-red/5 rounded-lg border border-ios-red/10">
+                      <span className="font-bold">Fila {i + 1}:</span> {item.reason}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <button 
+                onClick={() => onComplete(stats.matched)}
+                className="w-full py-4 bg-ios-blue text-white rounded-2xl font-bold uppercase tracking-widest text-[10px] shadow-lg shadow-ios-blue/20 active:scale-95 transition-all"
+              >
+                Cerrar y Actualizar
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              <label className="relative group cursor-pointer block">
+                <input 
+                  type="file" 
+                  accept=".xlsx, .xls"
+                  onChange={handleFileUpload}
+                  disabled={isProcessing}
+                  className="hidden"
+                />
+                <div className={`border-2 border-dashed border-black/10 rounded-3xl p-10 flex flex-col items-center justify-center gap-4 transition-all ${isProcessing ? 'opacity-50' : 'hover:border-ios-blue/40 hover:bg-ios-blue/5'}`}>
+                  {isProcessing ? (
+                    <div className="w-10 h-10 border-4 border-ios-blue border-t-transparent rounded-full animate-spin"></div>
+                  ) : (
+                    <span className="material-icons-outlined text-secondary text-4xl group-hover:text-ios-blue transition-colors">description</span>
+                  )}
+                  <div className="text-center">
+                    <p className="text-sm font-bold text-black">{isProcessing ? 'Procesando...' : 'Hacé click o arrastrá el archivo'}</p>
+                    <p className="text-[10px] text-secondary mt-1 uppercase tracking-widest">Excel (.xlsx)</p>
+                  </div>
+                </div>
+              </label>
+
+              <div className="bg-ios-gray rounded-2xl p-4 space-y-2">
+                <h4 className="text-[10px] font-black uppercase tracking-widest text-secondary flex items-center gap-1">
+                  <span className="material-icons-outlined text-sm">info</span>
+                  Instrucciones
+                </h4>
+                <p className="text-[10px] text-secondary leading-relaxed">
+                  Asegurate de que el Excel tenga las columnas <span className="font-bold text-black">Nombre</span> y <span className="font-bold text-black">Mes</span>. La IA intentará emparejar los nombres con las alumnas registradas.
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
       </motion.div>
-    </div>
+    </motion.div>
   );
 };

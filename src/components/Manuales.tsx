@@ -3,7 +3,7 @@ import React from 'react';
 import { ViewMode, Source } from '../../types';
 import { motion, AnimatePresence } from 'motion/react';
 import Markdown from 'react-markdown';
-import { BackButton } from '../../App';
+import { BackButton } from './ui/CommonUI';
 
 interface ManualesProps {
   vista: ViewMode;

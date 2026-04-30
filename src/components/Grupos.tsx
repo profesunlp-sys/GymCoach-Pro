@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { GrupoConfig, ViewMode, Alumno } from '../../types';
-import { EditableDropdown, BackButton } from '../../App';
+import { EditableDropdown, BackButton } from './ui/CommonUI';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface GruposProps {

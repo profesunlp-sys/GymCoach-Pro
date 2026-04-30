@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Alumno, GrupoConfig, ViewMode, AsistenciaRecord, Clase } from '../../types';
+import { BulkPaymentImport } from './BulkPaymentImport';
 
 interface AsistenciaProps {
   vista: ViewMode;
@@ -62,8 +63,6 @@ interface AsistenciaProps {
   setRegistrationStep: (step: number) => void;
   setIsEditingClase: (val: boolean) => void;
 }
-
-import { BulkPaymentImport } from './BulkPaymentImport';
 
 export const Asistencia: React.FC<AsistenciaProps> = ({
   vista,

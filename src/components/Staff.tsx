@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { motion } from 'motion/react';
-import { Button, BackButton } from '../../App';
+import { Button, BackButton } from './ui/CommonUI';
 import { Clase, GrupoConfig, ViewMode, Alumno, UserRole, AsistenciaRecord } from '../../types';
 
 interface StaffProps {

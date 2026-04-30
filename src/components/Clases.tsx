@@ -3,7 +3,7 @@ import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Clase, GrupoConfig, ViewMode, Alumno, Discipline, Apparatus, SkillStatus } from '../../types';
 import { User } from 'firebase/auth';
-import { Button } from '../../App';
+import { Button } from './ui/CommonUI';
 import { SKILL_TREE, DISCIPLINAS, NIVELES } from '../../constants';
 
 interface ClasesProps {

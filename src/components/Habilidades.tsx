@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Alumno, ViewMode } from '../../types';
-import { BackButton, Button } from '../../App';
+import { BackButton, Button } from './ui/CommonUI';
 import { db, COLLECTIONS, addDocument, updateDocument, deleteDocument } from '../../services/firebase';
 import { collection, onSnapshot, query, orderBy, serverTimestamp } from 'firebase/firestore';
 
