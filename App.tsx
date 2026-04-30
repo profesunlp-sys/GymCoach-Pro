@@ -3120,6 +3120,7 @@ const App: React.FC = () => {
               setStudentForm={setStudentForm}
               setIsAddingAlumno={setIsAddingAlumno}
               studentForm={studentForm}
+              setClaseGrupo={setClaseGrupo}
             />
           )}
 
@@ -3366,7 +3367,7 @@ const App: React.FC = () => {
             }}
             handleUpdateBiometrics={handleUpdateBiometrics}
             sendPaymentReminder={sendPaymentReminder}
-            currentCoachGroupsNames={grupos.filter(g => g.entrenador === user?.displayName).map(g => g.nombre)}
+            currentCoachGroupsNames={grupos.map(g => g.nombre)}
             currentUserName={user?.displayName || ''}
           />
         )}

@@ -225,9 +225,7 @@ export const Clases: React.FC<ClasesProps> = ({
             >
               <h3 className="text-2xl font-bold text-black tracking-tight mb-4">¿Con qué grupo entrenamos hoy?</h3>
               <div className="space-y-3">
-                {grupos
-                  .filter(g => userRole === 'Coordinator' || !user?.displayName || g.entrenador === user.displayName)
-                  .map(g => (
+                {grupos.map(g => (
                   <button 
                     key={g.id}
                     onClick={() => setClaseGrupo(g.nombre)}
@@ -767,7 +765,7 @@ export const Clases: React.FC<ClasesProps> = ({
         </AnimatePresence>
 
         {/* Global Footer Navigation Button */}
-        <div className="fixed bottom-28 left-0 right-0 px-6 pb-6 pt-4 bg-gradient-to-t from-ios-gray via-ios-gray/95 to-transparent z-40">
+        <div className="fixed bottom-28 left-0 right-0 px-6 pb-6 pt-4 bg-gradient-to-t from-ios-gray via-ios-gray/95 to-transparent z-40 flex justify-center">
           <Button 
             onClick={() => {
               if (registrationStep === 1 && !claseGrupo) {
@@ -787,7 +785,7 @@ export const Clases: React.FC<ClasesProps> = ({
                 setRegistrationStep(registrationStep + 1);
               }
             }}
-            className="w-full !py-4 !rounded-full text-xs font-bold uppercase tracking-[0.1em] shadow-lg active:scale-95 transition-all"
+            className="w-[85%] max-w-xs h-[48px] !py-0 !rounded-[1.2rem] text-[11px] font-bold uppercase tracking-[0.1em] shadow-md shadow-ios-blue/20 active:scale-95 transition-all"
           >
             {registrationStep === 8 ? 'Guardar Clase' : 'Continuar'}
           </Button>
@@ -1061,7 +1059,7 @@ export const Clases: React.FC<ClasesProps> = ({
                 </div>
                 <Button 
                   onClick={() => handleNavigation('NuevaClase')}
-                  className="px-10 !rounded-full !py-4 shadow-lg"
+                  className="mx-auto w-[85%] max-w-xs h-[48px] !py-0 !rounded-[1.2rem] text-[11px] font-bold shadow-md shadow-ios-blue/20"
                 >
                   Registrar Primera Clase
                 </Button>

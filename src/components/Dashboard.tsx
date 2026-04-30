@@ -34,6 +34,7 @@ interface DashboardProps {
   setStudentForm: (form: any) => void;
   setIsAddingAlumno: (val: boolean) => void;
   studentForm: any;
+  setClaseGrupo: (val: string) => void;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({
@@ -63,7 +64,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
   setSelectedAlumno,
   setStudentForm,
   setIsAddingAlumno,
-  studentForm
+  studentForm,
+  setClaseGrupo
 }) => {
   const [selectedProfesorDetail, setSelectedProfesorDetail] = useState<string | null>(null);
   
@@ -431,7 +433,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         whileTap={{ scale: 0.95 }}
                         onClick={() => { 
                           setActiveGroup(selectedGroupInternal);
-                          setRegistrationStep(1); 
+                          setClaseGrupo(selectedGroupInternal.nombre);
+                          setRegistrationStep(2); 
                           setVista('NuevaClase'); 
                         }}
                         className="flex flex-col items-center justify-center gap-3 p-6 bg-primary text-white rounded-3xl shadow-lg shadow-primary/20 active:scale-95 transition-all"
