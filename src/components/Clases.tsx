@@ -431,22 +431,22 @@ export const Clases: React.FC<ClasesProps> = ({
                   <button 
                     key={opt.name}
                     onClick={() => setFasePrincipal(prev => prev.includes(opt.name) ? prev.filter(o => o !== opt.name) : [...prev, opt.name])}
-                    className={`relative p-6 rounded-[2.5rem] border-2 transition-all aspect-square flex flex-col items-center justify-center gap-2 ${
+                    className={`relative p-5 rounded-[2rem] border transition-all aspect-square flex flex-col items-center justify-center gap-3 shadow-sm ${
                       fasePrincipal.includes(opt.name) 
-                        ? 'border-primary bg-white shadow-[0_0_20px_rgba(0,122,255,0.2)] ring-4 ring-primary/5' 
-                        : 'border-black/5 bg-white shadow-sm'
+                        ? 'border-primary bg-gradient-to-br from-primary/10 to-primary/5 shadow-inner' 
+                        : 'border-black/5 bg-white hover:border-primary/20'
                     }`}
                   >
-                    <div className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-colors ${fasePrincipal.includes(opt.name) ? 'bg-primary text-white' : 'bg-ios-gray text-secondary'}`}>
+                    <div className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-all shadow-md ${fasePrincipal.includes(opt.name) ? 'bg-primary text-white scale-110 shadow-primary/20' : 'bg-white text-primary'}`}>
                       <span className="material-icons-outlined text-3xl">{opt.icon}</span>
                     </div>
-                    <span className={`text-[10px] font-bold uppercase tracking-widest mt-2 ${fasePrincipal.includes(opt.name) ? 'text-primary' : 'text-secondary'}`}>{opt.name}</span>
+                    <span className={`text-[11px] font-black uppercase tracking-widest text-center ${fasePrincipal.includes(opt.name) ? 'text-primary' : 'text-secondary'}`}>{opt.name}</span>
                     
-                    <div className="absolute top-4 right-4">
-                      <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${fasePrincipal.includes(opt.name) ? 'bg-primary border-primary' : 'border-black/10'}`}>
-                        {fasePrincipal.includes(opt.name) && <span className="material-icons-outlined text-white text-[14px]">check</span>}
+                    {fasePrincipal.includes(opt.name) && (
+                      <div className="absolute top-4 right-4 w-6 h-6 bg-primary rounded-full flex items-center justify-center shadow-sm">
+                        <span className="material-icons-outlined text-white text-[14px]">check</span>
                       </div>
-                    </div>
+                    )}
                   </button>
                 ))}
               </div>

@@ -301,7 +301,9 @@ const Alumnos: React.FC<AlumnosProps> = ({
           {filteredAlumnos.length === 0 ? (
             <div className="text-center py-16 text-secondary/40 space-y-2">
               <span className="material-icons-outlined text-5xl">person_off</span>
-              <p className="text-xs font-bold uppercase tracking-widest">No se encontraron gimnastas</p>
+              <p className="text-xs font-bold uppercase tracking-widest">
+                {selectedGrupoFilter !== 'Todos' ? "No hay alumnas registradas en este grupo" : "No se encontraron gimnastas"}
+              </p>
             </div>
           ) : (
             filteredAlumnos.map((alumno, idx) => (

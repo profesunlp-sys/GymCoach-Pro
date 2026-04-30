@@ -3287,7 +3287,7 @@ const App: React.FC = () => {
         {(vista === 'Alumnos' || vista === 'RegistroAlumno' || vista === 'AlumnoDetalle') && (
           <Alumnos 
             vista={vista}
-            setVista={setVista}
+            setVista={(v: any) => { if (v === 'Alumnos') setAlumnosFilterMode('all'); setVista(v); }}
             alumnos={alumnos}
             grupos={grupos}
             niveles={niveles}
