@@ -3373,6 +3373,7 @@ const App: React.FC = () => {
             sendPaymentReminder={sendPaymentReminder}
             currentCoachGroupsNames={grupos.map(g => g.nombre)}
             currentUserName={user?.displayName || ''}
+            currentUserId={user?.uid}
           />
         )}
 
@@ -4192,7 +4193,9 @@ const App: React.FC = () => {
                   setShowMoreOptions(!showMoreOptions);
                   return;
                 }
-                if (item.v === 'Alumnos') setAlumnosFilterMode('myGroups');
+                if (item.v === 'Alumnos') {
+                  setAlumnosFilterMode(userRole === 'Coordinator' ? 'all' : 'myGroups');
+                }
                 handleNavigation(item.v as ViewMode);
                 setShowMoreOptions(false);
               }} 

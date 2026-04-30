@@ -9,7 +9,6 @@ import { SKILL_TREE, DISCIPLINAS, NIVELES } from '../../constants';
 interface ClasesProps {
   vista: ViewMode;
   setVista: (vista: ViewMode) => void;
-  handleNavigation?: (vista: ViewMode) => void;
   registrationStep: number;
   setRegistrationStep: (step: number) => void;
   isEditingClase: boolean;

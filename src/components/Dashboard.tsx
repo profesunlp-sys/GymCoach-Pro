@@ -117,13 +117,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
   // Estadísticas por profesor
   const getProfesorStats = (profName: string) => {
-    const profGrupos = grupos.filter(g => g.entrenador === profName);
-    const profAlumnos = alumnos.filter(a => profGrupos.some(g => g.nombre === a.grupo));
+    const profGrupos = grupos.filter(g => (g.entrenador || "").trim().toLowerCase() === (profName || "").trim().toLowerCase());
+    const profAlumnos = alumnos.filter(a => 
+      profGrupos.some(g => (g.nombre || "").trim().toLowerCase() === (a.grupo || "").trim().toLowerCase())
+    );
     const profClasesMes = clases.filter(c => c.entrenador === profName && isThisMonth(c.fecha));
     
     // Asistencia promedio
     const profAsistenciasMes = asistencias.filter(r => 
-      profGrupos.some(g => g.nombre === r.grupo) && isThisMonth(r.fecha)
+      profGrupos.some(g => (g.nombre || "").trim().toLowerCase() === (r.grupo || "").trim().toLowerCase()) && isThisMonth(r.fecha)
     );
     const totalPresentes = profAsistenciasMes.filter(r => r.presente).length;
     const asistenciaPromedio = profAsistenciasMes.length > 0 
@@ -357,8 +359,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
             }
 
             // Vista de acciones para el Grupo Seleccionado
-            const groupStudents = alumnos.filter(a => a.grupo === selectedGroupInternal.nombre);
-            const clasesGrupo = clases.filter(c => c.grupo === selectedGroupInternal.nombre);
+            const groupStudents = alumnos.filter(a => 
+              (a.grupo || "").trim().toLowerCase() === (selectedGroupInternal.nombre || "").trim().toLowerCase()
+            );
+            const clasesGrupo = clases.filter(c => 
+              (c.grupo || "").trim().toLowerCase() === (selectedGroupInternal.nombre || "").trim().toLowerCase()
+            );
 
             return (
               <div className="space-y-8 pt-2 animate-in fade-in slide-in-from-bottom-2 duration-500">

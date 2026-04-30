@@ -314,7 +314,7 @@ export const Grupos: React.FC<GruposProps> = ({
                   <div className="flex items-center gap-1.5 text-secondary">
                     <span className="material-icons-outlined text-[14px]">groups</span>
                     <span className="text-[10px] font-bold uppercase tracking-widest">
-                      {alumnos.filter(a => a.grupo === g.nombre).length} Gimnastas vinculadas
+                      {alumnos.filter(a => (a.grupo || "").trim().toLowerCase() === (g.nombre || "").trim().toLowerCase()).length} Gimnastas vinculadas
                     </span>
                   </div>
                   {g.entrenador && (

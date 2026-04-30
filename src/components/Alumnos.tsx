@@ -24,6 +24,7 @@ interface AlumnosProps {
   setAlumnosFilterMode: (m: 'all' | 'alerts' | 'myGroups') => void;
   currentCoachGroupsNames?: string[];
   currentUserName?: string;
+  currentUserId?: string;
   isAddingAlumno: boolean;
   setIsAddingAlumno: (b: boolean) => void;
   studentForm: Partial<Alumno>;
@@ -156,6 +157,7 @@ const Alumnos: React.FC<AlumnosProps> = ({
   sendPaymentReminder,
   currentCoachGroupsNames,
   currentUserName,
+  currentUserId,
 }) => {
   const [activeTab, setActiveTab] = useState<'Progreso' | 'Asistencia' | 'Bio' | 'Contacto' | 'Pagos'>('Progreso');
   const [isEditingStudent, setIsEditingStudent] = useState(false);
@@ -200,9 +202,16 @@ const Alumnos: React.FC<AlumnosProps> = ({
     if (query === "") {
       // Filtros estándar cuando no hay búsqueda
       if (alumnosFilterMode === 'alerts' && !(a.alertas && a.alertas.length > 0 && a.alertas[0] !== '')) return false;
-      if (alumnosFilterMode === 'myGroups' && currentCoachGroupsNames && !currentCoachGroupsNames.includes(a.grupo || '')) return false;
-      if (selectedGrupoFilter !== 'Todos' && a.grupo !== selectedGrupoFilter) return false;
-      if (selectedNivelFilter !== 'Todos' && a.nivel !== selectedNivelFilter) return false;
+      
+      if (alumnosFilterMode === 'myGroups') {
+        const belongsToMyGroups = currentCoachGroupsNames && currentCoachGroupsNames.some(gn => (gn || "").trim() === (a.grupo || "").trim());
+        const isMyStudent = a.userId === currentUserId;
+        
+        if (!belongsToMyGroups && !isMyStudent) return false;
+      }
+
+      if (selectedGrupoFilter !== 'Todos' && (a.grupo || "").trim() !== selectedGrupoFilter.trim()) return false;
+      if (selectedNivelFilter !== 'Todos' && (a.nivel || "").trim() !== selectedNivelFilter.trim()) return false;
       if (selectedAgeFilter !== 'Todos' && calculateAgeGroup(a.fechaNacimiento) !== selectedAgeFilter) return false;
       if (selectedPhysicalFilter !== 'Cualquiera' && getPhysicalCategory(getPhysicalScore(a.biometria)) !== selectedPhysicalFilter) return false;
       return true;
