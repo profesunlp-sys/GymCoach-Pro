@@ -632,7 +632,7 @@ const App: React.FC = () => {
       let msg = translateFirebaseError(error);
       
       if (error.code === 'auth/unauthorized-domain') {
-        msg = "DOMINIO NO AUTORIZADO: Agregaste el dominio en Firebase, pero la app sigue usando la base de datos de prueba. Debes configurar tus propias credenciales de Firebase en las variables de entorno (VITE_FIREBASE_...).";
+        msg = "⚠️ DOMINIO NO AUTORIZADO: El servidor de Firebase está rechazando la conexión desde este sitio. \n\nSOLUCIÓN: Si estás en Vercel, debes configurar tus propias 'Environment Variables' (VITE_FIREBASE_...) con las llaves de TU proyecto de Firebase. \n\nSi ya lo hiciste, recuerda que Firebase tarda unos minutos en propagar los cambios de 'Dominios Autorizados'.";
       } else if (error.code === 'auth/popup-blocked') {
         msg = "El navegador bloqueó la ventana emergente. Por favor, permite las ventanas emergentes para este sitio.";
       } else if (error.code === 'auth/popup-closed-by-user') {

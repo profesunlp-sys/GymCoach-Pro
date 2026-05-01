@@ -1,34 +1,34 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // --- Capa de Denegación Total ---
+    // --- Seguridad por Defecto ---
     match /{document=**} {
       allow read, write: if false;
     }
 
-    // --- Funciones de Seguridad ---
+    // --- Helpers de Autenticación y Rol ---
     function isSignedIn() {
       return request.auth != null;
     }
 
-    // Google Login verificado
     function isVerified() {
       return isSignedIn() && (request.auth.token.email_verified == true || request.auth.token.firebase.sign_in_provider == 'google.com');
     }
 
-    // Coordinador Maestro
+    // El Coordinador Maestro (Control Total)
     function isCoordinator() {
       return isVerified() && request.auth.token.email == 'profesunlp@gmail.com';
     }
 
-    // Es Staff si está en la colección o es el coordinador
+    // Un usuario es Staff si está en la colección staff o es coordinador
     function isStaff() {
       return isVerified() && (isCoordinator() || exists(/databases/$(database)/documents/staff/$(request.auth.uid)));
     }
 
-    // --- Reglas de Colecciones ---
+    // --- Reglas por Colección ---
 
-    // STAFF: Los profes pueden leer para saber quiénes son sus colegas
+    // STAFF: Cualquier usuario logueado con Google puede ver quiénes son staff 
+    // y crear su propio perfil inicial.
     match /staff/{userId} {
       allow read: if isVerified(); 
       allow create: if isVerified() && request.auth.uid == userId;
@@ -36,8 +36,8 @@ service cloud.firestore {
       allow delete: if isCoordinator();
     }
 
-    // ALUMNOS: Lectura permitida para cualquier usuario verificado 
-    // (Esto desbloquea el autocompletado para profes nuevos)
+    // ALUMNOS: Lectura para TODOS los profes logueados (para autocompletado global)
+    // Pero solo el Staff o Admin pueden crear/editar.
     match /alumnos/{alumnoId} {
       allow read: if isVerified();
       allow create: if isStaff();
@@ -45,7 +45,7 @@ service cloud.firestore {
       allow delete: if isCoordinator();
     }
 
-    // CLASES y ASISTENCIAS: Solo Staff puede operar
+    // CLASES y ASISTENCIAS: Lectura para profes, escritura para Staff
     match /clases/{id} {
       allow read: if isVerified();
       allow create, update: if isStaff();
@@ -58,7 +58,9 @@ service cloud.firestore {
       allow delete: if isCoordinator();
     }
 
-    // CONFIGURACIÓN: Lectura para todos, Edición solo Coordinador
+    // CONFIGURACIÓN (Grupos, Disciplinas, Niveles, etc.)
+    // Lectura abierta para profes (necesario para ver desplegables y opciones)
+    // Escritura solo por el Coordinador
     match /grupos/{id} { allow read: if isVerified(); allow write: if isCoordinator(); }
     match /config/{id} { allow read: if isVerified(); allow write: if isCoordinator(); }
     match /disciplinas/{id} { allow read: if isVerified(); allow write: if isCoordinator(); }
@@ -70,12 +72,12 @@ service cloud.firestore {
     // FEEDBACK
     match /feedback/{id} {
       allow read: if isVerified();
-      allow create: if isVerified();
+      allow create: if isVerified(); // Permitir a cualquier profe dar feedback
       allow update: if isVerified() && (resource.data.uid == request.auth.uid || isCoordinator());
       allow delete: if isCoordinator();
     }
 
-    // Metadatos varios
+    // Metadatos y opciones operativas
     match /age_categories/{id} { allow read: if isVerified(); allow write: if isCoordinator(); }
     match /physical_categories/{id} { allow read: if isVerified(); allow write: if isCoordinator(); }
     match /warmup_options/{id} { allow read: if isVerified(); allow write: if isCoordinator(); }
