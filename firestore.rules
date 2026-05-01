@@ -1,119 +1,80 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Default deny
+    // --- Seguridad por Defecto ---
     match /{document=**} {
       allow read, write: if false;
     }
 
-    // --- Helpers ---
+    // --- Helpers de Autenticación ---
     function isSignedIn() {
       return request.auth != null;
     }
 
     function isVerified() {
-      return isSignedIn() && request.auth.token.email_verified == true;
+      return isSignedIn() && (request.auth.token.email_verified == true || request.auth.token.firebase.sign_in_provider == 'google.com');
     }
 
+    // Coordinador Maestro
     function isCoordinator() {
-      return isVerified() && request.auth.token.email == 'profesunlp@gmail.com';
+      return isVerified() && (request.auth.token.email == 'profesunlp@gmail.com');
     }
 
-    function isValidId(id) {
-      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    // Verifica si el usuario existe en la colección staff
+    function isStaff() {
+      return isVerified() && (isCoordinator() || exists(/databases/$(database)/documents/staff/$(request.auth.uid)));
     }
 
-    function incoming() {
-      return request.resource.data;
+    // --- Colecciones ---
+
+    // STAFF: Lectura abierta para verificar roles, escritura restringida
+    match /staff/{userId} {
+      allow read: if isVerified(); 
+      allow create: if isVerified() && request.auth.uid == userId;
+      allow update: if isVerified() && (request.auth.uid == userId || isCoordinator());
+      allow delete: if isCoordinator();
     }
 
-    function existing() {
-      return resource.data;
-    }
-
-    // --- Validation Helpers ---
-
-    function isValidAlumno(data) {
-      return data.keys().hasAll(['nombre', 'dni', 'disciplina', 'nivel']) &&
-             data.nombre is string && data.nombre.size() <= 100 &&
-             data.dni is string && data.dni.size() <= 20 &&
-             data.disciplina is string &&
-             data.nivel is string &&
-             (!('userId' in data) || data.userId == request.auth.uid) &&
-             (data.keys().size() >= 4 && data.keys().size() <= 35); // Prevent shadow fields
-    }
-
-    function isValidClase(data) {
-      return data.keys().hasAll(['fecha', 'grupo', 'entrenador']) &&
-             data.fecha is string && data.grupo is string && data.entrenador is string &&
-             (data.keys().size() >= 3 && data.keys().size() <= 20);
-    }
-
-    function isValidAsistencia(data) {
-      return data.keys().hasAll(['fecha', 'alumnoId', 'presente']) &&
-             data.fecha is string && data.alumnoId is string && data.presente is bool &&
-             (data.keys().size() >= 3 && data.keys().size() <= 10);
-    }
-
-    // --- Collections ---
-
+    // ALUMNOS: Lectura para todo el staff (permite autocompletado global)
     match /alumnos/{alumnoId} {
-      allow read: if isSignedIn();
-      allow create: if isVerified() && isValidAlumno(incoming());
-      allow update: if isVerified() && isValidAlumno(incoming()) && (
-        isCoordinator() || 
-        (incoming().diff(existing()).affectedKeys().hasOnly(['grupo', 'nivel', 'estadoPago', 'habilidades', 'biometria', 'pagosMensuales', 'observacionesMedicas', 'dni', 'nombre', 'contacto', 'fechaNacimiento', 'fechaIngreso', 'fechaPrimeraClase', 'asistenciasHistoricas', 'alertas']))
-      );
+      allow read: if isStaff();
+      allow create, update: if isStaff();
       allow delete: if isCoordinator();
     }
 
-    match /clases/{claseId} {
-      allow read: if isSignedIn();
-      allow create: if isVerified() && isValidClase(incoming());
-      allow update: if isVerified() && isValidClase(incoming()) && (
-        isCoordinator() || 
-        (incoming().diff(existing()).affectedKeys().hasOnly(['faseInicial', 'fasePrincipal', 'faseFinal', 'objetivos', 'observaciones', 'asistencias', 'fecha', 'grupo', 'entrenador', 'horario']))
-      );
+    // CLASES y ASISTENCIAS
+    match /clases/{id} {
+      allow read: if isStaff();
+      allow create, update: if isStaff();
+      allow delete: if isCoordinator();
+    }
+    
+    match /asistencias/{id} {
+      allow read: if isStaff();
+      allow create, update: if isStaff();
       allow delete: if isCoordinator();
     }
 
-    match /asistencias/{asistenciaId} {
-      allow read: if isSignedIn();
-      allow create: if isVerified() && isValidAsistencia(incoming());
-      allow update: if isVerified() && isValidAsistencia(incoming()) && (
-        isCoordinator() || 
-        (incoming().diff(existing()).affectedKeys().hasOnly(['presente', 'pago', 'fecha', 'alumnoId', 'grupo']))
-      );
+    // FEEDBACK
+    match /feedback/{id} {
+      allow read: if isStaff();
+      allow create: if isStaff();
+      allow update: if isStaff() && (resource.data.uid == request.auth.uid || isCoordinator());
       allow delete: if isCoordinator();
     }
 
-    match /grupos/{grupoId} {
-      allow read: if isSignedIn();
-      allow write: if isCoordinator();
-    }
-
-    match /staff/{staffId} {
-      allow read: if isSignedIn();
-      allow write: if isCoordinator();
-    }
-
-    match /feedback/{feedbackId} {
-      allow read: if isSignedIn();
-      allow create: if isVerified();
-      allow update: if isVerified() && (isCoordinator() || existing().author == 'Profesor');
-      allow delete: if isCoordinator();
-    }
-
-    // Config and Metadata
-    match /config/{id} { allow read: if isSignedIn(); allow write: if isCoordinator(); }
-    match /disciplinas/{id} { allow read: if isSignedIn(); allow write: if isCoordinator(); }
-    match /niveles/{id} { allow read: if isSignedIn(); allow write: if isCoordinator(); }
-    match /sources/{id} { allow read: if isSignedIn(); allow write: if isCoordinator(); }
-    match /habilidades/{id} { allow read: if isSignedIn(); allow write: if isCoordinator(); }
-    match /age_categories/{id} { allow read: if isSignedIn(); allow write: if isCoordinator(); }
-    match /physical_categories/{id} { allow read: if isSignedIn(); allow write: if isCoordinator(); }
-    match /pagos/{id} { allow read: if isSignedIn(); allow write: if isCoordinator(); }
-    match /warmup_options/{id} { allow read: if isSignedIn(); allow write: if isCoordinator(); }
-    match /cooldown_options/{id} { allow read: if isSignedIn(); allow write: if isCoordinator(); }
+    // CONFIGURACIÓN (Lectura para staff, Escritura solo Coordinador)
+    match /grupos/{id} { allow read: if isStaff(); allow write: if isCoordinator(); }
+    match /config/{id} { allow read: if isStaff(); allow write: if isCoordinator(); }
+    match /disciplinas/{id} { allow read: if isStaff(); allow write: if isCoordinator(); }
+    match /niveles/{id} { allow read: if isStaff(); allow write: if isCoordinator(); }
+    match /habilidades/{id} { allow read: if isStaff(); allow write: if isCoordinator(); }
+    match /pagos/{id} { allow read: if isStaff(); allow write: if isCoordinator(); }
+    match /sources/{id} { allow read: if isStaff(); allow write: if isCoordinator(); }
+    match /age_categories/{id} { allow read: if isStaff(); allow write: if isCoordinator(); }
+    match /physical_categories/{id} { allow read: if isStaff(); allow write: if isCoordinator(); }
+    match /warmup_options/{id} { allow read: if isStaff(); allow write: if isCoordinator(); }
+    match /cooldown_options/{id} { allow read: if isStaff(); allow write: if isCoordinator(); }
+    match /profesores/{id} { allow read: if isStaff(); allow write: if isCoordinator(); }
   }
 }

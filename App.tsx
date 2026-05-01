@@ -858,12 +858,9 @@ const App: React.FC = () => {
       });
       const coachGruposNames = coachGrupos.map(grupo => (grupo.nombre || "").trim().toLowerCase());
       
-      // Filter alumnos that belong to those groups, OR alumnos that have no group yet
-      // Also include alumnos that seem to belong to this user (userId match) as fallback
-      const userAlumnos = isCoordinator ? a : (a || []).filter(alumno => 
-          coachGruposNames.includes((alumno.grupo || '').trim().toLowerCase()) || 
-          (alumno.userId === currentUid)
-      );
+      // Los coaches ahora reciben todos los alumnos para poder buscarlos en el autocompletado,
+      // pero la UI de Alumnos.tsx seguirá filtrando por 'myGroups' si el modo está activo.
+      const userAlumnos = isCoordinator ? a : a; // Permitimos todos para búsqueda global en el cliente
       
       setAlumnos(userAlumnos);
       setClases(isCoordinator ? c.sort((x, y) => new Date(y.fecha).getTime() - new Date(x.fecha).getTime()) : c.filter(clase => coachGruposNames.includes(clase.grupo || '')).sort((x, y) => new Date(y.fecha).getTime() - new Date(x.fecha).getTime()));
