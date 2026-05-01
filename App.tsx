@@ -472,13 +472,12 @@ const App: React.FC = () => {
   // Security guard for routes
   useEffect(() => {
     const coordinatorOnlyViews: ViewMode[] = ['AsistenciaStats', 'ReporteGrupal', 'TendenciasHabilidades', 'ReportePDF', 'ControlPagos', 'Profesores', 'ProfesorDetalle'];
-    const coachOnlyViews: ViewMode[] = ['Alumnos', 'AlumnoDetalle', 'RegistroAlumno', 'Horario', 'NuevaClase', 'ClaseDetalle', 'HistorialClases', 'AsistenciaLista', 'Planes', 'Habilidades'];
+    
+    // Solo si NO es coordinador ni staff, restringimos las vistas de coordinador
     if (userRole !== 'Coordinator' && coordinatorOnlyViews.includes(vista)) {
       setVista('Dashboard');
     }
-    if (userRole === 'Coordinator' && coachOnlyViews.includes(vista)) {
-      setVista('Dashboard');
-    }
+    // El Coordinador YA NO es expulsado de las vistas de Coach.
   }, [vista, userRole]);
 
   useEffect(() => {
@@ -490,7 +489,8 @@ const App: React.FC = () => {
         try {
           // Check staff collection
           const staffRef = doc(firestore, COLLECTIONS.STAFF, currentUser.uid);
-          const staffDoc = await getDocs(query(collection(firestore, COLLECTIONS.STAFF), where('uid', '==', currentUser.uid)));
+          const staffQuery = query(collection(firestore, COLLECTIONS.STAFF), where('uid', '==', currentUser.uid));
+          const staffDoc = await getDocs(staffQuery);
           
           let role: UserRole = isCoordinatorEmail(currentUser.email) ? 'Coordinator' : 'Coach';
           let staffData: any = null;
@@ -503,23 +503,23 @@ const App: React.FC = () => {
               role: role,
               fechaRegistro: new Date().toISOString()
             };
-            await setDoc(staffRef, staffData);
+            // Intentar persistir en BD pero no bloquear si falla
+            try {
+              await setDoc(staffRef, staffData);
+            } catch (e) {
+              console.warn("Could not save staff profile to DB, using local state", e);
+            }
           } else {
             staffData = { id: staffDoc.docs[0].id, ...staffDoc.docs[0].data() };
-            // Siempre forzamos el rol según el email, ignoramos lo que dice la BD por seguridad
-            role = isCoordinatorEmail(currentUser.email) ? 'Coordinator' : 'Coach';
-            
-            // Migración: si el documento no tiene el ID correcto (el UID), creamos uno con el UID
-            if (staffDoc.docs[0].id !== currentUser.uid) {
-              await setDoc(staffRef, staffData);
-            }
+            // Forzar rol según email (prioridad máxima)
+            if (isCoordinatorEmail(currentUser.email)) role = 'Coordinator';
           }
           
           setStaffInfo(staffData);
           setUserRole(role);
         } catch (error) {
           console.error("Error syncing staff:", error);
-          // Fallback to hardcoded role if Firestore fails
+          // Fallback roles bypass Firestore
           setUserRole(isCoordinatorEmail(currentUser.email) ? 'Coordinator' : 'Coach');
         }
       } else {
@@ -634,7 +634,11 @@ const App: React.FC = () => {
       let msg = translateFirebaseError(error);
       
       if (error.code === 'auth/unauthorized-domain') {
-        msg = "⚠️ ERROR DE CONEXIÓN: Tu dominio de Vercel no está autorizado o faltan las credenciales. \n\n1. Ve a Firebase -> Authentication -> Settings -> Authorized Domains y agrega 'gym-coach-pro.vercel.app'. \n2. Asegúrate de haber cargado las variables VITE_FIREBASE_... en Vercel y haber hecho un 'Redeploy'.";
+        msg = "⚠️ ERROR DE DOMINIO: Este sitio no está autorizado en Firebase.\n\n" +
+              "Si estás en Vercel:\n" +
+              "1. Debes crear TU PROPIO proyecto en console.firebase.google.com\n" +
+              "2. En 'Authentication' > 'Settings' > 'Authorized Domains', agrega tu URL de Vercel.\n" +
+              "3. Configura las 'Environment Variables' en Vercel con las credenciales de TU nuevo proyecto.";
       } else if (error.code === 'auth/popup-blocked') {
         msg = "El navegador bloqueó la ventana emergente. Por favor, permite las ventanas emergentes para este sitio.";
       } else if (error.code === 'auth/popup-closed-by-user') {
