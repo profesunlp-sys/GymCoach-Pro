@@ -1,0 +1,89 @@
+{
+  "entities": {
+    "Alumno": {
+      "title": "Alumno",
+      "description": "Información de la gimnasta",
+      "type": "object",
+      "properties": {
+        "nombre": { "type": "string" },
+        "dni": { "type": "string" },
+        "edad": { "type": "number" },
+        "disciplina": { "type": "string" },
+        "nivel": { "type": "string" },
+        "grupo": { "type": "string" },
+        "fechaNacimiento": { "type": "string" },
+        "fechaIngreso": { "type": "string" },
+        "fechaPrimeraClase": { "type": "string" },
+        "estadoPago": { "type": "string" },
+        "habilidades": { "type": "array" },
+        "biometria": { "type": "object" },
+        "qrCode": { "type": "string" },
+        "asistenciasHistoricas": { "type": "number" },
+        "userId": { "type": "string" },
+        "contacto": { "type": "object" },
+        "observacionesMedicas": { "type": "string" },
+        "pagosMensuales": { "type": "array" }
+      },
+      "required": ["nombre", "dni", "disciplina", "nivel"]
+    },
+    "Clase": {
+      "title": "Clase",
+      "description": "Registro de una sesión de entrenamiento",
+      "type": "object",
+      "properties": {
+        "fecha": { "type": "string" },
+        "grupo": { "type": "string" },
+        "horario": { "type": "string" },
+        "entrenador": { "type": "string" },
+        "objetivos": { "type": "string" },
+        "asistencias": { "type": "array" }
+      }
+    },
+    "Grupo": {
+      "title": "Grupo",
+      "description": "Configuración de un grupo de entrenamiento",
+      "type": "object",
+      "properties": {
+        "nombre": { "type": "string" },
+        "dias": { "type": "array" },
+        "horario": { "type": "string" },
+        "entrenador": { "type": "string" }
+      }
+    },
+    "Asistencia": {
+      "title": "Asistencia",
+      "description": "Registro individual de asistencia",
+      "type": "object",
+      "properties": {
+        "fecha": { "type": "string" },
+        "alumnoId": { "type": "string" },
+        "grupo": { "type": "string" },
+        "presente": { "type": "boolean" }
+      }
+    },
+    "Feedback": {
+      "title": "Feedback",
+      "description": "Comentarios sobre una clase",
+      "type": "object",
+      "properties": {
+        "claseId": { "type": "string" },
+        "author": { "type": "string" },
+        "text": { "type": "string" },
+        "timestamp": { "type": "string" }
+      }
+    }
+  },
+  "firestore": {
+    "alumnos": { "schema": "Alumno", "description": "Colección de gimnastas" },
+    "clases": { "schema": "Clase", "description": "Colección de clases planificadas" },
+    "grupos": { "schema": "Grupo", "description": "Colección de grupos" },
+    "asistencias": { "schema": "Asistencia", "description": "Colección de registros de asistencia" },
+    "feedback": { "schema": "Feedback", "description": "Colección de feedback" },
+    "profesores": { "schema": "object", "description": "Colección de profesores" },
+    "niveles": { "schema": "object", "description": "Configuración de niveles" },
+    "disciplinas": { "schema": "object", "description": "Configuración de disciplinas" },
+    "config": { "schema": "object", "description": "Configuración general" },
+    "sources": { "schema": "object", "description": "Fuentes de conocimiento para IA" },
+    "staff": { "schema": "object", "description": "Personal del gimnasio" }
+  }
+}

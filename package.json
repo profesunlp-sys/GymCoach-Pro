@@ -28,11 +28,13 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@firebase/eslint-plugin-security-rules": "^0.0.2",
     "@types/express": "^5.0.6",
     "@types/papaparse": "^5.5.2",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "latest",
+    "eslint": "^10.2.1",
     "tsx": "^4.21.0",
     "typescript": "latest",
     "vite": "latest"

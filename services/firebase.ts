@@ -16,6 +16,41 @@ const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 export const auth = getAuth(app);
 
+enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId?: string | null;
+    email?: string | null;
+    emailVerified?: boolean | null;
+  }
+}
+
+function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: auth.currentUser?.uid,
+      email: auth.currentUser?.email,
+      emailVerified: auth.currentUser?.emailVerified,
+    },
+    operationType,
+    path
+  };
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  throw new Error(JSON.stringify(errInfo));
+}
+
 // Force local persistence to avoid losing session on refresh
 setPersistence(auth, browserLocalPersistence);
 
@@ -49,8 +84,8 @@ export const getCollectionData = async (collectionName: string) => {
     const querySnapshot = await getDocs(collection(db, collectionName));
     return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   } catch (error: any) {
-    console.error(`Error getting data from ${collectionName}:`, error);
-    throw new Error(`No se pudieron cargar los datos de ${collectionName}. Verifica tu conexión o permisos. (${error.message})`);
+    handleFirestoreError(error, OperationType.GET, collectionName);
+    return []; // Never reached but for TS
   }
 };
 
@@ -60,8 +95,8 @@ export const getFilteredCollectionData = async (collectionName: string, field: s
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   } catch (error: any) {
-    console.error(`Error getting filtered data from ${collectionName}:`, error);
-    throw new Error(`No se pudieron cargar los datos de ${collectionName}. Verifica tu conexión o permisos. (${error.message})`);
+    handleFirestoreError(error, OperationType.GET, collectionName);
+    return []; // Never reached
   }
 };
 
@@ -69,8 +104,7 @@ export const addDocument = async (collectionName: string, data: any) => {
   try {
     return await addDoc(collection(db, collectionName), data);
   } catch (error: any) {
-    console.error(`Error adding document to ${collectionName}:`, error);
-    throw new Error(`No se pudo guardar la información en ${collectionName}. Verifica tu conexión o permisos. (${error.message})`);
+    handleFirestoreError(error, OperationType.WRITE, collectionName);
   }
 };
 
@@ -79,8 +113,7 @@ export const updateDocument = async (collectionName: string, id: string, data: a
     const docRef = doc(db, collectionName, id);
     return await updateDoc(docRef, data);
   } catch (error: any) {
-    console.error(`Error updating document ${id} in ${collectionName}:`, error);
-    throw new Error(`No se pudo actualizar la información. Verifica tu conexión o permisos. (${error.message})`);
+    handleFirestoreError(error, OperationType.WRITE, collectionName);
   }
 };
 
@@ -89,8 +122,7 @@ export const deleteDocument = async (collectionName: string, id: string) => {
     const docRef = doc(db, collectionName, id);
     return await deleteDoc(docRef);
   } catch (error: any) {
-    console.error(`Error deleting document ${id} in ${collectionName}:`, error);
-    throw new Error(`No se pudo eliminar el registro. Verifica tu conexión o permisos. (${error.message})`);
+    handleFirestoreError(error, OperationType.DELETE, collectionName);
   }
 };
 
@@ -100,7 +132,7 @@ export const getAttendanceByStudent = async (studentId: string) => {
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   } catch (error: any) {
-    console.error(`Error getting attendance for student ${studentId}:`, error);
+    handleFirestoreError(error, OperationType.GET, COLLECTIONS.ASISTENCIAS);
     return [];
   }
 };
