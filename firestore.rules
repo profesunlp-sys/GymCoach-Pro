@@ -17,7 +17,10 @@ service cloud.firestore {
 
     // Usuarios de confianza (Hardcoded para evitar bloqueos por falta de datos)
     function isCoordinator() {
-      return isVerified() && request.auth.token.email == 'profesunlp@gmail.com';
+      return isVerified() && (
+        request.auth.token.email == 'profesunlp@gmail.com' ||
+        request.auth.token.email == 'mi.xt1032@gmail.com'
+      );
     }
     
     function isTrustedStaff() {
@@ -32,10 +35,10 @@ service cloud.firestore {
     // --- Reglas por Colección ---
 
     // STAFF: Cualquier usuario logueado con Google puede ver quiénes son staff 
-    match /staff/{userId} {
+    match /staff/{docId} {
       allow read: if isVerified(); 
-      allow create: if isVerified() && request.auth.uid == userId;
-      allow update: if isVerified() && (request.auth.uid == userId || isCoordinator());
+      allow create: if isVerified() && (request.auth.uid == docId || isCoordinator());
+      allow update: if isVerified() && (request.auth.uid == docId || isCoordinator());
       allow delete: if isCoordinator();
     }
 

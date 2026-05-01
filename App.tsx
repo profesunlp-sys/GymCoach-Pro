@@ -472,8 +472,29 @@ const App: React.FC = () => {
     setPendingNavigation(null);
   };
 
-  const COORDINATOR_EMAILS = ["profesunlp@gmail.com"];
+  const COORDINATOR_EMAILS = ["profesunlp@gmail.com", "mi.xt1032@gmail.com"];
   const STAFF_WHITELIST = ["mi.xt1032@gmail.com", "profesunlp@gmail.com"];
+
+  // Handle chunk loading errors (typical in Vercel during redeploys)
+  useEffect(() => {
+    const handleError = (e: ErrorEvent | PromiseRejectionEvent) => {
+      const message = (e as ErrorEvent).message || (e as any).reason?.message || "";
+      if (message.includes("Failed to fetch dynamically imported module") || 
+          message.includes("error loading dynamically imported module")) {
+        setNotificacion({ 
+          t: "Módulo Actualizado", 
+          d: "Hay una nueva versión disponible. La aplicación se reiniciará para cargar los cambios.",
+          onConfirm: () => window.location.reload()
+        });
+      }
+    };
+    window.addEventListener('error', handleError);
+    window.addEventListener('unhandledrejection', handleError);
+    return () => {
+      window.removeEventListener('error', handleError);
+      window.removeEventListener('unhandledrejection', handleError);
+    };
+  }, []);
   
   const isCoordinatorEmail = (email: string | null | undefined) => {
     if (!email) return false;
@@ -910,7 +931,7 @@ const App: React.FC = () => {
       setAsistencias(isCoordinator ? asis : asis.filter(asi => coachGruposNames.includes(asi.grupo || '')));
       
       // Filter out global or other users' professors so that it is empty on first login
-      const filteredProfesores = (p || []).filter(prof => prof.userId === currentUid);
+      const filteredProfesores = isCoordinator ? p : (p || []).filter(prof => prof.userId === currentUid);
       setProfesoresList(filteredProfesores);
       setSources(s || []);
       setNiveles(n.length > 0 ? n : [
@@ -982,8 +1003,11 @@ const App: React.FC = () => {
 
         // 1. Cargamos asistencia de hoy desde la colección asistencias
         querySnapshot.forEach(doc => {
-          const data = doc.data() as AsistenciaRecord;
-          attMap[data.alumnoId] = data.presente;
+          const data = doc.data() as any;
+          const id = data.alumnoId || data.alumnaId;
+          if (id) {
+            attMap[id] = data.presente;
+          }
         });
 
         // 2. Cargamos pagos del mes actual desde el objeto del alumno (fuente de verdad mensual)

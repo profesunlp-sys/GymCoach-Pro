@@ -142,7 +142,7 @@ async function runSyncFromSheets() {
 
         const recordData = {
           fecha: fecha || "",
-          alumnaId: alumnaId || "",
+          alumnoId: alumnaId || "",
           alumnaNombre: alumnaNombre || "",
           grupo: grupo || "Sin Grupo",
           presente: !!presente,
