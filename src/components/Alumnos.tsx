@@ -204,10 +204,15 @@ const Alumnos: React.FC<AlumnosProps> = ({
       if (alumnosFilterMode === 'alerts' && !(a.alertas && a.alertas.length > 0 && a.alertas[0] !== '')) return false;
       
       if (alumnosFilterMode === 'myGroups') {
-        const belongsToMyGroups = currentCoachGroupsNames && currentCoachGroupsNames.some(gn => (gn || "").trim().toLowerCase() === (a.grupo || "").trim().toLowerCase());
-        const isMyStudent = a.userId === currentUserId;
+        const studentGroupName = (a.grupo || "").trim().toLowerCase();
         
-        if (!belongsToMyGroups && !isMyStudent) return false;
+        // Match by Group Name
+        const belongsToMyGroups = currentCoachGroupsNames && currentCoachGroupsNames.some(gn => (gn || "").trim().toLowerCase() === studentGroupName);
+        
+        // Match by Creator (If I created the student, I should always see them)
+        const isOwner = (a as any).userId === currentUserId || (a as any).uid === currentUserId;
+
+        if (!belongsToMyGroups && !isOwner) return false;
       }
 
       if (selectedGrupoFilter !== 'Todos' && (a.grupo || "").trim().toLowerCase() !== selectedGrupoFilter.trim().toLowerCase()) return false;
@@ -249,10 +254,12 @@ const Alumnos: React.FC<AlumnosProps> = ({
         <header className="flex justify-between items-end px-1">
           <div>
             <h2 className="text-3xl font-bold text-black tracking-tight">
-              {alumnosFilterMode === 'alerts' ? 'Salud y Alertas' : 'Gimnastas'}
+              {alumnosFilterMode === 'alerts' ? 'Salud y Alertas' : 
+               alumnosFilterMode === 'myGroups' ? 'Mis Alumnas' : 'Gimnastas'}
             </h2>
             <p className="text-secondary text-sm font-medium mt-1">
-              {alumnosFilterMode === 'alerts' ? 'Gimnastas con observaciones' : 'Listado general de alumnas'}
+              {alumnosFilterMode === 'alerts' ? 'Gimnastas con observaciones' : 
+               alumnosFilterMode === 'myGroups' ? 'Alumnas de mis grupos' : 'Listado general de alumnas'}
             </p>
           </div>
           <div className="flex items-center gap-4">
@@ -296,7 +303,13 @@ const Alumnos: React.FC<AlumnosProps> = ({
               onClick={() => setAlumnosFilterMode('all')}
               className={`flex-1 py-2 px-4 rounded-xl text-xs font-bold transition-all ${alumnosFilterMode === 'all' ? 'bg-white text-black shadow-sm' : 'text-secondary hover:text-black/60'}`}
             >
-              Cualquiera
+              Todos
+            </button>
+            <button 
+              onClick={() => setAlumnosFilterMode('myGroups')}
+              className={`flex-1 py-2 px-4 rounded-xl text-xs font-bold transition-all ${alumnosFilterMode === 'myGroups' ? 'bg-white text-black shadow-sm' : 'text-secondary hover:text-black/60'}`}
+            >
+              Mis Grupos
             </button>
             <button 
               onClick={() => setAlumnosFilterMode('alerts')}

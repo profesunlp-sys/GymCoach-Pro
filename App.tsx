@@ -341,7 +341,7 @@ const App: React.FC = () => {
   const chunksRef = useRef<Blob[]>([]);
 
   // UI States
-  const [notificacion, setNotificacion] = useState<{t: string, d: string, detalles?: string[]} | null>(null);
+  const [notificacion, setNotificacion] = useState<{t: string, d: string, detalles?: string[], onConfirm?: () => void} | null>(null);
   const [showNotifDetails, setShowNotifDetails] = useState(false);
   const [hasNewData, setHasNewData] = useState(false);
   const isFirstLoad = useRef(true);
@@ -550,8 +550,9 @@ const App: React.FC = () => {
               uid: currentUser.uid,
               email: currentUser.email,
               nombre: currentUser.displayName || (isCoord ? 'Coordinador' : 'Profesor'),
-              role: role,
-              fechaRegistro: new Date().toISOString()
+              role: role, // Use the role determined by email
+              fechaRegistro: new Date().toISOString(),
+              userId: currentUser.uid
             };
             try {
               const staffRef = doc(firestore, COLLECTIONS.STAFF, currentUser.uid);
@@ -562,9 +563,24 @@ const App: React.FC = () => {
           } else {
             // Exists in DB
             staffData = { id: staffDocs.docs[0].id, ...staffDocs.docs[0].data() };
-            // Ensure email-based role priority
-            if (isCoord) role = 'Coordinator';
-            else if (staffData.role) role = staffData.role;
+            
+            // PRIORITY: If email is NOT in COORDINATOR_EMAILS, force Coach role even if DB says Coordinator
+            // Conversely, if email IS in COORDINATOR_EMAILS, force Coordinator.
+            if (isCoord) {
+              role = 'Coordinator';
+            } else {
+              role = 'Coach'; // Force Coach for non-coordinator emails
+            }
+            
+            // If the role in DB is different from what we just determined (whitelist-based), update it for next time
+            if (staffData.role !== role) {
+              try {
+                await updateDoc(doc(firestore, COLLECTIONS.STAFF, staffData.id), { role: role });
+                staffData.role = role;
+              } catch (e) {
+                console.warn("Could not sync role update to Firestore", e);
+              }
+            }
           }
           
           setStaffInfo(staffData);
@@ -898,50 +914,58 @@ const App: React.FC = () => {
       const c = await getCollectionData(COLLECTIONS.CLASES) as Clase[];
       const g = await getCollectionData(COLLECTIONS.GRUPOS) as GrupoConfig[];
       const asis = await getCollectionData(COLLECTIONS.ASISTENCIAS) as AsistenciaRecord[];
-      const p = await getCollectionData(COLLECTIONS.STAFF) as {id?: string, nombre: string, userId?: string}[];
+      const p = await getCollectionData(COLLECTIONS.STAFF) as {id?: string, nombre: string, userId?: string, uid?: string}[];
       const n = await getCollectionData(COLLECTIONS.NIVELES) as {id?: string, nombre: string}[];
       const d = await getCollectionData(COLLECTIONS.DISCIPLINAS) as {id?: string, nombre: string}[];
+      const s = await getCollectionData(COLLECTIONS.SOURCES) as Source[];
       const w = await getCollectionData(COLLECTIONS.WARMUP_OPTIONS) as {id?: string, nombre: string}[];
       const co = await getCollectionData(COLLECTIONS.COOLDOWN_OPTIONS) as {id?: string, nombre: string}[];
       const ac = await getCollectionData(COLLECTIONS.AGE_CATEGORIES) as {id?: string, nombre: string}[];
       const pc = await getCollectionData(COLLECTIONS.PHYSICAL_CATEGORIES) as {id?: string, nombre: string}[];
-      const s = await getCollectionData(COLLECTIONS.SOURCES) as Source[];
       
       const currentUid = user?.uid || auth.currentUser?.uid;
-      const isCoordinator = isCoordinatorEmail(user?.email);
+      const isCoord = userRole === 'Coordinator';
       
-      const userProfesoresIds = p.map(prof => prof.id);
-      
+      // Filter staff records: coordinators see all, coaches see only their own record(s)
+      const filteredProfesores = isCoord ? p : (p || []).filter(prof => prof.uid === currentUid || prof.userId === currentUid);
+      const myStaffIds = filteredProfesores.map(f => f.id);
+
       // Find all groups belonging to the user
-      const coachGrupos = isCoordinator ? g : g.filter(grupo => {
+      const coachGrupos = isCoord ? g : g.filter(grupo => {
           return grupo.entrenadorId === currentUid || 
-          grupo.entrenador === user?.displayName ||
-          (grupo.entrenadorId && userProfesoresIds.includes(grupo.entrenadorId)) ||
+          (grupo.entrenadorId && myStaffIds.includes(grupo.entrenadorId)) ||
+          (grupo.entrenador && user?.displayName && grupo.entrenador.trim().toLowerCase() === user.displayName.trim().toLowerCase()) ||
           ((grupo as any).userId === currentUid);
       });
-      const coachGruposNames = coachGrupos.map(grupo => (grupo.nombre || "").trim().toLowerCase());
+      const coachGruposNamesArray = coachGrupos.map(grupo => (grupo.nombre || "").trim().toLowerCase());
       
-      // Los coaches ahora reciben todos los alumnos para poder buscarlos en el autocompletado,
-      // pero la UI de Alumnos.tsx seguirá filtrando por 'myGroups' si el modo está activo.
-      const userAlumnos = isCoordinator ? a : a; // Permitimos todos para búsqueda global en el cliente
+      // Set Alumnos (unfiltered for state, filtering happens in UI)
+      setAlumnos(a);
       
-      setAlumnos(userAlumnos);
-      setClases(isCoordinator ? c.sort((x, y) => new Date(y.fecha).getTime() - new Date(x.fecha).getTime()) : c.filter(clase => coachGruposNames.includes(clase.grupo || '')).sort((x, y) => new Date(y.fecha).getTime() - new Date(x.fecha).getTime()));
+      // Filter Classes
+      const filteredClases = isCoord 
+        ? c.sort((x, y) => new Date(y.fecha).getTime() - new Date(x.fecha).getTime()) 
+        : c.filter(clase => coachGruposNamesArray.includes((clase.grupo || '').trim().toLowerCase())).sort((x, y) => new Date(y.fecha).getTime() - new Date(x.fecha).getTime());
+      
+      setClases(filteredClases);
       setGrupos(coachGrupos);
-      setAsistencias(isCoordinator ? asis : asis.filter(asi => coachGruposNames.includes(asi.grupo || '')));
       
-      // Filter out global or other users' professors so that it is empty on first login
-      const filteredProfesores = isCoordinator ? p : (p || []).filter(prof => prof.userId === currentUid);
+      // Filter Attendance registers
+      const filteredAsistencias = isCoord 
+        ? asis 
+        : asis.filter(asi => coachGruposNamesArray.includes((asi.grupo || '').trim().toLowerCase()));
+      
+      setAsistencias(filteredAsistencias);
       setProfesoresList(filteredProfesores);
       setSources(s || []);
+      
+      // Default lists
       setNiveles(n.length > 0 ? n : [
         { id: 'default-0', nombre: 'Escuela' },
         { id: 'default-1', nombre: 'Pre-Equipo' },
         { id: 'default-2', nombre: 'Equipo' }
       ]);
       setDisciplinas(d.length > 0 ? d : DISCIPLINAS.map((name, i) => ({ id: `default-${i}`, nombre: name })));
-      setWarmupOptions(w.length > 0 ? w : ['Movilidad articular', 'Trote', 'Juegos', 'Estiramiento dinámico'].map((name, i) => ({ id: `default-${i}`, nombre: name })));
-      setCooldownOptions(co.length > 0 ? co : ['Estiramiento pasivo', 'Relajación', 'Feedback grupal'].map((name, i) => ({ id: `default-${i}`, nombre: name })));
       
       const newAgeCats = ac.length > 0 ? ac : [
         { id: 'default-0', nombre: 'Pre-Mini' },
@@ -960,6 +984,10 @@ const App: React.FC = () => {
         { id: 'default-3', nombre: 'Bajo' }
       ];
       setPhysicalCategories(newPhysCats);
+
+      // Warmup/Cooldown fallback
+      setWarmupOptions(w.length > 0 ? w : ['Movilidad articular', 'Trote', 'Juegos', 'Estiramiento dinámico'].map((name, i) => ({ id: `default-${i}`, nombre: name })));
+      setCooldownOptions(co.length > 0 ? co : ['Estiramiento pasivo', 'Relajación', 'Feedback grupal'].map((name, i) => ({ id: `default-${i}`, nombre: name })));
 
       // Auto-limpiar filtros si la opción ya no existe
       if (selectedAgeFilter !== 'Todas' && !newAgeCats.find(o => o.nombre === selectedAgeFilter)) {
@@ -990,48 +1018,16 @@ const App: React.FC = () => {
         return true;
       }));
 
-      if (activeGroup) {
-        const today = new Date().toISOString().split('T')[0];
-        const q = query(
-          collection(firestore, COLLECTIONS.ASISTENCIAS),
-          where('fecha', '==', today),
-          where('grupo', '==', activeGroup.nombre)
-        );
-        const querySnapshot = await getDocs(q);
-        const attMap: Record<string, boolean> = {};
-        const payMap: Record<string, boolean> = {};
-
-        // 1. Cargamos asistencia de hoy desde la colección asistencias
-        querySnapshot.forEach(doc => {
-          const data = doc.data() as any;
-          const id = data.alumnoId || data.alumnaId;
-          if (id) {
-            attMap[id] = data.presente;
-          }
-        });
-
-        // 2. Cargamos pagos del mes actual desde el objeto del alumno (fuente de verdad mensual)
-        a.forEach(alumno => {
-          if (alumno.pagosMensuales?.some(p => p.mes === currentMonthName && p.anio === currentYear)) {
-            payMap[alumno.id!] = true;
-          }
-        });
-
-        setAsistenciasHoy(attMap);
-        setPagosHoy(payMap);
-      }
-    } catch (error: any) {
-      console.error("Error loading data:", error);
-      setNotificacion({ t: "Error de Conexión", d: error.message || "No se pudieron cargar los datos." });
-      setTimeout(() => setNotificacion(null), 5000);
-    } finally {
-      setIsLoading(false);
       setIsDataLoaded(true);
+      setIsLoading(false);
+    } catch (error) {
+      console.error("Error loading data:", error);
+      setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    if (isLoggedIn) {
+    if (isLoggedIn && userRole) {
       loadData();
       
       // Real-time updates for classes
@@ -1060,16 +1056,6 @@ const App: React.FC = () => {
         setSources(s);
       });
 
-      // Load emergency info
-      const loadEmergency = async () => {
-        const config = await getCollectionData(COLLECTIONS.CONFIG);
-        const emergency = config.find(c => c.id === 'emergency');
-        if (emergency) {
-          setEmergencyInfo(emergency as any);
-        }
-      };
-      loadEmergency();
-
       // Reset first load after a short delay
       const timer = setTimeout(() => {
         isFirstLoad.current = false;
@@ -1083,7 +1069,7 @@ const App: React.FC = () => {
         clearTimeout(timer);
       };
     }
-  }, [isLoggedIn]);
+  }, [isLoggedIn, userRole]);
 
   useEffect(() => {
     if (selectedClase?.id) {
@@ -3148,7 +3134,7 @@ const App: React.FC = () => {
             setEditingClaseId={setEditingClaseId}
             handleSaveManualClass={handleSaveManualClass}
             clases={clases}
-            selectedClase={selectedClase || undefined}
+            selectedClase={selectedClase || null}
             setSelectedClase={setSelectedClase}
             handleDeleteClase={handleDeleteClase}
             handleEditClase={handleEditClase}
