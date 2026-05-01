@@ -2,18 +2,10 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore, collection, addDoc, getDocs, updateDoc, doc, query, where, onSnapshot, setDoc, deleteDoc } from "firebase/firestore";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, User, setPersistence, browserLocalPersistence } from "firebase/auth";
-
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyBbuRw3J7t_8xQc-6_qOqQDdjEEWZgSHaY",
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "gymcoachpro-c0c8e.firebaseapp.com",
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "gymcoachpro-c0c8e",
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "gymcoachpro-c0c8e.firebasestorage.app",
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "923517600594",
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:923517600594:web:a81bdd1a150b7f22dcf08b"
-};
+import firebaseConfig from "../firebase-applet-config.json";
 
 const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app);
+export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const auth = getAuth(app);
 
 enum OperationType {

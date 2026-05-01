@@ -7,18 +7,11 @@ import { initializeApp } from "firebase/app";
 import { getFirestore, collection, addDoc, getDocs, updateDoc, doc, query, where, serverTimestamp, setDoc } from "firebase/firestore";
 import Papa from "papaparse";
 
-// Firebase App for Server
-const firebaseConfig = {
-  apiKey: process.env.VITE_FIREBASE_API_KEY || "AIzaSyBbuRw3J7t_8xQc-6_qOqQDdjEEWZgSHaY",
-  authDomain: process.env.VITE_FIREBASE_AUTH_DOMAIN || "gymcoachpro-c0c8e.firebaseapp.com",
-  projectId: process.env.VITE_FIREBASE_PROJECT_ID || "gymcoachpro-c0c8e",
-  storageBucket: process.env.VITE_FIREBASE_STORAGE_BUCKET || "gymcoachpro-c0c8e.firebasestorage.app",
-  messagingSenderId: process.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "923517600594",
-  appId: process.env.VITE_FIREBASE_APP_ID || "1:923517600594:web:a81bdd1a150b7f22dcf08b"
-};
+import firebaseConfig from "./firebase-applet-config.json";
 
+// Firebase App for Server
 const fbApp = initializeApp(firebaseConfig);
-const db = getFirestore(fbApp);
+const db = getFirestore(fbApp, firebaseConfig.firestoreDatabaseId);
 
 const app = express();
 const PORT = 3000;
