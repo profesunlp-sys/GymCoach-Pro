@@ -501,14 +501,30 @@ const App: React.FC = () => {
     const lowerEmail = email.trim().toLowerCase();
     // Force specific coordinator email check
     if (lowerEmail === 'profesunlp@gmail.com') return true;
-    return COORDINATOR_EMAILS.some(e => e.toLowerCase() === lowerEmail);
+    return COORDINATOR_EMAILS.some(e => e.trim().toLowerCase() === lowerEmail);
   };
   
   const isStaffWhitelist = (email: string | null | undefined) => {
     if (!email) return false;
     const lowerEmail = email.trim().toLowerCase();
-    return STAFF_WHITELIST.some(e => e.toLowerCase() === lowerEmail);
+    return STAFF_WHITELIST.some(e => e.trim().toLowerCase() === lowerEmail);
   };
+
+  const menuOptions = useMemo(() => {
+    if (!userRole) return [];
+    return [
+      { v: 'AsistenciaLista', i: 'fact_check', l: 'Asistencia', c: 'text-emerald-600', role: 'Coach' },
+      { v: 'Horario', i: 'event_note', l: 'Grupos', c: 'text-amber-600', role: 'Coach' },
+      { v: 'AsistenciaStats', i: 'analytics', l: 'Estadísticas', c: 'text-sky-600', role: 'Coordinator' },
+      { v: 'Planes', i: 'psychology', l: 'Manuales', c: 'text-violet-600', role: 'Coach' },
+      { v: 'Profesores', i: 'badge', l: 'Staff', c: 'text-rose-600', role: 'Coordinator' },
+      { v: 'Habilidades', i: 'trending_up', l: 'Habilidades', c: 'text-purple-600', role: 'Coach' },
+      { v: 'ControlPagos', i: 'payments', l: 'Pagos', c: 'text-ios-blue', role: 'Coordinator' },
+    ].filter(opt => {
+      if (userRole === 'Coordinator') return true;
+      return opt.role === userRole;
+    });
+  }, [userRole]);
   const [staffInfo, setStaffInfo] = useState<any>(null);
 
   // Security guard for routes
@@ -3998,8 +4014,9 @@ const App: React.FC = () => {
           </motion.div>
         )}
       </AnimatePresence>
+
       <AnimatePresence>
-        {showMoreOptions && (
+        {showMoreOptions && menuOptions.length > 0 && (
           <div className="fixed inset-0 z-[45] flex items-end justify-center px-4 pb-28">
             <motion.div 
               initial={{ opacity: 0 }}
@@ -4015,36 +4032,19 @@ const App: React.FC = () => {
               exit={{ y: 100, opacity: 0, scale: 0.95 }}
               className="relative w-full max-w-[400px] bg-white rounded-[2.5rem] p-6 grid grid-cols-3 gap-4 shadow-2xl border border-black/5"
             >
-              {(() => {
-                const options = [
-                  { v: 'AsistenciaLista', i: 'fact_check', l: 'Asistencia', c: 'text-emerald-600', role: 'Coach' },
-                  { v: 'Horario', i: 'event_note', l: 'Grupos', c: 'text-amber-600', role: 'Coach' },
-                  { v: 'AsistenciaStats', i: 'analytics', l: 'Estadísticas', c: 'text-sky-600', role: 'Coordinator' },
-                  { v: 'Planes', i: 'psychology', l: 'Manuales', c: 'text-violet-600', role: 'Coach' },
-                  { v: 'Profesores', i: 'badge', l: 'Staff', c: 'text-rose-600', role: 'Coordinator' },
-                  { v: 'Habilidades', i: 'trending_up', l: 'Habilidades', c: 'text-purple-600', role: 'Coach' },
-                  { v: 'ControlPagos', i: 'payments', l: 'Pagos', c: 'text-ios-blue', role: 'Coordinator' },
-                ].filter(opt => {
-                  if (userRole === 'Coordinator') return true;
-                  return opt.role === userRole;
-                });
-
-                if (options.length === 0) return null;
-
-                return options.map(opt => (
-                  <button
-                    key={opt.v}
-                    onClick={() => {
-                      handleNavigation(opt.v as ViewMode);
-                      setShowMoreOptions(false);
-                    }}
-                    className="flex flex-col items-center gap-3 p-4 rounded-2xl bg-ios-gray hover:bg-black/5 transition-all active:scale-95 border border-transparent"
-                  >
-                    <span className={`material-symbols-outlined text-[32px] ${opt.c}`}>{opt.i}</span>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-secondary">{opt.l}</span>
-                  </button>
-                ));
-              })()}
+              {menuOptions.map(opt => (
+                <button 
+                  key={opt.v}
+                  onClick={() => {
+                    handleNavigation(opt.v as ViewMode);
+                    setShowMoreOptions(false);
+                  }}
+                  className="flex flex-col items-center gap-3 p-4 rounded-2xl bg-ios-gray hover:bg-black/5 transition-all active:scale-95 border border-transparent"
+                >
+                  <span className={`material-symbols-outlined text-[32px] ${opt.c}`}>{opt.i}</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-secondary">{opt.l}</span>
+                </button>
+              ))}
             </motion.div>
           </div>
         )}
