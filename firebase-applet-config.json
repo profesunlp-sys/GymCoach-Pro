@@ -1,10 +1,10 @@
 {
-  "projectId": "gen-lang-client-0264091486",
-  "appId": "1:100228952371:web:0d53b7408da1f226cf8e46",
-  "apiKey": "AIzaSyDyxnnmZQEh1NQhjg362bPK2hDGtCEodTc",
-  "authDomain": "gen-lang-client-0264091486.firebaseapp.com",
-  "firestoreDatabaseId": "ai-studio-55d34bfb-1141-4376-9566-9ec9e3a7f640",
-  "storageBucket": "gen-lang-client-0264091486.firebasestorage.app",
-  "messagingSenderId": "100228952371",
-  "measurementId": ""
+  "apiKey": "AIzaSyBbuRw3J7t_8xQc-6_qOqQDdjEEWZgSHaY",
+  "authDomain": "gymcoachpro-c0c8e.firebaseapp.com",
+  "projectId": "gymcoachpro-c0c8e",
+  "storageBucket": "gymcoachpro-c0c8e.firebasestorage.app",
+  "messagingSenderId": "923517600594",
+  "appId": "1:923517600594:web:a81bdd1a150b7f22dcf08b",
+  "measurementId": "",
+  "firestoreDatabaseId": "(default)"
 }
