@@ -16,6 +16,12 @@ const config = {
 };
 
 const app = initializeApp(config);
+
+// Warn if authDomain seems misconfigured (should be .firebaseapp.com)
+if (config.authDomain && config.authDomain.includes('vercel.app')) {
+  console.warn("⚠️ ALERTA DE CONFIGURACIÓN: Tu 'authDomain' de Firebase está configurado como un dominio de Vercel. Esto suele causar errores 'invalid-continue-uri'. El 'authDomain' debe ser el original de Firebase (ej: proyecto.firebaseapp.com).");
+}
+
 export const db = getFirestore(app, config.firestoreDatabaseId);
 export const auth = getAuth(app);
 

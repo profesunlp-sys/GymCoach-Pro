@@ -39,7 +39,7 @@ const LoadingFallback = () => (
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [userRole, setUserRole] = useState<UserRole>('Coach');
+  const [userRole, setUserRole] = useState<UserRole | null>(null);
   const [vista, setVista] = useState<ViewMode>('Dashboard');
   const [showMoreOptions, setShowMoreOptions] = useState(false);
   const [registrationStep, setRegistrationStep] = useState(1);
@@ -191,9 +191,12 @@ const App: React.FC = () => {
       case 'auth/network-request-failed':
         return "Error de red. Por favor, revisa tu conexión a internet.";
       case 'auth/invalid-continue-uri':
-        return "⚠️ ERROR DE CONFIGURACIÓN: El dominio '" + window.location.host + "' no está autorizado en Firebase para redirección. \n\nSOLUCIÓN: Copia el dominio de abajo y agrégalo en tu consola de Firebase (Authentication -> Settings -> Authorized Domains).";
+        return "⚠️ ERROR DE REDIRECCIÓN (invalid-continue-uri): El dominio no está autorizado para redirección o el 'authDomain' está mal configurado. \n\n" +
+               "1. Verifica que el dominio esté en Firebase Console -> Authorized Domains.\n" +
+               "2. Asegúrate de que el 'authDomain' en tu configuración sea el original de Firebase (ej: proyecto.firebaseapp.com) y NO tu dominio de Vercel.";
       case 'auth/unauthorized-domain':
-        return "⚠️ DOMINIO NO AUTORIZADO: El sitio '" + window.location.host + "' no tiene permiso para autenticarse con tu proyecto de Firebase. \n\nSOLUCIÓN: Agrega este dominio en la sección 'Authorized Domains' de tu Consola de Firebase.";
+        return "⚠️ DOMINIO NO AUTORIZADO: El sitio '" + window.location.host + "' no tiene permiso para autenticarse. \n\n" +
+               "SOLUCIÓN: Agrégalo en Firebase Console -> Authentication -> Settings -> Authorized Domains.";
       case 'auth/operation-not-allowed':
         return "⚠️ MÉTODO NO HABILITADO: El inicio de sesión (Google o Email) no está habilitado en tu Consola de Firebase -> Authentication -> Sign-in method.";
       default:
@@ -503,32 +506,25 @@ const App: React.FC = () => {
         setIsLoggedIn(true);
 
         try {
-          // 1. Determinar rol inmediatamente por email (Whitelist)
+          // Determine role immediately by email (Whitelist)
           const isCoord = isCoordinatorEmail(currentUser.email);
           const isStaffMember = isStaffWhitelist(currentUser.email);
           
           let role: UserRole = isCoord ? 'Coordinator' : 'Coach';
-          
-          if (!isStaffMember) {
-            // Si no está en lista blanca, intentamos ver si ya existe en la BD (para otros profes)
-            const staffQuery = query(collection(firestore, COLLECTIONS.STAFF), where('uid', '==', currentUser.uid));
-            const staffDoc = await getDocs(staffQuery);
-            if (staffDoc.empty) {
-              // Si no es nada, no dejamos pasar (o rol de invitado si prefieres)
+          let staffData: any = null;
+
+          // Single query for staff data
+          const staffQuery = query(collection(firestore, COLLECTIONS.STAFF), where('uid', '==', currentUser.uid));
+          const staffDocs = await getDocs(staffQuery);
+
+          if (staffDocs.empty) {
+            if (!isStaffMember) {
+              // Not in whitelist and not in DB -> Access restricted
               setUserRole(null);
               setIsLoading(false);
               return;
             }
-          }
-
-          // 2. Sincronizar o crear perfil en Firestore
-          const staffRef = doc(firestore, COLLECTIONS.STAFF, currentUser.uid);
-          const staffQuery = query(collection(firestore, COLLECTIONS.STAFF), where('uid', '==', currentUser.uid));
-          const staffDoc = await getDocs(staffQuery);
-          
-          let staffData: any = null;
-
-          if (staffDoc.empty) {
+            // Whitelisted but not in DB yet -> Create profile
             staffData = {
               uid: currentUser.uid,
               email: currentUser.email,
@@ -537,14 +533,17 @@ const App: React.FC = () => {
               fechaRegistro: new Date().toISOString()
             };
             try {
+              const staffRef = doc(firestore, COLLECTIONS.STAFF, currentUser.uid);
               await setDoc(staffRef, staffData);
             } catch (e) {
-              console.warn("Firestore save disabled or failed, using local state", e);
+              console.warn("Firestore save failed, using local state", e);
             }
           } else {
-            staffData = { id: staffDoc.docs[0].id, ...staffDoc.docs[0].data() };
-            // Forzar rol según email por seguridad
+            // Exists in DB
+            staffData = { id: staffDocs.docs[0].id, ...staffDocs.docs[0].data() };
+            // Ensure email-based role priority
             if (isCoord) role = 'Coordinator';
+            else if (staffData.role) role = staffData.role;
           }
           
           setStaffInfo(staffData);
@@ -552,6 +551,7 @@ const App: React.FC = () => {
           setIsLoading(false);
         } catch (error) {
           console.error("Error syncing staff:", error);
+          // High-level fallback for whitelisted users
           if (isStaffWhitelist(currentUser.email)) {
             setUserRole(isCoordinatorEmail(currentUser.email) ? 'Coordinator' : 'Coach');
           }
@@ -2739,6 +2739,12 @@ const App: React.FC = () => {
   });
   const presentCount = Object.values(asistenciasHoy).filter(v => v).length;
 
+  if (isLoading) return (
+    <div className="auth-bg flex flex-col items-center justify-center min-h-screen">
+      <LoadingFallback />
+    </div>
+  );
+
   if (!isLoggedIn) return (
     <div className="auth-bg flex flex-col items-center justify-center p-8 text-white min-h-screen relative">
       <div className="z-10 w-full max-w-sm text-center page-transition flex flex-col items-center">
@@ -2822,13 +2828,26 @@ const App: React.FC = () => {
           
           {loginError && (
             <div className="bg-rose-500/20 border border-rose-500/50 rounded-xl p-4 text-left mt-4">
-              <p className="text-rose-200 text-[10px] font-bold leading-relaxed">
+              <p className="text-rose-200 text-[10px] font-bold leading-relaxed mb-3">
                 {loginError}
               </p>
-              {(loginError.includes('DOMINIO NO AUTORIZADO') || loginError.includes('ERROR DE CONFIGURACIÓN')) && (
-                <div className="mt-2 p-2 bg-black/30 border border-white/5 rounded text-[10px] font-mono text-white break-all select-all flex flex-col gap-1">
-                  <span className="text-[8px] text-white/40 uppercase tracking-tighter">Dominio actual para agregar a Firebase:</span>
-                  <span className="font-bold">{window.location.host}</span>
+              
+              {(loginError.includes('DOMINIO NO AUTORIZADO') || loginError.includes('ERROR DE REDIRECCIÓN')) && (
+                <div className="space-y-3">
+                  <div className="p-2 bg-black/30 border border-white/5 rounded text-[10px] font-mono text-white break-all select-all flex flex-col gap-1">
+                    <span className="text-[8px] text-white/40 uppercase tracking-tighter">Dominio actual para copiar:</span>
+                    <span className="font-bold">{window.location.host}</span>
+                  </div>
+                  
+                  <div className="p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg space-y-2">
+                    <p className="text-[9px] text-blue-200 uppercase font-bold tracking-widest">¿Cómo lo arreglo?</p>
+                    <ul className="text-[9px] text-blue-100 list-disc pl-4 space-y-1">
+                      <li>Ve a tu consola de Firebase</li>
+                      <li>Authentication → Settings → Authorized Domains</li>
+                      <li>Añade el dominio de arriba</li>
+                      <li>Si usas Vercel, verifica que tus VITE_ variables de entorno estén correctas</li>
+                    </ul>
+                  </div>
                 </div>
               )}
             </div>
@@ -2937,7 +2956,7 @@ const App: React.FC = () => {
         <Suspense fallback={<LoadingFallback />}>
           {vista === 'Dashboard' && (
             <Dashboard 
-              userRole={userRole}
+              userRole={userRole || 'Coach'}
               user={user}
               grupos={userGroups}
               alumnos={alumnos}
@@ -2956,7 +2975,7 @@ const App: React.FC = () => {
               asistenciasGlobales={asistenciasGlobales}
               setActiveGroup={setActiveGroup}
               setRegistrationStep={setRegistrationStep}
-              setUserRole={setUserRole}
+              setUserRole={setUserRole as any}
               isCoordinatorEmail={isCoordinatorEmail}
               onOpenBulkPayment={() => setIsBulkPaymentModalOpen(true)}
               onOpenBulkImportStudents={() => { setIsBulkImporting(true); setOnboardingStep(0); }}
@@ -3105,12 +3124,12 @@ const App: React.FC = () => {
             setEditingClaseId={setEditingClaseId}
             handleSaveManualClass={handleSaveManualClass}
             clases={clases}
-            selectedClase={selectedClase}
+            selectedClase={selectedClase || undefined}
             setSelectedClase={setSelectedClase}
             handleDeleteClase={handleDeleteClase}
             handleEditClase={handleEditClase}
             setNotificacion={setNotificacion}
-            userRole={userRole}
+            userRole={userRole || 'Coach'}
             user={user}
             planesFilterDate={planesFilterDate}
             setPlanesFilterDate={setPlanesFilterDate}
@@ -3176,7 +3195,7 @@ const App: React.FC = () => {
             handleUpdateFeedback={handleUpdateFeedback}
             handleDeleteFeedback={handleDeleteFeedback}
             setIsBulkImporting={setIsBulkImporting}
-            userRole={userRole}
+            userRole={userRole || 'Coach'}
             disciplinas={disciplinas}
             handleSaveLevel={handleSaveLevel}
             handleUpdateLevel={handleUpdateLevel}
@@ -3251,8 +3270,8 @@ const App: React.FC = () => {
             asistencias={asistencias}
             setSelectedProfesor={setSelectedProfesor}
             handleNavigation={handleNavigation}
-            selectedProfesor={selectedProfesor}
-            userRole={userRole}
+            selectedProfesor={selectedProfesor || ""}
+            userRole={userRole || 'Coach'}
             setSelectedClase={setSelectedClase}
             setNotificacion={setNotificacion}
           />
