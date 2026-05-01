@@ -499,6 +499,8 @@ const App: React.FC = () => {
   const isCoordinatorEmail = (email: string | null | undefined) => {
     if (!email) return false;
     const lowerEmail = email.trim().toLowerCase();
+    // Force specific coordinator email check
+    if (lowerEmail === 'profesunlp@gmail.com') return true;
     return COORDINATOR_EMAILS.some(e => e.toLowerCase() === lowerEmail);
   };
   
@@ -564,12 +566,12 @@ const App: React.FC = () => {
             // Exists in DB
             staffData = { id: staffDocs.docs[0].id, ...staffDocs.docs[0].data() };
             
-            // PRIORITY: If email is NOT in COORDINATOR_EMAILS, force Coach role even if DB says Coordinator
-            // Conversely, if email IS in COORDINATOR_EMAILS, force Coordinator.
+            // PRIORITY FORCE: If email is in COORDINATOR_EMAILS, it MUST be Coordinator.
+            // If it's only in STAFF_WHITELIST, it MUST be Coach.
             if (isCoord) {
               role = 'Coordinator';
-            } else {
-              role = 'Coach'; // Force Coach for non-coordinator emails
+            } else if (isStaffMember) {
+              role = 'Coach';
             }
             
             // If the role in DB is different from what we just determined (whitelist-based), update it for next time
@@ -2964,9 +2966,9 @@ const App: React.FC = () => {
 
       <main className="flex-1 overflow-y-auto">
         <Suspense fallback={<LoadingFallback />}>
-          {vista === 'Dashboard' && (
+          {vista === 'Dashboard' && userRole && (
             <Dashboard 
-              userRole={userRole || 'Coach'}
+              userRole={userRole}
               user={user}
               grupos={userGroups}
               alumnos={alumnos}
@@ -4013,27 +4015,36 @@ const App: React.FC = () => {
               exit={{ y: 100, opacity: 0, scale: 0.95 }}
               className="relative w-full max-w-[400px] bg-white rounded-[2.5rem] p-6 grid grid-cols-3 gap-4 shadow-2xl border border-black/5"
             >
-              {[
-                { v: 'AsistenciaLista', i: 'fact_check', l: 'Asistencia', c: 'text-emerald-600', role: 'Coach' },
-                { v: 'Horario', i: 'event_note', l: 'Grupos', c: 'text-amber-600', role: 'Coach' },
-                { v: 'AsistenciaStats', i: 'analytics', l: 'Estadísticas', c: 'text-sky-600', role: 'Coordinator' },
-                { v: 'Planes', i: 'psychology', l: 'Manuales', c: 'text-violet-600', role: 'Coach' },
-                { v: 'Profesores', i: 'badge', l: 'Staff', c: 'text-rose-600', role: 'Coordinator' },
-                { v: 'Habilidades', i: 'trending_up', l: 'Habilidades', c: 'text-purple-600', role: 'Coach' },
-                { v: 'ControlPagos', i: 'payments', l: 'Pagos', c: 'text-ios-blue', role: 'Coordinator' },
-              ].filter(opt => opt.role === userRole).map(opt => (
-                <button
-                  key={opt.v}
-                  onClick={() => {
-                    handleNavigation(opt.v as ViewMode);
-                    setShowMoreOptions(false);
-                  }}
-                  className="flex flex-col items-center gap-3 p-4 rounded-2xl bg-ios-gray hover:bg-black/5 transition-all active:scale-95 border border-transparent"
-                >
-                  <span className={`material-symbols-outlined text-[32px] ${opt.c}`}>{opt.i}</span>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-secondary">{opt.l}</span>
-                </button>
-              ))}
+              {(() => {
+                const options = [
+                  { v: 'AsistenciaLista', i: 'fact_check', l: 'Asistencia', c: 'text-emerald-600', role: 'Coach' },
+                  { v: 'Horario', i: 'event_note', l: 'Grupos', c: 'text-amber-600', role: 'Coach' },
+                  { v: 'AsistenciaStats', i: 'analytics', l: 'Estadísticas', c: 'text-sky-600', role: 'Coordinator' },
+                  { v: 'Planes', i: 'psychology', l: 'Manuales', c: 'text-violet-600', role: 'Coach' },
+                  { v: 'Profesores', i: 'badge', l: 'Staff', c: 'text-rose-600', role: 'Coordinator' },
+                  { v: 'Habilidades', i: 'trending_up', l: 'Habilidades', c: 'text-purple-600', role: 'Coach' },
+                  { v: 'ControlPagos', i: 'payments', l: 'Pagos', c: 'text-ios-blue', role: 'Coordinator' },
+                ].filter(opt => {
+                  if (userRole === 'Coordinator') return true;
+                  return opt.role === userRole;
+                });
+
+                if (options.length === 0) return null;
+
+                return options.map(opt => (
+                  <button
+                    key={opt.v}
+                    onClick={() => {
+                      handleNavigation(opt.v as ViewMode);
+                      setShowMoreOptions(false);
+                    }}
+                    className="flex flex-col items-center gap-3 p-4 rounded-2xl bg-ios-gray hover:bg-black/5 transition-all active:scale-95 border border-transparent"
+                  >
+                    <span className={`material-symbols-outlined text-[32px] ${opt.c}`}>{opt.i}</span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-secondary">{opt.l}</span>
+                  </button>
+                ));
+              })()}
             </motion.div>
           </div>
         )}
