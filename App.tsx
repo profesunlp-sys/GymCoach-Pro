@@ -190,6 +190,11 @@ const App: React.FC = () => {
         return "Se han realizado demasiados intentos fallidos. Tu cuenta ha sido bloqueada temporalmente por seguridad.";
       case 'auth/network-request-failed':
         return "Error de red. Por favor, revisa tu conexión a internet.";
+      case 'auth/invalid-continue-uri':
+        return "⚠️ ERROR DE CONFIGURACIÓN (invalid-continue-uri): El dominio actual no está correctamente autorizado para redirecciones de Firebase. Verifica 'Authorized Domains' en tu consola.";
+      case 'auth/unauthorized-domain':
+        const host = typeof window !== 'undefined' ? window.location.host : 'tu-dominio';
+        return `⚠️ DOMINIO NO AUTORIZADO: El sitio '${host}' no tiene permiso para autenticarse. \n\nSOLUCIÓN: Ve a Firebase Console -> Authentication -> Settings -> Authorized Domains y agrega '${host}'.`;
       default:
         return message.replace("Firebase: ", "").replace("Error (auth/", "").replace(").", "").replace("-", " ");
     }
@@ -464,9 +469,19 @@ const App: React.FC = () => {
   };
 
   const COORDINATOR_EMAILS = ["profesunlp@gmail.com"];
-  const STAFF_WHITELIST = ["mi.xt1032@gmail.com"];
-  const isCoordinatorEmail = (email: string | null | undefined) => email ? COORDINATOR_EMAILS.includes(email) : false;
-  const isStaffWhitelist = (email: string | null | undefined) => email ? STAFF_WHITELIST.includes(email) : false;
+  const STAFF_WHITELIST = ["mi.xt1032@gmail.com", "profesunlp@gmail.com"];
+  
+  const isCoordinatorEmail = (email: string | null | undefined) => {
+    if (!email) return false;
+    const lowerEmail = email.trim().toLowerCase();
+    return COORDINATOR_EMAILS.some(e => e.toLowerCase() === lowerEmail);
+  };
+  
+  const isStaffWhitelist = (email: string | null | undefined) => {
+    if (!email) return false;
+    const lowerEmail = email.trim().toLowerCase();
+    return STAFF_WHITELIST.some(e => e.toLowerCase() === lowerEmail);
+  };
   const [staffInfo, setStaffInfo] = useState<any>(null);
 
   // Security guard for routes
@@ -487,45 +502,65 @@ const App: React.FC = () => {
         setIsLoggedIn(true);
 
         try {
-          // Check staff collection
+          // 1. Determinar rol inmediatamente por email (Whitelist)
+          const isCoord = isCoordinatorEmail(currentUser.email);
+          const isStaffMember = isStaffWhitelist(currentUser.email);
+          
+          let role: UserRole = isCoord ? 'Coordinator' : 'Coach';
+          
+          if (!isStaffMember) {
+            // Si no está en lista blanca, intentamos ver si ya existe en la BD (para otros profes)
+            const staffQuery = query(collection(firestore, COLLECTIONS.STAFF), where('uid', '==', currentUser.uid));
+            const staffDoc = await getDocs(staffQuery);
+            if (staffDoc.empty) {
+              // Si no es nada, no dejamos pasar (o rol de invitado si prefieres)
+              setUserRole(null);
+              setIsLoading(false);
+              return;
+            }
+          }
+
+          // 2. Sincronizar o crear perfil en Firestore
           const staffRef = doc(firestore, COLLECTIONS.STAFF, currentUser.uid);
           const staffQuery = query(collection(firestore, COLLECTIONS.STAFF), where('uid', '==', currentUser.uid));
           const staffDoc = await getDocs(staffQuery);
           
-          let role: UserRole = isCoordinatorEmail(currentUser.email) ? 'Coordinator' : 'Coach';
           let staffData: any = null;
 
           if (staffDoc.empty) {
             staffData = {
               uid: currentUser.uid,
               email: currentUser.email,
-              nombre: currentUser.displayName || (isCoordinatorEmail(currentUser.email) ? 'Coordinador' : 'Profesor'),
+              nombre: currentUser.displayName || (isCoord ? 'Coordinador' : 'Profesor'),
               role: role,
               fechaRegistro: new Date().toISOString()
             };
-            // Intentar persistir en BD pero no bloquear si falla
             try {
               await setDoc(staffRef, staffData);
             } catch (e) {
-              console.warn("Could not save staff profile to DB, using local state", e);
+              console.warn("Firestore save disabled or failed, using local state", e);
             }
           } else {
             staffData = { id: staffDoc.docs[0].id, ...staffDoc.docs[0].data() };
-            // Forzar rol según email (prioridad máxima)
-            if (isCoordinatorEmail(currentUser.email)) role = 'Coordinator';
+            // Forzar rol según email por seguridad
+            if (isCoord) role = 'Coordinator';
           }
           
           setStaffInfo(staffData);
           setUserRole(role);
+          setIsLoading(false);
         } catch (error) {
           console.error("Error syncing staff:", error);
-          // Fallback roles bypass Firestore
-          setUserRole(isCoordinatorEmail(currentUser.email) ? 'Coordinator' : 'Coach');
+          if (isStaffWhitelist(currentUser.email)) {
+            setUserRole(isCoordinatorEmail(currentUser.email) ? 'Coordinator' : 'Coach');
+          }
+          setIsLoading(false);
         }
       } else {
         setUser(null);
         setIsLoggedIn(false);
         setStaffInfo(null);
+        setIsLoading(false);
       }
     });
     return () => unsubscribe();
