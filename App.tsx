@@ -191,10 +191,11 @@ const App: React.FC = () => {
       case 'auth/network-request-failed':
         return "Error de red. Por favor, revisa tu conexión a internet.";
       case 'auth/invalid-continue-uri':
-        return "⚠️ ERROR DE CONFIGURACIÓN (invalid-continue-uri): El dominio actual no está correctamente autorizado para redirecciones de Firebase. Verifica 'Authorized Domains' en tu consola.";
+        return "⚠️ ERROR DE CONFIGURACIÓN: El dominio '" + window.location.host + "' no está autorizado en Firebase para redirección. \n\nSOLUCIÓN: Copia el dominio de abajo y agrégalo en tu consola de Firebase (Authentication -> Settings -> Authorized Domains).";
       case 'auth/unauthorized-domain':
-        const host = typeof window !== 'undefined' ? window.location.host : 'tu-dominio';
-        return `⚠️ DOMINIO NO AUTORIZADO: El sitio '${host}' no tiene permiso para autenticarse. \n\nSOLUCIÓN: Ve a Firebase Console -> Authentication -> Settings -> Authorized Domains y agrega '${host}'.`;
+        return "⚠️ DOMINIO NO AUTORIZADO: El sitio '" + window.location.host + "' no tiene permiso para autenticarse con tu proyecto de Firebase. \n\nSOLUCIÓN: Agrega este dominio en la sección 'Authorized Domains' de tu Consola de Firebase.";
+      case 'auth/operation-not-allowed':
+        return "⚠️ MÉTODO NO HABILITADO: El inicio de sesión (Google o Email) no está habilitado en tu Consola de Firebase -> Authentication -> Sign-in method.";
       default:
         return message.replace("Firebase: ", "").replace("Error (auth/", "").replace(").", "").replace("-", " ");
     }
@@ -2824,9 +2825,10 @@ const App: React.FC = () => {
               <p className="text-rose-200 text-[10px] font-bold leading-relaxed">
                 {loginError}
               </p>
-              {loginError.includes('DOMINIO NO AUTORIZADO') && (
-                <div className="mt-2 p-2 bg-black/30 rounded text-[9px] font-mono text-white break-all select-all">
-                  {window.location.host}
+              {(loginError.includes('DOMINIO NO AUTORIZADO') || loginError.includes('ERROR DE CONFIGURACIÓN')) && (
+                <div className="mt-2 p-2 bg-black/30 border border-white/5 rounded text-[10px] font-mono text-white break-all select-all flex flex-col gap-1">
+                  <span className="text-[8px] text-white/40 uppercase tracking-tighter">Dominio actual para agregar a Firebase:</span>
+                  <span className="font-bold">{window.location.host}</span>
                 </div>
               )}
             </div>
