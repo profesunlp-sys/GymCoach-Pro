@@ -1,12 +1,12 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // --- Seguridad por Defecto ---
+    // --- Seguridad por Defecto: Denegar todo ---
     match /{document=**} {
       allow read, write: if false;
     }
 
-    // --- Helpers de Autenticación ---
+    // --- Helpers Globales ---
     function isSignedIn() {
       return request.auth != null;
     }
@@ -15,34 +15,35 @@ service cloud.firestore {
       return isSignedIn() && (request.auth.token.email_verified == true || request.auth.token.firebase.sign_in_provider == 'google.com');
     }
 
-    // Coordinador Maestro
+    // El Coordinador Maestro
     function isCoordinator() {
-      return isVerified() && (request.auth.token.email == 'profesunlp@gmail.com');
+      return isVerified() && request.auth.token.email == 'profesunlp@gmail.com';
     }
 
-    // Verifica si el usuario existe en la colección staff
+    // Un usuario es Staff si es el Coordinador o si existe en la colección 'staff'
     function isStaff() {
       return isVerified() && (isCoordinator() || exists(/databases/$(database)/documents/staff/$(request.auth.uid)));
     }
 
-    // --- Colecciones ---
+    // --- Reglas por Colección ---
 
-    // STAFF: Lectura abierta para verificar roles, escritura restringida
+    // STAFF: Los profes pueden ver la lista y crear su propio perfil
     match /staff/{userId} {
-      allow read: if isVerified(); 
+      allow read: if isSignedIn();
       allow create: if isVerified() && request.auth.uid == userId;
-      allow update: if isVerified() && (request.auth.uid == userId || isCoordinator());
+      allow update: if isVerified() && (isCoordinator() || request.auth.uid == userId);
       allow delete: if isCoordinator();
     }
 
-    // ALUMNOS: Lectura para todo el staff (permite autocompletado global)
+    // ALUMNOS: Lectura para todo el staff (necesario para autocompletado global)
     match /alumnos/{alumnoId} {
       allow read: if isStaff();
-      allow create, update: if isStaff();
+      allow create: if isStaff();
+      allow update: if isStaff();
       allow delete: if isCoordinator();
     }
 
-    // CLASES y ASISTENCIAS
+    // CLASES y ASISTENCIAS: Operativa diaria
     match /clases/{id} {
       allow read: if isStaff();
       allow create, update: if isStaff();
@@ -55,6 +56,15 @@ service cloud.firestore {
       allow delete: if isCoordinator();
     }
 
+    // CONFIGURACIÓN: Solo lectura para staff, edición solo por el Coordinador
+    match /grupos/{id} { allow read: if isStaff(); allow write: if isCoordinator(); }
+    match /config/{id} { allow read: if isStaff(); allow write: if isCoordinator(); }
+    match /disciplinas/{id} { allow read: if isStaff(); allow write: if isCoordinator(); }
+    match /niveles/{id} { allow read: if isStaff(); allow write: if isCoordinator(); }
+    match /habilidades/{id} { allow read: if isStaff(); allow write: if isCoordinator(); }
+    match /pagos/{id} { allow read: if isStaff(); allow write: if isCoordinator(); }
+    match /sources/{id} { allow read: if isStaff(); allow write: if isCoordinator(); }
+    
     // FEEDBACK
     match /feedback/{id} {
       allow read: if isStaff();
@@ -63,14 +73,7 @@ service cloud.firestore {
       allow delete: if isCoordinator();
     }
 
-    // CONFIGURACIÓN (Lectura para staff, Escritura solo Coordinador)
-    match /grupos/{id} { allow read: if isStaff(); allow write: if isCoordinator(); }
-    match /config/{id} { allow read: if isStaff(); allow write: if isCoordinator(); }
-    match /disciplinas/{id} { allow read: if isStaff(); allow write: if isCoordinator(); }
-    match /niveles/{id} { allow read: if isStaff(); allow write: if isCoordinator(); }
-    match /habilidades/{id} { allow read: if isStaff(); allow write: if isCoordinator(); }
-    match /pagos/{id} { allow read: if isStaff(); allow write: if isCoordinator(); }
-    match /sources/{id} { allow read: if isStaff(); allow write: if isCoordinator(); }
+    // Categorías y otros metadatos
     match /age_categories/{id} { allow read: if isStaff(); allow write: if isCoordinator(); }
     match /physical_categories/{id} { allow read: if isStaff(); allow write: if isCoordinator(); }
     match /warmup_options/{id} { allow read: if isStaff(); allow write: if isCoordinator(); }
