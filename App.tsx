@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef, useMemo, lazy, Suspense } from 'react';
-import Papa from 'papaparse';
+import { ErrorBoundary } from './src/components/ErrorBoundary';import Papa from 'papaparse';
 import Markdown from 'react-markdown';
 import { motion, AnimatePresence } from 'motion/react';
 import * as XLSX from 'xlsx';
 import mammoth from 'mammoth';
-import { 
+import { h
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, 
   BarChart, Bar, Cell, Legend, PieChart, Pie
 } from 'recharts';
@@ -2981,7 +2981,7 @@ const App: React.FC = () => {
       </div>
 
       <main className="flex-1 overflow-y-auto">
-        <Suspense fallback={<LoadingFallback />}>
+        <ErrorBoundary><Suspense fallback={<LoadingFallback />}>
           {vista === 'Dashboard' && userRole && (
             <Dashboard 
               userRole={userRole}
@@ -3265,18 +3265,18 @@ const App: React.FC = () => {
         )}
 
         {vista === 'ControlPagos' && (
-          <Suspense fallback={<LoadingFallback />}>
+          <ErrorBoundary><Suspense fallback={<LoadingFallback />}>
             <ControlPagos 
               onBack={() => setVista('Dashboard')} 
               onImportPayments={() => setIsBulkPaymentModalOpen(true)}
             />
-          </Suspense>
+          </Suspense></ErrorBoundary>
         )}
 
         {vista === 'CoordinatorDashboard' && (
-          <Suspense fallback={<LoadingFallback />}>
+          <ErrorBoundary><Suspense fallback={<LoadingFallback />}>
             <CoordinatorDashboard />
-          </Suspense>
+          </Suspense></ErrorBoundary>
         )}
 
         {(vista === 'Profesores' || vista === 'ProfesorDetalle') && (
@@ -3484,13 +3484,13 @@ const App: React.FC = () => {
         )}
 
         {vista === 'Habilidades' && (
-          <Suspense fallback={<LoadingFallback />}>
+          <ErrorBoundary><Suspense fallback={<LoadingFallback />}>
             <Habilidades 
               alumnos={alumnos}
               setVista={setVista}
               handleNavigation={handleNavigation}
             />
-          </Suspense>
+          </Suspense></ErrorBoundary>
         )}
 
         {vista === 'Ajustes' && (
@@ -3681,7 +3681,7 @@ const App: React.FC = () => {
             </div>
           </div>
         )}
-      </Suspense>
+      </Suspense></ErrorBoundary>
     </main>
 
       {/* Student Data Guide Tooltip */}
