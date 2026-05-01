@@ -464,7 +464,9 @@ const App: React.FC = () => {
   };
 
   const COORDINATOR_EMAILS = ["profesunlp@gmail.com"];
+  const STAFF_WHITELIST = ["mi.xt1032@gmail.com"];
   const isCoordinatorEmail = (email: string | null | undefined) => email ? COORDINATOR_EMAILS.includes(email) : false;
+  const isStaffWhitelist = (email: string | null | undefined) => email ? STAFF_WHITELIST.includes(email) : false;
   const [staffInfo, setStaffInfo] = useState<any>(null);
 
   // Security guard for routes
@@ -632,7 +634,7 @@ const App: React.FC = () => {
       let msg = translateFirebaseError(error);
       
       if (error.code === 'auth/unauthorized-domain') {
-        msg = "⚠️ DOMINIO NO AUTORIZADO: El servidor de Firebase está rechazando la conexión desde este sitio. \n\nSOLUCIÓN: Si estás en Vercel, debes configurar tus propias 'Environment Variables' (VITE_FIREBASE_...) con las llaves de TU proyecto de Firebase. \n\nSi ya lo hiciste, recuerda que Firebase tarda unos minutos en propagar los cambios de 'Dominios Autorizados'.";
+        msg = "⚠️ ERROR DE CONEXIÓN: Tu dominio de Vercel no está autorizado o faltan las credenciales. \n\n1. Ve a Firebase -> Authentication -> Settings -> Authorized Domains y agrega 'gym-coach-pro.vercel.app'. \n2. Asegúrate de haber cargado las variables VITE_FIREBASE_... en Vercel y haber hecho un 'Redeploy'.";
       } else if (error.code === 'auth/popup-blocked') {
         msg = "El navegador bloqueó la ventana emergente. Por favor, permite las ventanas emergentes para este sitio.";
       } else if (error.code === 'auth/popup-closed-by-user') {
