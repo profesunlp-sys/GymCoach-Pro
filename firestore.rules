@@ -17,10 +17,7 @@ service cloud.firestore {
 
     // Usuarios de confianza (Hardcoded para evitar bloqueos por falta de datos)
     function isCoordinator() {
-      return isVerified() && (
-        request.auth.token.email == 'profesunlp@gmail.com' ||
-        request.auth.token.email == 'mi.xt1032@gmail.com'
-      );
+      return isVerified() && request.auth.token.email == 'profesunlp@gmail.com';
     }
     
     function isTrustedStaff() {

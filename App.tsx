@@ -472,7 +472,7 @@ const App: React.FC = () => {
     setPendingNavigation(null);
   };
 
-  const COORDINATOR_EMAILS = ["profesunlp@gmail.com", "mi.xt1032@gmail.com"];
+  const COORDINATOR_EMAILS = ["profesunlp@gmail.com"];
   const STAFF_WHITELIST = ["mi.xt1032@gmail.com", "profesunlp@gmail.com"];
 
   // Handle chunk loading errors (typical in Vercel during redeploys)
