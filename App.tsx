@@ -4463,3 +4463,8 @@ const App: React.FC = () => {
   };
   
   export default App;
+// Línea 1 (al inicio):
+   import { PaymentPreprocessor } from '../components/PaymentPreprocessor';
+   
+   // Línea 2 (en el JSX):
+   <PaymentPreprocessor />
