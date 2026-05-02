@@ -26,7 +26,7 @@ const Grupos = lazy(() => import('./src/components/Grupos').then(module => ({ de
 const Asistencia = lazy(() => import('./src/components/Asistencia').then(module => ({ default: module.Asistencia })));
 const Clases = lazy(() => import('./src/components/Clases').then(module => ({ default: module.Clases })));
 const Alumnos = lazy(() => import('./src/components/Alumnos'));
-const <PaymentPreprocessor /> = lazy(() => import('./src/components/<PaymentPreprocessor />').then(module => ({ default: module.<PaymentPreprocessor /> })));
+const PaymentPreprocessor = lazy(() => import('./src/components/PaymentPreprocessor').then(module => ({ default: module.PaymentPreprocessor })));
 const ControlPagos = lazy(() => import('./src/components/ControlPagos').then(module => ({ default: module.ControlPagos })));
 const CoordinatorDashboard = lazy(() => import('./src/components/CoordinatorDashboard').then(module => ({ default: module.CoordinatorDashboard })));
 
