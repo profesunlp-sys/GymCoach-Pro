@@ -1,86 +1,129 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    // --- Seguridad por Defecto ---
-    match /{document=**} {
-      allow read, write: if false;
-    }
 
-    // --- Helpers de Autenticación y Rol ---
-    function isSignedIn() {
+    // ── Función auxiliar: verificar si el usuario está autenticado ──
+    function isAuth() {
       return request.auth != null;
     }
 
-    function isVerified() {
-      return isSignedIn() && (request.auth.token.email_verified == true || request.auth.token.firebase.sign_in_provider == 'google.com');
-    }
-
-    // Usuarios de confianza (Hardcoded para evitar bloqueos por falta de datos)
+    // ── Función auxiliar: verificar si es el coordinador ──
     function isCoordinator() {
-      return isVerified() && request.auth.token.email == 'profesunlp@gmail.com';
-    }
-    
-    function isTrustedStaff() {
-      return isVerified() && (request.auth.token.email == 'mi.xt1032@gmail.com' || isCoordinator());
+      return isAuth() && request.auth.token.email == 'profesunlp@gmail.com';
     }
 
-    // Un usuario es Staff si está en la colección staff o es de confianza
+    // ── Función auxiliar: verificar si es un staff (cualquier usuario logueado) ──
     function isStaff() {
-      return isVerified() && (isTrustedStaff() || exists(/databases/$(database)/documents/staff/$(request.auth.uid)));
+      return isAuth();
     }
 
-    // --- Reglas por Colección ---
-
-    // STAFF: Cualquier usuario logueado con Google puede ver quiénes son staff 
-    match /staff/{docId} {
-      allow read: if isVerified(); 
-      allow create: if isVerified() && (request.auth.uid == docId || isCoordinator());
-      allow update: if isVerified() && (request.auth.uid == docId || isCoordinator());
-      allow delete: if isCoordinator();
-    }
-
-    // ALUMNOS: Lectura para Staff
+    // ═══════════════════════════════════════════════════
+    // ALUMNOS — Todos los staff pueden leer y modificar
+    // Solo el coordinador puede eliminar
+    // ═══════════════════════════════════════════════════
     match /alumnos/{alumnoId} {
       allow read: if isStaff();
       allow create, update: if isStaff();
       allow delete: if isCoordinator();
     }
 
-    // CLASES y ASISTENCIAS
-    match /clases/{id} {
+    // ═══════════════════════════════════════════════════
+    // GRUPOS — Todos los staff pueden leer
+    // Solo el coordinador puede crear/editar/eliminar
+    // ═══════════════════════════════════════════════════
+    match /grupos/{grupoId} {
+      allow read: if isStaff();
+      allow create, update, delete: if isCoordinator();
+    }
+
+    // ═══════════════════════════════════════════════════
+    // ASISTENCIAS — Todos los staff pueden leer y escribir
+    // ═══════════════════════════════════════════════════
+    match /asistencias/{asistenciaId} {
       allow read: if isStaff();
       allow create, update: if isStaff();
       allow delete: if isCoordinator();
     }
-    
-    match /asistencias/{id} {
+
+    // ═══════════════════════════════════════════════════
+    // HABILIDADES — Todos los staff pueden leer y escribir
+    // ═══════════════════════════════════════════════════
+    match /habilidades/{habilidadId} {
       allow read: if isStaff();
       allow create, update: if isStaff();
       allow delete: if isCoordinator();
     }
 
-    // CONFIGURACIÓN (Grupos, Disciplinas, Niveles, etc.)
-    match /grupos/{id} { allow read: if isStaff(); allow write: if isCoordinator(); }
-    match /config/{id} { allow read: if isStaff(); allow write: if isCoordinator(); }
-    match /disciplinas/{id} { allow read: if isStaff(); allow write: if isCoordinator(); }
-    match /niveles/{id} { allow read: if isStaff(); allow write: if isCoordinator(); }
-    match /habilidades/{id} { allow read: if isStaff(); allow write: if isCoordinator(); }
-    match /pagos/{id} { allow read: if isStaff(); allow write: if isCoordinator(); }
-    match /sources/{id} { allow read: if isStaff(); allow write: if isCoordinator(); }
-
-    // FEEDBACK
-    match /feedback/{id} {
+    // ═══════════════════════════════════════════════════
+    // STAFF / PROFESORES — Todos leen, solo coordinador escribe
+    // ═══════════════════════════════════════════════════
+    match /staff/{staffId} {
       allow read: if isStaff();
-      allow create: if isVerified();
-      allow update: if isVerified() && (resource.data.uid == request.auth.uid || isCoordinator());
+      allow create, update, delete: if isCoordinator();
+    }
+
+    match /profesores/{profesorId} {
+      allow read: if isStaff();
+      allow create, update, delete: if isCoordinator();
+    }
+
+    // ═══════════════════════════════════════════════════
+    // CLASES — Todos los staff pueden leer y escribir
+    // ═══════════════════════════════════════════════════
+    match /clases/{claseId} {
+      allow read: if isStaff();
+      allow create, update: if isStaff();
       allow delete: if isCoordinator();
     }
 
-    // Metadatos operativos
-    match /age_categories/{id} { allow read: if isStaff(); allow write: if isCoordinator(); }
-    match /physical_categories/{id} { allow read: if isStaff(); allow write: if isCoordinator(); }
-    match /warmup_options/{id} { allow read: if isStaff(); allow write: if isCoordinator(); }
-    match /cooldown_options/{id} { allow read: if isStaff(); allow write: if isCoordinator(); }
-    match /profesores/{id} { allow read: if isStaff(); allow write: if isCoordinator(); }
+    // ═══════════════════════════════════════════════════
+    // CONFIGURACIÓN — Listas dinámicas (niveles, disciplinas, etc.)
+    // Todos leen, solo coordinador modifica
+    // ═══════════════════════════════════════════════════
+    match /niveles/{nivelId} {
+      allow read: if isStaff();
+      allow create, update, delete: if isCoordinator();
+    }
+
+    match /disciplinas/{disciplinaId} {
+      allow read: if isStaff();
+      allow create, update, delete: if isCoordinator();
+    }
+
+    match /warmup_options/{itemId} {
+      allow read: if isStaff();
+      allow create, update, delete: if isCoordinator();
+    }
+
+    match /cooldown_options/{itemId} {
+      allow read: if isStaff();
+      allow create, update, delete: if isCoordinator();
+    }
+
+    match /age_categories/{itemId} {
+      allow read: if isStaff();
+      allow create, update, delete: if isCoordinator();
+    }
+
+    match /physical_categories/{itemId} {
+      allow read: if isStaff();
+      allow create, update, delete: if isCoordinator();
+    }
+
+    // ═══════════════════════════════════════════════════
+    // FUENTES / KNOWLEDGE BASE — Solo el coordinador
+    // ═══════════════════════════════════════════════════
+    match /sources/{sourceId} {
+      allow read: if isStaff();
+      allow create, update, delete: if isCoordinator();
+    }
+
+    // ═══════════════════════════════════════════════════
+    // CUALQUIER OTRA COLECCIÓN — Denegado por defecto
+    // ═══════════════════════════════════════════════════
+    match /{document=**} {
+      allow read, write: if false;
+    }
   }
 }
