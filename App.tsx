@@ -1,6 +1,6 @@
 import { PaymentPreprocessor } from './components/PaymentPreprocessor';
 import React, { useState, useEffect, useRef, useMemo, lazy, Suspense } from 'react';
-import { ErrorBoundary } from './src/components/ErrorBoundary';import Papa from 'papaparse';
+import { ErrorBoundary } from './components/ErrorBoundary';import Papa from 'papaparse';
 import Markdown from 'react-markdown';
 import { motion, AnimatePresence } from 'motion/react';
 import * as XLSX from 'xlsx';
@@ -17,18 +17,18 @@ import { db as firestore, auth, googleProvider, COLLECTIONS, getCollectionData, 
 import { collection, query, where, getDocs, addDoc, doc, updateDoc, onSnapshot, orderBy, setDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { signInWithPopup, signOut, onAuthStateChanged, User, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, setPersistence, browserLocalPersistence, browserSessionPersistence } from 'firebase/auth';
 // Lazy loaded components
-const Dashboard = lazy(() => import('./src/components/Dashboard').then(module => ({ default: module.Dashboard })));
-const Reportes = lazy(() => import('./src/components/Reportes').then(module => ({ default: module.Reportes })));
-const Staff = lazy(() => import('./src/components/Staff').then(module => ({ default: module.Staff })));
-const Manuales = lazy(() => import('./src/components/Manuales').then(module => ({ default: module.Manuales })));
-const Habilidades = lazy(() => import('./src/components/Habilidades').then(module => ({ default: module.Habilidades })));
-const Grupos = lazy(() => import('./src/components/Grupos').then(module => ({ default: module.Grupos })));
-const Asistencia = lazy(() => import('./src/components/Asistencia').then(module => ({ default: module.Asistencia })));
-const Clases = lazy(() => import('./src/components/Clases').then(module => ({ default: module.Clases })));
-const Alumnos = lazy(() => import('./src/components/Alumnos'));
+const Dashboard = lazy(() => import('./omponents/Dashboard').then(module => ({ default: module.Dashboard })));
+const Reportes = lazy(() => import('./components/Reportes').then(module => ({ default: module.Reportes })));
+const Staff = lazy(() => import('./components/Staff').then(module => ({ default: module.Staff })));
+const Manuales = lazy(() => import('./omponents/Manuales').then(module => ({ default: module.Manuales })));
+const Habilidades = lazy(() => import('./components/Habilidades').then(module => ({ default: module.Habilidades })));
+const Grupos = lazy(() => import('./components/Grupos').then(module => ({ default: module.Grupos })));
+const Asistencia = lazy(() => import('./components/Asistencia').then(module => ({ default: module.Asistencia })));
+const Clases = lazy(() => import('./components/Clases').then(module => ({ default: module.Clases })));
+const Alumnos = lazy(() => import('./components/Alumnos'));
 const PaymentPreprocessor = lazy(() => import('./src/components/PaymentPreprocessor').then(module => ({ default: module.PaymentPreprocessor })));
-const ControlPagos = lazy(() => import('./src/components/ControlPagos').then(module => ({ default: module.ControlPagos })));
-const CoordinatorDashboard = lazy(() => import('./src/components/CoordinatorDashboard').then(module => ({ default: module.CoordinatorDashboard })));
+const ControlPagos = lazy(() => import('./components/ControlPagos').then(module => ({ default: module.ControlPagos })));
+const CoordinatorDashboard = lazy(() => import('./components/CoordinatorDashboard').then(module => ({ default: module.CoordinatorDashboard })));
 
 const LoadingFallback = () => (
   <div className="flex flex-col items-center justify-center p-20 space-y-6">
