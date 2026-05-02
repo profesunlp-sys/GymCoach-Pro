@@ -1,3 +1,4 @@
+import { PaymentPreprocessor } from './components/PaymentPreprocessor';
 import React, { useState, useEffect, useRef, useMemo, lazy, Suspense } from 'react';
 import { ErrorBoundary } from './src/components/ErrorBoundary';import Papa from 'papaparse';
 import Markdown from 'react-markdown';
@@ -4464,7 +4465,4 @@ const App: React.FC = () => {
   
   export default App;
 // Línea 1 (al inicio):
-   import { PaymentPreprocessor } from '../components/PaymentPreprocessor';
-   './components/PaymentPreprocessor'
-   // Línea 2 (en el JSX):
-   <PaymentPreprocessor />
+ 
