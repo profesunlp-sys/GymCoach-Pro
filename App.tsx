@@ -1,6 +1,7 @@
 import { PaymentPreprocessor } from './src/components/PaymentPreprocessor';
 import React, { useState, useEffect, useRef, useMemo, lazy, Suspense } from 'react';
-import { ErrorBoundary } from './components/ErrorBoundary';import Papa from 'papaparse';
+import { ErrorBoundary } from './src/components/ErrorBoundary';
+import Papa from 'papaparse';
 import Markdown from 'react-markdown';
 import { motion, AnimatePresence } from 'motion/react';
 import * as XLSX from 'xlsx';
