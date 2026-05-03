@@ -24,19 +24,40 @@ export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete
     try {
       if (!dateInput) return null;
       let date: Date;
+      let year: number = new Date().getFullYear();
+
       if (typeof dateInput === 'number') {
+        // Si es un número pequeño (1-12), es el mes directo
+        if (dateInput >= 1 && dateInput <= 12) {
+          const months = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+          return { mes: months[dateInput - 1], anio: year };
+        }
+        // Si es un número grande, es fecha Excel
         date = new Date((dateInput - 25569) * 86400 * 1000);
       } else {
-        const parts = dateInput.toString().split('/');
+        const str = dateInput.toString().trim();
+        // Intentar detectar si es un mes escrito
+        const monthsLower = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+        const monthsCapitalized = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+        
+        const foundIndex = monthsLower.findIndex(m => str.toLowerCase().includes(m));
+        if (foundIndex !== -1) return { mes: monthsCapitalized[foundIndex], anio: year };
+
+        // Intentar detectar formato fecha DD/MM/YYYY
+        const parts = str.split('/');
         if (parts.length >= 2) {
-          date = new Date(parseInt(parts[2] || new Date().getFullYear().toString()), parseInt(parts[1]) - 1, parseInt(parts[0]));
+          const d = parseInt(parts[0]);
+          const m = parseInt(parts[1]);
+          const y = parts[2] ? parseInt(parts[2]) : year;
+          date = new Date(y, m - 1, d);
         } else {
           date = new Date(dateInput);
         }
       }
+
       if (isNaN(date.getTime())) return null;
-      const months = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
-      return months[date.getMonth()];
+      const months = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+      return { mes: months[date.getMonth()], anio: date.getFullYear() };
     } catch (e) { return null; }
   };
 
@@ -97,10 +118,10 @@ export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete
           if (!tramiteValue.includes("gimnasia artistica infantil")) continue;
 
           const nameValue = rowData[colIndices.nombre];
-          let mesValue = colIndices.mes !== -1 ? rowData[colIndices.mes] : null;
-          if (!mesValue && colIndices.fecha !== -1) mesValue = getMonthName(rowData[colIndices.fecha]);
+          let mesData = colIndices.mes !== -1 ? getMonthName(rowData[colIndices.mes]) : null;
+          if (!mesData && colIndices.fecha !== -1) mesData = getMonthName(rowData[colIndices.fecha]);
 
-          if (!nameValue || !mesValue) continue;
+          if (!nameValue || !mesData) continue;
 
           const normalizedInputName = normalizeText(nameValue);
           
@@ -108,21 +129,20 @@ export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete
           const student = allAlumnos.find(a => {
             const sn = normalizeText(a.nombre);
             const inputParts = normalizedInputName.split(' ').filter(p => p.length > 2);
-            return sn === normalizedInputName || inputParts.every(part => sn.includes(part));
+            return sn === normalizedInputName || (inputParts.length > 0 && inputParts.every(part => sn.includes(part)));
           });
 
           if (student) {
             const studentRef = doc(db, 'alumnos', student.id);
-            const mesLimpio = normalizeText(mesValue);
             
             batch.update(studentRef, {
               pagosMensuales: arrayUnion({
-                mes: mesLimpio, // Esto marcará el redondelito del mes correspondiente
-                anio: currentYear,
+                mes: mesData.mes, // "Marzo", "Abril", etc.
+                anio: mesData.anio || currentYear,
                 fechaPago: new Date().toISOString(),
                 monto: colIndices.monto !== -1 ? parseFloat(rowData[colIndices.monto]) || 0 : 0,
                 importado: true,
-                categoria: tramiteValue // Guardamos el detalle para futuro refinamiento
+                categoria: tramiteValue
               })
             });
             matchedCount++;
