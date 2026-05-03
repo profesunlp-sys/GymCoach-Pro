@@ -15,21 +15,9 @@ export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete
   const [stats, setStats] = useState<{ total: number, matched: number, ignored: { row: any, reason: string }[] } | null>(null);
 
   const normalizeText = (text: any) => {
-    if (!text) return "";
+    if (text === null || text === undefined) return "";
     return text.toString().trim().toLowerCase()
       .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-  };
-
-  // Función para encontrar una columna en la fila sin importar mayúsculas/minúsculas
-  const getValueByPossibleKeys = (row: any, possibleKeys: string[]) => {
-    const keys = Object.keys(row);
-    for (const key of keys) {
-      const normalizedKey = normalizeText(key);
-      if (possibleKeys.some(pk => normalizedKey === normalizeText(pk) || normalizedKey.includes(normalizeText(pk)))) {
-        return row[key];
-      }
-    }
-    return null;
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -48,17 +36,41 @@ export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
         
-        // Convertimos a JSON pero filtramos filas que no tengan contenido real
-        const rawData = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
-        
-        // Limpieza: solo filas que tengan ALGO de texto en alguna columna
-        const jsonData = rawData.filter((row: any) => 
-          Object.values(row).some(val => val !== null && val !== undefined && val.toString().trim() !== "")
-        );
+        // Obtenemos los datos como una matriz de filas (Array de Arrays)
+        // Esto nos permite buscar los encabezados manualmente
+        const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
 
-        if (jsonData.length === 0) {
-          throw new Error('El archivo parece estar vacío o no tiene datos válidos.');
+        if (rows.length === 0) throw new Error('El archivo está vacío.');
+
+        // 1. Encontrar la fila que contiene los encabezados
+        let headerRowIndex = -1;
+        let colIndices: Record<string, number> = { nombre: -1, mes: -1, monto: -1 };
+
+        for (let i = 0; i < Math.min(rows.length, 50); i++) { // Buscamos en las primeras 50 filas
+          const row = rows[i];
+          if (!row || !Array.isArray(row)) continue;
+
+          for (let j = 0; j < row.length; j++) {
+            const cellValue = normalizeText(row[j]);
+            if (colIndices.nombre === -1 && ['nombre', 'alumno', 'gimnasta', 'socio', 'apellido'].some(k => cellValue.includes(k))) colIndices.nombre = j;
+            if (colIndices.mes === -1 && ['mes', 'cuota', 'periodo'].some(k => cellValue.includes(k))) colIndices.mes = j;
+            if (colIndices.monto === -1 && ['monto', 'importe', 'total', 'pago'].some(k => cellValue.includes(k))) colIndices.monto = j;
+          }
+
+          if (colIndices.nombre !== -1 && colIndices.mes !== -1) {
+            headerRowIndex = i;
+            break;
+          }
         }
+
+        if (headerRowIndex === -1) {
+          throw new Error('No se encontraron las columnas "Nombre" y "Mes" en el archivo. Verificá que los encabezados estén presentes.');
+        }
+
+        // 2. Procesar los datos a partir de la fila siguiente a los encabezados
+        const dataRows = rows.slice(headerRowIndex + 1).filter(row => 
+          row[colIndices.nombre] && row[colIndices.nombre].toString().trim() !== ""
+        );
 
         const batch = writeBatch(db);
         let matchedCount = 0;
@@ -70,21 +82,14 @@ export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete
         const currentYear = new Date().getFullYear();
         const now = new Date().toISOString();
 
-        for (const row of jsonData as any[]) {
-          // Buscamos columnas con nombres flexibles
-          const name = getValueByPossibleKeys(row, ['Nombre', 'Alumno', 'Gimnasta', 'Socio', 'Apellido']);
-          const mes = getValueByPossibleKeys(row, ['Mes', 'Cuota', 'Periodo', 'Mes de pago']);
-          const monto = getValueByPossibleKeys(row, ['Monto', 'Importe', 'Total', 'Valor', 'Pago']);
+        for (const rowData of dataRows) {
+          const nameValue = rowData[colIndices.nombre];
+          const mesValue = rowData[colIndices.mes];
+          const montoValue = colIndices.monto !== -1 ? rowData[colIndices.monto] : 0;
 
-          if (!name || !mes) {
-            // Si la fila está casi vacía la ignoramos silenciosamente
-            if (!name && !mes) continue; 
-            
-            ignoredRows.push({ row, reason: `Faltan datos en fila de: ${name || 'Sin Nombre'}` });
-            continue;
-          }
+          if (!nameValue || !mesValue) continue;
 
-          const normalizedInputName = normalizeText(name);
+          const normalizedInputName = normalizeText(nameValue);
           
           const student = allAlumnos.find(a => {
             const studentName = normalizeText(a.nombre);
@@ -97,17 +102,17 @@ export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete
             const studentRef = doc(db, 'alumnos', student.id);
             batch.update(studentRef, {
               pagosMensuales: arrayUnion({
-                mes: mes.toString(),
+                mes: mesValue.toString(),
                 anio: currentYear,
                 fechaPago: now,
-                monto: monto || 0,
+                monto: montoValue || 0,
                 importado: true,
                 importadoEn: now
               })
             });
             matchedCount++;
           } else {
-            ignoredRows.push({ row, reason: `No se encontró a: "${name}"` });
+            ignoredRows.push({ row: rowData, reason: `No se encontró a: "${nameValue}"` });
           }
         }
 
@@ -116,7 +121,7 @@ export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete
         }
 
         setStats({
-          total: jsonData.length,
+          total: dataRows.length,
           matched: matchedCount,
           ignored: ignoredRows
         });
@@ -156,11 +161,12 @@ export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete
 
           <div className="space-y-1">
             <h2 className="text-2xl font-bold text-black tracking-tight">Importar Pagos</h2>
-            <p className="text-secondary text-xs">Subí tu Excel para sincronizar cuotas automáticamente.</p>
+            <p className="text-secondary text-xs">Sincronización automática de cuotas.</p>
           </div>
 
           {error && (
-            <div className="p-4 bg-ios-red/10 border border-ios-red/20 rounded-2xl text-xs text-ios-red font-medium">
+            <div className="p-4 bg-ios-red/10 border border-ios-red/20 rounded-2xl text-xs text-ios-red font-bold flex items-start gap-2">
+              <span className="material-icons-outlined text-sm">warning</span>
               {error}
             </div>
           )}
@@ -180,14 +186,13 @@ export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete
 
               {stats.ignored.length > 0 && (
                 <div className="space-y-2">
-                  <p className="text-[9px] font-bold text-secondary uppercase tracking-widest ml-1">Detalle de ignorados:</p>
+                  <p className="text-[9px] font-bold text-secondary uppercase tracking-widest ml-1">Detalle de no encontrados:</p>
                   <div className="max-h-32 overflow-y-auto space-y-1 pr-2 custom-scrollbar">
                     {stats.ignored.slice(0, 100).map((item, i) => (
                       <div key={i} className="text-[10px] p-2 bg-ios-gray/50 rounded-xl border border-black/5 text-secondary">
                         {item.reason}
                       </div>
                     ))}
-                    {stats.ignored.length > 100 && <p className="text-[9px] text-center text-secondary py-2">...y {stats.ignored.length - 100} más</p>}
                   </div>
                 </div>
               )}
@@ -196,7 +201,7 @@ export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete
                 onClick={() => onComplete(stats.matched)}
                 className="w-full py-5 bg-ios-blue text-white rounded-2xl font-bold uppercase tracking-widest text-[10px] shadow-ios active:scale-95 transition-all"
               >
-                Entendido
+                Cerrar
               </button>
             </div>
           ) : (
@@ -207,10 +212,10 @@ export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete
                   {isProcessing ? (
                     <div className="w-12 h-12 border-4 border-ios-blue border-t-transparent rounded-full animate-spin"></div>
                   ) : (
-                    <span className="material-icons-outlined text-secondary text-5xl group-hover:text-ios-blue transition-colors">cloud_upload</span>
+                    <span className="material-icons-outlined text-secondary text-5xl group-hover:text-ios-blue transition-colors">description</span>
                   )}
                   <div className="text-center">
-                    <p className="text-sm font-bold text-black">{isProcessing ? 'Procesando...' : 'Seleccionar Archivo'}</p>
+                    <p className="text-sm font-bold text-black">{isProcessing ? 'Buscando tabla...' : 'Subir Archivo'}</p>
                     <p className="text-[10px] text-secondary mt-1 uppercase tracking-widest">Excel (.xlsx, .xls)</p>
                   </div>
                 </div>
@@ -218,7 +223,7 @@ export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete
 
               <div className="bg-ios-blue/5 rounded-2xl p-4 border border-ios-blue/10">
                 <p className="text-[10px] text-ios-blue font-medium leading-relaxed">
-                  <span className="font-bold">Tip:</span> No importa si las columnas están en mayúsculas o si el Excel tiene filas vacías al final, ahora el sistema las limpia automáticamente.
+                  <span className="font-bold">Nota:</span> No importa si el archivo tiene logos o títulos al principio, el sistema buscará automáticamente la tabla de pagos.
                 </p>
               </div>
             </div>
