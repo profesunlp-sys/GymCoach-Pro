@@ -111,6 +111,9 @@ export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete
         const allAlumnos = alumnosSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
         const currentYear = new Date().getFullYear();
 
+        const studentPaymentsMap: Record<string, any[]> = {};
+        const studentRefs: Record<string, any> = {};
+
         for (const rowData of dataRows) {
           const tramiteValue = colIndices.tramite !== -1 ? normalizeText(rowData[colIndices.tramite]) : "";
           
@@ -125,7 +128,6 @@ export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete
 
           const normalizedInputName = normalizeText(nameValue);
           
-          // Buscador robusto: separa por palabras para encontrar coincidencias aunque el orden sea distinto
           const student = allAlumnos.find(a => {
             const sn = normalizeText(a.nombre);
             const inputParts = normalizedInputName.split(' ').filter(p => p.length > 2);
@@ -133,22 +135,42 @@ export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete
           });
 
           if (student) {
-            const studentRef = doc(db, 'alumnos', student.id);
+            // Evitar duplicados: Verificamos si el alumno ya tiene este mes/año pagado en su historial
+            const yaRegistrado = student.pagosMensuales?.some((p: any) => 
+              p.mes?.toLowerCase() === mesData.mes.toLowerCase() && p.anio === mesData.anio
+            );
             
-            batch.update(studentRef, {
-              pagosMensuales: arrayUnion({
-                mes: mesData.mes, // "Marzo", "Abril", etc.
+            // También verificamos si ya lo procesamos en esta misma planilla
+            const yaProcesadoEnBatch = studentPaymentsMap[student.id]?.some((p: any) => 
+              p.mes?.toLowerCase() === mesData.mes.toLowerCase() && p.anio === mesData.anio
+            );
+
+            if (!yaRegistrado && !yaProcesadoEnBatch) {
+              if (!studentPaymentsMap[student.id]) {
+                studentPaymentsMap[student.id] = [];
+                studentRefs[student.id] = doc(db, 'alumnos', student.id);
+              }
+
+              studentPaymentsMap[student.id].push({
+                mes: mesData.mes,
                 anio: mesData.anio || currentYear,
                 fechaPago: new Date().toISOString(),
                 monto: colIndices.monto !== -1 ? parseFloat(rowData[colIndices.monto]) || 0 : 0,
                 importado: true,
                 categoria: tramiteValue
-              })
-            });
-            matchedCount++;
+              });
+              matchedCount++;
+            }
           } else {
             ignoredRows.push({ row: rowData, reason: `No se encontró a: "${nameValue}"` });
           }
+        }
+
+        // Aplicamos todos los pagos agrupados por alumno
+        for (const studentId in studentPaymentsMap) {
+          batch.update(studentRefs[studentId], {
+            pagosMensuales: arrayUnion(...studentPaymentsMap[studentId])
+          });
         }
 
         if (matchedCount > 0) await batch.commit();
