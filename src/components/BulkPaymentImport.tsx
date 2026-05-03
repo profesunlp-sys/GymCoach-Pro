@@ -257,29 +257,46 @@ export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete
           <div className="space-y-4">
             <div className="grid grid-cols-3 gap-2">
               <div className="bg-ios-green/5 p-3 rounded-2xl text-center border border-ios-green/10">
-                <div className="text-xl font-bold text-ios-green">{stats.matched}</div>
-                <div className="text-[8px] uppercase text-ios-green/70 font-bold">Nuevos</div>
+                <div className="text-2xl font-bold text-ios-green">{stats.matched}</div>
+                <div className="text-[9px] uppercase text-ios-green/70 font-bold">Nuevos</div>
               </div>
               <div className="bg-ios-blue/5 p-3 rounded-2xl text-center border border-ios-blue/10">
-                <div className="text-xl font-bold text-ios-blue">{stats.alreadyRegistered}</div>
-                <div className="text-[8px] uppercase text-ios-blue/70 font-bold">Ya estaban</div>
+                <div className="text-2xl font-bold text-ios-blue">{stats.alreadyRegistered}</div>
+                <div className="text-[9px] uppercase text-ios-blue/70 font-bold">Ya estaban</div>
               </div>
-              <div className="bg-gray-50 p-3 rounded-2xl text-center cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => setShowIgnored(!showIgnored)}>
-                <div className="text-xl font-bold text-secondary">{stats.ignored.length}</div>
-                <div className="text-[8px] uppercase text-secondary font-bold">Ignorados</div>
-              </div>
+              <button 
+                onClick={() => setShowIgnored(!showIgnored)}
+                className={`p-3 rounded-2xl text-center border transition-all ${showIgnored ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-100 hover:bg-gray-100'}`}
+              >
+                <div className="text-2xl font-bold text-secondary">{stats.ignored.length}</div>
+                <div className="text-[9px] uppercase text-secondary font-bold">No encontrados</div>
+              </button>
             </div>
 
-            {showIgnored && stats.ignored.length > 0 && (
-              <div className="bg-gray-50 rounded-2xl p-4 max-h-40 overflow-y-auto space-y-2 border border-black/5">
-                <p className="text-[10px] font-bold text-secondary uppercase mb-2">No se encontró a:</p>
-                {Array.from(new Set(stats.ignored.map(i => i.row[0]))).map((name, idx) => (
-                  <div key={idx} className="text-[10px] text-black font-medium border-b border-black/5 pb-1 last:border-0">{name}</div>
-                ))}
-              </div>
-            )}
+            <AnimatePresence>
+              {showIgnored && stats.ignored.length > 0 && (
+                <motion.div 
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="overflow-hidden"
+                >
+                  <div className="bg-gray-50 rounded-2xl p-4 border border-black/5 max-h-48 overflow-y-auto">
+                    <p className="text-[10px] font-bold text-secondary uppercase mb-2">No se encontraron estos nombres:</p>
+                    <div className="space-y-1">
+                      {stats.ignored.map((item, idx) => (
+                        <div key={idx} className="text-xs text-black border-b border-black/5 pb-1 last:border-0 flex justify-between">
+                          <span>{item.row[0] || 'Sin nombre'}</span>
+                          <span className="text-[9px] text-red-400 italic">No existe en base</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
-            <p className="text-[10px] text-center text-secondary leading-tight">
+            <p className="text-[11px] text-center text-secondary leading-tight px-4">
               Los redondelitos de los alumnos vinculados ahora aparecerán marcados en el panel de pagos.
             </p>
             <button onClick={() => onComplete(stats.matched)} className="w-full py-4 bg-ios-blue text-white rounded-xl font-bold shadow-lg">FINALIZAR</button>
