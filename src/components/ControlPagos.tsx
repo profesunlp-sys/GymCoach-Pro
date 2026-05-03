@@ -69,10 +69,28 @@ export const ControlPagos: React.FC<ControlPagosProps> = ({ onBack, onImportPaym
   };
 
   const isPaid = (alumno: Alumno, mesN: number) => {
-    const mesLabel = meses.find(m => m.n === mesN)?.label || '';
-    return alumno.pagosMensuales?.some(p => 
-      p.mes?.toLowerCase() === mesLabel.toLowerCase() && p.anio === selectedYear
-    ) || false;
+    if (!alumno.pagosMensuales || !Array.isArray(alumno.pagosMensuales)) return false;
+    
+    const mesObj = meses.find(m => m.n === mesN);
+    if (!mesObj) return false;
+
+    const mesLabel = mesObj.label.toLowerCase().trim();
+    const mesAbrev = mesObj.name.toLowerCase().trim();
+
+    return alumno.pagosMensuales.some(p => {
+      if (!p.mes) return false;
+      
+      const pMes = p.mes.toString().toLowerCase().trim();
+      const pAnio = parseInt(p.anio?.toString() || "0");
+      const sAnio = parseInt(selectedYear.toString());
+
+      // Coincidencia de mes: Nombre completo o abreviatura
+      const mesCoincide = pMes === mesLabel || pMes === mesAbrev || pMes.startsWith(mesLabel.substring(0, 3));
+      // Coincidencia de año: Comparación numérica
+      const anioCoincide = pAnio === sAnio;
+
+      return mesCoincide && anioCoincide;
+    });
   };
 
   const getGrupoDetalle = (alumno: Alumno) => {
