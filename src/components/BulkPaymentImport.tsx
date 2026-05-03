@@ -236,9 +236,11 @@ export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete
     reader.readAsArrayBuffer(file);
   };
 
+  const [showIgnored, setShowIgnored] = useState(false);
+
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl p-8 space-y-6">
+      <div className="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl p-8 space-y-6 max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center">
           <div className="bg-ios-blue text-white p-3 rounded-xl"><span className="material-icons-outlined">verified_user</span></div>
           <button onClick={onCancel} className="text-secondary"><span className="material-icons-outlined">close</span></button>
@@ -262,13 +264,23 @@ export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete
                 <div className="text-xl font-bold text-ios-blue">{stats.alreadyRegistered}</div>
                 <div className="text-[8px] uppercase text-ios-blue/70 font-bold">Ya estaban</div>
               </div>
-              <div className="bg-gray-50 p-3 rounded-2xl text-center">
+              <div className="bg-gray-50 p-3 rounded-2xl text-center cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => setShowIgnored(!showIgnored)}>
                 <div className="text-xl font-bold text-secondary">{stats.ignored.length}</div>
-                <div className="text-[8px] uppercase text-secondary font-bold">No encontrados</div>
+                <div className="text-[8px] uppercase text-secondary font-bold">Ignorados</div>
               </div>
             </div>
+
+            {showIgnored && stats.ignored.length > 0 && (
+              <div className="bg-gray-50 rounded-2xl p-4 max-h-40 overflow-y-auto space-y-2 border border-black/5">
+                <p className="text-[10px] font-bold text-secondary uppercase mb-2">No se encontró a:</p>
+                {Array.from(new Set(stats.ignored.map(i => i.row[0]))).map((name, idx) => (
+                  <div key={idx} className="text-[10px] text-black font-medium border-b border-black/5 pb-1 last:border-0">{name}</div>
+                ))}
+              </div>
+            )}
+
             <p className="text-[10px] text-center text-secondary leading-tight">
-              Los redondelitos de los {stats.matched + stats.alreadyRegistered} alumnos vinculados ahora aparecerán marcados en el panel de pagos.
+              Los redondelitos de los alumnos vinculados ahora aparecerán marcados en el panel de pagos.
             </p>
             <button onClick={() => onComplete(stats.matched)} className="w-full py-4 bg-ios-blue text-white rounded-xl font-bold shadow-lg">FINALIZAR</button>
           </div>

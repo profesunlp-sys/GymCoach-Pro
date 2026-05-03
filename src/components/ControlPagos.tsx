@@ -12,7 +12,8 @@ interface ControlPagosProps {
 export const ControlPagos: React.FC<ControlPagosProps> = ({ onBack, onImportPayments }) => {
   const [alumnos, setAlumnos] = useState<Alumno[]>([]);
   const [grupos, setGrupos] = useState<any[]>([]);
-  const [selectedYear] = useState(new Date().getFullYear());
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const years = [2024, 2025, 2026, 2027];
   const meses = [
     { n: 3, name: 'Mar', label: 'Marzo' },
     { n: 4, name: 'Abr', label: 'Abril' }, { n: 5, name: 'May', label: 'Mayo' }, { n: 6, name: 'Jun', label: 'Junio' },
@@ -92,7 +93,22 @@ export const ControlPagos: React.FC<ControlPagosProps> = ({ onBack, onImportPaym
             <span className="material-icons-outlined text-lg">arrow_back_ios</span>
             <span>Atrás</span>
           </button>
-          <span className="text-[10px] font-bold text-secondary uppercase tracking-widest">{selectedYear}</span>
+          
+          <div className="flex bg-ios-gray p-1 rounded-xl gap-1">
+            {years.map(y => (
+              <button
+                key={y}
+                onClick={() => setSelectedYear(y)}
+                className={`px-3 py-1 rounded-lg text-[10px] font-bold transition-all ${
+                  selectedYear === y 
+                    ? 'bg-white text-ios-blue shadow-sm' 
+                    : 'text-secondary hover:text-black'
+                }`}
+              >
+                {y}
+              </button>
+            ))}
+          </div>
         </div>
         <h1 className="text-3xl font-bold text-black tracking-tight">Control de Pagos</h1>
         <p className="text-secondary text-sm mt-1">Resumen anual de cuotas por gimnasta</p>
