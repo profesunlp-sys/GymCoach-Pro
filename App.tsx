@@ -4465,5 +4465,3 @@ const App: React.FC = () => {
   };
   
   export default App;
-// Línea 1 (al inicio):
- 
