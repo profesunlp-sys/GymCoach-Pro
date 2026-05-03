@@ -12,7 +12,7 @@ interface BulkPaymentImportProps {
 export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete, onCancel }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [stats, setStats] = useState<{ total: number, matched: number, ignored: { row: any, reason: string }[] } | null>(null);
+  const [stats, setStats] = useState<{ total: number, matched: number, alreadyRegistered: number, ignored: { row: any, reason: string }[] } | null>(null);
 
   const normalizeText = (text: any) => {
     if (text === null || text === undefined) return "";
@@ -117,8 +117,12 @@ export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete
         for (const rowData of dataRows) {
           const tramiteValue = colIndices.tramite !== -1 ? normalizeText(rowData[colIndices.tramite]) : "";
           
-          // FILTRO: Solo procesamos "Gimnasia Artística Infantil"
-          if (!tramiteValue.includes("gimnasia artistica infantil")) continue;
+          // FILTRO FLEXIBLE: Gimnasia Artística, Gim. Artística, G. Artística, etc.
+          const isGymnastics = tramiteValue.includes("gimnasia artistica") || 
+                              (tramiteValue.includes("gimnasia") && tramiteValue.includes("infantil")) ||
+                              tramiteValue.includes("g.a.i");
+          
+          if (!isGymnastics) continue;
 
           const nameValue = rowData[colIndices.nombre];
           let mesData = colIndices.mes !== -1 ? getMonthName(rowData[colIndices.mes]) : null;
@@ -160,11 +164,15 @@ export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete
                 categoria: tramiteValue
               });
               matchedCount++;
+            } else {
+              alreadyRegisteredCount++;
             }
           } else {
             ignoredRows.push({ row: rowData, reason: `No se encontró a: "${nameValue}"` });
           }
         }
+
+        let alreadyRegisteredCount = 0;
 
         // Aplicamos todos los pagos agrupados por alumno
         for (const studentId in studentPaymentsMap) {
@@ -178,6 +186,7 @@ export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete
         setStats({
           total: dataRows.length,
           matched: matchedCount,
+          alreadyRegistered: alreadyRegisteredCount,
           ignored: ignoredRows
         });
 
@@ -207,17 +216,23 @@ export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete
 
         {stats ? (
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-ios-green/5 p-4 rounded-2xl text-center border border-ios-green/10">
-                <div className="text-2xl font-bold text-ios-green">{stats.matched}</div>
-                <div className="text-[10px] uppercase text-ios-green/70 font-bold">Pagos Marcados</div>
+            <div className="grid grid-cols-3 gap-2">
+              <div className="bg-ios-green/5 p-3 rounded-2xl text-center border border-ios-green/10">
+                <div className="text-xl font-bold text-ios-green">{stats.matched}</div>
+                <div className="text-[8px] uppercase text-ios-green/70 font-bold">Nuevos</div>
               </div>
-              <div className="bg-gray-50 p-4 rounded-2xl text-center">
-                <div className="text-2xl font-bold text-secondary">{stats.ignored.length}</div>
-                <div className="text-[10px] uppercase text-secondary">No encontrados</div>
+              <div className="bg-ios-blue/5 p-3 rounded-2xl text-center border border-ios-blue/10">
+                <div className="text-xl font-bold text-ios-blue">{stats.alreadyRegistered}</div>
+                <div className="text-[8px] uppercase text-ios-blue/70 font-bold">Ya estaban</div>
+              </div>
+              <div className="bg-gray-50 p-3 rounded-2xl text-center">
+                <div className="text-xl font-bold text-secondary">{stats.ignored.length}</div>
+                <div className="text-[8px] uppercase text-secondary font-bold">No encontrados</div>
               </div>
             </div>
-            <p className="text-[10px] text-center text-secondary">Los redondelitos de los alumnos vinculados ahora aparecerán marcados en el panel de control.</p>
+            <p className="text-[10px] text-center text-secondary leading-tight">
+              Los redondelitos de los {stats.matched + stats.alreadyRegistered} alumnos vinculados ahora aparecerán marcados en el panel de pagos.
+            </p>
             <button onClick={() => onComplete(stats.matched)} className="w-full py-4 bg-ios-blue text-white rounded-xl font-bold shadow-lg">FINALIZAR</button>
           </div>
         ) : (
