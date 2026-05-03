@@ -672,7 +672,15 @@ export const Asistencia: React.FC<AsistenciaProps> = ({
         </div>
       </main>
 
-      {/* Sticky Continue Button removed as requested */}
+      {isImportModalOpen && (
+        <BulkPaymentImport 
+          onComplete={(count) => {
+            setIsImportModalOpen(false);
+            // We could add a notification here if we had access to the setNotificacion prop
+          }}
+          onCancel={() => setIsImportModalOpen(false)}
+        />
+      )}
     </div>
   );
 };
