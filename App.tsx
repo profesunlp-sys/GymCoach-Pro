@@ -1,4 +1,4 @@
-import { PaymentPreprocessor } from './components/PaymentPreprocessor';
+import { PaymentPreprocessor } from './src/components/PaymentPreprocessor';
 import React, { useState, useEffect, useRef, useMemo, lazy, Suspense } from 'react';
 import { ErrorBoundary } from './components/ErrorBoundary';import Papa from 'papaparse';
 import Markdown from 'react-markdown';
