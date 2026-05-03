@@ -11,6 +11,7 @@ interface ControlPagosProps {
 
 export const ControlPagos: React.FC<ControlPagosProps> = ({ onBack, onImportPayments }) => {
   const [alumnos, setAlumnos] = useState<Alumno[]>([]);
+  const [grupos, setGrupos] = useState<any[]>([]);
   const [selectedYear] = useState(new Date().getFullYear());
   const meses = [
     { n: 3, name: 'Mar', label: 'Marzo' },
@@ -25,7 +26,15 @@ export const ControlPagos: React.FC<ControlPagosProps> = ({ onBack, onImportPaym
       setAlumnos(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as Alumno));
     });
 
-    return () => unsubscribeAlumnos();
+    // Escuchar configuración de grupos para obtener horarios
+    const unsubscribeGrupos = onSnapshot(collection(db, 'grupos'), (snapshot) => {
+      setGrupos(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+
+    return () => {
+      unsubscribeAlumnos();
+      unsubscribeGrupos();
+    };
   }, []);
 
   const togglePago = async (alumno: Alumno, mesN: number) => {
@@ -63,6 +72,16 @@ export const ControlPagos: React.FC<ControlPagosProps> = ({ onBack, onImportPaym
     return alumno.pagosMensuales?.some(p => 
       p.mes?.toLowerCase() === mesLabel.toLowerCase() && p.anio === selectedYear
     ) || false;
+  };
+
+  const getGrupoDetalle = (alumno: Alumno) => {
+    if (!alumno.grupo || alumno.grupo === 'SIN GRUPO') return 'SIN GRUPO';
+    
+    const config = grupos.find(g => g.nombre === alumno.grupo);
+    if (!config) return alumno.grupo;
+
+    const dias = Array.isArray(config.dias) ? config.dias.join(' Y ') : config.dias;
+    return `${dias} ${config.horario || ''}`.trim().toUpperCase();
   };
 
   return (
@@ -110,7 +129,7 @@ export const ControlPagos: React.FC<ControlPagosProps> = ({ onBack, onImportPaym
           <table className="w-full border-collapse">
             <thead>
               <tr className="border-b border-black/5">
-                <th className="p-4 text-left text-[10px] font-bold text-secondary uppercase tracking-widest sticky left-0 bg-white z-10 w-40">Gimnasta</th>
+                <th className="p-4 text-left text-[10px] font-bold text-secondary uppercase tracking-widest sticky left-0 bg-white z-10 w-48">Gimnasta</th>
                 {meses.map(m => (
                   <th key={m.n} className="p-4 text-center text-[10px] font-bold text-secondary uppercase tracking-widest min-w-[60px]">{m.name}</th>
                 ))}
@@ -122,7 +141,9 @@ export const ControlPagos: React.FC<ControlPagosProps> = ({ onBack, onImportPaym
                   <td className="p-4 sticky left-0 bg-white z-10 border-r border-black/5">
                     <div className="flex flex-col">
                       <span className="text-sm font-bold text-black line-clamp-1">{alumno.nombre}</span>
-                      <span className="text-[9px] font-bold text-secondary uppercase tracking-tighter">{alumno.grupo}</span>
+                      <span className="text-[9px] font-bold text-secondary uppercase tracking-tighter leading-tight">
+                        {getGrupoDetalle(alumno)}
+                      </span>
                     </div>
                   </td>
                   {meses.map(m => (

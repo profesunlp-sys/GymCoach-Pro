@@ -109,9 +109,15 @@ export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete
 
         const alumnosSnap = await getDocs(collection(db, 'alumnos'));
         const allAlumnos = alumnosSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+        
+        const gruposSnap = await getDocs(collection(db, 'grupos'));
+        const allGrupos = gruposSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+
         const currentYear = new Date().getFullYear();
+        let alreadyRegisteredCount = 0;
 
         const studentPaymentsMap: Record<string, any[]> = {};
+        const studentGroupUpdates: Record<string, string> = {};
         const studentRefs: Record<string, any> = {};
 
         for (const rowData of dataRows) {
@@ -139,6 +145,33 @@ export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete
           });
 
           if (student) {
+            // DETECCION DE GRUPO: Intentamos encontrar si el tramite describe un grupo existente
+            let matchedGrupoName = null;
+            for (const g of allGrupos) {
+              const gNameNorm = normalizeText(g.nombre);
+              const gHorarioNorm = normalizeText(g.horario);
+              const gDiasNorm = (g.dias || []).map((d: string) => normalizeText(d));
+              
+              // Si el trámite contiene el nombre del grupo
+              if (gNameNorm.length > 5 && tramiteValue.includes(gNameNorm)) {
+                matchedGrupoName = g.nombre;
+                break;
+              }
+              
+              // Si el trámite contiene los días Y el horario
+              const containsHorario = gHorarioNorm.length > 2 && tramiteValue.includes(gHorarioNorm);
+              const containsAllDias = gDiasNorm.length > 0 && gDiasNorm.every((d: string) => tramiteValue.includes(d));
+              
+              if (containsHorario && containsAllDias) {
+                matchedGrupoName = g.nombre;
+                break;
+              }
+            }
+
+            if (matchedGrupoName && (!student.grupo || student.grupo === 'SIN GRUPO')) {
+              studentGroupUpdates[student.id] = matchedGrupoName;
+            }
+
             // Evitar duplicados: Verificamos si el alumno ya tiene este mes/año pagado en su historial
             const yaRegistrado = student.pagosMensuales?.some((p: any) => 
               p.mes?.toLowerCase() === mesData.mes.toLowerCase() && p.anio === mesData.anio
@@ -161,7 +194,7 @@ export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete
                 fechaPago: new Date().toISOString(),
                 monto: colIndices.monto !== -1 ? parseFloat(rowData[colIndices.monto]) || 0 : 0,
                 importado: true,
-                categoria: tramiteValue
+                categoria: rowData[colIndices.tramite] || "Gimnasia Artística"
               });
               matchedCount++;
             } else {
@@ -172,16 +205,20 @@ export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete
           }
         }
 
-        let alreadyRegisteredCount = 0;
-
         // Aplicamos todos los pagos agrupados por alumno
         for (const studentId in studentPaymentsMap) {
-          batch.update(studentRefs[studentId], {
+          const updateData: any = {
             pagosMensuales: arrayUnion(...studentPaymentsMap[studentId])
-          });
+          };
+          
+          if (studentGroupUpdates[studentId]) {
+            updateData.grupo = studentGroupUpdates[studentId];
+          }
+
+          batch.update(studentRefs[studentId], updateData);
         }
 
-        if (matchedCount > 0) await batch.commit();
+        if (matchedCount > 0 || Object.keys(studentGroupUpdates).length > 0) await batch.commit();
 
         setStats({
           total: dataRows.length,
