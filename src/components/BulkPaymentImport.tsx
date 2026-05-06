@@ -273,28 +273,7 @@ export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete
               </button>
             </div>
 
-            <AnimatePresence>
-              {showIgnored && stats.ignored.length > 0 && (
-                <motion.div 
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: 'auto', opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  className="overflow-hidden"
-                >
-                  <div className="bg-gray-50 rounded-2xl p-4 border border-black/5 max-h-48 overflow-y-auto">
-                    <p className="text-[10px] font-bold text-secondary uppercase mb-2">No se encontraron estos nombres:</p>
-                    <div className="space-y-1">
-                      {stats.ignored.map((item, idx) => (
-                        <div key={idx} className="text-xs text-black border-b border-black/5 pb-1 last:border-0 flex justify-between">
-                          <span>{item.row[0] || 'Sin nombre'}</span>
-                          <span className="text-[9px] text-red-400 italic">No existe en base</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+           
 
             <p className="text-[11px] text-center text-secondary leading-tight px-4">
               Los redondelitos de los alumnos vinculados ahora aparecerán marcados en el panel de pagos.
