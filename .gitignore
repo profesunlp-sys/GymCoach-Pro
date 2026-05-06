@@ -1,1 +1,33 @@
-node_modules
+```
+# Build artifacts
+dist/
+build/
+*.js
+*.css
+
+# Dependencies
+node_modules/
+
+# Environment
+.env
+.env.local
+*.env.*
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs and temp files
+*.log
+*.tmp
+
+# Coverage reports
+coverage/
+htmlcov/
+.coverage
+
+# QA reports
+qa-reports/
+```

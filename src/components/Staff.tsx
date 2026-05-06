@@ -137,27 +137,31 @@ export const Staff: React.FC<StaffProps> = ({
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        const newName = prompt("Editar nombre del profesor:", prof.nombre);
-                        if (newName && newName.trim() && newName !== prof.nombre) {
-                          handleUpdateProfesor(prof.id!, newName.trim());
-                        }
-                      }}
-                      className="w-10 h-10 rounded-xl bg-primary/5 text-primary border border-primary/10 flex items-center justify-center hover:bg-primary/10 transition-colors"
-                    >
-                      <span className="material-icons-outlined text-sm">edit</span>
-                    </button>
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteProfesor(prof.id!, prof.nombre);
-                      }}
-                      className="w-10 h-10 rounded-xl bg-rose-500/5 text-rose-500 border border-rose-500/10 flex items-center justify-center hover:bg-rose-500/10 transition-colors"
-                    >
-                      <span className="material-icons-outlined text-sm">delete</span>
-                    </button>
+                    {userRole === 'Coordinator' && (
+                      <>
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const newName = prompt("Editar nombre del profesor:", prof.nombre);
+                            if (newName && newName.trim() && newName !== prof.nombre) {
+                              handleUpdateProfesor(prof.id!, newName.trim());
+                            }
+                          }}
+                          className="w-10 h-10 rounded-xl bg-primary/5 text-primary border border-primary/10 flex items-center justify-center hover:bg-primary/10 transition-colors"
+                        >
+                          <span className="material-icons-outlined text-sm">edit</span>
+                        </button>
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteProfesor(prof.id!, prof.nombre);
+                          }}
+                          className="w-10 h-10 rounded-xl bg-rose-500/5 text-rose-500 border border-rose-500/10 flex items-center justify-center hover:bg-rose-500/10 transition-colors"
+                        >
+                          <span className="material-icons-outlined text-sm">delete</span>
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
 

@@ -462,7 +462,7 @@ export const Clases: React.FC<ClasesProps> = ({
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
-              className="px-6 space-y-8 pb-32"
+              className="px-6 space-y-8 pb-40"
             >
               <div>
                 <h3 className="text-2xl font-bold text-black tracking-tight">Evaluación Técnica</h3>

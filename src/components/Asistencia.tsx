@@ -435,14 +435,8 @@ export const Asistencia: React.FC<AsistenciaProps> = ({
         </div>
       </header>
 
-      <div className="px-6 py-2 flex gap-3 overflow-x-auto no-scrollbar">
-        <button 
-          onClick={() => handleNavigation('RegistroAlumno')}
-          className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-white shadow-sm border border-black/5 text-primary text-[10px] font-bold uppercase tracking-widest whitespace-nowrap active:scale-95 transition-all"
-        >
-          <span className="material-icons-outlined text-sm">person_add</span>
-          Agregar Gimnasta
-        </button>
+      {/* Botones de Acción - Movidos aquí para estar accesibles al hacer scroll */}
+      <div className="px-6 py-3 flex gap-3 overflow-x-auto no-scrollbar bg-ios-gray/50 sticky top-0 z-10 backdrop-blur-sm">
         <button 
           onClick={() => setIsImportModalOpen(true)}
           className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-white shadow-sm border border-black/5 text-ios-green text-[10px] font-bold uppercase tracking-widest whitespace-nowrap active:scale-95 transition-all"
@@ -458,19 +452,9 @@ export const Asistencia: React.FC<AsistenciaProps> = ({
           <span className="material-icons-outlined text-sm">psychology</span>
           Asistente IA
         </button>
-        <button 
-          onClick={() => {
-            const element = document.getElementById('recent-classes-section');
-            element?.scrollIntoView({ behavior: 'smooth' });
-          }}
-          className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-white shadow-sm border border-black/5 text-secondary text-[10px] font-bold uppercase tracking-widest whitespace-nowrap active:scale-95 transition-all"
-        >
-          <span className="material-icons-outlined text-sm">history</span>
-          Clases Recientes
-        </button>
       </div>
 
-      <div className="px-6 pt-2 pb-4">
+      <div className="px-6 pt-2 pb-3 flex gap-3 overflow-x-auto no-scrollbar">
         <div className="relative group">
           <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-secondary text-xl group-focus-within:text-primary transition-colors">search</span>
           <input 
@@ -483,7 +467,7 @@ export const Asistencia: React.FC<AsistenciaProps> = ({
         </div>
       </div>
 
-      <main className="flex-1 overflow-y-auto px-6 py-2 space-y-4 pb-32">
+      <main className="flex-1 overflow-y-auto px-6 py-2 space-y-3 pb-32">
         {filteredAlumnos.length > 0 ? filteredAlumnos.map(alumno => {
           const hasAlerts = alumno.alertas && alumno.alertas.length > 0 && alumno.alertas[0] !== '';
           const isExpanded = expandedAlumnoId === alumno.id;
@@ -592,13 +576,13 @@ export const Asistencia: React.FC<AsistenciaProps> = ({
           </div>
         )}
 
-        <div id="recent-classes-section" className="pt-8 space-y-6">
+        <div id="recent-classes-section" className="pt-2 space-y-3">
           <div className="flex items-center justify-between px-2">
             <h3 className="text-xs font-bold text-secondary uppercase tracking-widest">Historial de Clases</h3>
             <span className="text-[10px] font-bold text-primary uppercase tracking-widest">{asistenciasClase.length} Sesiones</span>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-2">
             {isLoadingAsistenciasClase ? (
               <div className="flex justify-center py-10">
                 <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
@@ -635,7 +619,7 @@ export const Asistencia: React.FC<AsistenciaProps> = ({
                     </div>
                   </div>
                 ))}
-                <div className="pt-4 px-2">
+                <div className="pt-1 px-2 pb-4">
                   <button 
                     onClick={() => {
                       setClaseGrupo(activeGroup.nombre);
@@ -643,7 +627,7 @@ export const Asistencia: React.FC<AsistenciaProps> = ({
                       setRegistrationStep(2);
                       setVista('NuevaClase');
                     }}
-                    className="w-full py-5 rounded-3xl bg-secondary/10 text-secondary border border-secondary/20 font-bold uppercase tracking-widest text-xs flex items-center justify-center gap-2 active:scale-95 transition-all"
+                    className="w-full py-4 rounded-3xl bg-secondary/10 text-secondary border border-secondary/20 font-bold uppercase tracking-widest text-xs flex items-center justify-center gap-2 active:scale-95 transition-all"
                   >
                     <span className="material-icons-outlined text-base">add_task</span>
                     Nueva entrada de clase

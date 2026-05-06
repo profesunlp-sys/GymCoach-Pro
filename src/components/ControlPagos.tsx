@@ -104,7 +104,7 @@ export const ControlPagos: React.FC<ControlPagosProps> = ({ onBack, onImportPaym
   };
 
   return (
-    <div className="min-h-screen bg-ios-gray pb-32">
+    <div className="min-h-screen bg-ios-gray pb-40">
       <header className="bg-white px-6 pt-12 pb-6 shadow-sm border-b border-black/5 sticky top-0 z-40">
         <div className="flex items-center justify-between mb-4">
           <button onClick={onBack} className="text-primary font-medium flex items-center gap-1">
