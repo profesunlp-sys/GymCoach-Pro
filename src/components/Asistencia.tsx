@@ -205,8 +205,8 @@ export const Asistencia: React.FC<AsistenciaProps> = ({
               <input type="date" className="w-full bg-ios-gray rounded-xl px-4 py-4 text-sm text-black outline-none focus:border-primary/20" value={studentForm.fechaPrimeraClase || ''} onChange={(e) => setStudentForm({...studentForm, fechaPrimeraClase: e.target.value})}/>
             </div>
           </div>
-          <button 
-            onClick={handleSaveStudent} 
+          <button
+            onClick={handleSaveStudent}
             disabled={isSavingStudent}
             className="w-full py-5 rounded-3xl bg-ios-blue text-white font-bold uppercase tracking-[0.2em] text-sm shadow-ios active:scale-95 transition-all disabled:opacity-50"
           >
@@ -224,11 +224,11 @@ export const Asistencia: React.FC<AsistenciaProps> = ({
           <button onClick={() => setVista('AsistenciaLista')} className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 hover:bg-slate-200 transition-all">
             <span className="material-icons-outlined">arrow_back</span>
           </button>
-          
+
           <div className="flex items-center gap-4">
             <div className="flex bg-slate-100 p-1 rounded-xl border-2 border-black">
-              <select 
-                value={reportMonth} 
+              <select
+                value={reportMonth}
                 onChange={(e) => {
                   const m = parseInt(e.target.value);
                   setReportMonth(m);
@@ -240,8 +240,8 @@ export const Asistencia: React.FC<AsistenciaProps> = ({
                   <option key={i} value={i}>{m}</option>
                 ))}
               </select>
-              <select 
-                value={reportYear} 
+              <select
+                value={reportYear}
                 onChange={(e) => {
                   const y = parseInt(e.target.value);
                   setReportYear(y);
@@ -254,7 +254,7 @@ export const Asistencia: React.FC<AsistenciaProps> = ({
                 ))}
               </select>
             </div>
-            <button 
+            <button
               onClick={() => window.print()}
               className="bg-black text-white px-6 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest flex items-center gap-2 hover:scale-105 active:scale-95 transition-all"
             >
@@ -348,7 +348,7 @@ export const Asistencia: React.FC<AsistenciaProps> = ({
           <p className="text-secondary text-sm font-medium px-1">
             Por favor, seleccioná un grupo para comenzar a tomar asistencia hoy.
           </p>
-          
+
           <div className="grid grid-cols-1 gap-3">
             {grupos.map(g => (
               <motion.button
@@ -391,7 +391,7 @@ export const Asistencia: React.FC<AsistenciaProps> = ({
             <span className="material-symbols-outlined text-[20px]">arrow_back_ios_new</span>
           </button>
           <h1 className="text-sm font-bold tracking-widest uppercase text-secondary">Asistencia</h1>
-          <button 
+          <button
             onClick={() => {
               loadMonthlyReport(activeGroup.nombre, reportMonth, reportYear);
               setVista('ReportePDF');
@@ -406,7 +406,7 @@ export const Asistencia: React.FC<AsistenciaProps> = ({
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-3xl font-bold text-black tracking-tight leading-none">{activeGroup.nombre}</h2>
-              <button 
+              <button
                 onClick={() => {
                   setEditingGroup(activeGroup);
                   setNewGroupName(activeGroup.nombre);
@@ -433,49 +433,38 @@ export const Asistencia: React.FC<AsistenciaProps> = ({
             </div>
           </div>
         </div>
+
+        <div className="grid grid-cols-3 gap-2 pt-2" aria-label="Acciones rápidas de asistencia">
+          <button
+            onClick={() => handleNavigation('RegistroAlumno')}
+            className="min-h-[54px] flex flex-col items-center justify-center gap-1 px-1.5 py-2 rounded-2xl bg-white shadow-sm border border-black/5 text-primary text-center text-[8px] font-black uppercase tracking-tight leading-[1.05] active:scale-95 transition-all overflow-hidden"
+          >
+            <span className="material-icons-outlined text-base leading-none">person_add</span>
+            <span className="block max-w-full break-words">Agregar Gimnasta</span>
+          </button>
+          <button
+            onClick={() => setIsImportModalOpen(true)}
+            className="min-h-[54px] flex flex-col items-center justify-center gap-1 px-1.5 py-2 rounded-2xl bg-white shadow-sm border border-black/5 text-ios-green text-center text-[8px] font-black uppercase tracking-tight leading-[1.05] active:scale-95 transition-all overflow-hidden"
+          >
+            <span className="material-icons-outlined text-base leading-none">receipt_long</span>
+            <span className="block max-w-full break-words">Importar Pagos</span>
+          </button>
+          <button
+            onClick={handleAIAnalysis}
+            className="min-h-[54px] flex flex-col items-center justify-center gap-1 px-1.5 py-2 rounded-2xl bg-white shadow-sm border border-black/5 text-ios-orange text-center text-[8px] font-black uppercase tracking-tight leading-[1.05] active:scale-95 transition-all overflow-hidden"
+          >
+            <span className="material-icons-outlined text-base leading-none">psychology</span>
+            <span className="block max-w-full break-words">Asistente IA</span>
+          </button>
+        </div>
       </header>
-
-      <div className="px-6 py-2 flex gap-3 overflow-x-auto no-scrollbar">
-        <button 
-          onClick={() => handleNavigation('RegistroAlumno')}
-          className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-white shadow-sm border border-black/5 text-primary text-[10px] font-bold uppercase tracking-widest whitespace-nowrap active:scale-95 transition-all"
-        >
-          <span className="material-icons-outlined text-sm">person_add</span>
-          Agregar Gimnasta
-        </button>
-        <button 
-          onClick={() => setIsImportModalOpen(true)}
-          className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-white shadow-sm border border-black/5 text-ios-green text-[10px] font-bold uppercase tracking-widest whitespace-nowrap active:scale-95 transition-all"
-        >
-          <span className="material-icons-outlined text-sm">receipt_long</span>
-          Importar Pagos
-        </button>
-
-        <button 
-          onClick={handleAIAnalysis}
-          className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-white shadow-sm border border-black/5 text-ios-orange text-[10px] font-bold uppercase tracking-widest whitespace-nowrap active:scale-95 transition-all"
-        >
-          <span className="material-icons-outlined text-sm">psychology</span>
-          Asistente IA
-        </button>
-        <button 
-          onClick={() => {
-            const element = document.getElementById('recent-classes-section');
-            element?.scrollIntoView({ behavior: 'smooth' });
-          }}
-          className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-white shadow-sm border border-black/5 text-secondary text-[10px] font-bold uppercase tracking-widest whitespace-nowrap active:scale-95 transition-all"
-        >
-          <span className="material-icons-outlined text-sm">history</span>
-          Clases Recientes
-        </button>
-      </div>
 
       <div className="px-6 pt-2 pb-4">
         <div className="relative group">
           <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-secondary text-xl group-focus-within:text-primary transition-colors">search</span>
-          <input 
+          <input
             className="w-full bg-white border border-black/5 rounded-2xl pl-12 pr-4 py-4 text-sm text-black outline-none focus:border-primary/20 shadow-sm transition-all"
-            placeholder="Buscar gimnasta..." 
+            placeholder="Buscar gimnasta..."
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -491,15 +480,15 @@ export const Asistencia: React.FC<AsistenciaProps> = ({
           return (
             <div key={alumno.id} className={`flex flex-col p-4 rounded-3xl bg-white shadow-ios border border-black/5 transition-all duration-300 ${!asistenciasHoy[alumno.id!] ? 'opacity-50 grayscale select-none' : 'opacity-100'}`}>
               <div className="flex items-center justify-between">
-                <div 
+                <div
                   className="flex items-center gap-4 cursor-pointer flex-1"
                   onClick={() => setExpandedAlumnoId(isExpanded ? null : alumno.id!)}
                 >
                   <div className="relative">
                     <div className="w-12 h-12 rounded-2xl bg-ios-gray flex items-center justify-center overflow-hidden border border-black/5">
-                      <img 
-                        alt="Avatar" 
-                        className="w-full h-full object-cover" 
+                      <img
+                        alt="Avatar"
+                        className="w-full h-full object-cover"
                         src={`https://ui-avatars.com/api/?name=${encodeURIComponent(alumno.nombre)}&background=F2F2F7&color=1C1C1E&size=128`}
                         referrerPolicy="no-referrer"
                       />
@@ -516,13 +505,13 @@ export const Asistencia: React.FC<AsistenciaProps> = ({
                     <p className="text-[10px] font-bold uppercase tracking-widest mt-2 text-secondary">{alumno.nivel}</p>
                   </div>
                 </div>
-                
+
                 <div className="flex items-center gap-4">
                   <div className="flex flex-col items-center gap-1">
                     <span className="text-[8px] font-bold text-secondary uppercase tracking-tighter">
                       PAGO {new Date().toLocaleString('es-ES', { month: 'short' }).toUpperCase()}
                     </span>
-                    <button 
+                    <button
                       onClick={() => togglePayment(alumno.id!)}
                       className={`w-6 h-6 rounded-md border flex items-center justify-center transition-all ${pagosHoy[alumno.id!] ? 'bg-ios-green border-transparent text-white' : 'bg-ios-gray border-black/5 text-transparent'}`}
                     >
@@ -531,9 +520,9 @@ export const Asistencia: React.FC<AsistenciaProps> = ({
                   </div>
 
                   <label className="relative inline-flex items-center cursor-pointer">
-                    <input 
-                      type="checkbox" 
-                      className="sr-only peer" 
+                    <input
+                      type="checkbox"
+                      className="sr-only peer"
                       checked={asistenciasHoy[alumno.id!] || false}
                       onChange={() => toggleAttendance(alumno.id!)}
                     />
@@ -559,7 +548,7 @@ export const Asistencia: React.FC<AsistenciaProps> = ({
                   )}
 
                   <div className="grid grid-cols-2 gap-3">
-                    <button 
+                    <button
                       onClick={() => {
                         setSelectedAlumno(alumno);
                         handleNavigation('AlumnoDetalle');
@@ -583,7 +572,7 @@ export const Asistencia: React.FC<AsistenciaProps> = ({
               <h3 className="text-white font-black text-lg uppercase tracking-tight leading-tight">Este grupo está vacío</h3>
               <p className="text-white/40 text-xs leading-relaxed">No hay alumnas asignadas a <span className="text-primary font-bold">{activeGroup.nombre}</span> todavía.</p>
             </div>
-            <button 
+            <button
               onClick={() => handleNavigation('RegistroAlumno')}
               className="px-8 py-4 bg-primary text-antigravity-black font-black uppercase text-[10px] tracking-[0.2em] rounded-2xl shadow-neon-cyan hover:scale-105 active:scale-95 transition-all"
             >
@@ -620,13 +609,13 @@ export const Asistencia: React.FC<AsistenciaProps> = ({
                       </div>
                     </div>
                     <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all">
-                      <button 
+                      <button
                         onClick={() => handleEditAsistencia(asistencia)}
                         className="w-10 h-10 rounded-full bg-ios-gray flex items-center justify-center text-secondary hover:text-primary transition-all"
                       >
                         <span className="material-icons-outlined text-sm">edit</span>
                       </button>
-                      <button 
+                      <button
                         onClick={() => handleDeleteAsistencia(asistencia)}
                         className="w-10 h-10 rounded-full bg-ios-red/10 flex items-center justify-center text-ios-red"
                       >
@@ -636,7 +625,7 @@ export const Asistencia: React.FC<AsistenciaProps> = ({
                   </div>
                 ))}
                 <div className="pt-4 px-2">
-                  <button 
+                  <button
                     onClick={() => {
                       setClaseGrupo(activeGroup.nombre);
                       setIsEditingClase(false);
@@ -655,7 +644,7 @@ export const Asistencia: React.FC<AsistenciaProps> = ({
                 <span className="text-secondary text-[10px] font-bold uppercase tracking-widest">
                   No hay registros de clases anteriores
                 </span>
-                <button 
+                <button
                   onClick={() => {
                     setClaseGrupo(activeGroup.nombre);
                     setIsEditingClase(false);
@@ -673,7 +662,7 @@ export const Asistencia: React.FC<AsistenciaProps> = ({
       </main>
 
       {isImportModalOpen && (
-        <BulkPaymentImport 
+        <BulkPaymentImport
           onComplete={(count) => {
             setIsImportModalOpen(false);
             // We could add a notification here if we had access to the setNotificacion prop

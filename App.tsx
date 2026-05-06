@@ -3013,6 +3013,7 @@ const App: React.FC = () => {
               setIsAddingAlumno={setIsAddingAlumno}
               studentForm={studentForm}
               setClaseGrupo={setClaseGrupo}
+              setClaseAgeRange={setClaseAgeRange}
             />
           )}
 

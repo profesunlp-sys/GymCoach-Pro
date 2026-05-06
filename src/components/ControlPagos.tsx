@@ -15,10 +15,12 @@ export const ControlPagos: React.FC<ControlPagosProps> = ({ onBack, onImportPaym
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const years = [2024, 2025, 2026, 2027];
   const meses = [
-    { n: 3, name: 'Mar', label: 'Marzo' },
-    { n: 4, name: 'Abr', label: 'Abril' }, { n: 5, name: 'May', label: 'Mayo' }, { n: 6, name: 'Jun', label: 'Junio' },
-    { n: 7, name: 'Jul', label: 'Julio' }, { n: 8, name: 'Ago', label: 'Agosto' }, { n: 9, name: 'Sep', label: 'Septiembre' },
-    { n: 10, name: 'Oct', label: 'Octubre' }, { n: 11, name: 'Nov', label: 'Noviembre' }
+    { n: 1, name: 'Ene', label: 'Enero' }, { n: 2, name: 'Feb', label: 'Febrero' },
+    { n: 3, name: 'Mar', label: 'Marzo' }, { n: 4, name: 'Abr', label: 'Abril' },
+    { n: 5, name: 'May', label: 'Mayo' }, { n: 6, name: 'Jun', label: 'Junio' },
+    { n: 7, name: 'Jul', label: 'Julio' }, { n: 8, name: 'Ago', label: 'Agosto' },
+    { n: 9, name: 'Sep', label: 'Septiembre' }, { n: 10, name: 'Oct', label: 'Octubre' },
+    { n: 11, name: 'Nov', label: 'Noviembre' }, { n: 12, name: 'Dic', label: 'Diciembre' }
   ];
 
   useEffect(() => {
@@ -170,7 +172,7 @@ export const ControlPagos: React.FC<ControlPagosProps> = ({ onBack, onImportPaym
               </tr>
             </thead>
             <tbody className="divide-y divide-black/5">
-              {alumnos.sort((a,b) => a.nombre.localeCompare(b.nombre)).map(alumno => (
+              {[...alumnos].sort((a,b) => a.nombre.localeCompare(b.nombre)).map(alumno => (
                 <tr key={alumno.id} className="hover:bg-ios-gray/30 transition-colors">
                   <td className="p-4 sticky left-0 bg-white z-10 border-r border-black/5">
                     <div className="flex flex-col">

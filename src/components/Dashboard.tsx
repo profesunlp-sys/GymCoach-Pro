@@ -35,6 +35,7 @@ interface DashboardProps {
   setIsAddingAlumno: (val: boolean) => void;
   studentForm: any;
   setClaseGrupo: (val: string) => void;
+  setClaseAgeRange: (val: string) => void;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({
@@ -65,7 +66,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
   setStudentForm,
   setIsAddingAlumno,
   studentForm,
-  setClaseGrupo
+  setClaseGrupo,
+  setClaseAgeRange
 }) => {
   const [selectedProfesorDetail, setSelectedProfesorDetail] = useState<string | null>(null);
   
@@ -420,8 +422,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         onClick={() => { 
                           setActiveGroup(selectedGroupInternal);
                           setClaseGrupo(selectedGroupInternal.nombre);
-                          setRegistrationStep(2); 
-                          setVista('NuevaClase'); 
+                          setClaseAgeRange(selectedGroupInternal.rangoEdad || "");
+                          setRegistrationStep(3);
+                          setVista('NuevaClase');
                         }}
                         className="flex flex-col items-center justify-center gap-3 p-6 bg-primary text-white rounded-3xl shadow-lg shadow-primary/20 active:scale-95 transition-all"
                        >
