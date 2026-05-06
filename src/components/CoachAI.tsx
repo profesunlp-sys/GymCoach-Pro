@@ -118,7 +118,7 @@ export const CoachAI = () => {
         </button>
       </header>
 
-      <div className="flex-1 overflow-y-auto px-6 space-y-6 pb-32">
+      <div className="flex-1 overflow-y-auto px-6 space-y-6 pb-40">
         {messages.map((msg, idx) => (
           <div key={idx} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
             <div className={`max-w-[85%] rounded-2xl p-4 ${msg.role === 'user' ? 'bg-primary text-antigravity-black rounded-tr-sm' : 'bg-antigravity-charcoal border border-white/20 text-white rounded-tl-sm'}`}>

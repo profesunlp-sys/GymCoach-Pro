@@ -1193,6 +1193,15 @@ const App: React.FC = () => {
   };
 
   const handleDeleteGroup = async (grupo: GrupoConfig) => {
+    // Validación de rol - Solo Coordinador puede eliminar grupos
+    if (userRole !== 'Coordinator') {
+      setNotificacion({ 
+        t: "Acceso Denegado", 
+        d: "Solo los coordinadores pueden eliminar grupos." 
+      });
+      return;
+    }
+    
     if (!grupo.id) return;
     
     requestConfirmation(
@@ -1592,6 +1601,15 @@ const App: React.FC = () => {
   };
 
   const handleDeleteProfesor = async (profesorId: string) => {
+    // Validación de rol - Solo Coordinador puede eliminar
+    if (userRole !== 'Coordinator') {
+      setNotificacion({ 
+        t: "Acceso Denegado", 
+        d: "Solo los coordinadores pueden eliminar profesores." 
+      });
+      return;
+    }
+    
     const prof = profesoresList.find(p => p.id === profesorId);
     const nombre = prof?.nombre || "Profesor";
     requestConfirmation(
@@ -1628,6 +1646,15 @@ const App: React.FC = () => {
   };
 
   const handleDeleteClase = async (clase: Clase) => {
+    // Validación de rol - Solo Coordinador puede eliminar clases
+    if (userRole !== 'Coordinator') {
+      setNotificacion({ 
+        t: "Acceso Denegado", 
+        d: "Solo los coordinadores pueden eliminar clases." 
+      });
+      return;
+    }
+    
     if (!clase || !clase.id) return;
     requestConfirmation(
       "Confirmar Eliminación",
@@ -1677,6 +1704,15 @@ const App: React.FC = () => {
   };
 
   const handleDeleteStudent = async (id: string) => {
+    // Validación de rol - Solo Coordinador puede eliminar
+    if (userRole !== 'Coordinator') {
+      setNotificacion({ 
+        t: "Acceso Denegado", 
+        d: "Solo los coordinadores pueden eliminar registros." 
+      });
+      return;
+    }
+    
     const student = alumnos.find(a => a.id === id);
     if (!student) return;
     requestConfirmation(
@@ -2891,7 +2927,7 @@ const App: React.FC = () => {
   );
 
   return (
-    <div className="max-w-[430px] mx-auto min-h-screen bg-ios-gray shadow-2xl relative overflow-hidden flex flex-col font-sans pb-32">
+    <div className="max-w-[430px] mx-auto min-h-screen bg-ios-gray shadow-2xl relative overflow-hidden flex flex-col font-sans pb-40">
       
       {/* Unsaved Changes Modal */}
       {pendingNavigation && (

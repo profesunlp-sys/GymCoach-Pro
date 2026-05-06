@@ -1036,16 +1036,18 @@ const Alumnos: React.FC<AlumnosProps> = ({
               </div>
             )}
 
-            {/* Danger Zone */}
-            <div className="pt-12">
-               <button 
-                onClick={() => handleDeleteStudent(selectedAlumno.id!)}
-                className="w-full py-4 rounded-2xl bg-white border border-ios-red/20 text-ios-red text-xs font-bold uppercase tracking-widest active:bg-ios-red active:text-white transition-all flex items-center justify-center gap-2"
-               >
-                <span className="material-icons-outlined text-lg">person_remove</span>
-                Eliminar del Sistema
-               </button>
-            </div>
+            {/* Danger Zone - SOLO COORDINADOR */}
+            {userRole === 'Coordinator' && (
+              <div className="pt-12">
+                 <button 
+                  onClick={() => handleDeleteStudent(selectedAlumno.id!)}
+                  className="w-full py-4 rounded-2xl bg-white border border-ios-red/20 text-ios-red text-xs font-bold uppercase tracking-widest active:bg-ios-red active:text-white transition-all flex items-center justify-center gap-2"
+                 >
+                  <span className="material-icons-outlined text-lg">person_remove</span>
+                  Eliminar del Sistema
+                 </button>
+              </div>
+            )}
           </div>
         </div>
 
