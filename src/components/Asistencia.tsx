@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Alumno, GrupoConfig, ViewMode, AsistenciaRecord, Clase } from '../../types';
@@ -385,7 +384,8 @@ export const Asistencia: React.FC<AsistenciaProps> = ({
 
   return (
     <div className="page-transition flex flex-col min-h-screen relative bg-ios-gray">
-      <header className="px-6 py-4 flex flex-col gap-4 bg-ios-gray sticky top-12 z-40">
+      {/* Header Sticky */}
+      <header className="px-6 py-4 flex flex-col gap-4 bg-ios-gray sticky top-0 z-40 border-b border-black/5">
         <div className="flex items-center justify-between">
           <button onClick={() => setVista('Dashboard')} className="w-10 h-10 flex items-center justify-center rounded-full bg-white shadow-sm border border-black/5 text-primary">
             <span className="material-symbols-outlined text-[20px]">arrow_back_ios_new</span>
@@ -435,26 +435,29 @@ export const Asistencia: React.FC<AsistenciaProps> = ({
         </div>
       </header>
 
-      {/* Botones de Acción - Movidos aquí para estar accesibles al hacer scroll */}
-      <div className="px-6 py-3 flex gap-3 overflow-x-auto no-scrollbar bg-ios-gray/50 sticky top-0 z-10 backdrop-blur-sm">
-        <button 
-          onClick={() => setIsImportModalOpen(true)}
-          className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-white shadow-sm border border-black/5 text-ios-green text-[10px] font-bold uppercase tracking-widest whitespace-nowrap active:scale-95 transition-all"
-        >
-          <span className="material-icons-outlined text-sm">receipt_long</span>
-          Importar Pagos
-        </button>
+      {/* Barra de Herramientas (Botones + Búsqueda) - Corregido para no solaparse */}
+      <div className="px-6 py-4 bg-ios-gray sticky top-[140px] md:top-[130px] z-30 space-y-3">
+        
+        {/* Fila de Botones de Acción */}
+        <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1">
+          <button 
+            onClick={() => setIsImportModalOpen(true)}
+            className="flex-shrink-0 flex items-center gap-2 px-5 py-3.5 rounded-2xl bg-white shadow-md border border-black/5 text-ios-green text-[10px] font-bold uppercase tracking-widest active:scale-95 transition-all whitespace-nowrap"
+          >
+            <span className="material-icons-outlined text-sm">receipt_long</span>
+            Importar Pagos
+          </button>
 
-        <button 
-          onClick={handleAIAnalysis}
-          className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-white shadow-sm border border-black/5 text-ios-orange text-[10px] font-bold uppercase tracking-widest whitespace-nowrap active:scale-95 transition-all"
-        >
-          <span className="material-icons-outlined text-sm">psychology</span>
-          Asistente IA
-        </button>
-      </div>
+          <button 
+            onClick={handleAIAnalysis}
+            className="flex-shrink-0 flex items-center gap-2 px-5 py-3.5 rounded-2xl bg-white shadow-md border border-black/5 text-ios-orange text-[10px] font-bold uppercase tracking-widest active:scale-95 transition-all whitespace-nowrap"
+          >
+            <span className="material-icons-outlined text-sm">psychology</span>
+            Asistente IA
+          </button>
+        </div>
 
-      <div className="px-6 pt-2 pb-3 flex gap-3 overflow-x-auto no-scrollbar">
+        {/* Fila de Búsqueda */}
         <div className="relative group">
           <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-secondary text-xl group-focus-within:text-primary transition-colors">search</span>
           <input 
@@ -467,6 +470,7 @@ export const Asistencia: React.FC<AsistenciaProps> = ({
         </div>
       </div>
 
+      {/* Lista de Alumnos */}
       <main className="flex-1 overflow-y-auto px-6 py-2 space-y-3 pb-32">
         {filteredAlumnos.length > 0 ? filteredAlumnos.map(alumno => {
           const hasAlerts = alumno.alertas && alumno.alertas.length > 0 && alumno.alertas[0] !== '';
@@ -660,7 +664,6 @@ export const Asistencia: React.FC<AsistenciaProps> = ({
         <BulkPaymentImport 
           onComplete={(count) => {
             setIsImportModalOpen(false);
-            // We could add a notification here if we had access to the setNotificacion prop
           }}
           onCancel={() => setIsImportModalOpen(false)}
         />
