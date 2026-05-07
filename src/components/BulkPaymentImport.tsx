@@ -59,11 +59,14 @@ export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete
         if (dateInput >= 1 && dateInput <= 12) {
           return { mes: MONTHS[dateInput - 1], anio: year };
         }
-        // Si es un número grande, es fecha Excel
-        date = new Date((dateInput - 25569) * 86400 * 1000);
+        // Si es un número grande, es fecha Excel serial
+        // IMPORTANTE: usar UTC para evitar desfase de zona horaria (bug clásico)
+        const msUtc = (dateInput - 25569) * 86400 * 1000;
+        const d = new Date(msUtc);
+        return { mes: MONTHS[d.getUTCMonth()], anio: d.getUTCFullYear() };
       } else {
         const str = dateInput.toString().trim();
-        // Intentar detectar si es un mes escrito
+        // Detectar si es un mes escrito (ej: "Marzo 2026", "MARZO")
         const monthsLower = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
         const normalizedDateText = normalizeText(str);
 
@@ -73,30 +76,36 @@ export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete
           return { mes: MONTHS[foundIndex], anio: yearMatch ? parseInt(yearMatch[1], 10) : year };
         }
 
-        // Intentar detectar formato fecha DD/MM/YYYY
+        // Formato DD/MM/YYYY o DD/MM/YY
         const parts = str.split('/');
         if (parts.length >= 2) {
-          const d = parseInt(parts[0]);
           const m = parseInt(parts[1]);
           const y = parts[2] ? parseInt(parts[2]) : year;
-          date = new Date(y, m - 1, d);
-        } else {
-          date = new Date(str);
+          const fullYear = y < 100 ? 2000 + y : y;
+          if (m >= 1 && m <= 12) return { mes: MONTHS[m - 1], anio: fullYear };
         }
+
+        // Último recurso: Date nativa
+        date = new Date(str);
       }
 
-      if (isNaN(date.getTime())) return null;
-      return { mes: MONTHS[date.getMonth()], anio: date.getFullYear() };
+      if (isNaN(date!.getTime())) return null;
+      return { mes: MONTHS[date!.getUTCMonth()], anio: date!.getUTCFullYear() };
     } catch (e) { return null; }
   };
 
   const isTargetGymnasticsActivity = (value: string) => {
     const normalized = normalizeText(value);
-    const hasGymnastics = normalized.includes('gimnasia') || normalized.includes('gimn') || normalized.includes('gaf');
-    const hasArtistic = normalized.includes('artistica') || normalized.includes('art') || normalized.includes('gaf');
-    const hasInfantil = normalized.includes('infantil') || normalized.includes('ninas') || normalized.includes('ninos') || normalized.includes('escuela');
-
-    return (hasGymnastics && hasArtistic && hasInfantil) || normalized.includes('gimnasia artistica infantil') || normalized.includes('g.a.i');
+    // Filtro amplio: acepta cualquier fila que mencione gimnasia artística
+    // La oficina puede usar distintas denominaciones: GAF, GAI, G.A., Artística, etc.
+    return (
+      normalized.includes('gimnasia') ||
+      normalized.includes('gaf') ||
+      normalized.includes('g.a') ||
+      normalized.includes('artistica') ||
+      normalized.includes('artistico') ||
+      normalized.includes('gai')
+    );
   };
 
   const normalizeNameParts = (name: unknown) => {

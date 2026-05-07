@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(cmd /c \"rmdir /s /q \"\"C:\\\\Users\\\\josem\\\\.antigravity\\\\GymCoachPro\"\"\" ; if \\($?\\) { \"Deleted successfully\" } else { \"Failed\" })"
+    ]
+  }
+}
