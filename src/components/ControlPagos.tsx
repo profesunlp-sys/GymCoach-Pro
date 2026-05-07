@@ -50,10 +50,10 @@ export const ControlPagos: React.FC<ControlPagosProps> = ({ onBack, onImportPaym
     const mesObj = meses.find(m => m.n === mesN);
     if (!mesObj) return false;
 
-    const labelNorm  = norm(mesObj.label);   // "enero"
-    const abrevNorm  = norm(mesObj.name);    // "ene"
-    const prefijo    = labelNorm.slice(0, 3); // "ene"
-    const numStr     = String(mesN);          // "1"
+    const labelNorm  = norm(mesObj.label);   // "marzo"
+    const abrevNorm  = norm(mesObj.name);    // "mar"
+    const prefijo    = labelNorm.slice(0, 3); // "mar"
+    const numStr     = String(mesN);          // "3"
 
     return alumno.pagosMensuales.some(p => {
       if (!p) return false;
@@ -64,11 +64,30 @@ export const ControlPagos: React.FC<ControlPagosProps> = ({ onBack, onImportPaym
 
       // Mes: tolera nombre completo, abreviatura, prefijo de 3 letras, número como string
       const pMes = norm(p.mes);
+      
+      // FILTRO CRÍTICO: Solo pagos de Gimnasia Artística Infantil
+      // Si hay categoría, debe ser de gimnasia artística. Si no hay categoría, asumimos que es válido (datos legacy)
+      if (p.categoria) {
+        const categoriaNorm = norm(String(p.categoria));
+        const esGimnasiaArtisticaInfantil = 
+          categoriaNorm.includes('gimnasia') ||
+          categoriaNorm.includes('artistica') ||
+          categoriaNorm.includes('artistico') ||
+          categoriaNorm.includes('gaf') ||
+          categoriaNorm.includes('gai') ||
+          categoriaNorm.includes('g.a');
+        
+        if (!esGimnasiaArtisticaInfantil) {
+          return false; // Ignorar pagos de otras actividades
+        }
+      }
+      // Si no hay categoría, el pago se considera válido (compatibilidad con datos antiguos)
+      
       return (
-        pMes === labelNorm  ||   // "enero"
-        pMes === abrevNorm  ||   // "ene"
-        pMes.startsWith(prefijo) ||  // "enero".startsWith("ene")
-        pMes === numStr          // "1"
+        pMes === labelNorm  ||   // "marzo"
+        pMes === abrevNorm  ||   // "mar"
+        pMes.startsWith(prefijo) ||  // "marzo".startsWith("mar")
+        pMes === numStr          // "3"
       );
     });
   };
@@ -226,6 +245,13 @@ export const ControlPagos: React.FC<ControlPagosProps> = ({ onBack, onImportPaym
                       {/* Celdas de mes */}
                       {meses.map(m => {
                         const paid = isPaid(alumno, m.n);
+                        
+                        // Debug: mostrar información del pago si hay categoría
+                        const pagoInfo = alumno.pagosMensuales?.find(p => {
+                          const pAnio = parseInt(String(p.anio ?? '0'), 10);
+                          return pAnio === selectedYear && norm(p.mes) === norm(m.label);
+                        });
+                        
                         return (
                           <td key={m.n} className="p-3 text-center">
                             <motion.button
@@ -236,6 +262,7 @@ export const ControlPagos: React.FC<ControlPagosProps> = ({ onBack, onImportPaym
                                   ? 'bg-ios-green text-white shadow-sm shadow-ios-green/30'
                                   : 'bg-ios-gray text-transparent border border-black/5 hover:border-black/20'
                               }`}
+                              title={pagoInfo?.categoria ? `Categoría: ${pagoInfo.categoria}` : undefined}
                             >
                               <span className="material-icons-outlined text-[16px]">check</span>
                             </motion.button>
