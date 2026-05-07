@@ -231,15 +231,24 @@ export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete
           if (!isTargetGymnasticsActivity(activityValue)) continue;
 
           const nameValue = rowData[colIndices.nombre];
-          let mesData = colIndices.mes !== -1 ? getMonthName(rowData[colIndices.mes]) : null;
+          let mesData = null;
+          if (colIndices.mes !== -1) mesData = getMonthName(rowData[colIndices.mes]);
           if (!mesData && colIndices.fecha !== -1) mesData = getMonthName(rowData[colIndices.fecha]);
-          if (!mesData) mesData = findMonthInRow(rowData);
 
-          const monthsToRegister = mesData
-            ? [mesData]
-            : monthColumns
+          let monthsToRegister: PaymentMonth[] = [];
+
+          if (mesData) {
+            monthsToRegister = [mesData];
+          } else if (monthColumns.length > 0) {
+            monthsToRegister = monthColumns
                 .filter(({ index }) => isPaidCell(rowData[index]))
                 .map(({ month }) => month);
+          }
+          
+          if (monthsToRegister.length === 0) {
+             const fallbackMonth = findMonthInRow(rowData);
+             if (fallbackMonth) monthsToRegister = [fallbackMonth];
+          }
 
           if (!nameValue || monthsToRegister.length === 0) continue;
 
