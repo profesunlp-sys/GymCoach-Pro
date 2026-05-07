@@ -27,9 +27,23 @@ export const Reportes: React.FC<ReportesProps> = ({ alumnos, clases, grupos, vis
   // Stats for AsistenciaStats (General Dashboard)
   const generalStats = useMemo(() => {
     const totalAlumnos = alumnos.length;
-    const totalClases = clases.length;
-    const alumnosActivos = alumnos.filter(a => a.estadoPago === 'Al día').length;
-    
+    const totalClases  = clases.length;
+    const now = new Date();
+    const mesActual  = now.toLocaleString('es-ES', { month: 'long' }); // 'mayo'
+    const anioActual = now.getFullYear();
+
+    // Alumnos que tienen registrado el pago del mes actual
+    const alumnosPagosEsteMes = alumnos.filter(a => {
+      if (!Array.isArray(a.pagosMensuales)) return false;
+      return a.pagosMensuales.some(p => {
+        const pMes  = (p.mes ?? '').toString().toLowerCase().trim()
+          .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        const pAnio = parseInt(String(p.anio ?? '0'), 10);
+        const mesNorm = mesActual.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        return pAnio === anioActual && (pMes === mesNorm || pMes.startsWith(mesNorm.slice(0, 3)));
+      });
+    }).length;
+
     // Attendance trend
     const last7Days = Array.from({ length: 7 }, (_, i) => {
       const d = new Date();
@@ -41,7 +55,7 @@ export const Reportes: React.FC<ReportesProps> = ({ alumnos, clases, grupos, vis
       const dayClases = clases.filter(c => c.fecha === date);
       const totalPresent = dayClases.reduce((acc, c) => acc + (c.asistencias?.length || 0), 0);
       return {
-        date: new Date(date).toLocaleDateString('es-ES', { weekday: 'short' }),
+        date: new Date(date + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'short' }),
         presentes: totalPresent
       };
     });
@@ -49,7 +63,8 @@ export const Reportes: React.FC<ReportesProps> = ({ alumnos, clases, grupos, vis
     return {
       totalAlumnos,
       totalClases,
-      alumnosActivos,
+      alumnosPagosEsteMes,
+      mesActual: mesActual.charAt(0).toUpperCase() + mesActual.slice(1),
       attendanceTrend
     };
   }, [alumnos, clases]);
@@ -199,19 +214,19 @@ export const Reportes: React.FC<ReportesProps> = ({ alumnos, clases, grupos, vis
 
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-white p-6 rounded-[2rem] shadow-ios border border-black/5 space-y-1">
-              <p className="text-[10px] font-bold text-secondary uppercase tracking-widest">Total Alumnos</p>
+              <p className="text-[10px] font-bold text-secondary uppercase tracking-widest">Total Gimnastas</p>
               <h3 className="text-3xl font-bold text-black tracking-tight">{generalStats.totalAlumnos}</h3>
-              <div className="flex items-center gap-1 text-ios-green font-bold text-[10px] pt-1">
-                <span className="material-icons-outlined text-sm">trending_up</span>
-                <span>+12% este mes</span>
+              <div className="flex items-center gap-1 text-secondary font-bold text-[10px] pt-1">
+                <span className="material-icons-outlined text-sm">group</span>
+                <span>en la base de datos</span>
               </div>
             </div>
             <div className="bg-white p-6 rounded-[2rem] shadow-ios border border-black/5 space-y-1">
-              <p className="text-[10px] font-bold text-secondary uppercase tracking-widest">Al día</p>
-              <h3 className="text-3xl font-bold text-black tracking-tight">{generalStats.alumnosActivos}</h3>
-              <div className="flex items-center gap-1 text-ios-blue font-bold text-[10px] pt-1">
+              <p className="text-[10px] font-bold text-secondary uppercase tracking-widest">Pago {generalStats.mesActual}</p>
+              <h3 className="text-3xl font-bold text-ios-green tracking-tight">{generalStats.alumnosPagosEsteMes}</h3>
+              <div className="flex items-center gap-1 text-ios-green font-bold text-[10px] pt-1">
                 <span className="material-icons-outlined text-sm">check_circle</span>
-                <span>Pagos al día</span>
+                <span>cuotas registradas</span>
               </div>
             </div>
           </div>
@@ -437,11 +452,11 @@ export const Reportes: React.FC<ReportesProps> = ({ alumnos, clases, grupos, vis
               <h3 className="text-xs font-black uppercase tracking-widest border-b border-gray-200 pb-2">Estado de Matrícula</h3>
               <div className="space-y-2">
                 <div className="flex justify-between text-xs">
-                  <span className="font-medium">Al día</span>
-                  <span className="font-black">{generalStats.alumnosActivos}</span>
+                  <span className="font-medium">Pagaron {generalStats.mesActual}</span>
+                  <span className="font-black">{generalStats.alumnosPagosEsteMes}</span>
                 </div>
                 <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
-                  <div className="h-full bg-black" style={{ width: `${(generalStats.alumnosActivos / generalStats.totalAlumnos) * 100}%` }}></div>
+                  <div className="h-full bg-black" style={{ width: `${generalStats.totalAlumnos > 0 ? (generalStats.alumnosPagosEsteMes / generalStats.totalAlumnos) * 100 : 0}%` }}></div>
                 </div>
               </div>
             </section>

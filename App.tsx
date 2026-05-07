@@ -3049,6 +3049,7 @@ const App: React.FC = () => {
               setIsAddingAlumno={setIsAddingAlumno}
               studentForm={studentForm}
               setClaseGrupo={setClaseGrupo}
+              setClaseAgeRange={setClaseAgeRange}
             />
           )}
 
@@ -3082,8 +3083,8 @@ const App: React.FC = () => {
           />
         )}
 
-        {vista === 'AsistenciaLista' && (
-          <Asistencia 
+        {(vista === 'AsistenciaLista' || vista === 'RegistroAlumno') && (
+          <Asistencia
             vista={vista}
             setVista={setVista}
             activeGroup={activeGroup}
@@ -3141,6 +3142,7 @@ const App: React.FC = () => {
             setClaseGrupo={setClaseGrupo}
             setRegistrationStep={setRegistrationStep}
             setIsEditingClase={setIsEditingClase}
+            userRole={userRole || 'Coach'}
           />
         )}
 
@@ -3214,7 +3216,7 @@ const App: React.FC = () => {
           />
         )}
 
-        {(vista === 'Alumnos' || vista === 'RegistroAlumno' || vista === 'AlumnoDetalle') && (
+        {(vista === 'Alumnos' || vista === 'AlumnoDetalle') && (
           <Alumnos 
             vista={vista}
             setVista={(v: any) => { if (v === 'Alumnos') setAlumnosFilterMode('all'); setVista(v); }}

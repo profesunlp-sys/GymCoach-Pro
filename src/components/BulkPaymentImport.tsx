@@ -2,7 +2,33 @@ import React, { useState } from 'react';
 import * as XLSX from 'xlsx';
 import { collection, getDocs, doc, writeBatch, arrayUnion } from 'firebase/firestore';
 import { db } from '../../services/firebase';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
+
+type ImportedPayment = {
+  mes: string;
+  anio: number;
+  fechaPago: string;
+  monto: number;
+  importado: boolean;
+  categoria: string;
+};
+
+type ImportedStudent = {
+  id: string;
+  nombre: string;
+  dni?: string;
+  grupo?: string;
+  pagosMensuales?: ImportedPayment[];
+};
+
+type ImportedGroup = {
+  id: string;
+  nombre: string;
+  horario?: string;
+  dias?: string[] | string;
+};
+
+type PaymentMonth = { mes: string; anio: number };
 
 interface BulkPaymentImportProps {
   onComplete: (count: number) => void;
@@ -12,15 +38,17 @@ interface BulkPaymentImportProps {
 export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete, onCancel }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [stats, setStats] = useState<{ total: number, matched: number, alreadyRegistered: number, ignored: { row: any, reason: string }[] } | null>(null);
+  const [stats, setStats] = useState<{ total: number, matched: number, alreadyRegistered: number, ignored: { row: unknown[], reason: string }[] } | null>(null);
 
-  const normalizeText = (text: any) => {
+  const MONTHS = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+
+  const normalizeText = (text: unknown) => {
     if (text === null || text === undefined) return "";
     return text.toString().trim().toLowerCase()
       .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   };
 
-  const getMonthName = (dateInput: any) => {
+  const getMonthName = (dateInput: unknown): PaymentMonth | null => {
     try {
       if (!dateInput) return null;
       let date: Date;
@@ -29,36 +57,101 @@ export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete
       if (typeof dateInput === 'number') {
         // Si es un número pequeño (1-12), es el mes directo
         if (dateInput >= 1 && dateInput <= 12) {
-          const months = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
-          return { mes: months[dateInput - 1], anio: year };
+          return { mes: MONTHS[dateInput - 1], anio: year };
         }
-        // Si es un número grande, es fecha Excel
-        date = new Date((dateInput - 25569) * 86400 * 1000);
+        // Si es un número grande, es fecha Excel serial
+        // IMPORTANTE: usar UTC para evitar desfase de zona horaria (bug clásico)
+        const msUtc = (dateInput - 25569) * 86400 * 1000;
+        const d = new Date(msUtc);
+        return { mes: MONTHS[d.getUTCMonth()], anio: d.getUTCFullYear() };
       } else {
         const str = dateInput.toString().trim();
-        // Intentar detectar si es un mes escrito
+        // Detectar si es un mes escrito (ej: "Marzo 2026", "MARZO")
         const monthsLower = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
-        const monthsCapitalized = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
-        
-        const foundIndex = monthsLower.findIndex(m => str.toLowerCase().includes(m));
-        if (foundIndex !== -1) return { mes: monthsCapitalized[foundIndex], anio: year };
+        const normalizedDateText = normalizeText(str);
 
-        // Intentar detectar formato fecha DD/MM/YYYY
+        const foundIndex = monthsLower.findIndex(m => normalizedDateText.includes(m));
+        if (foundIndex !== -1) {
+          const yearMatch = str.match(/(20\d{2})/);
+          return { mes: MONTHS[foundIndex], anio: yearMatch ? parseInt(yearMatch[1], 10) : year };
+        }
+
+        // Formato DD/MM/YYYY o DD/MM/YY
         const parts = str.split('/');
         if (parts.length >= 2) {
-          const d = parseInt(parts[0]);
           const m = parseInt(parts[1]);
           const y = parts[2] ? parseInt(parts[2]) : year;
-          date = new Date(y, m - 1, d);
-        } else {
-          date = new Date(dateInput);
+          const fullYear = y < 100 ? 2000 + y : y;
+          if (m >= 1 && m <= 12) return { mes: MONTHS[m - 1], anio: fullYear };
         }
+
+        // Último recurso: Date nativa
+        date = new Date(str);
       }
 
-      if (isNaN(date.getTime())) return null;
-      const months = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
-      return { mes: months[date.getMonth()], anio: date.getFullYear() };
+      if (isNaN(date!.getTime())) return null;
+      return { mes: MONTHS[date!.getUTCMonth()], anio: date!.getUTCFullYear() };
     } catch (e) { return null; }
+  };
+
+  const isTargetGymnasticsActivity = (value: string) => {
+    const normalized = normalizeText(value);
+    // Filtro amplio: acepta cualquier fila que mencione gimnasia artística
+    // La oficina puede usar distintas denominaciones: GAF, GAI, G.A., Artística, etc.
+    return (
+      normalized.includes('gimnasia') ||
+      normalized.includes('gaf') ||
+      normalized.includes('g.a') ||
+      normalized.includes('artistica') ||
+      normalized.includes('artistico') ||
+      normalized.includes('gai')
+    );
+  };
+
+  const normalizeNameParts = (name: unknown) => {
+    return normalizeText(name)
+      .replace(/,/g, ' ')
+      .split(/\s+/)
+      .filter((part: string) => part.length > 2);
+  };
+
+  const findStudent = (allAlumnos: ImportedStudent[], rawName: unknown) => {
+    const normalizedInputName = normalizeText(rawName).replace(/,/g, ' ');
+    const inputParts = normalizeNameParts(rawName);
+    const inputDni = String(rawName ?? '').match(/\b\d{7,9}\b/)?.[0];
+
+    return allAlumnos.find((student: ImportedStudent) => {
+      const studentName = normalizeText(student.nombre).replace(/,/g, ' ');
+      const studentParts = normalizeNameParts(student.nombre);
+      const dniMatches = !!inputDni && student.dni === inputDni;
+      const exactNameMatches = studentName === normalizedInputName;
+      const allInputPartsMatch = inputParts.length > 0 && inputParts.every((part: string) => studentName.includes(part));
+      const allStudentPartsMatch = studentParts.length > 0 && studentParts.every((part: string) => normalizedInputName.includes(part));
+
+      return dniMatches || exactNameMatches || allInputPartsMatch || allStudentPartsMatch;
+    });
+  };
+
+  const findMonthInRow = (row: unknown[]) => {
+    for (const cell of row) {
+      const month = getMonthName(cell);
+      if (month) return month;
+    }
+    return null;
+  };
+
+  const isPaidCell = (cell: unknown) => {
+    const normalized = normalizeText(cell);
+    if (!normalized) return false;
+    return !['no', 'nop', 'debe', 'pendiente', 'sin pago', '0', 'false'].includes(normalized);
+  };
+
+  const getHeaderMonthColumns = (row: unknown[]) => {
+    return row.reduce<{ index: number; month: PaymentMonth }[]>((acc, cell, index) => {
+      const month = getMonthName(cell);
+      if (month) acc.push({ index, month });
+      return acc;
+    }, []);
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -81,21 +174,25 @@ export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete
         if (rows.length === 0) throw new Error('El archivo está vacío.');
 
         let headerRowIndex = -1;
-        let colIndices: Record<string, number> = { nombre: -1, mes: -1, monto: -1, fecha: -1, tramite: -1 };
+        let colIndices: Record<string, number> = { nombre: -1, mes: -1, monto: -1, fecha: -1, tramite: -1, actividad: -1 };
+        let monthColumns: { index: number; month: PaymentMonth }[] = [];
 
         for (let i = 0; i < Math.min(rows.length, 20); i++) {
           const row = rows[i];
           if (!row) continue;
           for (let j = 0; j < row.length; j++) {
             const cell = normalizeText(row[j]);
-            if (colIndices.nombre === -1 && (cell.includes('apellido') || cell.includes('nombre'))) colIndices.nombre = j;
-            if (colIndices.mes === -1 && (cell === 'mes' || cell.includes('cuota'))) colIndices.mes = j;
-            if (colIndices.monto === -1 && (cell.includes('importe') || cell.includes('monto'))) colIndices.monto = j;
-            if (colIndices.fecha === -1 && (cell.includes('fecha'))) colIndices.fecha = j;
-            if (colIndices.tramite === -1 && (cell.includes('tramite') || cell.includes('detalle'))) colIndices.tramite = j;
+            if (colIndices.nombre === -1 && (cell.includes('apellido') || cell.includes('nombre') || cell.includes('alumno') || cell.includes('gimnasta') || cell.includes('deportista'))) colIndices.nombre = j;
+            if (colIndices.mes === -1 && (cell === 'mes' || cell.includes('cuota') || cell.includes('periodo') || cell.includes('mensualidad'))) colIndices.mes = j;
+            if (colIndices.monto === -1 && (cell.includes('importe') || cell.includes('monto') || cell.includes('valor') || cell.includes('precio'))) colIndices.monto = j;
+            if (colIndices.fecha === -1 && (cell.includes('fecha') || cell.includes('pago'))) colIndices.fecha = j;
+            if (colIndices.tramite === -1 && (cell.includes('tramite') || cell.includes('detalle') || cell.includes('concepto') || cell.includes('descripcion'))) colIndices.tramite = j;
+            if (colIndices.actividad === -1 && (cell.includes('actividad') || cell.includes('disciplina') || cell.includes('categoria'))) colIndices.actividad = j;
           }
-          if (colIndices.nombre !== -1 && (colIndices.mes !== -1 || colIndices.fecha !== -1)) {
+          const detectedMonthColumns = getHeaderMonthColumns(row);
+          if (colIndices.nombre !== -1 && (colIndices.mes !== -1 || colIndices.fecha !== -1 || detectedMonthColumns.length > 0)) {
             headerRowIndex = i;
+            monthColumns = detectedMonthColumns;
             break;
           }
         }
@@ -105,44 +202,48 @@ export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete
         const dataRows = rows.slice(headerRowIndex + 1).filter(r => r[colIndices.nombre]);
         const batch = writeBatch(db);
         let matchedCount = 0;
-        const ignoredRows: { row: any, reason: string }[] = [];
+        const ignoredRows: { row: unknown[], reason: string }[] = [];
 
         const alumnosSnap = await getDocs(collection(db, 'alumnos'));
-        const allAlumnos = alumnosSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
-        
+        const allAlumnos = alumnosSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as ImportedStudent));
+
         const gruposSnap = await getDocs(collection(db, 'grupos'));
-        const allGrupos = gruposSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+        const allGrupos = gruposSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as ImportedGroup));
 
         const currentYear = new Date().getFullYear();
         let alreadyRegisteredCount = 0;
 
-        const studentPaymentsMap: Record<string, any[]> = {};
+        const studentPaymentsMap: Record<string, ImportedPayment[]> = {};
         const studentGroupUpdates: Record<string, string> = {};
-        const studentRefs: Record<string, any> = {};
+        const studentRefs: Record<string, ReturnType<typeof doc>> = {};
 
         for (const rowData of dataRows) {
-          const tramiteValue = colIndices.tramite !== -1 ? normalizeText(rowData[colIndices.tramite]) : "";
-          
-          // FILTRO FLEXIBLE: Gimnasia Artística, Gim. Artística, G. Artística, etc.
-          const isGymnastics = tramiteValue.includes("gimnasia artistica") || 
-                              (tramiteValue.includes("gimnasia") && tramiteValue.includes("infantil")) ||
-                              tramiteValue.includes("g.a.i");
-          
-          if (!isGymnastics) continue;
+          const activityCells = [
+            colIndices.actividad !== -1 ? rowData[colIndices.actividad] : '',
+            colIndices.tramite !== -1 ? rowData[colIndices.tramite] : '',
+            rowData.join(' '),
+            sheetName
+          ];
+          const activityValue = activityCells.map((cell) => normalizeText(cell)).join(' ');
+
+          // FILTRO FLEXIBLE: solo procesa pagos de Gimnasia Artística Infantil aunque el Excel lo nombre como
+          // Actividad, Disciplina, Concepto, Detalle, Trámite o Descripción.
+          if (!isTargetGymnasticsActivity(activityValue)) continue;
 
           const nameValue = rowData[colIndices.nombre];
           let mesData = colIndices.mes !== -1 ? getMonthName(rowData[colIndices.mes]) : null;
           if (!mesData && colIndices.fecha !== -1) mesData = getMonthName(rowData[colIndices.fecha]);
+          if (!mesData) mesData = findMonthInRow(rowData);
 
-          if (!nameValue || !mesData) continue;
+          const monthsToRegister = mesData
+            ? [mesData]
+            : monthColumns
+                .filter(({ index }) => isPaidCell(rowData[index]))
+                .map(({ month }) => month);
 
-          const normalizedInputName = normalizeText(nameValue);
-          
-          const student = allAlumnos.find(a => {
-            const sn = normalizeText(a.nombre);
-            const inputParts = normalizedInputName.split(' ').filter(p => p.length > 2);
-            return sn === normalizedInputName || (inputParts.length > 0 && inputParts.every(part => sn.includes(part)));
-          });
+          if (!nameValue || monthsToRegister.length === 0) continue;
+
+          const student = findStudent(allAlumnos, nameValue);
 
           if (student) {
             // DETECCION DE GRUPO: Intentamos encontrar si el tramite describe un grupo existente
@@ -150,18 +251,19 @@ export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete
             for (const g of allGrupos) {
               const gNameNorm = normalizeText(g.nombre);
               const gHorarioNorm = normalizeText(g.horario);
-              const gDiasNorm = (g.dias || []).map((d: string) => normalizeText(d));
-              
+              const groupDays = Array.isArray(g.dias) ? g.dias : String(g.dias || '').split(/[,y]+/);
+              const gDiasNorm = groupDays.map((d: string) => normalizeText(d)).filter(Boolean);
+
               // Si el trámite contiene el nombre del grupo
-              if (gNameNorm.length > 5 && tramiteValue.includes(gNameNorm)) {
+              if (gNameNorm.length > 5 && activityValue.includes(gNameNorm)) {
                 matchedGrupoName = g.nombre;
                 break;
               }
-              
+
               // Si el trámite contiene los días Y el horario
-              const containsHorario = gHorarioNorm.length > 2 && tramiteValue.includes(gHorarioNorm);
-              const containsAllDias = gDiasNorm.length > 0 && gDiasNorm.every((d: string) => tramiteValue.includes(d));
-              
+              const containsHorario = gHorarioNorm.length > 2 && activityValue.includes(gHorarioNorm);
+              const containsAllDias = gDiasNorm.length > 0 && gDiasNorm.every((d: string) => activityValue.includes(d));
+
               if (containsHorario && containsAllDias) {
                 matchedGrupoName = g.nombre;
                 break;
@@ -172,33 +274,35 @@ export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete
               studentGroupUpdates[student.id] = matchedGrupoName;
             }
 
-            // Evitar duplicados: Verificamos si el alumno ya tiene este mes/año pagado en su historial
-            const yaRegistrado = student.pagosMensuales?.some((p: any) => 
-              p.mes?.toLowerCase() === mesData.mes.toLowerCase() && p.anio === mesData.anio
-            );
-            
-            // También verificamos si ya lo procesamos en esta misma planilla
-            const yaProcesadoEnBatch = studentPaymentsMap[student.id]?.some((p: any) => 
-              p.mes?.toLowerCase() === mesData.mes.toLowerCase() && p.anio === mesData.anio
-            );
+            for (const paymentMonth of monthsToRegister) {
+              // Evitar duplicados: Verificamos si el alumno ya tiene este mes/año pagado en su historial
+              const yaRegistrado = student.pagosMensuales?.some((p: ImportedPayment) =>
+                p.mes?.toLowerCase() === paymentMonth.mes.toLowerCase() && p.anio === paymentMonth.anio
+              );
 
-            if (!yaRegistrado && !yaProcesadoEnBatch) {
-              if (!studentPaymentsMap[student.id]) {
-                studentPaymentsMap[student.id] = [];
-                studentRefs[student.id] = doc(db, 'alumnos', student.id);
+              // También verificamos si ya lo procesamos en esta misma planilla
+              const yaProcesadoEnBatch = studentPaymentsMap[student.id]?.some((p: ImportedPayment) =>
+                p.mes?.toLowerCase() === paymentMonth.mes.toLowerCase() && p.anio === paymentMonth.anio
+              );
+
+              if (!yaRegistrado && !yaProcesadoEnBatch) {
+                if (!studentPaymentsMap[student.id]) {
+                  studentPaymentsMap[student.id] = [];
+                  studentRefs[student.id] = doc(db, 'alumnos', student.id);
+                }
+
+                studentPaymentsMap[student.id].push({
+                  mes: paymentMonth.mes,
+                  anio: paymentMonth.anio || currentYear,
+                  fechaPago: new Date().toISOString(),
+                  monto: colIndices.monto !== -1 ? parseFloat(String(rowData[colIndices.monto])) || 0 : 0,
+                  importado: true,
+                  categoria: String(rowData[colIndices.actividad] || rowData[colIndices.tramite] || sheetName || "Gimnasia Artística Infantil")
+                });
+                matchedCount++;
+              } else {
+                alreadyRegisteredCount++;
               }
-
-              studentPaymentsMap[student.id].push({
-                mes: mesData.mes,
-                anio: mesData.anio || currentYear,
-                fechaPago: new Date().toISOString(),
-                monto: colIndices.monto !== -1 ? parseFloat(rowData[colIndices.monto]) || 0 : 0,
-                importado: true,
-                categoria: rowData[colIndices.tramite] || "Gimnasia Artística"
-              });
-              matchedCount++;
-            } else {
-              alreadyRegisteredCount++;
             }
           } else {
             ignoredRows.push({ row: rowData, reason: `No se encontró a: "${nameValue}"` });
@@ -207,10 +311,10 @@ export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete
 
         // Aplicamos todos los pagos agrupados por alumno
         for (const studentId in studentPaymentsMap) {
-          const updateData: any = {
+          const updateData: { pagosMensuales: ReturnType<typeof arrayUnion>; grupo?: string } = {
             pagosMensuales: arrayUnion(...studentPaymentsMap[studentId])
           };
-          
+
           if (studentGroupUpdates[studentId]) {
             updateData.grupo = studentGroupUpdates[studentId];
           }
@@ -245,7 +349,7 @@ export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete
           <div className="bg-ios-blue text-white p-3 rounded-xl"><span className="material-icons-outlined">verified_user</span></div>
           <button onClick={onCancel} className="text-secondary"><span className="material-icons-outlined">close</span></button>
         </div>
-        
+
         <div>
           <h2 className="text-xl font-bold">Importar Gimnasia Artística</h2>
           <p className="text-xs text-secondary italic">Filtrando automáticamente solo pagos de Gimnasia Infantil.</p>
@@ -264,7 +368,7 @@ export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete
                 <div className="text-2xl font-bold text-ios-blue">{stats.alreadyRegistered}</div>
                 <div className="text-[9px] uppercase text-ios-blue/70 font-bold">Ya estaban</div>
               </div>
-              <button 
+              <button
                 onClick={() => setShowIgnored(!showIgnored)}
                 className={`p-3 rounded-2xl text-center border transition-all ${showIgnored ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-100 hover:bg-gray-100'}`}
               >
@@ -273,7 +377,28 @@ export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete
               </button>
             </div>
 
-           
+            <AnimatePresence>
+              {showIgnored && stats.ignored.length > 0 && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="overflow-hidden"
+                >
+                  <div className="bg-gray-50 rounded-2xl p-4 border border-black/5 max-h-48 overflow-y-auto">
+                    <p className="text-[10px] font-bold text-secondary uppercase mb-2">No se encontraron estos nombres:</p>
+                    <div className="space-y-1">
+                      {stats.ignored.map((item, idx) => (
+                        <div key={idx} className="text-xs text-black border-b border-black/5 pb-1 last:border-0 flex justify-between">
+                          <span>{String(item.row[0] || 'Sin nombre')}</span>
+                          <span className="text-[9px] text-red-400 italic">No existe en base</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             <p className="text-[11px] text-center text-secondary leading-tight px-4">
               Los redondelitos de los alumnos vinculados ahora aparecerán marcados en el panel de pagos.

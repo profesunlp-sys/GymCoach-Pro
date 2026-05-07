@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Alumno, GrupoConfig, ViewMode, AsistenciaRecord, Clase } from '../../types';
@@ -61,6 +62,7 @@ interface AsistenciaProps {
   setClaseGrupo: (grupo: string) => void;
   setRegistrationStep: (step: number) => void;
   setIsEditingClase: (val: boolean) => void;
+  userRole?: string;
 }
 
 export const Asistencia: React.FC<AsistenciaProps> = ({
@@ -120,7 +122,8 @@ export const Asistencia: React.FC<AsistenciaProps> = ({
   setSelectedAlumno,
   setClaseGrupo,
   setRegistrationStep,
-  setIsEditingClase
+  setIsEditingClase,
+  userRole
 }) => {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const currentMonth = new Date().getMonth() + 1;
@@ -204,8 +207,8 @@ export const Asistencia: React.FC<AsistenciaProps> = ({
               <input type="date" className="w-full bg-ios-gray rounded-xl px-4 py-4 text-sm text-black outline-none focus:border-primary/20" value={studentForm.fechaPrimeraClase || ''} onChange={(e) => setStudentForm({...studentForm, fechaPrimeraClase: e.target.value})}/>
             </div>
           </div>
-          <button 
-            onClick={handleSaveStudent} 
+          <button
+            onClick={handleSaveStudent}
             disabled={isSavingStudent}
             className="w-full py-5 rounded-3xl bg-ios-blue text-white font-bold uppercase tracking-[0.2em] text-sm shadow-ios active:scale-95 transition-all disabled:opacity-50"
           >
@@ -223,11 +226,11 @@ export const Asistencia: React.FC<AsistenciaProps> = ({
           <button onClick={() => setVista('AsistenciaLista')} className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 hover:bg-slate-200 transition-all">
             <span className="material-icons-outlined">arrow_back</span>
           </button>
-          
+
           <div className="flex items-center gap-4">
             <div className="flex bg-slate-100 p-1 rounded-xl border-2 border-black">
-              <select 
-                value={reportMonth} 
+              <select
+                value={reportMonth}
                 onChange={(e) => {
                   const m = parseInt(e.target.value);
                   setReportMonth(m);
@@ -239,8 +242,8 @@ export const Asistencia: React.FC<AsistenciaProps> = ({
                   <option key={i} value={i}>{m}</option>
                 ))}
               </select>
-              <select 
-                value={reportYear} 
+              <select
+                value={reportYear}
                 onChange={(e) => {
                   const y = parseInt(e.target.value);
                   setReportYear(y);
@@ -253,7 +256,7 @@ export const Asistencia: React.FC<AsistenciaProps> = ({
                 ))}
               </select>
             </div>
-            <button 
+            <button
               onClick={() => window.print()}
               className="bg-black text-white px-6 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest flex items-center gap-2 hover:scale-105 active:scale-95 transition-all"
             >
@@ -347,7 +350,7 @@ export const Asistencia: React.FC<AsistenciaProps> = ({
           <p className="text-secondary text-sm font-medium px-1">
             Por favor, seleccioná un grupo para comenzar a tomar asistencia hoy.
           </p>
-          
+
           <div className="grid grid-cols-1 gap-3">
             {grupos.map(g => (
               <motion.button
@@ -384,14 +387,13 @@ export const Asistencia: React.FC<AsistenciaProps> = ({
 
   return (
     <div className="page-transition flex flex-col min-h-screen relative bg-ios-gray">
-      {/* Header Sticky */}
-      <header className="px-6 py-4 flex flex-col gap-4 bg-ios-gray sticky top-0 z-40 border-b border-black/5">
+      <header className="px-6 py-4 flex flex-col gap-4 bg-ios-gray sticky top-12 z-40">
         <div className="flex items-center justify-between">
           <button onClick={() => setVista('Dashboard')} className="w-10 h-10 flex items-center justify-center rounded-full bg-white shadow-sm border border-black/5 text-primary">
             <span className="material-symbols-outlined text-[20px]">arrow_back_ios_new</span>
           </button>
           <h1 className="text-sm font-bold tracking-widest uppercase text-secondary">Asistencia</h1>
-          <button 
+          <button
             onClick={() => {
               loadMonthlyReport(activeGroup.nombre, reportMonth, reportYear);
               setVista('ReportePDF');
@@ -406,7 +408,7 @@ export const Asistencia: React.FC<AsistenciaProps> = ({
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-3xl font-bold text-black tracking-tight leading-none">{activeGroup.nombre}</h2>
-              <button 
+              <button
                 onClick={() => {
                   setEditingGroup(activeGroup);
                   setNewGroupName(activeGroup.nombre);
@@ -433,45 +435,58 @@ export const Asistencia: React.FC<AsistenciaProps> = ({
             </div>
           </div>
         </div>
+
       </header>
 
-      {/* Barra de Herramientas (Botones + Búsqueda) - Corregido para no solaparse */}
-      <div className="px-6 py-4 bg-ios-gray sticky top-[140px] md:top-[130px] z-30 space-y-3">
-        
-        {/* Fila de Botones de Acción */}
-        <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1">
-          <button 
-            onClick={() => setIsImportModalOpen(true)}
-            className="flex-shrink-0 flex items-center gap-2 px-5 py-3.5 rounded-2xl bg-white shadow-md border border-black/5 text-ios-green text-[10px] font-bold uppercase tracking-widest active:scale-95 transition-all whitespace-nowrap"
+      <main className="flex-1 overflow-y-auto px-6 py-2 space-y-4 pb-48">
+        {/* Botones de acción */}
+        <div className="grid grid-cols-2 gap-2 pt-2">
+          <button
+            onClick={() => handleNavigation('RegistroAlumno')}
+            className="flex items-center justify-center gap-2 px-3 py-3.5 rounded-2xl bg-white shadow-sm border border-black/5 text-primary text-[10px] font-bold uppercase tracking-widest active:scale-95 transition-all"
           >
-            <span className="material-icons-outlined text-sm">receipt_long</span>
-            Importar Pagos
+            <span className="material-icons-outlined text-base">person_add</span>
+            Agregar
           </button>
-
-          <button 
+          <button
             onClick={handleAIAnalysis}
-            className="flex-shrink-0 flex items-center gap-2 px-5 py-3.5 rounded-2xl bg-white shadow-md border border-black/5 text-ios-orange text-[10px] font-bold uppercase tracking-widest active:scale-95 transition-all whitespace-nowrap"
+            className="flex items-center justify-center gap-2 px-3 py-3.5 rounded-2xl bg-white shadow-sm border border-black/5 text-ios-orange text-[10px] font-bold uppercase tracking-widest active:scale-95 transition-all"
           >
-            <span className="material-icons-outlined text-sm">psychology</span>
+            <span className="material-icons-outlined text-base">psychology</span>
             Asistente IA
+          </button>
+          {userRole === 'Coordinator' && (
+            <button
+              onClick={() => setIsImportModalOpen(true)}
+              className="flex items-center justify-center gap-2 px-3 py-3.5 rounded-2xl bg-white shadow-sm border border-black/5 text-ios-green text-[10px] font-bold uppercase tracking-widest active:scale-95 transition-all"
+            >
+              <span className="material-icons-outlined text-base">receipt_long</span>
+              Importar Pagos
+            </button>
+          )}
+          <button
+            onClick={() => {
+              const element = document.getElementById('recent-classes-section');
+              element?.scrollIntoView({ behavior: 'smooth' });
+            }}
+            className="flex items-center justify-center gap-2 px-3 py-3.5 rounded-2xl bg-white shadow-sm border border-black/5 text-secondary text-[10px] font-bold uppercase tracking-widest active:scale-95 transition-all"
+          >
+            <span className="material-icons-outlined text-base">history</span>
+            Clases
           </button>
         </div>
 
-        {/* Fila de Búsqueda */}
+        {/* Buscador */}
         <div className="relative group">
           <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-secondary text-xl group-focus-within:text-primary transition-colors">search</span>
-          <input 
+          <input
             className="w-full bg-white border border-black/5 rounded-2xl pl-12 pr-4 py-4 text-sm text-black outline-none focus:border-primary/20 shadow-sm transition-all"
-            placeholder="Buscar gimnasta..." 
+            placeholder="Buscar gimnasta..."
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
-      </div>
-
-      {/* Lista de Alumnos */}
-      <main className="flex-1 overflow-y-auto px-6 py-2 space-y-3 pb-32">
         {filteredAlumnos.length > 0 ? filteredAlumnos.map(alumno => {
           const hasAlerts = alumno.alertas && alumno.alertas.length > 0 && alumno.alertas[0] !== '';
           const isExpanded = expandedAlumnoId === alumno.id;
@@ -479,15 +494,15 @@ export const Asistencia: React.FC<AsistenciaProps> = ({
           return (
             <div key={alumno.id} className={`flex flex-col p-4 rounded-3xl bg-white shadow-ios border border-black/5 transition-all duration-300 ${!asistenciasHoy[alumno.id!] ? 'opacity-50 grayscale select-none' : 'opacity-100'}`}>
               <div className="flex items-center justify-between">
-                <div 
+                <div
                   className="flex items-center gap-4 cursor-pointer flex-1"
                   onClick={() => setExpandedAlumnoId(isExpanded ? null : alumno.id!)}
                 >
                   <div className="relative">
                     <div className="w-12 h-12 rounded-2xl bg-ios-gray flex items-center justify-center overflow-hidden border border-black/5">
-                      <img 
-                        alt="Avatar" 
-                        className="w-full h-full object-cover" 
+                      <img
+                        alt="Avatar"
+                        className="w-full h-full object-cover"
                         src={`https://ui-avatars.com/api/?name=${encodeURIComponent(alumno.nombre)}&background=F2F2F7&color=1C1C1E&size=128`}
                         referrerPolicy="no-referrer"
                       />
@@ -504,13 +519,13 @@ export const Asistencia: React.FC<AsistenciaProps> = ({
                     <p className="text-[10px] font-bold uppercase tracking-widest mt-2 text-secondary">{alumno.nivel}</p>
                   </div>
                 </div>
-                
+
                 <div className="flex items-center gap-4">
                   <div className="flex flex-col items-center gap-1">
                     <span className="text-[8px] font-bold text-secondary uppercase tracking-tighter">
                       PAGO {new Date().toLocaleString('es-ES', { month: 'short' }).toUpperCase()}
                     </span>
-                    <button 
+                    <button
                       onClick={() => togglePayment(alumno.id!)}
                       className={`w-6 h-6 rounded-md border flex items-center justify-center transition-all ${pagosHoy[alumno.id!] ? 'bg-ios-green border-transparent text-white' : 'bg-ios-gray border-black/5 text-transparent'}`}
                     >
@@ -519,9 +534,9 @@ export const Asistencia: React.FC<AsistenciaProps> = ({
                   </div>
 
                   <label className="relative inline-flex items-center cursor-pointer">
-                    <input 
-                      type="checkbox" 
-                      className="sr-only peer" 
+                    <input
+                      type="checkbox"
+                      className="sr-only peer"
                       checked={asistenciasHoy[alumno.id!] || false}
                       onChange={() => toggleAttendance(alumno.id!)}
                     />
@@ -547,7 +562,7 @@ export const Asistencia: React.FC<AsistenciaProps> = ({
                   )}
 
                   <div className="grid grid-cols-2 gap-3">
-                    <button 
+                    <button
                       onClick={() => {
                         setSelectedAlumno(alumno);
                         handleNavigation('AlumnoDetalle');
@@ -571,7 +586,7 @@ export const Asistencia: React.FC<AsistenciaProps> = ({
               <h3 className="text-white font-black text-lg uppercase tracking-tight leading-tight">Este grupo está vacío</h3>
               <p className="text-white/40 text-xs leading-relaxed">No hay alumnas asignadas a <span className="text-primary font-bold">{activeGroup.nombre}</span> todavía.</p>
             </div>
-            <button 
+            <button
               onClick={() => handleNavigation('RegistroAlumno')}
               className="px-8 py-4 bg-primary text-antigravity-black font-black uppercase text-[10px] tracking-[0.2em] rounded-2xl shadow-neon-cyan hover:scale-105 active:scale-95 transition-all"
             >
@@ -580,13 +595,13 @@ export const Asistencia: React.FC<AsistenciaProps> = ({
           </div>
         )}
 
-        <div id="recent-classes-section" className="pt-2 space-y-3">
+        <div id="recent-classes-section" className="pt-8 space-y-6">
           <div className="flex items-center justify-between px-2">
             <h3 className="text-xs font-bold text-secondary uppercase tracking-widest">Historial de Clases</h3>
             <span className="text-[10px] font-bold text-primary uppercase tracking-widest">{asistenciasClase.length} Sesiones</span>
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-3">
             {isLoadingAsistenciasClase ? (
               <div className="flex justify-center py-10">
                 <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
@@ -608,13 +623,13 @@ export const Asistencia: React.FC<AsistenciaProps> = ({
                       </div>
                     </div>
                     <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all">
-                      <button 
+                      <button
                         onClick={() => handleEditAsistencia(asistencia)}
                         className="w-10 h-10 rounded-full bg-ios-gray flex items-center justify-center text-secondary hover:text-primary transition-all"
                       >
                         <span className="material-icons-outlined text-sm">edit</span>
                       </button>
-                      <button 
+                      <button
                         onClick={() => handleDeleteAsistencia(asistencia)}
                         className="w-10 h-10 rounded-full bg-ios-red/10 flex items-center justify-center text-ios-red"
                       >
@@ -623,15 +638,15 @@ export const Asistencia: React.FC<AsistenciaProps> = ({
                     </div>
                   </div>
                 ))}
-                <div className="pt-1 px-2 pb-4">
-                  <button 
+                <div className="pt-4 px-2">
+                  <button
                     onClick={() => {
                       setClaseGrupo(activeGroup.nombre);
                       setIsEditingClase(false);
                       setRegistrationStep(2);
                       setVista('NuevaClase');
                     }}
-                    className="w-full py-4 rounded-3xl bg-secondary/10 text-secondary border border-secondary/20 font-bold uppercase tracking-widest text-xs flex items-center justify-center gap-2 active:scale-95 transition-all"
+                    className="w-full py-5 rounded-3xl bg-secondary/10 text-secondary border border-secondary/20 font-bold uppercase tracking-widest text-xs flex items-center justify-center gap-2 active:scale-95 transition-all"
                   >
                     <span className="material-icons-outlined text-base">add_task</span>
                     Nueva entrada de clase
@@ -643,7 +658,7 @@ export const Asistencia: React.FC<AsistenciaProps> = ({
                 <span className="text-secondary text-[10px] font-bold uppercase tracking-widest">
                   No hay registros de clases anteriores
                 </span>
-                <button 
+                <button
                   onClick={() => {
                     setClaseGrupo(activeGroup.nombre);
                     setIsEditingClase(false);
@@ -661,9 +676,10 @@ export const Asistencia: React.FC<AsistenciaProps> = ({
       </main>
 
       {isImportModalOpen && (
-        <BulkPaymentImport 
+        <BulkPaymentImport
           onComplete={(count) => {
             setIsImportModalOpen(false);
+            // We could add a notification here if we had access to the setNotificacion prop
           }}
           onCancel={() => setIsImportModalOpen(false)}
         />

@@ -776,6 +776,8 @@ export const Clases: React.FC<ClasesProps> = ({
                 const group = grupos.find(g => g.nombre === claseGrupo);
                 if (group && group.rangoEdad) {
                   setClaseAgeRange(group.rangoEdad);
+                  setRegistrationStep(3);
+                  return;
                 }
               }
               if (registrationStep === 8) {
