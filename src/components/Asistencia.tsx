@@ -62,6 +62,7 @@ interface AsistenciaProps {
   setClaseGrupo: (grupo: string) => void;
   setRegistrationStep: (step: number) => void;
   setIsEditingClase: (val: boolean) => void;
+  userRole?: string;
 }
 
 export const Asistencia: React.FC<AsistenciaProps> = ({
@@ -121,7 +122,8 @@ export const Asistencia: React.FC<AsistenciaProps> = ({
   setSelectedAlumno,
   setClaseGrupo,
   setRegistrationStep,
-  setIsEditingClase
+  setIsEditingClase,
+  userRole
 }) => {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const currentMonth = new Date().getMonth() + 1;
@@ -434,32 +436,47 @@ export const Asistencia: React.FC<AsistenciaProps> = ({
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-2 pt-2" aria-label="Acciones rápidas de asistencia">
+      </header>
+
+      <main className="flex-1 overflow-y-auto px-6 py-2 space-y-4 pb-48">
+        {/* Botones de acción */}
+        <div className="grid grid-cols-2 gap-2 pt-2">
           <button
             onClick={() => handleNavigation('RegistroAlumno')}
-            className="min-h-[54px] flex flex-col items-center justify-center gap-1 px-1.5 py-2 rounded-2xl bg-white shadow-sm border border-black/5 text-primary text-center text-[8px] font-black uppercase tracking-tight leading-[1.05] active:scale-95 transition-all overflow-hidden"
+            className="flex items-center justify-center gap-2 px-3 py-3.5 rounded-2xl bg-white shadow-sm border border-black/5 text-primary text-[10px] font-bold uppercase tracking-widest active:scale-95 transition-all"
           >
-            <span className="material-icons-outlined text-base leading-none">person_add</span>
-            <span className="block max-w-full break-words">Agregar Gimnasta</span>
-          </button>
-          <button
-            onClick={() => setIsImportModalOpen(true)}
-            className="min-h-[54px] flex flex-col items-center justify-center gap-1 px-1.5 py-2 rounded-2xl bg-white shadow-sm border border-black/5 text-ios-green text-center text-[8px] font-black uppercase tracking-tight leading-[1.05] active:scale-95 transition-all overflow-hidden"
-          >
-            <span className="material-icons-outlined text-base leading-none">receipt_long</span>
-            <span className="block max-w-full break-words">Importar Pagos</span>
+            <span className="material-icons-outlined text-base">person_add</span>
+            Agregar
           </button>
           <button
             onClick={handleAIAnalysis}
-            className="min-h-[54px] flex flex-col items-center justify-center gap-1 px-1.5 py-2 rounded-2xl bg-white shadow-sm border border-black/5 text-ios-orange text-center text-[8px] font-black uppercase tracking-tight leading-[1.05] active:scale-95 transition-all overflow-hidden"
+            className="flex items-center justify-center gap-2 px-3 py-3.5 rounded-2xl bg-white shadow-sm border border-black/5 text-ios-orange text-[10px] font-bold uppercase tracking-widest active:scale-95 transition-all"
           >
-            <span className="material-icons-outlined text-base leading-none">psychology</span>
-            <span className="block max-w-full break-words">Asistente IA</span>
+            <span className="material-icons-outlined text-base">psychology</span>
+            Asistente IA
+          </button>
+          {userRole === 'Coordinator' && (
+            <button
+              onClick={() => setIsImportModalOpen(true)}
+              className="flex items-center justify-center gap-2 px-3 py-3.5 rounded-2xl bg-white shadow-sm border border-black/5 text-ios-green text-[10px] font-bold uppercase tracking-widest active:scale-95 transition-all"
+            >
+              <span className="material-icons-outlined text-base">receipt_long</span>
+              Importar Pagos
+            </button>
+          )}
+          <button
+            onClick={() => {
+              const element = document.getElementById('recent-classes-section');
+              element?.scrollIntoView({ behavior: 'smooth' });
+            }}
+            className="flex items-center justify-center gap-2 px-3 py-3.5 rounded-2xl bg-white shadow-sm border border-black/5 text-secondary text-[10px] font-bold uppercase tracking-widest active:scale-95 transition-all"
+          >
+            <span className="material-icons-outlined text-base">history</span>
+            Clases
           </button>
         </div>
-      </header>
 
-      <div className="px-6 pt-2 pb-4">
+        {/* Buscador */}
         <div className="relative group">
           <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-secondary text-xl group-focus-within:text-primary transition-colors">search</span>
           <input
@@ -470,9 +487,6 @@ export const Asistencia: React.FC<AsistenciaProps> = ({
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
-      </div>
-
-      <main className="flex-1 overflow-y-auto px-6 py-2 space-y-4 pb-32">
         {filteredAlumnos.length > 0 ? filteredAlumnos.map(alumno => {
           const hasAlerts = alumno.alertas && alumno.alertas.length > 0 && alumno.alertas[0] !== '';
           const isExpanded = expandedAlumnoId === alumno.id;
