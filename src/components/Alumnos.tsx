@@ -1109,12 +1109,19 @@ const Alumnos: React.FC<AlumnosProps> = ({
                 </div>
               </div>
               <div className="flex gap-3 pt-4">
-                <motion.button 
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => { setIsAddingSkill(false); setEditingSkillId(null); }}
+                  className="flex-1 py-5 rounded-[1.2rem] bg-ios-gray border border-black/10 text-secondary text-sm font-bold"
+                >
+                  Cancelar
+                </motion.button>
+                <motion.button
                   whileTap={{ scale: 0.95 }}
                   onClick={handleSaveSkill}
                   className="flex-1 py-5 rounded-[1.2rem] bg-ios-blue text-white text-sm font-bold shadow-lg"
                 >
-                  Guardar Habilidad
+                  Guardar
                 </motion.button>
               </div>
             </motion.div>

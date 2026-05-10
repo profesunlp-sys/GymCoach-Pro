@@ -3,6 +3,7 @@ import * as XLSX from 'xlsx';
 import { collection, getDocs, doc, writeBatch, arrayUnion } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { motion, AnimatePresence } from 'motion/react';
+import { normalizeText, normalizeNameParts, findStudentByName } from '../../utils/stringUtils';
 
 type ImportedPayment = {
   mes: string;
@@ -42,11 +43,7 @@ export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete
 
   const MONTHS = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 
-  const normalizeText = (text: unknown) => {
-    if (text === null || text === undefined) return "";
-    return text.toString().trim().toLowerCase()
-      .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-  };
+  // normalizeText, normalizeNameParts and findStudentByName are imported from utils/stringUtils
 
   const getMonthName = (dateInput: unknown): PaymentMonth | null => {
     try {
@@ -108,29 +105,8 @@ export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete
     );
   };
 
-  const normalizeNameParts = (name: unknown) => {
-    return normalizeText(name)
-      .replace(/,/g, ' ')
-      .split(/\s+/)
-      .filter((part: string) => part.length > 2);
-  };
-
-  const findStudent = (allAlumnos: ImportedStudent[], rawName: unknown) => {
-    const normalizedInputName = normalizeText(rawName).replace(/,/g, ' ');
-    const inputParts = normalizeNameParts(rawName);
-    const inputDni = String(rawName ?? '').match(/\b\d{7,9}\b/)?.[0];
-
-    return allAlumnos.find((student: ImportedStudent) => {
-      const studentName = normalizeText(student.nombre).replace(/,/g, ' ');
-      const studentParts = normalizeNameParts(student.nombre);
-      const dniMatches = !!inputDni && student.dni === inputDni;
-      const exactNameMatches = studentName === normalizedInputName;
-      const allInputPartsMatch = inputParts.length > 0 && inputParts.every((part: string) => studentName.includes(part));
-      const allStudentPartsMatch = studentParts.length > 0 && studentParts.every((part: string) => normalizedInputName.includes(part));
-
-      return dniMatches || exactNameMatches || allInputPartsMatch || allStudentPartsMatch;
-    });
-  };
+  const findStudent = (allAlumnos: ImportedStudent[], rawName: unknown) =>
+    findStudentByName(allAlumnos, rawName);
 
   const findMonthInRow = (row: unknown[]) => {
     for (const cell of row) {
@@ -167,174 +143,176 @@ export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete
       try {
         const data = new Uint8Array(event.target?.result as ArrayBuffer);
         const workbook = XLSX.read(data, { type: 'array' });
-        const sheetName = workbook.SheetNames.find(n => n.toUpperCase().includes("PAGOS") || n.toUpperCase().includes("CONTROL")) || workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-        const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
 
-        if (rows.length === 0) throw new Error('El archivo está vacío.');
+        if (workbook.SheetNames.length === 0) throw new Error('El archivo no contiene hojas.');
 
-        let headerRowIndex = -1;
-        let colIndices: Record<string, number> = { nombre: -1, mes: -1, monto: -1, fecha: -1, tramite: -1, actividad: -1 };
-        let monthColumns: { index: number; month: PaymentMonth }[] = [];
-
-        for (let i = 0; i < Math.min(rows.length, 20); i++) {
-          const row = rows[i];
-          if (!row) continue;
-          for (let j = 0; j < row.length; j++) {
-            const cell = normalizeText(row[j]);
-            if (colIndices.nombre === -1 && (cell.includes('apellido') || cell.includes('nombre') || cell.includes('alumno') || cell.includes('gimnasta') || cell.includes('deportista'))) colIndices.nombre = j;
-            if (colIndices.mes === -1 && (cell === 'mes' || cell.includes('cuota') || cell.includes('periodo') || cell.includes('mensualidad'))) colIndices.mes = j;
-            if (colIndices.monto === -1 && (cell.includes('importe') || cell.includes('monto') || cell.includes('valor') || cell.includes('precio'))) colIndices.monto = j;
-            if (colIndices.fecha === -1 && (cell.includes('fecha') || cell.includes('pago'))) colIndices.fecha = j;
-            if (colIndices.tramite === -1 && (cell.includes('tramite') || cell.includes('detalle') || cell.includes('concepto') || cell.includes('descripcion'))) colIndices.tramite = j;
-            if (colIndices.actividad === -1 && (cell.includes('actividad') || cell.includes('disciplina') || cell.includes('categoria'))) colIndices.actividad = j;
-          }
-          const detectedMonthColumns = getHeaderMonthColumns(row);
-          if (colIndices.nombre !== -1 && (colIndices.mes !== -1 || colIndices.fecha !== -1 || detectedMonthColumns.length > 0)) {
-            headerRowIndex = i;
-            monthColumns = detectedMonthColumns;
-            break;
-          }
-        }
-
-        if (headerRowIndex === -1) throw new Error('No encontré las columnas necesarias.');
-
-        const dataRows = rows.slice(headerRowIndex + 1).filter(r => r[colIndices.nombre]);
-        const batch = writeBatch(db);
-        let matchedCount = 0;
-        const ignoredRows: { row: unknown[], reason: string }[] = [];
-
+        // ── Cargar datos de Firebase UNA SOLA VEZ (antes del loop de hojas) ──
         const alumnosSnap = await getDocs(collection(db, 'alumnos'));
-        const allAlumnos = alumnosSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as ImportedStudent));
+        const allAlumnos = alumnosSnap.docs.map(d => ({ id: d.id, ...d.data() } as ImportedStudent));
 
         const gruposSnap = await getDocs(collection(db, 'grupos'));
-        const allGrupos = gruposSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as ImportedGroup));
+        const allGrupos = gruposSnap.docs.map(d => ({ id: d.id, ...d.data() } as ImportedGroup));
 
         const currentYear = new Date().getFullYear();
-        let alreadyRegisteredCount = 0;
 
+        // ── Acumuladores compartidos entre todas las hojas ──
         const studentPaymentsMap: Record<string, ImportedPayment[]> = {};
         const studentGroupUpdates: Record<string, string> = {};
         const studentRefs: Record<string, ReturnType<typeof doc>> = {};
+        let matchedCount = 0;
+        let alreadyRegisteredCount = 0;
+        let totalDataRows = 0;
+        const ignoredRows: { row: unknown[], reason: string }[] = [];
 
-        for (const rowData of dataRows) {
-          const activityCells = [
-            colIndices.actividad !== -1 ? rowData[colIndices.actividad] : '',
-            colIndices.tramite !== -1 ? rowData[colIndices.tramite] : '',
-            rowData.join(' '),
-            sheetName
-          ];
-          const activityValue = activityCells.map((cell) => normalizeText(cell)).join(' ');
+        // ── Iterar TODAS las hojas del archivo ──
+        for (const sheetName of workbook.SheetNames) {
+          const worksheet = workbook.Sheets[sheetName];
+          const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
 
-          // FILTRO FLEXIBLE: solo procesa pagos de Gimnasia Artística Infantil aunque el Excel lo nombre como
-          // Actividad, Disciplina, Concepto, Detalle, Trámite o Descripción.
-          if (!isTargetGymnasticsActivity(activityValue)) continue;
+          if (rows.length === 0) continue;
 
-          const nameValue = rowData[colIndices.nombre];
-          let mesData = null;
-          if (colIndices.mes !== -1) mesData = getMonthName(rowData[colIndices.mes]);
-          if (!mesData && colIndices.fecha !== -1) mesData = getMonthName(rowData[colIndices.fecha]);
+          // Detectar fila de encabezados en esta hoja
+          let headerRowIndex = -1;
+          let colIndices: Record<string, number> = { nombre: -1, mes: -1, monto: -1, fecha: -1, tramite: -1, actividad: -1 };
+          let monthColumns: { index: number; month: PaymentMonth }[] = [];
 
-          let monthsToRegister: PaymentMonth[] = [];
+          for (let i = 0; i < Math.min(rows.length, 20); i++) {
+            const row = rows[i];
+            if (!row) continue;
+            for (let j = 0; j < row.length; j++) {
+              const cell = normalizeText(row[j]);
+              if (colIndices.nombre === -1 && (cell.includes('apellido') || cell.includes('nombre') || cell.includes('alumno') || cell.includes('gimnasta') || cell.includes('deportista'))) colIndices.nombre = j;
+              if (colIndices.mes === -1 && (cell === 'mes' || cell.includes('cuota') || cell.includes('periodo') || cell.includes('mensualidad'))) colIndices.mes = j;
+              if (colIndices.monto === -1 && (cell.includes('importe') || cell.includes('monto') || cell.includes('valor') || cell.includes('precio'))) colIndices.monto = j;
+              if (colIndices.fecha === -1 && (cell.includes('fecha') || cell.includes('pago'))) colIndices.fecha = j;
+              if (colIndices.tramite === -1 && (cell.includes('tramite') || cell.includes('detalle') || cell.includes('concepto') || cell.includes('descripcion'))) colIndices.tramite = j;
+              if (colIndices.actividad === -1 && (cell.includes('actividad') || cell.includes('disciplina') || cell.includes('categoria'))) colIndices.actividad = j;
+            }
+            const detectedMonthColumns = getHeaderMonthColumns(row);
+            if (colIndices.nombre !== -1 && (colIndices.mes !== -1 || colIndices.fecha !== -1 || detectedMonthColumns.length > 0)) {
+              headerRowIndex = i;
+              monthColumns = detectedMonthColumns;
+              break;
+            }
+          }
 
-          if (mesData) {
-            monthsToRegister = [mesData];
-          } else if (monthColumns.length > 0) {
-            monthsToRegister = monthColumns
+          // Si esta hoja no tiene encabezados reconocibles, la omitimos (no lanzamos error)
+          if (headerRowIndex === -1) continue;
+
+          const dataRows = rows.slice(headerRowIndex + 1).filter(r => r[colIndices.nombre]);
+          totalDataRows += dataRows.length;
+
+          for (const rowData of dataRows) {
+            const activityCells = [
+              colIndices.actividad !== -1 ? rowData[colIndices.actividad] : '',
+              colIndices.tramite !== -1 ? rowData[colIndices.tramite] : '',
+              rowData.join(' '),
+              sheetName
+            ];
+            const activityValue = activityCells.map((cell) => normalizeText(cell)).join(' ');
+
+            // FILTRO FLEXIBLE: solo procesa pagos de Gimnasia Artística
+            if (!isTargetGymnasticsActivity(activityValue)) continue;
+
+            const nameValue = rowData[colIndices.nombre];
+            let mesData = null;
+            if (colIndices.mes !== -1) mesData = getMonthName(rowData[colIndices.mes]);
+            if (!mesData && colIndices.fecha !== -1) mesData = getMonthName(rowData[colIndices.fecha]);
+
+            let monthsToRegister: PaymentMonth[] = [];
+
+            if (mesData) {
+              monthsToRegister = [mesData];
+            } else if (monthColumns.length > 0) {
+              monthsToRegister = monthColumns
                 .filter(({ index }) => isPaidCell(rowData[index]))
                 .map(({ month }) => month);
-          }
-          
-          if (monthsToRegister.length === 0) {
-             const fallbackMonth = findMonthInRow(rowData);
-             if (fallbackMonth) monthsToRegister = [fallbackMonth];
-          }
-
-          if (!nameValue || monthsToRegister.length === 0) continue;
-
-          const student = findStudent(allAlumnos, nameValue);
-
-          if (student) {
-            // DETECCION DE GRUPO: Intentamos encontrar si el tramite describe un grupo existente
-            let matchedGrupoName = null;
-            for (const g of allGrupos) {
-              const gNameNorm = normalizeText(g.nombre);
-              const gHorarioNorm = normalizeText(g.horario);
-              const groupDays = Array.isArray(g.dias) ? g.dias : String(g.dias || '').split(/[,y]+/);
-              const gDiasNorm = groupDays.map((d: string) => normalizeText(d)).filter(Boolean);
-
-              // Si el trámite contiene el nombre del grupo
-              if (gNameNorm.length > 5 && activityValue.includes(gNameNorm)) {
-                matchedGrupoName = g.nombre;
-                break;
-              }
-
-              // Si el trámite contiene los días Y el horario
-              const containsHorario = gHorarioNorm.length > 2 && activityValue.includes(gHorarioNorm);
-              const containsAllDias = gDiasNorm.length > 0 && gDiasNorm.every((d: string) => activityValue.includes(d));
-
-              if (containsHorario && containsAllDias) {
-                matchedGrupoName = g.nombre;
-                break;
-              }
             }
 
-            if (matchedGrupoName && (!student.grupo || student.grupo === 'SIN GRUPO')) {
-              studentGroupUpdates[student.id] = matchedGrupoName;
+            if (monthsToRegister.length === 0) {
+              const fallbackMonth = findMonthInRow(rowData);
+              if (fallbackMonth) monthsToRegister = [fallbackMonth];
             }
 
-            for (const paymentMonth of monthsToRegister) {
-              // Evitar duplicados: Verificamos si el alumno ya tiene este mes/año pagado en su historial
-              const yaRegistrado = student.pagosMensuales?.some((p: ImportedPayment) =>
-                p.mes?.toLowerCase() === paymentMonth.mes.toLowerCase() && p.anio === paymentMonth.anio
-              );
+            if (!nameValue || monthsToRegister.length === 0) continue;
 
-              // También verificamos si ya lo procesamos en esta misma planilla
-              const yaProcesadoEnBatch = studentPaymentsMap[student.id]?.some((p: ImportedPayment) =>
-                p.mes?.toLowerCase() === paymentMonth.mes.toLowerCase() && p.anio === paymentMonth.anio
-              );
+            const student = findStudent(allAlumnos, nameValue);
 
-              if (!yaRegistrado && !yaProcesadoEnBatch) {
-                if (!studentPaymentsMap[student.id]) {
-                  studentPaymentsMap[student.id] = [];
-                  studentRefs[student.id] = doc(db, 'alumnos', student.id);
+            if (student) {
+              // Detección de grupo por nombre o días+horario en el trámite
+              let matchedGrupoName = null;
+              for (const g of allGrupos) {
+                const gNameNorm = normalizeText(g.nombre);
+                const gHorarioNorm = normalizeText(g.horario);
+                const groupDays = Array.isArray(g.dias) ? g.dias : String(g.dias || '').split(/[,y]+/);
+                const gDiasNorm = groupDays.map((d: string) => normalizeText(d)).filter(Boolean);
+
+                if (gNameNorm.length > 5 && activityValue.includes(gNameNorm)) {
+                  matchedGrupoName = g.nombre;
+                  break;
                 }
-
-                studentPaymentsMap[student.id].push({
-                  mes: paymentMonth.mes,
-                  anio: paymentMonth.anio || currentYear,
-                  fechaPago: new Date().toISOString(),
-                  monto: colIndices.monto !== -1 ? parseFloat(String(rowData[colIndices.monto])) || 0 : 0,
-                  importado: true,
-                  categoria: String(rowData[colIndices.actividad] || rowData[colIndices.tramite] || sheetName || "Gimnasia Artística Infantil")
-                });
-                matchedCount++;
-              } else {
-                alreadyRegisteredCount++;
+                const containsHorario = gHorarioNorm.length > 2 && activityValue.includes(gHorarioNorm);
+                const containsAllDias = gDiasNorm.length > 0 && gDiasNorm.every((d: string) => activityValue.includes(d));
+                if (containsHorario && containsAllDias) {
+                  matchedGrupoName = g.nombre;
+                  break;
+                }
               }
-            }
-          } else {
-            ignoredRows.push({ row: rowData, reason: `No se encontró a: "${nameValue}"` });
-          }
-        }
 
-        // Aplicamos todos los pagos agrupados por alumno
+              if (matchedGrupoName && (!student.grupo || student.grupo === 'SIN GRUPO')) {
+                studentGroupUpdates[student.id] = matchedGrupoName;
+              }
+
+              for (const paymentMonth of monthsToRegister) {
+                const yaRegistrado = student.pagosMensuales?.some((p: ImportedPayment) =>
+                  p.mes?.toLowerCase() === paymentMonth.mes.toLowerCase() && p.anio === paymentMonth.anio
+                );
+                const yaProcesadoEnBatch = studentPaymentsMap[student.id]?.some((p: ImportedPayment) =>
+                  p.mes?.toLowerCase() === paymentMonth.mes.toLowerCase() && p.anio === paymentMonth.anio
+                );
+
+                if (!yaRegistrado && !yaProcesadoEnBatch) {
+                  if (!studentPaymentsMap[student.id]) {
+                    studentPaymentsMap[student.id] = [];
+                    studentRefs[student.id] = doc(db, 'alumnos', student.id);
+                  }
+                  studentPaymentsMap[student.id].push({
+                    mes: paymentMonth.mes,
+                    anio: paymentMonth.anio || currentYear,
+                    fechaPago: new Date().toISOString(),
+                    monto: colIndices.monto !== -1 ? parseFloat(String(rowData[colIndices.monto])) || 0 : 0,
+                    importado: true,
+                    categoria: String(rowData[colIndices.actividad] || rowData[colIndices.tramite] || sheetName || 'Gimnasia Artística Infantil')
+                  });
+                  matchedCount++;
+                } else {
+                  alreadyRegisteredCount++;
+                }
+              }
+            } else {
+              ignoredRows.push({ row: rowData, reason: `No se encontró a: "${nameValue}"` });
+            }
+          }
+        } // fin loop hojas
+
+        // ── Aplicar todos los pagos acumulados en un solo batch ──
+        const batch = writeBatch(db);
         for (const studentId in studentPaymentsMap) {
           const updateData: { pagosMensuales: ReturnType<typeof arrayUnion>; grupo?: string } = {
             pagosMensuales: arrayUnion(...studentPaymentsMap[studentId])
           };
-
           if (studentGroupUpdates[studentId]) {
             updateData.grupo = studentGroupUpdates[studentId];
           }
-
           batch.update(studentRefs[studentId], updateData);
         }
 
         if (matchedCount > 0 || Object.keys(studentGroupUpdates).length > 0) await batch.commit();
 
+        if (totalDataRows === 0) throw new Error('No se encontraron filas de datos en ninguna hoja del archivo.');
+
         setStats({
-          total: dataRows.length,
+          total: totalDataRows,
           matched: matchedCount,
           alreadyRegistered: alreadyRegisteredCount,
           ignored: ignoredRows
