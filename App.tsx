@@ -520,7 +520,7 @@ const App: React.FC = () => {
       { v: 'Planes', i: 'psychology', l: 'Manuales', c: 'text-violet-600', role: 'Coach' },
       { v: 'Profesores', i: 'badge', l: 'Staff', c: 'text-rose-600', role: 'Coordinator' },
       { v: 'Habilidades', i: 'trending_up', l: 'Habilidades', c: 'text-purple-600', role: 'Coach' },
-      { v: 'ControlPagos', i: 'payments', l: 'Pagos', c: 'text-ios-blue', role: 'Coordinator' },
+      { v: 'ControlPagos', i: 'payments', l: 'Pagos', c: 'text-ios-blue', role: 'Coach' },
     ].filter(opt => {
       if (userRole === 'Coordinator') return true;
       return opt.role === userRole;
@@ -530,7 +530,7 @@ const App: React.FC = () => {
 
   // Security guard for routes
   useEffect(() => {
-    const coordinatorOnlyViews: ViewMode[] = ['AsistenciaStats', 'ReporteGrupal', 'TendenciasHabilidades', 'ReportePDF', 'ControlPagos', 'Profesores', 'ProfesorDetalle'];
+    const coordinatorOnlyViews: ViewMode[] = ['AsistenciaStats', 'ReporteGrupal', 'TendenciasHabilidades', 'ReportePDF', 'Profesores', 'ProfesorDetalle'];
     
     // Solo si NO es coordinador ni staff, restringimos las vistas de coordinador
     if (userRole !== 'Coordinator' && coordinatorOnlyViews.includes(vista)) {
@@ -3080,6 +3080,7 @@ const App: React.FC = () => {
             handleAddProfesor={handleAddProfesor}
             handleUpdateProfesor={handleUpdateProfesor}
             handleDeleteProfesor={handleDeleteProfesor}
+            requestConfirmation={requestConfirmation}
           />
         )}
 
@@ -3219,7 +3220,7 @@ const App: React.FC = () => {
         {(vista === 'Alumnos' || vista === 'AlumnoDetalle') && (
           <Alumnos 
             vista={vista}
-            setVista={(v: any) => { if (v === 'Alumnos') setAlumnosFilterMode('all'); setVista(v); }}
+            setVista={(v: any) => { if (v === 'Alumnos') setAlumnosFilterMode(userRole === 'Coordinator' ? 'all' : 'myGroups'); setVista(v); }}
             alumnos={alumnos}
             grupos={userGroups}
             niveles={niveles}
@@ -3297,17 +3298,21 @@ const App: React.FC = () => {
             }}
             handleUpdateBiometrics={handleUpdateBiometrics}
             sendPaymentReminder={sendPaymentReminder}
-            currentCoachGroupsNames={grupos.map(g => g.nombre)}
+            currentCoachGroupsNames={userGroups.map(g => g.nombre)}
             currentUserName={user?.displayName || ''}
             currentUserId={user?.uid}
+            requestConfirmation={requestConfirmation}
           />
         )}
 
         {vista === 'ControlPagos' && (
           <ErrorBoundary><Suspense fallback={<LoadingFallback />}>
-            <ControlPagos 
-              onBack={() => setVista('Dashboard')} 
+            <ControlPagos
+              onBack={() => setVista('Dashboard')}
               onImportPayments={() => setIsBulkPaymentModalOpen(true)}
+              userRole={userRole ?? 'Coach'}
+              coachName={user?.displayName ?? ''}
+              coachGroups={grupos.filter(g => g.entrenador === (user?.displayName ?? '')).map(g => g.nombre)}
             />
           </Suspense></ErrorBoundary>
         )}
@@ -3341,6 +3346,7 @@ const App: React.FC = () => {
             userRole={userRole || 'Coach'}
             setSelectedClase={setSelectedClase}
             setNotificacion={setNotificacion}
+            requestConfirmation={requestConfirmation}
           />
         )}
 

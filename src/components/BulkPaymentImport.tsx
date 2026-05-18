@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import * as XLSX from 'xlsx';
 import { collection, getDocs, doc, writeBatch, arrayUnion } from 'firebase/firestore';
-import { db } from '../../services/firebase';
+import { db, auth } from '../../services/firebase';
 import { motion, AnimatePresence } from 'motion/react';
 
 type ImportedPayment = {
@@ -167,69 +167,78 @@ export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete
       try {
         const data = new Uint8Array(event.target?.result as ArrayBuffer);
         const workbook = XLSX.read(data, { type: 'array' });
-        const sheetName = workbook.SheetNames.find(n => n.toUpperCase().includes("PAGOS") || n.toUpperCase().includes("CONTROL")) || workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-        const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
 
-        if (rows.length === 0) throw new Error('El archivo está vacío.');
+        if (workbook.SheetNames.length === 0) throw new Error('El archivo no contiene hojas.');
 
-        let headerRowIndex = -1;
-        let colIndices: Record<string, number> = { nombre: -1, mes: -1, monto: -1, fecha: -1, tramite: -1, actividad: -1 };
-        let monthColumns: { index: number; month: PaymentMonth }[] = [];
-
-        for (let i = 0; i < Math.min(rows.length, 20); i++) {
-          const row = rows[i];
-          if (!row) continue;
-          for (let j = 0; j < row.length; j++) {
-            const cell = normalizeText(row[j]);
-            if (colIndices.nombre === -1 && (cell.includes('apellido') || cell.includes('nombre') || cell.includes('alumno') || cell.includes('gimnasta') || cell.includes('deportista'))) colIndices.nombre = j;
-            if (colIndices.mes === -1 && (cell === 'mes' || cell.includes('cuota') || cell.includes('periodo') || cell.includes('mensualidad'))) colIndices.mes = j;
-            if (colIndices.monto === -1 && (cell.includes('importe') || cell.includes('monto') || cell.includes('valor') || cell.includes('precio'))) colIndices.monto = j;
-            if (colIndices.fecha === -1 && (cell.includes('fecha') || cell.includes('pago'))) colIndices.fecha = j;
-            if (colIndices.tramite === -1 && (cell.includes('tramite') || cell.includes('detalle') || cell.includes('concepto') || cell.includes('descripcion'))) colIndices.tramite = j;
-            if (colIndices.actividad === -1 && (cell.includes('actividad') || cell.includes('disciplina') || cell.includes('categoria'))) colIndices.actividad = j;
-          }
-          const detectedMonthColumns = getHeaderMonthColumns(row);
-          if (colIndices.nombre !== -1 && (colIndices.mes !== -1 || colIndices.fecha !== -1 || detectedMonthColumns.length > 0)) {
-            headerRowIndex = i;
-            monthColumns = detectedMonthColumns;
-            break;
-          }
+        // ── Verificar autenticación antes de llamar a Firestore ──
+        const currentUser = auth.currentUser;
+        if (!currentUser) {
+          throw new Error('No estás autenticado. Recargá la página (Ctrl+Shift+R) e iniciá sesión nuevamente.');
         }
 
-        if (headerRowIndex === -1) throw new Error('No encontré las columnas necesarias.');
-
-        const dataRows = rows.slice(headerRowIndex + 1).filter(r => r[colIndices.nombre]);
-        const batch = writeBatch(db);
-        let matchedCount = 0;
-        const ignoredRows: { row: unknown[], reason: string }[] = [];
-
+        // ── Cargar datos de Firebase UNA SOLA VEZ antes de procesar hojas ──
         const alumnosSnap = await getDocs(collection(db, 'alumnos'));
-        const allAlumnos = alumnosSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as ImportedStudent));
+        const allAlumnos = alumnosSnap.docs.map(d => ({ id: d.id, ...d.data() } as ImportedStudent));
 
         const gruposSnap = await getDocs(collection(db, 'grupos'));
-        const allGrupos = gruposSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as ImportedGroup));
+        const allGrupos = gruposSnap.docs.map(d => ({ id: d.id, ...d.data() } as ImportedGroup));
 
         const currentYear = new Date().getFullYear();
-        let alreadyRegisteredCount = 0;
 
+        // ── Acumuladores compartidos entre TODAS las hojas ──
         const studentPaymentsMap: Record<string, ImportedPayment[]> = {};
         const studentGroupUpdates: Record<string, string> = {};
         const studentRefs: Record<string, ReturnType<typeof doc>> = {};
+        let matchedCount = 0;
+        let alreadyRegisteredCount = 0;
+        let totalDataRows = 0;
+        const ignoredRows: { row: unknown[], reason: string }[] = [];
+
+        // ── Iterar TODAS las hojas del archivo ──
+        for (const sheetName of workbook.SheetNames) {
+          const worksheet = workbook.Sheets[sheetName];
+          const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
+          if (rows.length === 0) continue;
+
+          let headerRowIndex = -1;
+          let colIndices: Record<string, number> = { nombre: -1, mes: -1, monto: -1, fecha: -1, tramite: -1, actividad: -1 };
+          let monthColumns: { index: number; month: PaymentMonth }[] = [];
+
+          for (let i = 0; i < Math.min(rows.length, 20); i++) {
+            const row = rows[i];
+            if (!row) continue;
+            for (let j = 0; j < row.length; j++) {
+              const cell = normalizeText(row[j]);
+              if (colIndices.nombre === -1 && (cell.includes('apellido') || cell.includes('nombre') || cell.includes('alumno') || cell.includes('gimnasta') || cell.includes('deportista'))) colIndices.nombre = j;
+              if (colIndices.mes === -1 && (cell === 'mes' || cell.includes('cuota') || cell.includes('periodo') || cell.includes('mensualidad'))) colIndices.mes = j;
+              if (colIndices.monto === -1 && (cell.includes('importe') || cell.includes('monto') || cell.includes('valor') || cell.includes('precio'))) colIndices.monto = j;
+              if (colIndices.fecha === -1 && (cell.includes('fecha') || cell.includes('pago'))) colIndices.fecha = j;
+              if (colIndices.tramite === -1 && (cell.includes('tramite') || cell.includes('detalle') || cell.includes('concepto') || cell.includes('descripcion'))) colIndices.tramite = j;
+              if (colIndices.actividad === -1 && (cell.includes('actividad') || cell.includes('disciplina') || cell.includes('categoria'))) colIndices.actividad = j;
+            }
+            const detectedMonthColumns = getHeaderMonthColumns(row);
+            if (colIndices.nombre !== -1 && (colIndices.mes !== -1 || colIndices.fecha !== -1 || detectedMonthColumns.length > 0)) {
+              headerRowIndex = i;
+              monthColumns = detectedMonthColumns;
+              break;
+            }
+          }
+
+          // Hoja sin encabezados reconocibles → la salteamos sin error
+          if (headerRowIndex === -1) continue;
+
+          const dataRows = rows.slice(headerRowIndex + 1).filter(r => r[colIndices.nombre]);
+          totalDataRows += dataRows.length;
 
         for (const rowData of dataRows) {
-          const activityCells = [
-            colIndices.actividad !== -1 ? rowData[colIndices.actividad] : '',
-            colIndices.tramite !== -1 ? rowData[colIndices.tramite] : '',
-            rowData.join(' '),
-            sheetName
-          ];
-          const activityValue = activityCells.map((cell) => normalizeText(cell)).join(' ');
-
-          // FILTRO FLEXIBLE: solo procesa pagos de Gimnasia Artística Infantil aunque el Excel lo nombre como
-          // Actividad, Disciplina, Concepto, Detalle, Trámite o Descripción.
-          if (!isTargetGymnasticsActivity(activityValue)) continue;
-
+          // Todas las filas del archivo se procesan — el componente es específico de GAI.
+          // activityValue se mantiene para la detección de grupo (NO para filtrar filas).
+          const activityValue = [
+            colIndices.actividad !== -1 ? normalizeText(String(rowData[colIndices.actividad] ?? '')) : '',
+            colIndices.tramite  !== -1 ? normalizeText(String(rowData[colIndices.tramite]  ?? '')) : '',
+            normalizeText(rowData.join(' ')),
+            normalizeText(sheetName)
+          ].join(' ');
           const nameValue = rowData[colIndices.nombre];
           let mesData = null;
           if (colIndices.mes !== -1) mesData = getMonthName(rowData[colIndices.mes]);
@@ -249,6 +258,11 @@ export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete
              const fallbackMonth = findMonthInRow(rowData);
              if (fallbackMonth) monthsToRegister = [fallbackMonth];
           }
+
+          // Filtrar solo meses de la temporada activa: Marzo–Noviembre
+          // Enero y Febrero no tienen actividad y no deben importarse
+          const MESES_TEMPORADA = ['Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre'];
+          monthsToRegister = monthsToRegister.filter(m => MESES_TEMPORADA.includes(m.mes));
 
           if (!nameValue || monthsToRegister.length === 0) continue;
 
@@ -300,13 +314,25 @@ export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete
                   studentRefs[student.id] = doc(db, 'alumnos', student.id);
                 }
 
+                // Categoria: si hay columna de actividad/trámite usarla, si no siempre usar el default
+                // (evitamos usar sheetName porque puede ser "Hoja1" y romper el filtro de isPaid en ControlPagos)
+                const rawActividad = colIndices.actividad !== -1 ? String(rowData[colIndices.actividad] ?? '') : '';
+                const rawTramite   = colIndices.tramite  !== -1 ? String(rowData[colIndices.tramite]  ?? '') : '';
+                const categoriaFinal = rawActividad || rawTramite || 'Gimnasia Artística Infantil';
+
+                // Sanitizar año: si el valor no es un año razonable (ej: serial Excel como 150335)
+                // usamos el año actual en su lugar
+                const safeAnio = (paymentMonth.anio >= 2020 && paymentMonth.anio <= 2035)
+                  ? paymentMonth.anio
+                  : currentYear;
+
                 studentPaymentsMap[student.id].push({
                   mes: paymentMonth.mes,
-                  anio: paymentMonth.anio || currentYear,
+                  anio: safeAnio,
                   fechaPago: new Date().toISOString(),
                   monto: colIndices.monto !== -1 ? parseFloat(String(rowData[colIndices.monto])) || 0 : 0,
                   importado: true,
-                  categoria: String(rowData[colIndices.actividad] || rowData[colIndices.tramite] || sheetName || "Gimnasia Artística Infantil")
+                  categoria: categoriaFinal
                 });
                 matchedCount++;
               } else {
@@ -317,8 +343,12 @@ export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete
             ignoredRows.push({ row: rowData, reason: `No se encontró a: "${nameValue}"` });
           }
         }
+        } // ── fin loop hojas ──
 
-        // Aplicamos todos los pagos agrupados por alumno
+        if (totalDataRows === 0) throw new Error('No se encontraron filas de datos en ninguna hoja del archivo.');
+
+        // ── Aplicar todos los pagos acumulados en un solo batch ──
+        const batch = writeBatch(db);
         for (const studentId in studentPaymentsMap) {
           const updateData: { pagosMensuales: ReturnType<typeof arrayUnion>; grupo?: string } = {
             pagosMensuales: arrayUnion(...studentPaymentsMap[studentId])
@@ -334,7 +364,7 @@ export const BulkPaymentImport: React.FC<BulkPaymentImportProps> = ({ onComplete
         if (matchedCount > 0 || Object.keys(studentGroupUpdates).length > 0) await batch.commit();
 
         setStats({
-          total: dataRows.length,
+          total: totalDataRows,
           matched: matchedCount,
           alreadyRegistered: alreadyRegisteredCount,
           ignored: ignoredRows

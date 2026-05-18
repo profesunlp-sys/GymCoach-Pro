@@ -1,7 +1,19 @@
 {
   "permissions": {
     "allow": [
-      "PowerShell(cmd /c \"rmdir /s /q \"\"C:\\\\Users\\\\josem\\\\.antigravity\\\\GymCoachPro\"\"\" ; if \\($?\\) { \"Deleted successfully\" } else { \"Failed\" })"
+      "Bash(netstat -ano)",
+      "Bash(npm run *)",
+      "Bash(curl -s -I http://localhost:3000)",
+      "Bash(curl -s -I --max-time 5 http://localhost:3000)",
+      "Bash(npx tsc *)",
+      "Bash(npx kill-port *)",
+      "Bash(Start-Sleep -Seconds 4)",
+      "Bash(Get-Content \"C:\\\\Users\\\\josem\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-josem--antigravity-GymCoach-Pro\\\\5d17dd3f-5058-49ce-8f4e-b68a3db6ecdc\\\\tasks\\\\bxq1e38v7.output\" -ErrorAction SilentlyContinue)",
+      "Bash(Select-Object -Last 20)",
+      "Bash(npx tsx *)",
+      "Bash(echo \"PID=$!\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000)",
+      "Bash(cat /tmp/gymcoach-server.log 2>/dev/null | tail -15 || echo \"\\(log vacío\\)\")"
     ]
   }
 }

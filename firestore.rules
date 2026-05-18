@@ -19,12 +19,18 @@ service cloud.firestore {
     }
 
     // ═══════════════════════════════════════════════════
-    // ALUMNOS — Todos los staff pueden leer y modificar
-    // Solo el coordinador puede eliminar
+    // ALUMNOS
+    // Coordinador: puede leer, crear, modificar y eliminar todo.
+    // Staff/Profesores: pueden leer y crear. Solo pueden modificar
+    //   nivel, grupo, habilidades y biometria.
+    //   NO pueden tocar pagosMensuales ni ningún otro campo de pago.
     // ═══════════════════════════════════════════════════
     match /alumnos/{alumnoId} {
       allow read: if isStaff();
-      allow create, update: if isStaff();
+      allow create: if isStaff();
+      allow update: if isCoordinator()
+        || (isStaff() && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['nivel', 'grupo', 'habilidades', 'biometria']));
       allow delete: if isCoordinator();
     }
 

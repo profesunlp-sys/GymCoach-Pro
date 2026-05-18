@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { collection, onSnapshot, doc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { Alumno } from '../../types';
@@ -7,15 +7,25 @@ import { motion } from 'motion/react';
 interface ControlPagosProps {
   onBack: () => void;
   onImportPayments: () => void;
+  userRole?: string;
+  coachName?: string;
+  coachGroups?: string[];
 }
 
-export const ControlPagos: React.FC<ControlPagosProps> = ({ onBack, onImportPayments }) => {
+export const ControlPagos: React.FC<ControlPagosProps> = ({
+  onBack,
+  onImportPayments,
+  userRole = 'Coach',
+  coachName = '',
+  coachGroups = [],
+}) => {
   const [alumnos, setAlumnos] = useState<Alumno[]>([]);
   const [grupos, setGrupos] = useState<any[]>([]);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [debugAlumnoId, setDebugAlumnoId] = useState<string | null>(null);
+  const [disciplinaFilter, setDisciplinaFilter] = useState<string>('Gimnasia Artística Infantil');
 
-  const years = [2024, 2025, 2026, 2027];
+  const years = [2026, 2027];
   // Temporada activa: Marzo → Noviembre (9 meses)
   const meses = [
     { n: 3,  name: 'Mar', label: 'Marzo' },
@@ -38,6 +48,28 @@ export const ControlPagos: React.FC<ControlPagosProps> = ({ onBack, onImportPaym
     });
     return () => { unsubAlumnos(); unsubGrupos(); };
   }, []);
+
+  const isCoordinator = userRole === 'Coordinator';
+
+  // Filtro: por disciplina + por grupo del profe
+  const visibleAlumnos = useMemo(() => {
+    const ns = (s: unknown) => String(s ?? '').toLowerCase().trim().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    let base = alumnos;
+
+    // 1. Filtrar por disciplina si se seleccionó una
+    if (disciplinaFilter && disciplinaFilter !== 'Todas') {
+      const dfNorm = ns(disciplinaFilter);
+      base = base.filter(a => ns(a.disciplina).includes(dfNorm) || dfNorm.includes(ns(a.disciplina).slice(0, 6)));
+    }
+
+    // 2. Si es profe, filtrar por sus grupos
+    if (!isCoordinator && coachGroups.length > 0) {
+      const ng = coachGroups.map(ns);
+      base = base.filter(a => ng.includes(ns(a.grupo)));
+    }
+
+    return base;
+  }, [alumnos, disciplinaFilter, isCoordinator, coachGroups]);
 
   // Quita tildes y pasa a minúsculas para comparación
   const norm = (s: unknown): string =>
@@ -64,25 +96,7 @@ export const ControlPagos: React.FC<ControlPagosProps> = ({ onBack, onImportPaym
 
       // Mes: tolera nombre completo, abreviatura, prefijo de 3 letras, número como string
       const pMes = norm(p.mes);
-      
-      // FILTRO CRÍTICO: Solo pagos de Gimnasia Artística Infantil
-      // Si hay categoría, debe ser de gimnasia artística. Si no hay categoría, asumimos que es válido (datos legacy)
-      if (p.categoria) {
-        const categoriaNorm = norm(String(p.categoria));
-        const esGimnasiaArtisticaInfantil = 
-          categoriaNorm.includes('gimnasia') ||
-          categoriaNorm.includes('artistica') ||
-          categoriaNorm.includes('artistico') ||
-          categoriaNorm.includes('gaf') ||
-          categoriaNorm.includes('gai') ||
-          categoriaNorm.includes('g.a');
-        
-        if (!esGimnasiaArtisticaInfantil) {
-          return false; // Ignorar pagos de otras actividades
-        }
-      }
-      // Si no hay categoría, el pago se considera válido (compatibilidad con datos antiguos)
-      
+
       return (
         pMes === labelNorm  ||   // "marzo"
         pMes === abrevNorm  ||   // "mar"
@@ -142,7 +156,7 @@ export const ControlPagos: React.FC<ControlPagosProps> = ({ onBack, onImportPaym
     return `${dias} ${config.horario ?? ''}`.trim().toUpperCase();
   };
 
-  const alumnosOrdenados = [...alumnos].sort((a, b) => a.nombre.localeCompare(b.nombre));
+  const alumnosOrdenados = [...visibleAlumnos].sort((a, b) => a.nombre.localeCompare(b.nombre));
 
   return (
     <div className="min-h-screen bg-ios-gray pb-32">
@@ -174,10 +188,10 @@ export const ControlPagos: React.FC<ControlPagosProps> = ({ onBack, onImportPaym
         </div>
 
         <h1 className="text-3xl font-bold text-black tracking-tight">Control de Pagos</h1>
-        <p className="text-secondary text-sm mt-1">Temporada Marzo–Noviembre · {selectedYear}</p>
+        <p className="text-secondary text-sm mt-1">Temporada Marzo–Noviembre · {selectedYear} · <span className="font-bold text-black">{visibleAlumnos.length}</span> alumnos</p>
 
-        {/* Banner importar */}
-        <div className="mt-6 bg-ios-blue/5 border border-ios-blue/10 rounded-3xl p-5 relative overflow-hidden group">
+        {/* Banner importar — solo visible para el coordinador */}
+        {isCoordinator && <div className="mt-6 bg-ios-blue/5 border border-ios-blue/10 rounded-3xl p-5 relative overflow-hidden group">
           <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-ios-blue/5 rounded-full blur-2xl group-hover:bg-ios-blue/10 transition-colors" />
           <div className="flex flex-col sm:flex-row items-center gap-4 relative z-10">
             <div className="w-12 h-12 bg-ios-blue text-white rounded-2xl flex items-center justify-center shadow-lg shadow-ios-blue/20">
@@ -198,7 +212,7 @@ export const ControlPagos: React.FC<ControlPagosProps> = ({ onBack, onImportPaym
               Importar Pagos
             </motion.button>
           </div>
-        </div>
+        </div>}
       </header>
 
       {/* ── TABLA ── */}
@@ -296,15 +310,25 @@ export const ControlPagos: React.FC<ControlPagosProps> = ({ onBack, onImportPaym
                             </p>
                           ) : (
                             <div className="flex flex-wrap gap-2">
-                              {alumno.pagosMensuales.map((p, i) => (
-                                <span
-                                  key={i}
-                                  className="bg-white border border-amber-200 rounded-lg px-2 py-1 text-[9px] font-mono text-black"
-                                >
-                                  mes: <b>{String(p.mes)}</b> | anio: <b>{String(p.anio)}</b>{' '}
-                                  <span className="text-amber-500">({typeof p.anio})</span>
-                                </span>
-                              ))}
+                              {alumno.pagosMensuales
+                                .filter(p => {
+                                  // Solo mostrar meses de la temporada: Marzo–Noviembre
+                                  const pMesNorm = norm(p.mes);
+                                  return meses.some(m =>
+                                    pMesNorm === norm(m.label) ||
+                                    pMesNorm === norm(m.name) ||
+                                    pMesNorm.startsWith(norm(m.label).slice(0, 3))
+                                  );
+                                })
+                                .map((p, i) => (
+                                  <span
+                                    key={i}
+                                    className="bg-white border border-amber-200 rounded-lg px-2 py-1 text-[9px] font-mono text-black"
+                                  >
+                                    mes: <b>{String(p.mes)}</b> | anio: <b>{String(p.anio)}</b>{' '}
+                                    <span className="text-amber-500">({typeof p.anio})</span>
+                                  </span>
+                                ))}
                             </div>
                           )}
                           <p className="text-[9px] text-amber-600 mt-2 italic">

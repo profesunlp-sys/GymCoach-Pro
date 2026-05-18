@@ -1,6 +1,5 @@
-
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export const Tooltip = ({ children, text }: { children: React.ReactNode, text: string }) => {
   const [isVisible, setIsVisible] = useState(false);
@@ -73,11 +72,11 @@ export const Button = ({
   return content;
 };
 
-
+// BackButton mejorado: fixed, con fondo blanco/desenfoque y sombra para evitar superposición
 export const BackButton = ({ onClick }: { onClick: () => void }) => (
   <button 
     onClick={onClick}
-    className="absolute top-8 left-6 flex items-center gap-2 text-secondary hover:text-black transition-all text-[10px] font-bold uppercase tracking-widest z-50 active:scale-95 px-4 py-2 bg-white rounded-full shadow-sm border border-black/5"
+    className="fixed top-8 left-6 z-50 flex items-center gap-2 text-secondary hover:text-black transition-all text-[10px] font-bold uppercase tracking-widest active:scale-95 px-4 py-2 bg-white/80 backdrop-blur-md rounded-full shadow-sm border border-black/5"
   >
     <span className="material-icons-outlined text-base">arrow_back</span>
     Volver

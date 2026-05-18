@@ -197,6 +197,25 @@ const Alumnos: React.FC<AlumnosProps> = ({
 
   if (vista !== 'Alumnos' && vista !== 'AlumnoDetalle') return null;
 
+  // ── Indicador de pago del mes actual ─────────────────────────────────
+  const _normPago = (s: unknown) =>
+    String(s ?? '').toLowerCase().trim().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const _currentYear  = new Date().getFullYear();
+  const _currentMonth = new Date().getMonth(); // 0-indexed
+  const _MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  const _mesActualNorm = _MESES[_currentMonth]; // ej. "mayo"
+  const isPaidCurrentMonth = (alumno: Alumno): boolean => {
+    if (!Array.isArray(alumno.pagosMensuales)) return false;
+    return alumno.pagosMensuales.some(p => {
+      if (!p) return false;
+      const pAnio = parseInt(String(p.anio ?? '0'), 10);
+      if (pAnio !== _currentYear) return false;
+      const pMes = _normPago(p.mes);
+      return pMes === _mesActualNorm || pMes.startsWith(_mesActualNorm.slice(0, 3));
+    });
+  };
+  // ─────────────────────────────────────────────────────────────────────
+
   const filteredAlumnos = alumnos.filter(a => {
     const query = searchQuery.toLowerCase().trim();
     if (query === "") {
@@ -204,12 +223,16 @@ const Alumnos: React.FC<AlumnosProps> = ({
       if (alumnosFilterMode === 'alerts' && !(a.alertas && a.alertas.length > 0 && a.alertas[0] !== '')) return false;
       
       if (alumnosFilterMode === 'myGroups') {
+        // Si el profe no tiene grupos asignados en Firestore, ver todos (aún no configurado)
+        if (!currentCoachGroupsNames || currentCoachGroupsNames.length === 0) return true;
+
         const studentGroupName = (a.grupo || "").trim().toLowerCase();
-        
-        // Match by Group Name
-        const belongsToMyGroups = currentCoachGroupsNames && currentCoachGroupsNames.some(gn => (gn || "").trim().toLowerCase() === studentGroupName);
-        
-        // Match by Creator (If I created the student, I should always see them)
+
+        // Coincidir por nombre de grupo (exacto, ignorando tildes y mayúsculas)
+        const normGN = (s: string) => s.toLowerCase().trim().normalize('NFD').replace(/[̀-ͯ]/g, '');
+        const belongsToMyGroups = currentCoachGroupsNames.some(gn => normGN(gn) === normGN(studentGroupName));
+
+        // Coincidir por creador (si el profe creó al alumno, siempre lo ve)
         const isOwner = (a as any).userId === currentUserId || (a as any).uid === currentUserId;
 
         if (!belongsToMyGroups && !isOwner) return false;
@@ -387,6 +410,11 @@ const Alumnos: React.FC<AlumnosProps> = ({
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
+                  {/* Indicador de pago del mes actual */}
+                  <div
+                    className={`w-3 h-3 rounded-full shrink-0 ${isPaidCurrentMonth(alumno) ? 'bg-ios-green shadow-sm shadow-ios-green/50' : 'bg-black/10'}`}
+                    title={isPaidCurrentMonth(alumno) ? 'Pago al día' : 'Sin pago este mes'}
+                  />
                   {alumno.alertas && alumno.alertas.length > 0 && alumno.alertas[0] !== '' && (
                     <div className="w-7 h-7 rounded-full bg-ios-red/10 flex items-center justify-center border border-ios-red/10">
                       <span className="material-icons-outlined text-ios-red text-sm">warning</span>
@@ -992,18 +1020,54 @@ const Alumnos: React.FC<AlumnosProps> = ({
               </div>
             )}
 
-            {activeTab === 'Pagos' && (
+            {activeTab === 'Pagos' && (() => {
+                // ── Temporada Marzo–Noviembre ──────────────────────────────────────
+                const _TEMPORADA_NORM = ['marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre'];
+                const _TEMPORADA_NUMS = [3,4,5,6,7,8,9,10,11];
+                const _MESES_NOMBRE   = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+                const _SEASON_YEAR    = new Date().getFullYear();
+                const _CUR_MONTH      = new Date().getMonth() + 1; // 1-indexed
+
+                // Pagos válidos: año razonable (2025-2030) + mes de temporada
+                const pagosFiltrados = [...(selectedAlumno.pagosMensuales ?? [])]
+                  .filter(p => {
+                    const pAnio = parseInt(String(p.anio ?? '0'), 10);
+                    if (pAnio < 2025 || pAnio > 2030) return false;
+                    const pMes = _normPago(p.mes);
+                    return _TEMPORADA_NORM.some(m => pMes === m || pMes.startsWith(m.slice(0, 3)));
+                  })
+                  .sort((a, b) => {
+                    const ay = parseInt(String(a.anio), 10), by2 = parseInt(String(b.anio), 10);
+                    if (by2 !== ay) return by2 - ay;
+                    const ai = _TEMPORADA_NORM.findIndex(m => _normPago(a.mes) === m || _normPago(a.mes).startsWith(m.slice(0, 3)));
+                    const bi = _TEMPORADA_NORM.findIndex(m => _normPago(b.mes) === m || _normPago(b.mes).startsWith(m.slice(0, 3)));
+                    return bi - ai; // más reciente primero
+                  });
+
+                // "AL DÍA": todos los meses de la temporada hasta el mes actual están pagados
+                const requeridos = _TEMPORADA_NUMS.filter(m => m <= _CUR_MONTH);
+                const isAlDia = requeridos.length === 0 || requeridos.every(m => {
+                  const expectedMes = _MESES_NOMBRE[m - 1];
+                  return (selectedAlumno.pagosMensuales ?? []).some(p => {
+                    const pAnio = parseInt(String(p.anio ?? '0'), 10);
+                    if (pAnio !== _SEASON_YEAR) return false;
+                    const pMes = _normPago(p.mes);
+                    return pMes === expectedMes || pMes.startsWith(expectedMes.slice(0, 3));
+                  });
+                });
+
+                return (
               <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
                 <div className="flex justify-between items-center px-1">
                   <h3 className="text-xs font-bold text-secondary uppercase tracking-widest">Historial de Pagos</h3>
-                  <span className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest ${selectedAlumno.pagoVencido ? 'bg-ios-red text-white' : 'bg-ios-green text-white'}`}>
-                    {selectedAlumno.pagoVencido ? 'Pago Vencido' : 'Al Día'}
+                  <span className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest ${isAlDia ? 'bg-ios-green text-white' : 'bg-ios-red text-white'}`}>
+                    {isAlDia ? 'Al Día' : 'Pago Vencido'}
                   </span>
                 </div>
                 <div className="bg-white rounded-[2.5rem] p-6 shadow-ios border border-black/5 space-y-4">
                   <div className="space-y-3">
-                    {selectedAlumno.pagosMensuales && selectedAlumno.pagosMensuales.length > 0 ? (
-                      [...selectedAlumno.pagosMensuales].sort((a,b) => b.anio !== a.anio ? b.anio - a.anio : 0).map((pago, idx) => (
+                    {pagosFiltrados.length > 0 ? (
+                      pagosFiltrados.map((pago, idx) => (
                         <div key={idx} className="flex items-center justify-between p-4 bg-ios-gray rounded-2xl">
                           <div className="flex items-center gap-4">
                             <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm">
@@ -1021,8 +1085,8 @@ const Alumnos: React.FC<AlumnosProps> = ({
                       <div className="p-10 text-center text-secondary text-sm italic">No hay registros de pagos mensuales.</div>
                     )}
                   </div>
-                  
-                  {selectedAlumno.pagoVencido && sendPaymentReminder && (
+
+                  {!isAlDia && sendPaymentReminder && (
                     <motion.button 
                       whileTap={{ scale: 0.95 }}
                       onClick={() => sendPaymentReminder(selectedAlumno)}
@@ -1034,7 +1098,8 @@ const Alumnos: React.FC<AlumnosProps> = ({
                   )}
                 </div>
               </div>
-            )}
+                ); // ── fin return del IIFE ──
+              })()} {/* ── fin IIFE Pagos ── */}
 
             {/* Danger Zone - SOLO COORDINADOR */}
             {userRole === 'Coordinator' && (
@@ -1109,12 +1174,19 @@ const Alumnos: React.FC<AlumnosProps> = ({
                 </div>
               </div>
               <div className="flex gap-3 pt-4">
-                <motion.button 
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => { setIsAddingSkill(false); setEditingSkillId(null); }}
+                  className="flex-1 py-5 rounded-[1.2rem] bg-ios-gray border border-black/10 text-secondary text-sm font-bold"
+                >
+                  Cancelar
+                </motion.button>
+                <motion.button
                   whileTap={{ scale: 0.95 }}
                   onClick={handleSaveSkill}
                   className="flex-1 py-5 rounded-[1.2rem] bg-ios-blue text-white text-sm font-bold shadow-lg"
                 >
-                  Guardar Habilidad
+                  Guardar
                 </motion.button>
               </div>
             </motion.div>
